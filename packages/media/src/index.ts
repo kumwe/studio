@@ -8,4 +8,13 @@ export {
   type MediaProvider,
   type MediaUploadRequest,
 } from './media-library.js';
+export {
+  MediaUploadController,
+  MEDIA_UPLOAD_FAILURE,
+  MEDIA_UPLOAD_TOO_LARGE,
+  type MediaUploadChunk,
+  type MediaUploadControllerOptions,
+  type MediaUploadListener,
+  type MediaUploadTransport,
+} from './upload-controller.js';
 export { validateMediaReference } from './validate-media-reference.js';

@@ -9,3 +9,15 @@ browsing state and deterministic responsive-rendition selection.
 Studio artifacts store the protocol's usage-specific `MediaReference`, while `MediaAsset` is the
 host's library projection. URLs are delivery details returned by the receiving host and belong in
 neither persisted contract.
+
+## Upload orchestration
+
+`MediaUploadController` drives the canonical media-upload-session state machine —
+`requested → authorized → transferring → verifying → complete`, with `failed` and `cancelled`
+terminals — over a host-implemented `MediaUploadTransport` (`authorize`, `transfer`, `finalize`,
+and best-effort `abort`). Chunking follows the host's authorized plan, and every emitted snapshot
+conforms to the protocol's `media-upload-session` schema. A file larger than the plan's
+`maximumBytes` fails before any transfer with a `studio.media/upload-too-large` diagnostic;
+transport rejections surface as a generic `studio.media/upload-failed` diagnostic and never leak
+raw error text. `cancel()` aborts in-flight work and requests best-effort server-side
+cancellation, and `retry()` restarts a failed session from authorization under a fresh session id.
