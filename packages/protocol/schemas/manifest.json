@@ -24,7 +24,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
     },
     {
-      "digest": "sha256-wmPfQK7E5BQekz1ItfLPnvp6YMo2WqeXDjTjdZjZ3B8=",
+      "digest": "sha256-htSwJXFIhBnC96NxNxKgr+h2Fbo/qg8/ydtwguXEesA=",
       "file": "common.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/common.schema.json"
     },

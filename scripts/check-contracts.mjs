@@ -237,6 +237,51 @@ for (const value of [
   assertRejected(`semantic version ${value}`, validateSemanticVersion, value);
 }
 
+const validateCanonicalDecimal = ajv.compile({ $ref: `${common.$id}#/$defs/canonicalDecimal` });
+for (const value of ['0', '-1', '10.50', '1499.00', '-0.001', '123456789.123456789']) {
+  assertAccepted(`canonical decimal ${value}`, validateCanonicalDecimal, value);
+}
+for (const value of ['00', '01.5', '.5', '1.', '+1', '1e3', 'NaN', '-', '1,5', '1.5\n', '-0']) {
+  assertRejected(`canonical decimal ${JSON.stringify(value)}`, validateCanonicalDecimal, value);
+}
+
+const validateMoney = ajv.compile({ $ref: `${common.$id}#/$defs/moneyValue` });
+assertAccepted('money value', validateMoney, { amount: '1499.00', currency: 'NAD' });
+assertRejected('money with float amount', validateMoney, { amount: 1499, currency: 'NAD' });
+assertRejected('money with lowercase currency', validateMoney, {
+  amount: '1499.00',
+  currency: 'nad',
+});
+assertRejected('money with extra member', validateMoney, {
+  amount: '1499.00',
+  currency: 'NAD',
+  formatted: 'N$1,499.00',
+});
+
+const validateInstant = ajv.compile({ $ref: `${common.$id}#/$defs/rfc3339Instant` });
+for (const value of [
+  '2026-08-15T09:30:00Z',
+  '2026-12-31T23:59:60Z',
+  '2026-08-15T09:30:00.123456789+02:00',
+]) {
+  assertAccepted(`instant ${value}`, validateInstant, value);
+}
+for (const value of [
+  '2026-08-15 09:30:00Z',
+  '2026-08-15T09:30:00',
+  '2026-13-01T00:00:00Z',
+  '2026-08-15T24:00:00Z',
+  '2026-08-15T09:30:00+2:00',
+]) {
+  assertRejected(`instant ${value}`, validateInstant, value);
+}
+
+const validateDate = ajv.compile({ $ref: `${common.$id}#/$defs/rfc3339Date` });
+assertAccepted('date 2026-08-15', validateDate, '2026-08-15');
+for (const value of ['2026-8-15', '2026-08-32', '2026-00-15', '20260815']) {
+  assertRejected(`date ${value}`, validateDate, value);
+}
+
 const validateIntegrity = ajv.compile({ $ref: `${common.$id}#/$defs/integrity` });
 for (const algorithm of ['sha256', 'sha384', 'sha512']) {
   const value = `${algorithm}-${createHash(algorithm).update(`studio-${algorithm}`).digest('base64')}`;
