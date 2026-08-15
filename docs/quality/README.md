@@ -171,6 +171,9 @@ requires evidence and release-note classification, not a quiet test edit.
 | Nightly           | Scheduled/current main | Full browsers, Dart/Flutter, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, benchmarks                 |
 | Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers |
 
+The pull-request lane's secret scan is implemented by `scripts/check-secrets.mjs`, which executes in
+the repository check lane through `npm run contracts:check`.
+
 Skipped tests are failures unless the environment is outside the published profile and the skip is validated by
 the matrix manifest. A test that cannot execute on its claimed platform must be corrected or the claim narrowed;
 it is not repeatedly retried until green.
