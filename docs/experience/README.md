@@ -37,4 +37,4 @@ An author should be able to:
 8. understand errors at the relevant node and recover without losing draft data;
 9. save through host concurrency, validation, permission, workflow, revision, and audit rules.
 
-See [workspace anatomy](workspace.md), [key journeys](journeys.md), and the [interaction model](interaction-model.md).
+See [workspace anatomy](workspace.md), [key journeys](journeys.md), the [interaction model](interaction-model.md), and the [keyboard reference](keyboard.md).
