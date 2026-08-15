@@ -1,4 +1,9 @@
 export {
+  canonicalStringify,
+  canonicalUtf8Bytes,
+  type CanonicalSerializationOptions,
+} from './canonical.js';
+export {
   applyCommand,
   invertCommand,
   StudioCommandError,
