@@ -1,0 +1,19 @@
+# Review routing for the roles and decision rights defined in docs/governance/README.md.
+# One maintainer currently holds every steward role, so all entries resolve to the same
+# reviewer; the structure records which surfaces carry steward-level review authority.
+
+# Default: every change requires maintainer review.
+* @Llewellynvdm
+
+# Canonical schemas and normative contract documentation (contract steward).
+/schemas/ @Llewellynvdm
+/docs/contracts/ @Llewellynvdm
+
+# Architecture decision records (architecture steward).
+/docs/decisions/ @Llewellynvdm
+
+# Evidence bundles and gate records (release manager and security steward).
+/evidence/ @Llewellynvdm
+
+# CI, release automation and repository policy (maintainer and security steward).
+/.github/ @Llewellynvdm

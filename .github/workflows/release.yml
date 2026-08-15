@@ -60,4 +60,4 @@ jobs:
       - name: Confirm publication remains disabled
         run: |
           echo "Registry publication is disabled until M1-04 implements and qualifies the release evidence system."
-          test -z "$(node -p \"require('./package.json').scripts.release || ''\")"
+          test -z "$(node -p 'require("./package.json").scripts.release ?? ""')"

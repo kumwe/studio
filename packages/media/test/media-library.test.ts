@@ -48,7 +48,7 @@ describe('MediaLibrary', () => {
   });
 
   it('does not expose provider exception details through observable state', async () => {
-    const secret = 'Bearer secret-token from /srv/private/media';
+    const secret = 'Bearer secret-token from /srv/private/media'; // studio-secret-scan:allow
     const provider = new Provider();
     provider.list = (): Promise<MediaPage> => Promise.reject(new Error(secret));
     const library = new MediaLibrary(provider);
