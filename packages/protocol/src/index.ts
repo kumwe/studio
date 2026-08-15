@@ -52,6 +52,7 @@ export {
   type EntryDocument,
   type EntryFieldBindingSource,
   type ExperimentalShellConfiguration,
+  type ExtensionLifecycleState,
   type FieldAuthoringMetadata,
   type FieldBinding,
   type FieldConstraints,
