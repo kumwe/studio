@@ -1,4 +1,5 @@
-import { cp, mkdir, readdir, rm } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const sourceDirectory = new URL('../schemas/', import.meta.url);
@@ -65,3 +66,24 @@ const invalid = (await readdir(invalidTargetDirectory)).filter((name) => name.en
 if (invalid.length === 0) {
   throw new Error(`No negative fixtures were copied to ${join(invalidTargetDirectory.pathname)}.`);
 }
+
+const manifestEntries = [];
+for (const name of copied.sort()) {
+  const bytes = await readFile(new URL(name, sourceDirectory));
+  const schema = JSON.parse(bytes.toString('utf8'));
+  manifestEntries.push({
+    digest: `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
+    file: name,
+    id: schema.$id,
+  });
+}
+const manifest = {
+  contractVersion: '0.1-draft',
+  epoch: 'https://schemas.kumwe.org/studio/v1/',
+  kind: 'schema-manifest',
+  schemas: manifestEntries,
+};
+await writeFile(
+  new URL('manifest.json', targetDirectory),
+  `${JSON.stringify(manifest, null, 2)}\n`,
+);
