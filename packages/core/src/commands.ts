@@ -19,9 +19,12 @@ export type StudioCommandErrorCode =
   | 'invalid-id-map'
   | 'invalid-index'
   | 'invalid-order'
+  | 'locale-mismatch'
   | 'node-not-found'
   | 'parent-not-found'
   | 'property-not-found'
+  | 'read-only-session'
+  | 'stale-generation'
   | 'stale-state'
   | 'unsupported-command';
 

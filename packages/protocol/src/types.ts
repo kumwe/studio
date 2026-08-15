@@ -382,6 +382,21 @@ export interface ContentModelDocument {
   version: SemanticVersion;
 }
 
+export interface EntryDocument {
+  compositionOverrides?: Record<StableId, JsonValue>;
+  contractVersion: StudioContractVersion;
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: StableId;
+  kind: 'entry';
+  locale?: string;
+  model: LockedArtifactReference;
+  revision: Revision;
+  status: 'archived' | 'draft' | 'in-review' | 'published';
+  translationOf?: StableId;
+  values: Record<LocalName, JsonValue>;
+  workflowState?: QualifiedName;
+}
+
 export type StudioAuthoringMode = 'blueprint' | 'content' | 'model';
 
 export interface StudioDisplayPreferences {
