@@ -382,6 +382,18 @@ export interface ContentModelDocument {
   version: SemanticVersion;
 }
 
+export type ExtensionLifecycleState =
+  | 'activating'
+  | 'active'
+  | 'disabled'
+  | 'discovered'
+  | 'installed-disabled'
+  | 'purged'
+  | 'rejected'
+  | 'trust-revoked'
+  | 'uninstalled-data-preserved'
+  | 'verified';
+
 export interface EntryDocument {
   compositionOverrides?: Record<StableId, JsonValue>;
   contractVersion: StudioContractVersion;
