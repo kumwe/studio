@@ -7,7 +7,12 @@ import {
   type PropertyValues,
   type TemplateResult,
 } from 'lit';
-import { StudioSession, type StudioSessionOptions } from '@kumwe/studio-core';
+import {
+  BlockRegistry,
+  StudioSession,
+  validateBlueprint,
+  type StudioSessionOptions,
+} from '@kumwe/studio-core';
 import type {
   BlockDefinition,
   BlueprintCommand,
@@ -22,9 +27,11 @@ import type {
   ReorderChildrenPayload,
   Revision,
   StudioContractVersion,
+  StudioDiagnostic,
+  ThemeViewport,
 } from '@kumwe/studio-protocol';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
-import { allocateDuplicateIdMap, findOutlineLocation } from './outline.js';
+import { allocateDuplicateIdMap, findAncestry, findOutlineLocation } from './outline.js';
 
 export interface StudioDocumentChangeDetail {
   command: BlueprintCommand | null;
@@ -40,6 +47,10 @@ export interface StudioInsertRequestDetail {
 
 export interface StudioDirtyChangedDetail {
   dirty: boolean;
+}
+
+export interface StudioViewportChangeDetail {
+  viewport: ThemeViewport;
 }
 
 interface ShellCommandEnvelope {
@@ -58,6 +69,7 @@ export class KumweStudioElement extends LitElement {
     document: { attribute: false },
     messages: { attribute: false },
     selectedNodeId: { attribute: false, state: true },
+    viewports: { attribute: false },
   };
 
   public static override styles: CSSResult = css`
@@ -179,6 +191,70 @@ export class KumweStudioElement extends LitElement {
       padding: 0.375rem 0.5rem;
     }
 
+    .viewport-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .viewport-switcher button {
+      font-size: 0.8125rem;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .breadcrumb ol {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+      list-style: none;
+      margin: 0 0 0.75rem;
+      padding: 0;
+    }
+
+    .breadcrumb li + li::before {
+      content: '\\203A';
+      margin-inline-end: 0.375rem;
+    }
+
+    .breadcrumb button {
+      font-size: 0.8125rem;
+      padding: 0.25rem 0.375rem;
+    }
+
+    .breadcrumb-current {
+      font-weight: 600;
+    }
+
+    .diagnostics {
+      grid-column: 1 / -1;
+    }
+
+    .diagnostics-list {
+      display: grid;
+      gap: 0.5rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .diagnostics-empty {
+      color: #5d6671;
+      margin: 0;
+    }
+
+    .diagnostic-severity {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .diagnostic-severity::after {
+      content: ':';
+    }
+
     .statusbar {
       align-items: center;
       border: 1px solid var(--studio-border);
@@ -230,15 +306,28 @@ export class KumweStudioElement extends LitElement {
   declare public configuration: ExperimentalShellConfiguration | undefined;
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
+  declare public viewports: ThemeViewport[] | undefined;
   declare protected announcement: string | undefined;
   declare protected selectedNodeId: string | undefined;
 
+  #activeViewportId: string | undefined;
   #commandSequence = 0;
+  #diagnostics: StudioDiagnostic[] = [];
   #internalDocumentUpdate = false;
   #lastDirty = false;
   #pendingFocusNodeId: NodeId | undefined;
+  #registry: BlockRegistry | undefined;
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
+
+  public get activeViewport(): ThemeViewport | undefined {
+    const ordered = this.#orderedViewports();
+    if (ordered.length === 0) {
+      return undefined;
+    }
+    const chosen = ordered.find((viewport) => viewport.id === this.#activeViewportId);
+    return chosen ?? ordered.find((viewport) => viewport.base) ?? ordered[0];
+  }
 
   public get stateVersion(): number {
     return this.#session?.stateVersion ?? 0;
@@ -309,12 +398,19 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
+    if (changed.has('viewports')) {
+      this.#activeViewportId = undefined;
+    }
+    if (changed.has('configuration')) {
+      this.#rebuildRegistry();
+    }
     if (changed.has('document') || changed.has('configuration')) {
       if (this.#internalDocumentUpdate) {
         this.#internalDocumentUpdate = false;
       } else {
         this.#rebuildSession();
       }
+      this.#revalidate();
     }
   }
 
@@ -357,7 +453,12 @@ export class KumweStudioElement extends LitElement {
           </ul>
         </aside>
 
-        <main class="canvas" aria-label=${this.#text('studio.shell/canvas-label')}>
+        <main
+          class="canvas"
+          aria-label=${this.#text('studio.shell/canvas-label')}
+          data-viewport=${this.activeViewport?.id ?? nothing}
+        >
+          ${this.#renderViewportSwitcher()} ${this.#renderBreadcrumb()}
           <div class="toolbar" aria-label=${this.#text('studio.shell/history-label')}>
             <button
               type="button"
@@ -422,6 +523,22 @@ export class KumweStudioElement extends LitElement {
                 `
           }
         </aside>
+
+        <section
+          class="panel diagnostics"
+          aria-label=${this.#text('studio.shell/diagnostics-heading')}
+        >
+          <h2>${this.#text('studio.shell/diagnostics-heading')}</h2>
+          ${
+            this.#diagnostics.length === 0
+              ? html`<p class="diagnostics-empty">
+                  ${this.#text('studio.shell/diagnostics-empty')}
+                </p>`
+              : html`<ul class="diagnostics-list">
+                  ${this.#diagnostics.map((entry) => this.#renderDiagnostic(entry))}
+                </ul>`
+          }
+        </section>
 
         <footer class="statusbar" aria-label=${this.#text('studio.shell/status-label')}>
           ${
@@ -638,6 +755,22 @@ export class KumweStudioElement extends LitElement {
     }
   }
 
+  #orderedViewports(): ThemeViewport[] {
+    return [...(this.viewports ?? [])].sort((left, right) => left.order - right.order);
+  }
+
+  #rebuildRegistry(): void {
+    const registry = new BlockRegistry();
+    for (const definition of this.configuration?.blockDefinitions ?? []) {
+      try {
+        registry.register(definition);
+      } catch {
+        // An unregistrable definition surfaces as block-unavailable diagnostics.
+      }
+    }
+    this.#registry = registry;
+  }
+
   #rebuildSession(): void {
     if (this.document === undefined) {
       this.#session = undefined;
@@ -658,6 +791,43 @@ export class KumweStudioElement extends LitElement {
     }
     this.selectedNodeId = undefined;
     this.#syncDirty();
+  }
+
+  #renderBreadcrumb(): TemplateResult | typeof nothing {
+    const roots = this.document?.roots;
+    if (roots === undefined || this.selectedNodeId === undefined) {
+      return nothing;
+    }
+    const ancestry = findAncestry(roots, this.selectedNodeId);
+    if (ancestry.length === 0) {
+      return nothing;
+    }
+    return html`
+      <nav class="breadcrumb" aria-label=${this.#text('studio.shell/breadcrumb-label')}>
+        <ol>
+          ${ancestry.map((node, index) =>
+            index === ancestry.length - 1
+              ? html`<li>
+                  <span class="breadcrumb-current" aria-current="true">
+                    ${this.#nodeLabel(node)}
+                  </span>
+                </li>`
+              : html`<li>
+                  <button
+                    type="button"
+                    class="breadcrumb-entry"
+                    data-node-id=${node.id}
+                    @click=${(): void => {
+                      this.#selectNode(node.id);
+                    }}
+                  >
+                    ${this.#nodeLabel(node)}
+                  </button>
+                </li>`,
+          )}
+        </ol>
+      </nav>
+    `;
   }
 
   #renderCanvasNode(node: BlueprintNode): TemplateResult {
@@ -683,6 +853,34 @@ export class KumweStudioElement extends LitElement {
             </section>
           `,
         )}
+      </li>
+    `;
+  }
+
+  #renderDiagnostic(entry: StudioDiagnostic): TemplateResult {
+    const severity = html`<span class="diagnostic-severity">
+      ${this.#text(SEVERITY_MESSAGE_KEYS[entry.severity])}
+    </span>`;
+    const message = diagnosticText(entry);
+    const nodeId = entry.location?.nodeId;
+    return html`
+      <li>
+        ${
+          nodeId === undefined
+            ? html`<span class="diagnostic-text">${severity} ${message}</span>`
+            : html`
+                <button
+                  type="button"
+                  class="diagnostic-entry"
+                  data-node-id=${nodeId}
+                  @click=${(): void => {
+                    this.#revealDiagnosticNode(nodeId);
+                  }}
+                >
+                  ${severity} ${message}
+                </button>
+              `
+        }
       </li>
     `;
   }
@@ -784,6 +982,33 @@ export class KumweStudioElement extends LitElement {
     `;
   }
 
+  #renderViewportSwitcher(): TemplateResult | typeof nothing {
+    const ordered = this.#orderedViewports();
+    if (ordered.length === 0) {
+      return nothing;
+    }
+    const active = this.activeViewport;
+    return html`
+      <section class="viewport-switcher" aria-label=${this.#text('studio.shell/viewport-label')}>
+        ${ordered.map(
+          (viewport) => html`
+            <button
+              type="button"
+              class="viewport-option"
+              data-viewport-id=${viewport.id}
+              aria-pressed=${active?.id === viewport.id ? 'true' : 'false'}
+              @click=${(): void => {
+                this.#selectViewport(viewport);
+              }}
+            >
+              ${referenceText(viewport.label)}
+            </button>
+          `,
+        )}
+      </section>
+    `;
+  }
+
   #requestInsert(definition: BlockDefinition): void {
     this.dispatchEvent(
       new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
@@ -792,6 +1017,24 @@ export class KumweStudioElement extends LitElement {
         detail: { definition, parentId: null },
       }),
     );
+  }
+
+  #revalidate(): void {
+    if (this.document === undefined) {
+      this.#diagnostics = [];
+      return;
+    }
+    const registry = this.#registry ?? new BlockRegistry();
+    const result = validateBlueprint(this.document, registry);
+    this.#diagnostics = [...result.diagnostics].sort(
+      (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
+    );
+  }
+
+  #revealDiagnosticNode(nodeId: NodeId): void {
+    this.#selectNode(nodeId);
+    this.#pendingFocusNodeId = nodeId;
+    this.requestUpdate();
   }
 
   #runShellCommand(command: BlueprintCommand): boolean {
@@ -817,6 +1060,24 @@ export class KumweStudioElement extends LitElement {
     this.selectedNodeId = nodeId;
   }
 
+  #selectViewport(viewport: ThemeViewport): void {
+    if (this.activeViewport?.id === viewport.id) {
+      return;
+    }
+    this.#activeViewportId = viewport.id;
+    this.dispatchEvent(
+      new CustomEvent<StudioViewportChangeDetail>('studio-viewport-change', {
+        bubbles: true,
+        composed: true,
+        detail: { viewport },
+      }),
+    );
+    this.#announce('studio.shell/announce-viewport-changed', {
+      label: referenceText(viewport.label),
+    });
+    this.requestUpdate();
+  }
+
   #syncDirty(): void {
     const dirty = this.#session?.dirty ?? false;
     if (dirty === this.#lastDirty) {
@@ -835,6 +1096,32 @@ export class KumweStudioElement extends LitElement {
   #text(key: StudioMessageKey, parameters?: Readonly<Record<string, string>>): string {
     return messageText(key, this.messages, parameters);
   }
+}
+
+const SEVERITY_MESSAGE_KEYS: Record<StudioDiagnostic['severity'], StudioMessageKey> = {
+  blocking: 'studio.shell/severity-blocking',
+  error: 'studio.shell/severity-error',
+  information: 'studio.shell/severity-information',
+  warning: 'studio.shell/severity-warning',
+};
+
+const SEVERITY_RANK: Record<StudioDiagnostic['severity'], number> = {
+  blocking: 0,
+  error: 1,
+  information: 3,
+  warning: 2,
+};
+
+function diagnosticText(entry: StudioDiagnostic): string {
+  const template = referenceText(entry.message);
+  if (entry.parameters === undefined) {
+    return template;
+  }
+  let text = template;
+  for (const [name, value] of Object.entries(entry.parameters)) {
+    text = text.replaceAll(`{${name}}`, String(value));
+  }
+  return text;
 }
 
 function referenceText(reference: MessageReference): string {
