@@ -47,6 +47,14 @@
     {
       "if": { "properties": { "type": { "const": "studio.preview/error" } } },
       "then": { "properties": { "payload": { "$ref": "#/$defs/error" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/reload" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/reload" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/teardown" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/teardown" } } }
     }
   ],
   "$defs": {
@@ -117,6 +125,22 @@
         "message": { "$ref": "common.schema.json#/$defs/messageReference" },
         "retryable": { "type": "boolean" },
         "correlationId": { "$ref": "common.schema.json#/$defs/stableId" }
+      }
+    },
+    "reload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "$ref": "common.schema.json#/$defs/qualifiedName" }
+      }
+    },
+    "teardown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "properties": {
+        "reason": { "$ref": "common.schema.json#/$defs/qualifiedName" }
       }
     }
   }

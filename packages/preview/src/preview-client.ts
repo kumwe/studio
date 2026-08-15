@@ -6,6 +6,7 @@ import {
   type PreviewRenderedPayload,
   type PreviewRenderPayload,
   type PreviewSelectPayload,
+  type PreviewTeardownPayload,
 } from '@kumwe/studio-protocol';
 
 export interface PreviewMessageEvent {
@@ -311,11 +312,48 @@ export class PreviewClient {
         pending.cleanup();
         pending.resolve(event.data.payload);
       }
+    } else if (
+      event.data.type === 'studio.preview/reload' ||
+      event.data.type === 'studio.preview/teardown'
+    ) {
+      const reason =
+        event.data.type === 'studio.preview/reload'
+          ? 'Preview renderer reloaded before responding.'
+          : 'Preview channel was torn down.';
+      for (const pending of this.#pending.values()) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        pending.reject(new Error(reason));
+      }
+      this.#pending.clear();
+      this.#latestRenderDigest = undefined;
+      // A reloaded renderer announces itself again; the cached payload may
+      // no longer describe it.
+      this.#readyPayload = undefined;
     }
 
+    const teardown = event.data.type === 'studio.preview/teardown';
     for (const listener of this.#listeners) {
       listener(event.data);
     }
+    if (teardown) {
+      this.dispose();
+    }
+  }
+
+  /** Announce channel closure to the host, then dispose this client. */
+  public teardown(reason: PreviewTeardownPayload['reason']): void {
+    this.#assertActive();
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: { reason },
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/teardown',
+    });
+    this.dispose();
   }
 }
 

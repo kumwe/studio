@@ -160,3 +160,31 @@ describe('isHostPortError', () => {
     expect(isHostPortError(withoutMessage)).toBe(false);
   });
 });
+
+describe('reload and teardown messages', () => {
+  function reloadMessage(): Record<string, unknown> {
+    return {
+      channelId: 'preview-channel-1',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: { reason: 'studio.preview/renderer-restarted' },
+      sequence: 3,
+      sessionGeneration: 'session-r1',
+      type: 'studio.preview/reload',
+    };
+  }
+
+  it('accepts canonical reload and teardown payloads', () => {
+    expect(isPreviewMessage(reloadMessage())).toBe(true);
+    expect(isPreviewMessage({ ...reloadMessage(), type: 'studio.preview/teardown' })).toBe(true);
+  });
+
+  it('rejects unqualified reasons and extra members', () => {
+    const unqualified = reloadMessage();
+    unqualified.payload = { reason: 'because' };
+    const extra = reloadMessage();
+    extra.payload = { detail: 'stack trace', reason: 'studio.preview/renderer-restarted' };
+    expect(isPreviewMessage(unqualified)).toBe(false);
+    expect(isPreviewMessage(extra)).toBe(false);
+  });
+});
