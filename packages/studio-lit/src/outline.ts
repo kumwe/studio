@@ -16,6 +16,26 @@ export function findOutlineLocation(
   return findWithin(roots, nodeId, undefined, undefined);
 }
 
+/**
+ * Returns the chain of nodes from a document root down to `nodeId`
+ * (root first, the node itself last), or an empty array when the
+ * identifier does not occur in the tree.
+ */
+export function findAncestry(roots: readonly BlueprintNode[], nodeId: NodeId): BlueprintNode[] {
+  for (const node of roots) {
+    if (node.id === nodeId) {
+      return [node];
+    }
+    for (const children of Object.values(node.slots)) {
+      const nested = findAncestry(children, nodeId);
+      if (nested.length > 0) {
+        return [node, ...nested];
+      }
+    }
+  }
+  return [];
+}
+
 export function collectDocumentIds(roots: readonly BlueprintNode[]): Set<NodeId> {
   const identifiers = new Set<NodeId>();
   const stack = [...roots];

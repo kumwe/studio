@@ -16,10 +16,14 @@ export type StudioMessageKey =
   | 'studio.shell/announce-moved-up'
   | 'studio.shell/announce-redid'
   | 'studio.shell/announce-undid'
+  | 'studio.shell/announce-viewport-changed'
   | 'studio.shell/block-actions'
+  | 'studio.shell/breadcrumb-label'
   | 'studio.shell/canvas-empty'
   | 'studio.shell/canvas-label'
   | 'studio.shell/delete'
+  | 'studio.shell/diagnostics-empty'
+  | 'studio.shell/diagnostics-heading'
   | 'studio.shell/duplicate'
   | 'studio.shell/history-label'
   | 'studio.shell/inspector-empty'
@@ -37,9 +41,14 @@ export type StudioMessageKey =
   | 'studio.shell/redo'
   | 'studio.shell/save-state-saved'
   | 'studio.shell/save-state-unsaved'
+  | 'studio.shell/severity-blocking'
+  | 'studio.shell/severity-error'
+  | 'studio.shell/severity-information'
+  | 'studio.shell/severity-warning'
   | 'studio.shell/status-label'
   | 'studio.shell/undo'
-  | 'studio.shell/unresolved-block';
+  | 'studio.shell/unresolved-block'
+  | 'studio.shell/viewport-label';
 
 export type StudioMessageOverrides = Partial<Record<StudioMessageKey, StudioMessage>>;
 
@@ -51,10 +60,14 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   'studio.shell/announce-moved-up': { defaultMessage: 'Moved {label} up' },
   'studio.shell/announce-redid': { defaultMessage: 'Redid change' },
   'studio.shell/announce-undid': { defaultMessage: 'Undid change' },
+  'studio.shell/announce-viewport-changed': { defaultMessage: 'Previewing the {label} viewport' },
   'studio.shell/block-actions': { defaultMessage: 'Block actions' },
+  'studio.shell/breadcrumb-label': { defaultMessage: 'Selection path' },
   'studio.shell/canvas-empty': { defaultMessage: 'Choose a block to begin composing.' },
   'studio.shell/canvas-label': { defaultMessage: 'Blueprint structure' },
   'studio.shell/delete': { defaultMessage: 'Delete' },
+  'studio.shell/diagnostics-empty': { defaultMessage: 'No issues' },
+  'studio.shell/diagnostics-heading': { defaultMessage: 'Diagnostics' },
   'studio.shell/duplicate': { defaultMessage: 'Duplicate' },
   'studio.shell/history-label': { defaultMessage: 'History' },
   'studio.shell/inspector-empty': { defaultMessage: 'Select a block to inspect its contract.' },
@@ -77,9 +90,14 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   'studio.shell/redo': { defaultMessage: 'Redo' },
   'studio.shell/save-state-saved': { defaultMessage: 'Saved' },
   'studio.shell/save-state-unsaved': { defaultMessage: 'Unsaved changes' },
+  'studio.shell/severity-blocking': { defaultMessage: 'Blocking' },
+  'studio.shell/severity-error': { defaultMessage: 'Error' },
+  'studio.shell/severity-information': { defaultMessage: 'Information' },
+  'studio.shell/severity-warning': { defaultMessage: 'Warning' },
   'studio.shell/status-label': { defaultMessage: 'Status' },
   'studio.shell/undo': { defaultMessage: 'Undo' },
   'studio.shell/unresolved-block': { defaultMessage: '(unresolved)' },
+  'studio.shell/viewport-label': { defaultMessage: 'Preview width' },
 };
 
 /**

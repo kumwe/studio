@@ -11,6 +11,7 @@ export {
   type StudioDirtyChangedDetail,
   type StudioDocumentChangeDetail,
   type StudioInsertRequestDetail,
+  type StudioViewportChangeDetail,
 } from './kumwe-studio.js';
 export {
   messageText,
