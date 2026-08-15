@@ -382,6 +382,166 @@ export interface ContentModelDocument {
   version: SemanticVersion;
 }
 
+export type HostErrorCategory =
+  | 'cancelled'
+  | 'conflict'
+  | 'forbidden'
+  | 'incompatible'
+  | 'internal'
+  | 'invalid-request'
+  | 'limit-exceeded'
+  | 'not-found'
+  | 'rate-limited'
+  | 'unauthenticated'
+  | 'unavailable'
+  | 'validation-failed';
+
+export interface HostPortError {
+  category: HostErrorCategory;
+  contractVersion: StudioContractVersion;
+  correlationId?: StableId;
+  diagnostics?: StudioDiagnostic[];
+  kind: 'host-error';
+  message: MessageReference;
+  retryAfterMilliseconds?: number;
+  retryable: boolean;
+  revision?: Revision;
+}
+
+export interface HostRequestContext {
+  expectedRevision?: Revision;
+  idempotencyKey?: StableId;
+  locale?: string;
+  operationId: QualifiedName;
+  protocolVersion: StudioWireProtocolVersion;
+  requestId: StableId;
+  resourceContextKey: StableId;
+  sessionGeneration: Revision;
+}
+
+export interface HostPortResult<TValue> {
+  revision?: Revision;
+  value: TValue;
+}
+
+export type StudioArtifact = BlueprintDocument | ContentModelDocument | EntryDocument;
+
+export interface ArtifactPort {
+  dependencies(
+    reference: ArtifactReference,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<ArtifactReference[]>>;
+  load(
+    reference: ArtifactReference,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<StudioArtifact>>;
+  publish(reference: ArtifactReference, context: HostRequestContext): Promise<HostPortResult<null>>;
+  save(artifact: StudioArtifact, context: HostRequestContext): Promise<HostPortResult<null>>;
+  unpublish(
+    reference: ArtifactReference,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<null>>;
+}
+
+export interface ModelPort {
+  get(
+    reference: ArtifactReference,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<ContentModelDocument>>;
+  list(context: HostRequestContext): Promise<HostPortResult<ContentModelDocument[]>>;
+}
+
+export interface ResourceSearchQuery {
+  cursor?: string;
+  limit: number;
+  resourceType: QualifiedName;
+  search?: string;
+}
+
+export interface ResourceSearchHit {
+  id: StableId;
+  label: MessageReference;
+  resourceType: QualifiedName;
+}
+
+export interface ResourceSearchPage {
+  items: ResourceSearchHit[];
+  nextCursor?: string;
+}
+
+export interface ResourcePort {
+  search(
+    query: ResourceSearchQuery,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<ResourceSearchPage>>;
+}
+
+export interface PreviewPort {
+  cancel(draftDigest: string, context: HostRequestContext): Promise<HostPortResult<null>>;
+  render(
+    payload: PreviewRenderPayload,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<PreviewRenderedPayload>>;
+}
+
+export interface MediaHostPort {
+  get(assetId: StableId, context: HostRequestContext): Promise<HostPortResult<MediaAsset | null>>;
+  list(query: MediaQuery, context: HostRequestContext): Promise<HostPortResult<MediaPage>>;
+}
+
+export interface LocalizationPort {
+  messages(
+    locale: string,
+    namespaces: QualifiedName[],
+    context: HostRequestContext,
+  ): Promise<HostPortResult<Record<QualifiedName, string>>>;
+}
+
+export interface PermissionExplanation {
+  allowed: boolean;
+  reason?: MessageReference;
+}
+
+export interface PermissionSnapshot {
+  permissions: QualifiedName[];
+  sessionGeneration: Revision;
+}
+
+export interface PermissionPort {
+  explain(
+    operation: QualifiedName,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<PermissionExplanation>>;
+  refresh(context: HostRequestContext): Promise<HostPortResult<PermissionSnapshot>>;
+}
+
+export interface RecoveryPort {
+  discard(context: HostRequestContext): Promise<HostPortResult<null>>;
+  load(context: HostRequestContext): Promise<HostPortResult<JsonObject | null>>;
+  store(envelope: JsonObject, context: HostRequestContext): Promise<HostPortResult<null>>;
+}
+
+export interface TelemetryEvent {
+  attributes?: Record<string, JsonPrimitive>;
+  name: QualifiedName;
+}
+
+export interface TelemetryPort {
+  emit(event: TelemetryEvent, context: HostRequestContext): Promise<HostPortResult<null>>;
+}
+
+export interface HostAdapter {
+  artifact: ArtifactPort;
+  localization?: LocalizationPort;
+  media?: MediaHostPort;
+  model?: ModelPort;
+  permission?: PermissionPort;
+  preview?: PreviewPort;
+  recovery?: RecoveryPort;
+  resource?: ResourcePort;
+  telemetry?: TelemetryPort;
+}
+
 export type ExtensionLifecycleState =
   | 'activating'
   | 'active'

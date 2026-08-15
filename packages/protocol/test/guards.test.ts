@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isHostPortError,
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -128,5 +129,34 @@ describe('isPreviewMessage', () => {
 
     expect(isPreviewMessage(sparseMessage)).toBe(false);
     expect(isPreviewMessage(augmentedMessage)).toBe(false);
+  });
+});
+
+describe('isHostPortError', () => {
+  function hostError(): Record<string, unknown> {
+    return {
+      category: 'conflict',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      correlationId: 'requests/2f6c1f6d',
+      kind: 'host-error',
+      message: { defaultMessage: 'Another revision was accepted.', key: 'studio.host/conflict' },
+      retryable: false,
+      revision: 'blueprint-r9',
+    };
+  }
+
+  it('accepts a canonical host error', () => {
+    expect(isHostPortError(hostError())).toBe(true);
+  });
+
+  it('rejects unknown categories, members, and unsafe shapes', () => {
+    expect(isHostPortError({ ...hostError(), category: 'exploded' })).toBe(false);
+    expect(isHostPortError({ ...hostError(), stack: 'at main.ts:1' })).toBe(false);
+    expect(isHostPortError({ ...hostError(), retryable: 'yes' })).toBe(false);
+    expect(isHostPortError({ ...hostError(), retryAfterMilliseconds: -1 })).toBe(false);
+    expect(isHostPortError({ ...hostError(), message: { key: 'not-qualified' } })).toBe(false);
+    const { message, ...withoutMessage } = hostError();
+    void message;
+    expect(isHostPortError(withoutMessage)).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ import commonSchemaDocument from '../schemas/common.schema.json' with { type: 'j
 import contentModelSchemaDocument from '../schemas/content-model.schema.json' with { type: 'json' };
 import entrySchemaDocument from '../schemas/entry.schema.json' with { type: 'json' };
 import hostCapabilitiesSchemaDocument from '../schemas/host-capabilities.schema.json' with { type: 'json' };
+import hostErrorSchemaDocument from '../schemas/host-error.schema.json' with { type: 'json' };
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
@@ -22,6 +23,7 @@ export const commonSchema: JsonSchema = commonSchemaDocument;
 export const contentModelSchema: JsonSchema = contentModelSchemaDocument;
 export const entrySchema: JsonSchema = entrySchemaDocument;
 export const hostCapabilitiesSchema: JsonSchema = hostCapabilitiesSchemaDocument;
+export const hostErrorSchema: JsonSchema = hostErrorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
@@ -38,6 +40,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   contentModelSchema,
   entrySchema,
   hostCapabilitiesSchema,
+  hostErrorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
   pluginManifestSchema,
