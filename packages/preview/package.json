@@ -1,0 +1,32 @@
+{
+  "name": "@kumwe/studio-preview",
+  "version": "0.1.0-alpha.0",
+  "description": "Origin-bound request channel for server-rendered Studio previews.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "LICENSE",
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@kumwe/studio-protocol": "0.1.0-alpha.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/command.schema.json",
+  "title": "Studio command",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "id",
+    "type",
+    "artifactId",
+    "sessionGeneration",
+    "baseStateVersion",
+    "payload"
+  ],
+  "properties": {
+    "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+    "kind": { "const": "command" },
+    "id": { "$ref": "common.schema.json#/$defs/stableId" },
+    "type": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+    "artifactId": { "$ref": "common.schema.json#/$defs/stableId" },
+    "expectedRevision": { "$ref": "common.schema.json#/$defs/revision" },
+    "sessionGeneration": { "$ref": "common.schema.json#/$defs/revision" },
+    "baseStateVersion": { "type": "integer", "minimum": 0 },
+    "groupId": { "$ref": "common.schema.json#/$defs/stableId" },
+    "payload": {
+      "type": "object",
+      "maxProperties": 1000,
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "additionalProperties": { "$ref": "common.schema.json#/$defs/jsonValue" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "studio.command/insert-node" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/insertNode" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.command/remove-node" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/removeNode" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.command/move-node" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/moveNode" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.command/set-property" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/setProperty" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.command/set-field-value" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/setFieldValue" } } }
+    }
+  ],
+  "$defs": {
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["position"],
+      "properties": {
+        "parentNodeId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "slot": { "$ref": "common.schema.json#/$defs/localName" },
+        "position": { "type": "integer", "minimum": 0, "maximum": 100000 }
+      },
+      "dependentRequired": {
+        "parentNodeId": ["slot"],
+        "slot": ["parentNodeId"]
+      }
+    },
+    "insertNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node", "destination"],
+      "properties": {
+        "node": { "$ref": "blueprint.schema.json#/$defs/node" },
+        "destination": { "$ref": "#/$defs/destination" }
+      }
+    },
+    "removeNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId"],
+      "properties": {
+        "nodeId": { "$ref": "common.schema.json#/$defs/stableId" }
+      }
+    },
+    "moveNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "destination"],
+      "properties": {
+        "nodeId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "destination": { "$ref": "#/$defs/destination" }
+      }
+    },
+    "setProperty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "property", "value"],
+      "properties": {
+        "nodeId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "property": { "$ref": "common.schema.json#/$defs/localName" },
+        "viewport": { "$ref": "common.schema.json#/$defs/localName" },
+        "value": { "$ref": "common.schema.json#/$defs/jsonValue" }
+      }
+    },
+    "setFieldValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fieldPath", "value"],
+      "properties": {
+        "fieldPath": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "common.schema.json#/$defs/localName" }
+        },
+        "locale": { "$ref": "common.schema.json#/$defs/locale" },
+        "value": { "$ref": "common.schema.json#/$defs/jsonValue" }
+      }
+    }
+  }
+}

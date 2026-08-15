@@ -1,0 +1,36 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  background: #eef1f5;
+  margin: 0;
+  padding: 2rem;
+}
+
+body > header {
+  margin: 0 auto 1.5rem;
+  max-width: 90rem;
+}
+
+.eyebrow {
+  color: #3157d5;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin-block: 0.25rem;
+}
+
+kumwe-studio {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
+  margin: auto;
+  max-width: 90rem;
+  overflow: hidden;
+}

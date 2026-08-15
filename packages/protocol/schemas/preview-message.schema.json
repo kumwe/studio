@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/preview-message.schema.json",
+  "title": "Studio preview channel message",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "kind",
+    "channelId",
+    "sessionGeneration",
+    "sequence",
+    "type",
+    "payload"
+  ],
+  "properties": {
+    "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+    "kind": { "const": "preview-message" },
+    "channelId": { "$ref": "common.schema.json#/$defs/stableId" },
+    "sessionGeneration": { "$ref": "common.schema.json#/$defs/revision" },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "type": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+    "payload": {
+      "type": "object",
+      "maxProperties": 1000,
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "additionalProperties": { "$ref": "common.schema.json#/$defs/jsonValue" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/ready" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/ready" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/render" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/render" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/rendered" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/rendered" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/select" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/select" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/error" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/error" } } }
+    }
+  ],
+  "$defs": {
+    "ready": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "renderer", "viewports"],
+      "properties": {
+        "protocolVersion": { "$ref": "common.schema.json#/$defs/semanticVersion" },
+        "renderer": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "viewports": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "common.schema.json#/$defs/localName" }
+        }
+      }
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "draftDigest", "viewport"],
+      "properties": {
+        "artifactId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "draftDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}(?![\\s\\S])"
+        },
+        "draftRevision": { "$ref": "common.schema.json#/$defs/revision" },
+        "viewport": { "$ref": "common.schema.json#/$defs/localName" }
+      }
+    },
+    "rendered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["draftDigest", "markers", "diagnostics"],
+      "properties": {
+        "draftDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}(?![\\s\\S])"
+        },
+        "markers": {
+          "type": "array",
+          "maxItems": 100000,
+          "items": { "$ref": "common.schema.json#/$defs/stableId" }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "common.schema.json#/$defs/diagnostic" }
+        }
+      }
+    },
+    "select": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId"],
+      "properties": {
+        "nodeId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "reveal": { "type": "boolean", "default": true }
+      }
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "message": { "$ref": "common.schema.json#/$defs/messageReference" },
+        "retryable": { "type": "boolean" },
+        "correlationId": { "$ref": "common.schema.json#/$defs/stableId" }
+      }
+    }
+  }
+}

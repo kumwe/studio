@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/core" },
+    { "path": "./packages/preview" },
+    { "path": "./packages/rich-text" },
+    { "path": "./packages/media" },
+    { "path": "./packages/studio-lit" },
+    { "path": "./packages/testkit" },
+    { "path": "./examples/reference-host" }
+  ]
+}
