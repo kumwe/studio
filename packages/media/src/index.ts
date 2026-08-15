@@ -8,3 +8,4 @@ export {
   type MediaProvider,
   type MediaUploadRequest,
 } from './media-library.js';
+export { validateMediaReference } from './validate-media-reference.js';
