@@ -15,6 +15,7 @@ import {
   type PreviewRenderCallback,
 } from '../src/index.js';
 
+const neverSettle = (): void => undefined;
 const digest = 'a'.repeat(64);
 const newerDigest = 'b'.repeat(64);
 const foreignDigest = 'c'.repeat(64);
@@ -354,5 +355,75 @@ describe('PreviewHost', () => {
     await Promise.resolve();
     expect(postedByType(pair.clientWindow, 'studio.preview/rendered')).toHaveLength(1);
     responder.dispose();
+  });
+});
+
+describe('reload and teardown', () => {
+  it('voids in-flight renders on reload and re-announces readiness', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    const responder = createHost(pair, () => new Promise<PreviewRenderedPayload>(neverSettle));
+    responder.announce();
+    await client.ready();
+
+    const pendingRender = client.render({
+      artifactId: 'blueprint-1',
+      draftDigest: digest,
+      viewport: 'expanded',
+    });
+    responder.reload('studio.preview/renderer-restarted');
+
+    await expect(pendingRender).rejects.toThrow('Preview renderer reloaded before responding.');
+    expect(postedByType(pair.clientWindow, 'studio.preview/reload')).toHaveLength(1);
+    await expect(client.ready()).resolves.toMatchObject({
+      renderer: 'kumwe/fixture-renderer',
+    });
+
+    client.dispose();
+    responder.dispose();
+  });
+
+  it('tears down the whole channel from the host side', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    const responder = createHost(pair, () => new Promise<PreviewRenderedPayload>(neverSettle));
+    responder.announce();
+    await client.ready();
+
+    const pendingRender = client.render({
+      artifactId: 'blueprint-1',
+      draftDigest: digest,
+      viewport: 'expanded',
+    });
+    responder.teardown('studio.preview/session-ended');
+
+    await expect(pendingRender).rejects.toThrow('Preview channel was torn down.');
+    await expect(
+      client.render({ artifactId: 'blueprint-1', draftDigest: newerDigest, viewport: 'expanded' }),
+    ).rejects.toThrow('Preview client was disposed.');
+    expect(() => responder.announce()).toThrow('Preview host was disposed.');
+  });
+
+  it('tears down the whole channel from the client side', () => {
+    const pair = linkedPair();
+    const rendered: unknown[] = [];
+    const responder = createHost(pair, (payload) => {
+      rendered.push(payload);
+      return Promise.resolve(renderedPayload(payload.draftDigest));
+    });
+    responder.announce();
+    const client = createClient(pair);
+
+    client.teardown('studio.preview/session-ended');
+
+    expect(postedByType(pair.hostWindow, 'studio.preview/teardown')).toHaveLength(1);
+    // The disposed host ignores later requests entirely.
+    pair.hostWindow.emit({
+      data: renderRequest(digest, 5),
+      origin: 'https://studio.test',
+      source: pair.clientWindow,
+    });
+    expect(rendered).toHaveLength(0);
+    expect(() => responder.announce()).toThrow('Preview host was disposed.');
   });
 });

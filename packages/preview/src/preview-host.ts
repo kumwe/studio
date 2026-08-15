@@ -111,6 +111,40 @@ export class PreviewHost {
     };
   }
 
+  /**
+   * Announce that the renderer reloaded: any in-flight render is void and the
+   * client must resend. The host re-announces readiness afterwards.
+   */
+  public reload(reason: QualifiedName): void {
+    this.#assertActive();
+    this.#latestRenderDigest = undefined;
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: { reason },
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/reload',
+    });
+    this.announce();
+  }
+
+  /** Announce channel closure to the client, then dispose this host. */
+  public teardown(reason: QualifiedName): void {
+    this.#assertActive();
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: { reason },
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/teardown',
+    });
+    this.dispose();
+  }
+
   #assertActive(): void {
     if (this.#disposed) {
       throw new Error('Preview host was disposed.');
@@ -160,6 +194,8 @@ export class PreviewHost {
       for (const listener of this.#selectListeners) {
         listener(event.data.payload);
       }
+    } else if (event.data.type === 'studio.preview/teardown') {
+      this.dispose();
     }
   }
 

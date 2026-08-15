@@ -1039,12 +1039,32 @@ export type PreviewSelectMessage = PreviewMessageBase<
 
 export type PreviewErrorMessage = PreviewMessageBase<'studio.preview/error', PreviewErrorPayload>;
 
+export interface PreviewReloadPayload {
+  reason: QualifiedName;
+}
+
+export type PreviewReloadMessage = PreviewMessageBase<
+  'studio.preview/reload',
+  PreviewReloadPayload
+>;
+
+export interface PreviewTeardownPayload {
+  reason: QualifiedName;
+}
+
+export type PreviewTeardownMessage = PreviewMessageBase<
+  'studio.preview/teardown',
+  PreviewTeardownPayload
+>;
+
 export type PreviewMessage =
   | PreviewErrorMessage
   | PreviewReadyMessage
+  | PreviewReloadMessage
   | PreviewRenderMessage
   | PreviewRenderedMessage
-  | PreviewSelectMessage;
+  | PreviewSelectMessage
+  | PreviewTeardownMessage;
 
 export interface MediaRendition {
   height: number;

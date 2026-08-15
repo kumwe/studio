@@ -80,9 +80,16 @@ export function isPreviewMessage(value: unknown): value is PreviewMessage {
       return isSelectPayload(value.payload);
     case 'studio.preview/error':
       return isErrorPayload(value.payload);
+    case 'studio.preview/reload':
+    case 'studio.preview/teardown':
+      return isReasonPayload(value.payload);
     default:
       return false;
   }
+}
+
+function isReasonPayload(value: Record<string, unknown>): boolean {
+  return hasExactKeys(value, ['reason']) && isQualifiedName(value.reason);
 }
 
 function isReadyPayload(value: Record<string, unknown>): boolean {
