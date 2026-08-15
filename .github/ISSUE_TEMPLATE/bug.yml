@@ -1,0 +1,55 @@
+name: Contract or implementation defect
+description: Report reproducible behaviour that contradicts a declared Studio contract.
+title: 'bug: '
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not report security vulnerabilities here. Use private vulnerability reporting.
+  - type: input
+    id: revision
+    attributes:
+      label: Revision or package version
+      placeholder: Commit SHA or package versions
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Affected contract and host capabilities
+      description: Link the normative contract and include the negotiated capability snapshot.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Include sanitized artifacts, commands, and exact steps.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Accessibility, security, portability, and data impact
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I removed secrets and personal data from the reproduction.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
