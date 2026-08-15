@@ -83,3 +83,19 @@ The gate decision record contains:
 A mandatory security, accessibility, privacy, data-integrity, or compatibility criterion cannot be waived. If
 the supported profile changes, the roadmap and public compatibility declaration change before review and the
 affected evidence is regenerated.
+
+## Executable instantiation
+
+This model is instantiated in the repository:
+
+- `evidence/README.md` — directory layout, content addressing, retention rules, and the ordered gate review
+  checklist;
+- `evidence/schema/evidence-bundle.schema.json` — machine-readable manifest schema for one bundle;
+- `evidence/schema/gate-record.schema.json` — machine-readable gate decision record schema;
+- `scripts/check-evidence.mjs` — validator executed by the repository check lane (`npm run check` via
+  `contracts:check`).
+
+The validator rejects any bundle whose recorded commit, working-tree state, or checksums do not match the
+checked-out source. Bundle directories prefixed `SAMPLE-` are excluded from those authenticity requirements
+but must fail them; a sample bundle that passes fails the lane. This keeps the acceptance proof executable:
+missing or stale evidence cannot pass a gate.

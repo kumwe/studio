@@ -1,0 +1,61 @@
+{
+  "artifactChecksums": {
+    "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+  },
+  "artifacts": [
+    {
+      "checksum": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+      "mediaType": "application/json",
+      "path": "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json"
+    }
+  ],
+  "bundleId": "SAMPLE-failing-stale-commit",
+  "criteria": [
+    {
+      "class": "contract",
+      "criterionId": "M2-01/schema-meta-validation",
+      "outcome": "positive"
+    }
+  ],
+  "environment": {
+    "node": "24.6.0",
+    "npm": "11.9.0",
+    "os": "linux-x64",
+    "packageVersions": {
+      "ajv": "8.20.0"
+    }
+  },
+  "evidenceSchemaVersion": "0.1-draft",
+  "inputFixtureChecksums": {
+    "schemas/examples/blueprint.product.example.json": "sha256-44WcjExiOB1vO/vsBwu3IDywZxeiIIE+5y5G42HpQtk="
+  },
+  "redaction": {
+    "declared": true,
+    "statement": "This sample bundle contains no credential, personal data, customer content, or privileged preview token."
+  },
+  "review": {
+    "freshnessExpiresAt": "2026-09-14T00:00:00Z",
+    "reproduced": false,
+    "reviewedAt": "2026-08-15T12:00:00Z",
+    "reviewer": "sample-reviewer"
+  },
+  "runs": [
+    {
+      "command": "node scripts/check-contracts.mjs",
+      "endedAt": "2026-08-15T10:00:05Z",
+      "exitStatus": 0,
+      "retryCount": 0,
+      "runner": "sample/github-actions",
+      "startedAt": "2026-08-15T10:00:00Z",
+      "testId": "contract/canonical-corpus"
+    }
+  ],
+  "source": {
+    "commit": "0000000000000000000000000000000000000000",
+    "lockfileChecksums": {
+      "package-lock.json": "sha256-eHOJqG5z4oaI9xMzMWD9bm3ajrT8MuE0X+7mhJCoC/0="
+    },
+    "repository": "https://github.com/kumwe/studio",
+    "workingTreeState": "clean"
+  }
+}

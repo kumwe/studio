@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/gate-record.schema.json",
+  "title": "Studio gate decision record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artifactHashes",
+    "compatibilityStatement",
+    "decidedAt",
+    "decision",
+    "evidenceBundleId",
+    "excludedProfiles",
+    "gate",
+    "reviewers",
+    "signOff",
+    "sourceCommit",
+    "supportedProfiles",
+    "unresolvedDefects"
+  ],
+  "properties": {
+    "artifactHashes": {
+      "type": "object",
+      "maxProperties": 2000,
+      "propertyNames": { "$ref": "#/$defs/repositoryRelativePath" },
+      "additionalProperties": { "$ref": "#/$defs/sha256Integrity" }
+    },
+    "compatibilityStatement": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "decidedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+    "decision": { "enum": ["pass", "fail"] },
+    "evidenceBundleId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 120
+    },
+    "excludedProfiles": { "$ref": "#/$defs/profileList" },
+    "gate": { "enum": ["A", "B"] },
+    "reviewers": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identity" }
+    },
+    "signOff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accessibility", "security"],
+      "properties": {
+        "accessibility": { "$ref": "#/$defs/identity" },
+        "security": { "$ref": "#/$defs/identity" }
+      }
+    },
+    "sourceCommit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "supportedProfiles": { "$ref": "#/$defs/profileList" },
+    "unresolvedDefects": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "rationale", "severity"],
+        "properties": {
+          "id": { "$ref": "#/$defs/stableId" },
+          "rationale": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "severity": { "enum": ["low", "medium", "high", "critical"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+    },
+    "profileList": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?![\\s\\S])",
+        "maxLength": 160
+      }
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "rfc3339Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}
