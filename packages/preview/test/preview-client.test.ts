@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   STUDIO_CONTRACT_VERSION,
+  STUDIO_WIRE_PROTOCOL_VERSION,
   type PreviewErrorMessage,
+  type PreviewReadyMessage,
   type PreviewRenderedMessage,
 } from '@kumwe/studio-protocol';
 import {
@@ -62,6 +64,22 @@ function errorResponse(correlationId?: string, sequence = 1): PreviewErrorMessag
     sequence,
     sessionGeneration: 'session-r1',
     type: 'studio.preview/error',
+  };
+}
+
+function readyMessage(sequence = 1): PreviewReadyMessage {
+  return {
+    channelId: 'preview-channel-1',
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    kind: 'preview-message',
+    payload: {
+      protocolVersion: STUDIO_WIRE_PROTOCOL_VERSION,
+      renderer: 'kumwe/fixture-renderer',
+      viewports: ['compact', 'expanded'],
+    },
+    sequence,
+    sessionGeneration: 'session-r1',
+    type: 'studio.preview/ready',
   };
 }
 
@@ -205,5 +223,46 @@ describe('PreviewClient', () => {
 
     await expect(render).rejects.toThrow('Render failed.');
     preview.dispose();
+  });
+
+  it('resolves ready() when the host announcement arrives', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint);
+    const ready = preview.ready();
+    endpoint.emit({ data: readyMessage(), origin: 'https://example.test', source: endpoint });
+
+    await expect(ready).resolves.toEqual(readyMessage().payload);
+    preview.dispose();
+  });
+
+  it('resolves ready() immediately from a cached announcement', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint, 10);
+    endpoint.emit({ data: readyMessage(), origin: 'https://example.test', source: endpoint });
+
+    await expect(preview.ready()).resolves.toEqual(readyMessage().payload);
+    preview.dispose();
+  });
+
+  it('times out ready() when no announcement arrives', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint, 10);
+
+    await expect(preview.ready()).rejects.toThrow(/timed out/u);
+    preview.dispose();
+  });
+
+  it('rejects ready() on abort and on dispose', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint);
+    const controller = new AbortController();
+    const aborted = preview.ready({ signal: controller.signal });
+    controller.abort();
+    await expect(aborted).rejects.toThrow(/aborted/u);
+
+    const disposed = preview.ready();
+    preview.dispose();
+    await expect(disposed).rejects.toThrow(/disposed/u);
+    await expect(preview.ready()).rejects.toThrow(/disposed/u);
   });
 });

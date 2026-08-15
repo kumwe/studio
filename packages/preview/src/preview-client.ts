@@ -2,6 +2,7 @@ import {
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
   type PreviewMessage,
+  type PreviewReadyPayload,
   type PreviewRenderedPayload,
   type PreviewRenderPayload,
   type PreviewSelectPayload,
@@ -33,11 +34,22 @@ export interface PreviewClientOptions {
   timeoutMilliseconds?: number;
 }
 
+export interface PreviewReadyOptions {
+  signal?: AbortSignal;
+}
+
 export interface PreviewRenderOptions {
   signal?: AbortSignal;
 }
 
 export type PreviewProtocolListener = (message: PreviewMessage) => void;
+
+interface PendingReady {
+  cleanup: () => void;
+  reject: (reason?: unknown) => void;
+  resolve: (payload: PreviewReadyPayload) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
 
 interface PendingRender {
   cleanup: () => void;
@@ -51,6 +63,7 @@ export class PreviewClient {
   readonly #listener: PreviewMessageListener;
   readonly #listeners = new Set<PreviewProtocolListener>();
   readonly #pending = new Map<string, PendingRender>();
+  readonly #pendingReady = new Set<PendingReady>();
   readonly #sessionGeneration: string;
   readonly #source: PreviewMessageSource;
   readonly #target: PreviewMessageTarget;
@@ -59,6 +72,7 @@ export class PreviewClient {
   #disposed = false;
   #lastInboundSequence = -1;
   #latestRenderDigest: string | undefined;
+  #readyPayload: PreviewReadyPayload | undefined;
   #sequence = 0;
 
   public constructor(options: PreviewClientOptions) {
@@ -86,6 +100,12 @@ export class PreviewClient {
       pending.reject(new Error('Preview client was disposed.'));
     }
     this.#pending.clear();
+    for (const pending of this.#pendingReady) {
+      clearTimeout(pending.timeout);
+      pending.cleanup();
+      pending.reject(new Error('Preview client was disposed.'));
+    }
+    this.#pendingReady.clear();
     this.#listeners.clear();
   }
 
@@ -94,6 +114,52 @@ export class PreviewClient {
     return (): void => {
       this.#listeners.delete(listener);
     };
+  }
+
+  /**
+   * Resolves once the host announces `studio.preview/ready` on this channel. If the
+   * announcement was already received, the cached payload resolves immediately.
+   *
+   * `isPreviewMessage` accepts only ready payloads carrying the exact draft wire protocol
+   * version, so an announcement from an incompatible host is filtered out and never resolves
+   * this promise — the wait times out instead. The promise also rejects on abort or when the
+   * client is disposed.
+   */
+  public ready(options: PreviewReadyOptions = {}): Promise<PreviewReadyPayload> {
+    if (this.#disposed) {
+      return Promise.reject(new Error('Preview client was disposed.'));
+    }
+    if (options.signal?.aborted === true) {
+      return Promise.reject(
+        new Error('Preview ready wait was aborted.', { cause: options.signal.reason }),
+      );
+    }
+    if (this.#readyPayload !== undefined) {
+      return Promise.resolve(this.#readyPayload);
+    }
+
+    return new Promise<PreviewReadyPayload>((resolve, reject) => {
+      const abort = (): void => {
+        if (this.#pendingReady.delete(pending)) {
+          clearTimeout(pending.timeout);
+          pending.cleanup();
+          pending.reject(new Error('Preview ready wait was aborted.'));
+        }
+      };
+      const cleanup = (): void => {
+        options.signal?.removeEventListener('abort', abort);
+      };
+      const timeout = setTimeout(() => {
+        if (this.#pendingReady.delete(pending)) {
+          pending.cleanup();
+          pending.reject(new Error('Preview ready wait timed out.'));
+        }
+      }, this.#timeoutMilliseconds);
+      const pending: PendingReady = { cleanup, reject, resolve, timeout };
+
+      this.#pendingReady.add(pending);
+      options.signal?.addEventListener('abort', abort, { once: true });
+    });
   }
 
   public render(
@@ -236,6 +302,15 @@ export class PreviewClient {
         this.#pending.clear();
         this.#latestRenderDigest = undefined;
       }
+    } else if (event.data.type === 'studio.preview/ready') {
+      this.#readyPayload = event.data.payload;
+      const waiters = [...this.#pendingReady];
+      this.#pendingReady.clear();
+      for (const pending of waiters) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        pending.resolve(event.data.payload);
+      }
     }
 
     for (const listener of this.#listeners) {
@@ -244,7 +319,8 @@ export class PreviewClient {
   }
 }
 
-function normalizeOrigin(input: string): string {
+// Shared with PreviewHost; intentionally not re-exported from the package index.
+export function normalizeOrigin(input: string): string {
   if (input === '*') {
     throw new TypeError('Preview target origin must be exact; wildcard origins are forbidden.');
   }
