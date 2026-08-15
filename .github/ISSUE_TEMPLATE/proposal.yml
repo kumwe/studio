@@ -1,0 +1,49 @@
+name: Contract or capability proposal
+description: Propose a public contract, capability, package, integration, or design change.
+title: 'proposal: '
+labels:
+  - proposal
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and users
+      description: Describe the problem without prescribing implementation first.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired observable outcome
+    validations:
+      required: true
+  - type: textarea
+    id: contracts
+    attributes:
+      label: Contract, artifact, and capability impact
+      description: Identify new or changed schemas, commands, ports, errors, or negotiation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Host and package boundaries
+      description: Explain what Studio owns, what the host owns, and what remains portable.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and migration
+      description: Cover older artifacts, hosts, clients, plugins, and missing contributions.
+    validations:
+      required: true
+  - type: textarea
+    id: quality
+    attributes:
+      label: Security, accessibility, localization, and qualification
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include existing primitives that could be wrapped instead of rebuilt.
