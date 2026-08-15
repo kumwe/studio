@@ -4,7 +4,7 @@ Kumwe Studio is a portable, schema-aware visual composition platform for buildin
 
 Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. Kumwe CMS is the first reference host, not a hard-coded dependency.
 
-> **Project status:** foundation programme. Contracts are intentionally unstable until Gate A. No package is production-ready until Gate B passes. The status page is the only authority for gate progress.
+> **Project status:** foundation programme with the contract corpus, headless runtime, and authoring shell under active implementation. Contracts are intentionally unstable until Gate A. No package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
 
 ## Why Studio exists
 
@@ -47,16 +47,17 @@ The Studio interface may edit coordinated drafts, but these artifacts never coll
 
 ```text
 packages/
-  protocol/      Canonical schema copies and handwritten draft TypeScript projections
-  core/          DOM-free draft commands, validation, registry, and history foundations
-  studio-lit/    Lit authoring shell, canvas, outline, palette, and inspector
-  preview/       Versioned host-preview messaging and coordination
-  rich-text/     Bounded rich-text integration
-  media/         Host-neutral media contracts and authoring orchestration
-  testkit/       Draft fixtures, builders, and the initial Blueprint assertion
+  protocol/      Canonical schema copies, digest manifest, and TypeScript projections
+  core/          DOM-free commands, session, contribution runtime, validation, canonical serialization
+  studio-lit/    Lit authoring shell: canvas, outline, palette, inspector, live region
+  preview/       Versioned host-preview messaging: client, host responder, handshake
+  rich-text/     Bounded rich-text integration pinned to the canonical grammar
+  media/         Host-neutral media contracts, orchestration, and semantic validation
+  testkit/       Fixtures, builders, command vectors, negative corpus, conformance assertions
 examples/
   reference-host/ Experimental Lit-shell development harness
-schemas/          Canonical JSON Schemas and portable fixtures
+schemas/          Canonical JSON Schemas, examples, command vectors, and negative fixtures
+evidence/         Machine-checkable evidence bundles, schemas, and gate records
 docs/             Normative architecture, contracts, integration, roadmap, and quality guidance
 ```
 
