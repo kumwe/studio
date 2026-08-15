@@ -49,6 +49,7 @@ export {
   type DiagnosticLocation,
   type DuplicateNodeCommand,
   type DuplicateNodePayload,
+  type EntryDocument,
   type EntryFieldBindingSource,
   type ExperimentalShellConfiguration,
   type FieldAuthoringMetadata,

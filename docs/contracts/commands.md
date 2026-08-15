@@ -28,7 +28,7 @@ Other namespaced commands are accepted by the generic envelope only when the act
 
 Every implemented command carries canonical vectors in [`schemas/vectors/command/`](../../schemas/vectors/command/), published verbatim through `@kumwe/studio-testkit` under `vectors/command/`. A vector fixes one initial document, one command, and either the exact expected document or a stable failure code, plus the inverse command for successful transitions. The TypeScript reference replays the whole corpus (`packages/core/test/command-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same results and MUST compute the same inverse commands.
 
-Failure codes are closed and stable: `binding-not-found`, `duplicate-node`, `illegal-move`, `invalid-batch`, `invalid-id-map`, `invalid-index`, `invalid-order`, `node-not-found`, `parent-not-found`, `property-not-found`, `stale-state`, `unsupported-command`. Adding a code is an additive protocol change; renaming or removing one is breaking.
+Failure codes are closed and stable: `binding-not-found`, `duplicate-node`, `illegal-move`, `invalid-batch`, `invalid-id-map`, `invalid-index`, `invalid-order`, `locale-mismatch`, `node-not-found`, `parent-not-found`, `property-not-found`, `read-only-session`, `stale-generation`, `stale-state`, `unsupported-command`. Adding a code is an additive protocol change; renaming or removing one is breaking.
 
 ## Canonical minimal form
 
