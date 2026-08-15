@@ -8,6 +8,42 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Versioning, migrations, and patterns (M3-01, M2-01, M2-02)
+
+- The deterministic migration runner landed with strict SemVer parsing, precedence comparison,
+  and the small negotiated range grammar (exact, caret, tilde, comparator conjunctions).
+  Migrations register with namespaced identity, owner, artifact kinds, source range, declared
+  target, and loss classification; application copies, validates, refuses lossy transforms
+  without confirmation, and always rejects reapplication as already applied.
+- Composition patterns became a first-class schema artifact, and `apply-pattern` joined the
+  canonical command subset: deterministic multi-root ID remapping, per-root provenance stamping,
+  batch exclusion (its inverse is itself a batch), and three new canonical vectors — 32 total.
+- The Studio Schema Profile is machine-readable: the published meta-schema carries the exact
+  keyword allowlist and complexity limits, with a parity suite pinning it to the reference
+  validator.
+
+### Preview, shell, and media (M3-04, M4-01, M5-01)
+
+- The preview channel gained renderer reload and channel teardown announcements with qualified
+  reasons: reload voids in-flight renders and re-announces readiness; teardown closes both
+  endpoints and a disposed responder ignores all later traffic.
+- The shell gained the viewport switcher (theme-fed, pressed states, change event), the
+  breadcrumb (ancestry navigation with aria-current), and the diagnostics panel (severity-ordered,
+  textual severities, activate-to-focus), all catalog-localized.
+- Media uploads are orchestrated through the canonical session state machine with chunked
+  progress, cancellation, retry under a fresh session, actionable oversize rejection, and no raw
+  error leakage; every emitted snapshot is schema-valid by test.
+
+### Foundation and release (M1-04, M1-05, M1-06)
+
+- The supported environment matrix is a validated manifest; qualified claims require covering
+  evidence lanes.
+- Interaction requirements carry stable identifiers in a machine-checked registry binding each
+  obligation to its executable assertion, manual procedure, or an honest open gap.
+- The version workflow input rename that failed every Version Packages run was fixed; changesets
+  pre mode opened the alpha release train, and the workflow now publishes versioned packages to
+  npm with provenance under the alpha dist-tag once the version pull request merges.
+
 ### Foundation and delivery controls (M1-04, M1-05)
 
 - The evidence system is machine-checkable: an evidence-bundle manifest schema, a gate decision
