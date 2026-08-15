@@ -10,7 +10,11 @@ const schemaDirectory = new URL('../evidence/schema/', import.meta.url);
 const bundleDirectory = new URL('../evidence/bundles/', import.meta.url);
 const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 
-const schemaFiles = ['evidence-bundle.schema.json', 'gate-record.schema.json'];
+const schemaFiles = [
+  'environment-matrix.schema.json',
+  'evidence-bundle.schema.json',
+  'gate-record.schema.json',
+];
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
     JSON.parse(await readFile(new URL(name, schemaDirectory), 'utf8')),
@@ -28,6 +32,28 @@ for (const schema of schemas) {
 }
 const validateBundle = getValidator('evidence-bundle.schema.json');
 const validateGateRecord = getValidator('gate-record.schema.json');
+const validateEnvironmentMatrix = getValidator('environment-matrix.schema.json');
+
+const environmentMatrix = JSON.parse(
+  await readFile(new URL('../evidence/environment-matrix.json', import.meta.url), 'utf8'),
+);
+if (!validateEnvironmentMatrix(environmentMatrix)) {
+  throw new Error(
+    `The environment matrix violates its schema: ${ajv.errorsText(validateEnvironmentMatrix.errors)}`,
+  );
+}
+const environmentIds = new Set();
+for (const environment of environmentMatrix.environments) {
+  if (environmentIds.has(environment.id)) {
+    throw new Error(`Environment matrix entry ${environment.id} is duplicated.`);
+  }
+  environmentIds.add(environment.id);
+  if (environment.status === 'qualified' && environment.coveredBy.length === 0) {
+    throw new Error(
+      `Environment ${environment.id} claims qualified status without any covering evidence lane.`,
+    );
+  }
+}
 
 const checkedOutCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
   cwd: repositoryRoot,
@@ -104,7 +130,8 @@ for (const name of gateFiles) {
 
 console.log(
   `${schemaFiles.length} evidence schemas, ${bundleNames.length} bundle manifests ` +
-    `(${sampleCount} sample bundles rejected as required), and ${gateFiles.length} gate records verified.`,
+    `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
+    `${environmentMatrix.environments.length} environment-matrix entries verified.`,
 );
 
 async function collectAuthenticityFailures(manifest) {

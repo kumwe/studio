@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/environment-matrix.schema.json",
+  "title": "Studio supported environment matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "kind", "updated", "note", "environments"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "kind": { "const": "environment-matrix" },
+    "updated": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])(?![\\s\\S])"
+    },
+    "note": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "requirement", "status", "coveredBy"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
+            "maxLength": 100
+          },
+          "kind": {
+            "enum": ["browser", "host", "operating-system", "toolchain"]
+          },
+          "requirement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "status": {
+            "enum": ["qualified", "target"]
+          },
+          "coveredBy": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
+              "maxLength": 100
+            }
+          }
+        }
+      }
+    }
+  }
+}

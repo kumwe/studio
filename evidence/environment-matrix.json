@@ -1,0 +1,85 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "environment-matrix",
+  "updated": "2026-08-15",
+  "note": "Draft target matrix for Gate B qualification. An environment listed here is a qualification target, not a support claim; support claims require release evidence per docs/roadmap/evidence.md.",
+  "environments": [
+    {
+      "id": "node-npm-workspace",
+      "kind": "toolchain",
+      "requirement": "Node.js >=24 with npm >=11 on a clean clone",
+      "status": "target",
+      "coveredBy": ["ci-quality-lane"]
+    },
+    {
+      "id": "chromium-desktop",
+      "kind": "browser",
+      "requirement": "Current and preceding stable Chromium desktop",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "firefox-desktop",
+      "kind": "browser",
+      "requirement": "Current and preceding stable Firefox desktop",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "webkit-desktop",
+      "kind": "browser",
+      "requirement": "Current and preceding stable WebKit/Safari desktop",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "android-chrome",
+      "kind": "browser",
+      "requirement": "Current stable Android Chrome for supported web-authoring workflows",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "ios-safari",
+      "kind": "browser",
+      "requirement": "Current stable iOS Safari for supported web-authoring workflows",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "desktop-os",
+      "kind": "operating-system",
+      "requirement": "Supported Windows, macOS, and Linux desktop environments",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "dart-flutter",
+      "kind": "toolchain",
+      "requirement": "Current supported stable Dart/Flutter line plus the preceding line where language constraints permit",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "npm-clean-consumer",
+      "kind": "toolchain",
+      "requirement": "Clean npm consumers on the repository-declared Node/npm versions",
+      "status": "target",
+      "coveredBy": []
+    },
+    {
+      "id": "generic-reference-host",
+      "kind": "host",
+      "requirement": "Generic reference host profile",
+      "status": "target",
+      "coveredBy": ["testkit-host-testbed"]
+    },
+    {
+      "id": "kumwe-host",
+      "kind": "host",
+      "requirement": "Kumwe profile with its supported PHP and MariaDB/MySQL/PostgreSQL matrix",
+      "status": "target",
+      "coveredBy": []
+    }
+  ]
+}
