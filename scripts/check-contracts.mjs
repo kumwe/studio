@@ -9,6 +9,8 @@ const rootExampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const packageFixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
 const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
+const rootInvalidDirectory = new URL('../schemas/invalid/', import.meta.url);
+const packageInvalidDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
 
 const schemaFiles = (await readdir(rootSchemaDirectory))
   .filter((name) => name.endsWith('.schema.json'))
@@ -39,6 +41,16 @@ const packageVectorFiles = (await readdir(packageVectorDirectory))
 
 assertSameNames('testkit command-vector copies', vectorFiles, packageVectorFiles);
 await assertCopies(rootVectorDirectory, packageVectorDirectory, vectorFiles);
+
+const invalidFiles = (await readdir(rootInvalidDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageInvalidFiles = (await readdir(packageInvalidDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames('testkit negative-fixture copies', invalidFiles, packageInvalidFiles);
+await assertCopies(rootInvalidDirectory, packageInvalidDirectory, invalidFiles);
 
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
@@ -112,6 +124,25 @@ for (const vectorFile of vectorFiles) {
   }
   if (vector.inverse !== undefined && vector.expect.document === undefined) {
     throw new Error(`${vectorFile} declares an inverse for a failing command.`);
+  }
+}
+
+if (invalidFiles.length === 0) {
+  throw new Error('The negative-fixture corpus is empty.');
+}
+for (const invalidFile of invalidFiles) {
+  const fixture = JSON.parse(await readFile(new URL(invalidFile, rootInvalidDirectory), 'utf8'));
+  if (
+    typeof fixture.schema !== 'string' ||
+    typeof fixture.description !== 'string' ||
+    fixture.description.length === 0 ||
+    fixture.value === undefined
+  ) {
+    throw new Error(`${invalidFile} must declare schema, description, and value members.`);
+  }
+  const validate = getCanonicalValidator(fixture.schema);
+  if (validate(fixture.value)) {
+    throw new Error(`${invalidFile} must be rejected by ${fixture.schema}: ${fixture.description}`);
   }
 }
 
@@ -314,8 +345,8 @@ assertRejected('empty published content model', validateContentModel, {
 });
 
 console.log(
-  `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, and ` +
-    `${vectorFiles.length} command vectors verified.`,
+  `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
+    `${vectorFiles.length} command vectors, and ${invalidFiles.length} negative fixtures verified.`,
 );
 
 function assertSameNames(label, expected, actual) {
