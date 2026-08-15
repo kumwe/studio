@@ -22,10 +22,26 @@ export {
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
 export {
+  MigrationRunner,
+  StudioMigrationError,
+  type MigratableArtifactKind,
+  type MigratableDocument,
+  type MigrationApplyOptions,
+  type MigrationApplyResult,
+  type MigrationDescriptor,
+} from './migrations.js';
+export {
   negotiateCapabilities,
   type CapabilityNegotiationOptions,
   type CapabilityNegotiationResult,
 } from './negotiation.js';
+export {
+  compareSemanticVersions,
+  normalizeVersionRange,
+  parseSemanticVersion,
+  satisfiesVersionRange,
+  type ParsedSemanticVersion,
+} from './semver.js';
 export { StudioSession, type StudioSessionOptions } from './session.js';
 export {
   BlockRegistry,
