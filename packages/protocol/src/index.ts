@@ -17,6 +17,7 @@ export {
   previewMessageSchema,
   protocolSchemas,
   richTextSchema,
+  schemaProfileSchema,
   studioConfigurationSchema,
   themeSchema,
 } from './schemas.js';

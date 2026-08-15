@@ -17,7 +17,11 @@ The profile supports bounded combinations of:
 - local `$defs` and approved `$ref` targets;
 - annotations such as `title`, `description`, `default`, `examples`, `readOnly`, and `writeOnly`.
 
-The project publishes an exact machine-readable meta-schema and complexity limits before Gate A ratification. Until then, the profile is draft and hosts MUST pin the validator and schema release used by a session.
+The exact machine-readable meta-schema is published as
+[`schema-profile.schema.json`](../../schemas/schema-profile.schema.json); its `$defs/limits` member
+carries the complexity limits, and a parity test pins them to the reference validator
+(`STUDIO_SCHEMA_PROFILE_LIMITS` in `@kumwe/studio-core`). The profile remains draft until Gate A
+ratification, and hosts MUST pin the validator and schema release used by a session.
 
 ## References
 

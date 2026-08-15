@@ -14,6 +14,25 @@ const MAX_SCHEMA_MAP_PROPERTIES = 512;
 const MAX_SCHEMA_NODES = 1_024;
 const MAX_OBJECT_KEY_LENGTH = 200;
 
+/**
+ * The published complexity limits of the Studio Schema Profile. The
+ * machine-readable meta-schema (`schema-profile.schema.json`) carries the
+ * same values; a parity test keeps the two from drifting.
+ */
+export const STUDIO_SCHEMA_PROFILE_LIMITS: Readonly<Record<string, number>> = Object.freeze({
+  maxAlternatives: MAX_ALTERNATIVES,
+  maxEnumMembers: MAX_ENUM_MEMBERS,
+  maxJsonDepth: MAX_JSON_DEPTH,
+  maxJsonItems: MAX_JSON_ITEMS,
+  maxJsonProperties: MAX_JSON_PROPERTIES,
+  maxObjectKeyLength: MAX_OBJECT_KEY_LENGTH,
+  maxReferences: MAX_REFERENCES,
+  maxSchemaBytes: MAX_SCHEMA_BYTES,
+  maxSchemaDepth: MAX_SCHEMA_DEPTH,
+  maxSchemaMapProperties: MAX_SCHEMA_MAP_PROPERTIES,
+  maxSchemaNodes: MAX_SCHEMA_NODES,
+});
+
 const allowedKeywords = new Set([
   '$defs',
   '$ref',

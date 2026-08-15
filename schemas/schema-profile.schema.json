@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/schema-profile.schema.json",
+  "title": "Studio Schema Profile meta-schema",
+  "$ref": "#/$defs/schema",
+  "$defs": {
+    "schema": {
+      "type": "object",
+      "propertyNames": {
+        "enum": [
+          "$defs",
+          "$ref",
+          "$schema",
+          "additionalProperties",
+          "allOf",
+          "anyOf",
+          "const",
+          "default",
+          "dependentRequired",
+          "description",
+          "else",
+          "enum",
+          "examples",
+          "exclusiveMaximum",
+          "exclusiveMinimum",
+          "if",
+          "items",
+          "maxItems",
+          "maxLength",
+          "maxProperties",
+          "maximum",
+          "minItems",
+          "minLength",
+          "minProperties",
+          "minimum",
+          "multipleOf",
+          "not",
+          "oneOf",
+          "prefixItems",
+          "properties",
+          "propertyNames",
+          "readOnly",
+          "required",
+          "then",
+          "title",
+          "type",
+          "uniqueItems",
+          "writeOnly"
+        ]
+      },
+      "properties": {
+        "$defs": { "$ref": "#/$defs/schemaMap" },
+        "$ref": {
+          "type": "string",
+          "maxLength": 500,
+          "pattern": "^#(?:/[^\\u0000-\\u001F\\u007F]*)?(?![\\s\\S])"
+        },
+        "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
+        "additionalProperties": { "$ref": "#/$defs/subschema" },
+        "allOf": { "$ref": "#/$defs/schemaArray" },
+        "anyOf": { "$ref": "#/$defs/schemaArray" },
+        "const": { "$ref": "common.schema.json#/$defs/jsonValue" },
+        "default": { "$ref": "common.schema.json#/$defs/jsonValue" },
+        "dependentRequired": {
+          "type": "object",
+          "maxProperties": 512,
+          "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+          "additionalProperties": {
+            "type": "array",
+            "maxItems": 512,
+            "items": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" }
+          }
+        },
+        "description": { "type": "string", "maxLength": 10000 },
+        "else": { "$ref": "#/$defs/subschema" },
+        "enum": {
+          "type": "array",
+          "maxItems": 1024,
+          "items": { "$ref": "common.schema.json#/$defs/jsonValue" }
+        },
+        "examples": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "common.schema.json#/$defs/jsonValue" }
+        },
+        "exclusiveMaximum": { "type": "number" },
+        "exclusiveMinimum": { "type": "number" },
+        "if": { "$ref": "#/$defs/subschema" },
+        "items": { "$ref": "#/$defs/subschema" },
+        "maxItems": { "type": "integer", "minimum": 0 },
+        "maxLength": { "type": "integer", "minimum": 0 },
+        "maxProperties": { "type": "integer", "minimum": 0 },
+        "maximum": { "type": "number" },
+        "minItems": { "type": "integer", "minimum": 0 },
+        "minLength": { "type": "integer", "minimum": 0 },
+        "minProperties": { "type": "integer", "minimum": 0 },
+        "minimum": { "type": "number" },
+        "multipleOf": { "type": "number", "exclusiveMinimum": 0 },
+        "not": { "$ref": "#/$defs/subschema" },
+        "oneOf": { "$ref": "#/$defs/schemaArray" },
+        "prefixItems": { "$ref": "#/$defs/schemaArray" },
+        "properties": { "$ref": "#/$defs/schemaMap" },
+        "propertyNames": { "$ref": "#/$defs/subschema" },
+        "readOnly": { "type": "boolean" },
+        "required": {
+          "type": "array",
+          "maxItems": 512,
+          "items": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" }
+        },
+        "then": { "$ref": "#/$defs/subschema" },
+        "title": { "type": "string", "maxLength": 1000 },
+        "type": {
+          "oneOf": [
+            { "$ref": "#/$defs/typeName" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 7,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/typeName" }
+            }
+          ]
+        },
+        "uniqueItems": { "type": "boolean" },
+        "writeOnly": { "type": "boolean" }
+      }
+    },
+    "schemaArray": {
+      "type": "array",
+      "maxItems": 64,
+      "items": { "$ref": "#/$defs/subschema" }
+    },
+    "schemaMap": {
+      "type": "object",
+      "maxProperties": 512,
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "additionalProperties": { "$ref": "#/$defs/schema" }
+    },
+    "subschema": {
+      "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/schema" }]
+    },
+    "typeName": {
+      "enum": ["array", "boolean", "integer", "null", "number", "object", "string"]
+    },
+    "limits": {
+      "const": {
+        "maxAlternatives": 64,
+        "maxEnumMembers": 1024,
+        "maxJsonDepth": 64,
+        "maxJsonItems": 10000,
+        "maxJsonProperties": 1000,
+        "maxObjectKeyLength": 200,
+        "maxReferences": 128,
+        "maxSchemaBytes": 262144,
+        "maxSchemaDepth": 32,
+        "maxSchemaMapProperties": 512,
+        "maxSchemaNodes": 1024
+      }
+    }
+  }
+}
