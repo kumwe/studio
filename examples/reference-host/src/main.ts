@@ -125,7 +125,6 @@ if (studio === null) {
 
 studio.configuration = configuration;
 studio.document = blueprint;
-let stateVersion = 0;
 
 studio.addEventListener('studio-insert-request', (event: Event) => {
   const customEvent = event as CustomEvent<{ definition: BlockDefinition }>;
@@ -141,7 +140,9 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
   };
   studio.execute({
     artifactId: studio.document?.id ?? 'reference.home',
-    baseStateVersion: stateVersion++,
+    // The session owns the authoritative state version; shell-dispatched
+    // outline commands advance it too, so the host must read it back.
+    baseStateVersion: studio.stateVersion,
     contractVersion: STUDIO_CONTRACT_VERSION,
     id: crypto.randomUUID(),
     kind: 'command',
