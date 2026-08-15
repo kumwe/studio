@@ -1,6 +1,7 @@
 import blockDefinitionSchemaDocument from '../schemas/block-definition.schema.json' with { type: 'json' };
 import blueprintSchemaDocument from '../schemas/blueprint.schema.json' with { type: 'json' };
 import commandSchemaDocument from '../schemas/command.schema.json' with { type: 'json' };
+import commandVectorSchemaDocument from '../schemas/command-vector.schema.json' with { type: 'json' };
 import commonSchemaDocument from '../schemas/common.schema.json' with { type: 'json' };
 import contentModelSchemaDocument from '../schemas/content-model.schema.json' with { type: 'json' };
 import entrySchemaDocument from '../schemas/entry.schema.json' with { type: 'json' };
@@ -16,6 +17,7 @@ import type { JsonSchema } from './types.js';
 export const blockDefinitionSchema: JsonSchema = blockDefinitionSchemaDocument;
 export const blueprintSchema: JsonSchema = blueprintSchemaDocument;
 export const commandSchema: JsonSchema = commandSchemaDocument;
+export const commandVectorSchema: JsonSchema = commandVectorSchemaDocument;
 export const commonSchema: JsonSchema = commonSchemaDocument;
 export const contentModelSchema: JsonSchema = contentModelSchemaDocument;
 export const entrySchema: JsonSchema = entrySchemaDocument;
@@ -32,6 +34,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   blockDefinitionSchema,
   blueprintSchema,
   commandSchema,
+  commandVectorSchema,
   contentModelSchema,
   entrySchema,
   hostCapabilitiesSchema,

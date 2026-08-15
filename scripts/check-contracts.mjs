@@ -7,6 +7,8 @@ const rootSchemaDirectory = new URL('../schemas/', import.meta.url);
 const packageSchemaDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
 const rootExampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const packageFixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
+const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
+const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 
 const schemaFiles = (await readdir(rootSchemaDirectory))
   .filter((name) => name.endsWith('.schema.json'))
@@ -27,6 +29,16 @@ const fixtureFiles = (await readdir(packageFixtureDirectory))
 
 assertSameNames('testkit fixture copies', exampleFiles, fixtureFiles);
 await assertCopies(rootExampleDirectory, packageFixtureDirectory, exampleFiles);
+
+const vectorFiles = (await readdir(rootVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageVectorFiles = (await readdir(packageVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames('testkit command-vector copies', vectorFiles, packageVectorFiles);
+await assertCopies(rootVectorDirectory, packageVectorDirectory, vectorFiles);
 
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
@@ -76,6 +88,30 @@ for (const exampleFile of exampleFiles) {
   const validate = ajv.getSchema(schema.$id);
   if (validate === undefined || !validate(example)) {
     throw new Error(`${exampleFile} violates ${schemaFile}: ${ajv.errorsText(validate?.errors)}`);
+  }
+}
+
+const validateCommandVector = getCanonicalValidator('command-vector.schema.json');
+if (vectorFiles.length === 0) {
+  throw new Error('The canonical command-vector corpus is empty.');
+}
+const vectorIdentifiers = new Set();
+for (const vectorFile of vectorFiles) {
+  const vector = JSON.parse(await readFile(new URL(vectorFile, rootVectorDirectory), 'utf8'));
+  if (!validateCommandVector(vector)) {
+    throw new Error(
+      `${vectorFile} violates command-vector.schema.json: ${ajv.errorsText(validateCommandVector.errors)}`,
+    );
+  }
+  if (vectorIdentifiers.has(vector.id)) {
+    throw new Error(`Command vector identifier ${vector.id} is duplicated.`);
+  }
+  vectorIdentifiers.add(vector.id);
+  if (vector.command.artifactId !== vector.initial.id) {
+    throw new Error(`${vectorFile} command does not target its initial document.`);
+  }
+  if (vector.inverse !== undefined && vector.expect.document === undefined) {
+    throw new Error(`${vectorFile} declares an inverse for a failing command.`);
   }
 }
 
@@ -278,7 +314,8 @@ assertRejected('empty published content model', validateContentModel, {
 });
 
 console.log(
-  `${schemaFiles.length} schemas and ${exampleFiles.length} canonical fixtures verified.`,
+  `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, and ` +
+    `${vectorFiles.length} command vectors verified.`,
 );
 
 function assertSameNames(label, expected, actual) {

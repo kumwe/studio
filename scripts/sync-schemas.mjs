@@ -5,11 +5,18 @@ const sourceDirectory = new URL('../schemas/', import.meta.url);
 const targetDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
 const exampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const fixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
+const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
+const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 
 await rm(targetDirectory, { force: true, recursive: true });
 await mkdir(targetDirectory, { recursive: true });
 await rm(fixtureDirectory, { force: true, recursive: true });
 await mkdir(fixtureDirectory, { recursive: true });
+await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
+  force: true,
+  recursive: true,
+});
+await mkdir(vectorTargetDirectory, { recursive: true });
 
 for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.schema.json')) {
@@ -23,6 +30,12 @@ for (const entry of await readdir(exampleDirectory, { withFileTypes: true })) {
   }
 }
 
+for (const entry of await readdir(vectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(new URL(entry.name, vectorDirectory), new URL(entry.name, vectorTargetDirectory));
+  }
+}
+
 const copied = (await readdir(targetDirectory)).filter((name) => name.endsWith('.schema.json'));
 if (copied.length === 0) {
   throw new Error(`No schemas were copied to ${join(targetDirectory.pathname)}.`);
@@ -31,4 +44,9 @@ if (copied.length === 0) {
 const fixtures = (await readdir(fixtureDirectory)).filter((name) => name.endsWith('.json'));
 if (fixtures.length === 0) {
   throw new Error(`No fixtures were copied to ${join(fixtureDirectory.pathname)}.`);
+}
+
+const vectors = (await readdir(vectorTargetDirectory)).filter((name) => name.endsWith('.json'));
+if (vectors.length === 0) {
+  throw new Error(`No command vectors were copied to ${join(vectorTargetDirectory.pathname)}.`);
 }
