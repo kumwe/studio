@@ -48,7 +48,7 @@ export {
   type BlockRegistrationOptions,
   type ResolvedBlockRegistration,
 } from './registry.js';
-export { assertStudioPropertySchema } from './schema-profile.js';
+export { assertStudioPropertySchema, STUDIO_SCHEMA_PROFILE_LIMITS } from './schema-profile.js';
 export {
   validateBlueprint,
   type BlueprintValidationOptions,

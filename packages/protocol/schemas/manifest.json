@@ -84,6 +84,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/rich-text.schema.json"
     },
     {
+      "digest": "sha256-yX+70kh/aPaBZiOlNon3R0B4W9ZWCnvOMKDF3ItxkqU=",
+      "file": "schema-profile.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/schema-profile.schema.json"
+    },
+    {
       "digest": "sha256-FC0lGnAqTIdHLvlwbGyYGdXEK5mwtyhdyrCwt7WzVhY=",
       "file": "studio-config.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/studio-config.schema.json"
