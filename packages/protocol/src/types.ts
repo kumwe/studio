@@ -913,6 +913,35 @@ export type SetFieldValueCommand = CommandBase<
   SetFieldValuePayload
 >;
 
+export interface PatternDocument {
+  blockDependencies: BlueprintBlockLock[];
+  contractVersion: StudioContractVersion;
+  description?: MessageReference;
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: StableId;
+  kind: 'pattern';
+  label: MessageReference;
+  owner: OwnerReference;
+  revision: Revision;
+  roots: BlueprintNode[];
+  version: SemanticVersion;
+}
+
+export interface PatternReference {
+  id: StableId;
+  revision: Revision;
+  version: SemanticVersion;
+}
+
+export interface ApplyPatternPayload {
+  destination: CommandDestination;
+  idMap: Record<NodeId, NodeId>;
+  nodes: BlueprintNode[];
+  pattern: PatternReference;
+}
+
+export type ApplyPatternCommand = CommandBase<'studio.command/apply-pattern', ApplyPatternPayload>;
+
 export interface BatchOperation<TType extends QualifiedName, TPayload extends object> {
   payload: TPayload;
   type: TType;
@@ -936,6 +965,7 @@ export interface BatchPayload {
 export type BatchCommand = CommandBase<'studio.command/batch', BatchPayload>;
 
 export type BlueprintCommand =
+  | ApplyPatternCommand
   | BatchCommand
   | DuplicateNodeCommand
   | InsertNodeCommand

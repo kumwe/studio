@@ -107,6 +107,7 @@ const schemaByExample = new Map([
   ['media-asset.processing.example.json', 'media-asset.schema.json'],
   ['media-reference.example.json', 'media-reference.schema.json'],
   ['media-upload-session.transferring.example.json', 'media-upload-session.schema.json'],
+  ['pattern.example.json', 'pattern.schema.json'],
   ['plugin.example.json', 'plugin-manifest.schema.json'],
   ['preview.render.example.json', 'preview-message.schema.json'],
   ['rich-text.example.json', 'rich-text.schema.json'],

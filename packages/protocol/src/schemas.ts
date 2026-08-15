@@ -10,6 +10,7 @@ import hostErrorSchemaDocument from '../schemas/host-error.schema.json' with { t
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
 import mediaUploadSessionSchemaDocument from '../schemas/media-upload-session.schema.json' with { type: 'json' };
+import patternSchemaDocument from '../schemas/pattern.schema.json' with { type: 'json' };
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
 import previewMessageSchemaDocument from '../schemas/preview-message.schema.json' with { type: 'json' };
 import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
@@ -29,6 +30,7 @@ export const hostErrorSchema: JsonSchema = hostErrorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
 export const mediaUploadSessionSchema: JsonSchema = mediaUploadSessionSchemaDocument;
+export const patternSchema: JsonSchema = patternSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
 export const previewMessageSchema: JsonSchema = previewMessageSchemaDocument;
 export const richTextSchema: JsonSchema = richTextSchemaDocument;
@@ -48,6 +50,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   mediaAssetSchema,
   mediaReferenceSchema,
   mediaUploadSessionSchema,
+  patternSchema,
   pluginManifestSchema,
   previewMessageSchema,
   richTextSchema,
