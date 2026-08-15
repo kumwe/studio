@@ -1,0 +1,92 @@
+{
+  "contractVersion": "0.1-draft",
+  "epoch": "https://schemas.kumwe.org/studio/v1/",
+  "kind": "schema-manifest",
+  "schemas": [
+    {
+      "digest": "sha256-sx4nxAo1fq7Mjp2J3gfsIWRq9vD6nkDDrc1PtWLzfNE=",
+      "file": "block-definition.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/block-definition.schema.json"
+    },
+    {
+      "digest": "sha256-hYSn9/ft0AMu+kR1eRYlHV100hNiqJJkH0nm3NBcJZQ=",
+      "file": "blueprint.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
+    },
+    {
+      "digest": "sha256-kD5A8TQeV6FgkN9KGf43uJ8+VUDeaq0IaOMeU/1qsVA=",
+      "file": "command-vector.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
+    },
+    {
+      "digest": "sha256-E2GS4ssu1kPf5rn+LFlj6o9ziCcoYKxRIlXzolfyV1E=",
+      "file": "command.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
+    },
+    {
+      "digest": "sha256-wmPfQK7E5BQekz1ItfLPnvp6YMo2WqeXDjTjdZjZ3B8=",
+      "file": "common.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/common.schema.json"
+    },
+    {
+      "digest": "sha256-M4vvgiYXf1WbIryDzJNdde91fJd5npzfaM8E495eQRw=",
+      "file": "content-model.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/content-model.schema.json"
+    },
+    {
+      "digest": "sha256-BQFVJmT3bwZOfCmXuQrZnYYxjB0FAUV7j1XrdZdIkdw=",
+      "file": "entry.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/entry.schema.json"
+    },
+    {
+      "digest": "sha256-aUL8J4tsw6t00BG80OkuLvhZSQQ0bWKzk1XvYtqdb7g=",
+      "file": "host-capabilities.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/host-capabilities.schema.json"
+    },
+    {
+      "digest": "sha256-6FWXIBdUaiuxpwLJUWnHxnRdcYmR6Ni6WWFCEQFekGw=",
+      "file": "host-error.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/host-error.schema.json"
+    },
+    {
+      "digest": "sha256-tOiXLsL+sv+gnL3sUeAjA/+oumRb5AGSjkeC/1GI+/8=",
+      "file": "media-asset.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/media-asset.schema.json"
+    },
+    {
+      "digest": "sha256-bbC4d8OOPy3/TLpFurhW3IFwzeykLFHZeWQzf8gVeRs=",
+      "file": "media-reference.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/media-reference.schema.json"
+    },
+    {
+      "digest": "sha256-46XVlSre/jC+J75IDUDtCBq8yawymUGuVmUWyhM0GV8=",
+      "file": "media-upload-session.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/media-upload-session.schema.json"
+    },
+    {
+      "digest": "sha256-B5EppWg0j+8fx0wVffmoIYjuZsBSqjveB4Vbp2psRtI=",
+      "file": "plugin-manifest.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/plugin-manifest.schema.json"
+    },
+    {
+      "digest": "sha256-hV3RjTq70bmrHKu68N1sDGH9ssXzePZUmj442t1MBAU=",
+      "file": "preview-message.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/preview-message.schema.json"
+    },
+    {
+      "digest": "sha256-PgFfnylfsJzq7B0wQq1gAxYA0r6gMx+xiKeT3NiDVqc=",
+      "file": "rich-text.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/rich-text.schema.json"
+    },
+    {
+      "digest": "sha256-FC0lGnAqTIdHLvlwbGyYGdXEK5mwtyhdyrCwt7WzVhY=",
+      "file": "studio-config.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/studio-config.schema.json"
+    },
+    {
+      "digest": "sha256-xzhCb8J2nx+K6kBMciFj1glB4Q6jT8+KUdbUBsNM4h8=",
+      "file": "theme.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/theme.schema.json"
+    }
+  ]
+}

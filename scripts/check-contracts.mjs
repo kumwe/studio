@@ -52,6 +52,32 @@ const packageInvalidFiles = (await readdir(packageInvalidDirectory))
 assertSameNames('testkit negative-fixture copies', invalidFiles, packageInvalidFiles);
 await assertCopies(rootInvalidDirectory, packageInvalidDirectory, invalidFiles);
 
+const manifest = JSON.parse(
+  await readFile(new URL('manifest.json', packageSchemaDirectory), 'utf8'),
+);
+if (
+  manifest.kind !== 'schema-manifest' ||
+  manifest.epoch !== 'https://schemas.kumwe.org/studio/v1/' ||
+  !Array.isArray(manifest.schemas)
+) {
+  throw new Error('The published schema manifest is malformed.');
+}
+assertSameNames(
+  'schema manifest entries',
+  schemaFiles,
+  manifest.schemas.map((entry) => entry.file),
+);
+for (const entry of manifest.schemas) {
+  const bytes = await readFile(new URL(entry.file, rootSchemaDirectory));
+  const digest = `sha256-${createHash('sha256').update(bytes).digest('base64')}`;
+  if (entry.digest !== digest) {
+    throw new Error(`Schema manifest digest for ${entry.file} is stale; run contracts:sync.`);
+  }
+  if (entry.id !== JSON.parse(bytes.toString('utf8')).$id) {
+    throw new Error(`Schema manifest identifier for ${entry.file} is stale; run contracts:sync.`);
+  }
+}
+
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
     JSON.parse(await readFile(new URL(name, rootSchemaDirectory), 'utf8')),
