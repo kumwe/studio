@@ -1097,6 +1097,46 @@ export interface MediaAsset {
   state: 'archived' | 'processing' | 'quarantined' | 'ready' | 'rejected';
 }
 
+export type MediaUploadSessionState =
+  'authorized' | 'cancelled' | 'complete' | 'failed' | 'requested' | 'transferring' | 'verifying';
+
+export interface MediaUploadRequestDescriptor {
+  byteSize: number;
+  checksum?: string;
+  filename: string;
+  mediaType: string;
+  purpose: QualifiedName;
+}
+
+export interface MediaUploadPlan {
+  chunkBytes?: number;
+  maximumBytes: number;
+  resumable: boolean;
+}
+
+export interface MediaUploadProgress {
+  totalBytes: number;
+  transferredBytes: number;
+}
+
+export interface MediaUploadAcceptedAsset {
+  id: StableId;
+  revision: Revision;
+  state: 'processing' | 'quarantined' | 'ready' | 'rejected';
+}
+
+export interface MediaUploadSession {
+  asset?: MediaUploadAcceptedAsset;
+  contractVersion: StudioContractVersion;
+  failure?: StudioDiagnostic;
+  id: StableId;
+  kind: 'media-upload-session';
+  plan?: MediaUploadPlan;
+  progress: MediaUploadProgress;
+  request: MediaUploadRequestDescriptor;
+  state: MediaUploadSessionState;
+}
+
 export interface MediaQuery {
   cursor?: string;
   limit: number;
