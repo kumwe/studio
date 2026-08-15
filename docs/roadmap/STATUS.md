@@ -7,19 +7,21 @@ already exist in runtime code. Accepted work is recorded against immutable evide
 
 ## Current position
 
-| Item                              | Status                                                                                                     |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Programme phase                   | Month 1 — product and engineering foundation                                                               |
-| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle |
-| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                            |
-| Published Studio packages         | None                                                                                                       |
-| Supported production hosts        | None                                                                                                       |
-| Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                          |
-| Earliest durable host integration | After Gate A                                                                                               |
-| Current authoritative activity    | Establish repository, architecture, contracts, governance, quality system, and six-month programme         |
+| Item                              | Status                                                                                                                                                                   |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Programme phase                   | Months 1–4 running concurrently: foundation completions, contract corpus, headless runtime, authoring shell                                                              |
+| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                               |
+| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                          |
+| Published Studio packages         | None                                                                                                                                                                     |
+| Supported production hosts        | None                                                                                                                                                                     |
+| Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                        |
+| Earliest durable host integration | After Gate A                                                                                                                                                             |
+| Current authoritative activity    | Implement the contract corpus, deterministic core, contribution runtime, preview bridge, and authoring shell against the executable check lane; assemble Gate A evidence |
 
-The repository currently establishes the delivery foundation only. Examples, schemas, package manifests, and
-tests added during this foundation change are scaffolding unless executable evidence says otherwise.
+Delivered, repository-verified increments are recorded in [`CHANGELOG.md`](../../CHANGELOG.md) and in the
+implementation board below. A changelog entry means the behaviour exists and passes the check lane on a
+clean clone; it does not mean a work package is accepted — acceptance still requires a reproduced evidence
+bundle and an independent reviewer per the [evidence model](evidence.md).
 
 ## Gate summary
 
@@ -32,16 +34,41 @@ Gate counts change only after evidence review. A documentation claim does not mo
 
 ## Six-month board
 
-| Month  | Packages        | State        | Immediate dependency                                            |
-| ------ | --------------- | ------------ | --------------------------------------------------------------- |
-| 1      | `M1-01`–`M1-06` | Planned      | Repository foundation and assigned owners                       |
-| 2      | `M2-01`–`M2-08` | Planned      | Accepted Month 1 packages                                       |
-| Gate A | 14 criteria     | Not assessed | Accepted `M2-08` evidence bundle                                |
-| 3      | `M3-01`–`M3-06` | Planned      | Gate A                                                          |
-| 4      | `M4-01`–`M4-06` | Planned      | Relevant Month 3 packages                                       |
-| 5      | `M5-01`–`M5-06` | Planned      | Relevant Months 3 and 4 packages                                |
-| 6      | `M6-01`–`M6-06` | Planned      | Implemented web, Dart/Flutter, generic-host, and Kumwe profiles |
-| Gate B | 18 criteria     | Blocked      | Accepted `M6-06` evidence bundle                                |
+| Month  | Packages        | State        | Immediate dependency                                               |
+| ------ | --------------- | ------------ | ------------------------------------------------------------------ |
+| 1      | `M1-01`–`M1-06` | Active       | Reviewer reproduction of the delivered evidence and baseline lanes |
+| 2      | `M2-01`–`M2-08` | Active       | Remaining contract scope below, then accepted Month 1 packages     |
+| Gate A | 14 criteria     | Not assessed | Accepted `M2-08` evidence bundle                                   |
+| 3      | `M3-01`–`M3-06` | Active       | Implementation running ahead of Gate A as unaccepted scaffolding   |
+| 4      | `M4-01`–`M4-06` | Active       | Relevant Month 3 packages                                          |
+| 5      | `M5-01`–`M5-06` | Planned      | Relevant Months 3 and 4 packages                                   |
+| 6      | `M6-01`–`M6-06` | Planned      | Implemented web, Dart/Flutter, generic-host, and Kumwe profiles    |
+| Gate B | 18 criteria     | Blocked      | Accepted `M6-06` evidence bundle                                   |
+
+## Implementation board
+
+Repository-verified increments per work package, with the scope that still blocks acceptance. States use
+the programme vocabulary; `evidence-review` here means the implementation is complete against its
+acceptance list and awaits an evidence bundle plus an independent reviewer.
+
+| Package | State           | Delivered (see changelog)                                             | Still blocking acceptance                                                      |
+| ------- | --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `M1-04` | evidence-review | Manifest schemas, strict validator, failing sample bundle in the lane | Reviewer reproduction; environment-matrix manifest; CI artifact retention      |
+| `M1-05` | active          | Secret scan, dependency audit, SBOM lane, release-guard fix           | Changeset enforcement; provenance attestation                                  |
+| `M1-06` | active          | Keyboard reference bound to executable shell assertions               | Requirement registry with stable IDs; automated accessibility lane             |
+| `M2-01` | active          | Negative corpus, scalar profiles, closed schemas                      | Pattern/provenance/unresolved-contribution schemas; schema-profile meta-schema |
+| `M2-02` | active          | Ten-command canonical subset, 29 vectors, inverse commands            | Recipe/pattern/model-draft commands; restore command decision                  |
+| `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime  | Extension SDK surface; lifecycle fixtures beyond blocks                        |
+| `M2-04` | active          | Error taxonomy, typed ports, negotiation algorithm, ready handshake   | Session lifecycle vectors; recovery-envelope contract fixtures                 |
+| `M2-05` | active          | Rich-text grammar, upload-session lifecycle, crop semantic rule       | Renderer conformance fixtures; media policy vectors                            |
+| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles      | Dart model generation and round-trip (`M3-06` not started)                     |
+| `M2-07` | active          | Negative corpus, secret lane, injection-rejection assertions          | Threat-mapped corpus per boundary; fuzz lane                                   |
+| `M3-01` | active          | Session, selection, entry reducer, canonical serialization, vectors   | Migrations engine; broader property/fuzz coverage                              |
+| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations          | Reviewer reproduction; lifecycle fixtures for non-block contributions          |
+| `M3-03` | active          | In-memory host testbed with conflict/permission/disconnect drills     | Real-transport adapter exercises                                               |
+| `M3-04` | active          | Host responder, ready handshake, error isolation on both ends         | Render-marker mapping; reload/teardown message vocabulary                      |
+| `M4-01` | active          | Outline, save state, localization catalog, session adoption           | Canvas drag enhancement; command palette; viewport switcher; breadcrumb        |
+| `M4-05` | active          | Keyboard parity for move/duplicate/delete, live region, focus rules   | Parity for bind/configure/resize; conflict-survival announcements              |
 
 ## Next dependency-ordered actions
 
