@@ -8,9 +8,17 @@ export function defineKumweStudio(tagName = 'kumwe-studio'): void {
 
 export {
   KumweStudioElement,
+  type StudioDirtyChangedDetail,
   type StudioDocumentChangeDetail,
   type StudioInsertRequestDetail,
 } from './kumwe-studio.js';
+export {
+  messageText,
+  studioMessages,
+  type StudioMessage,
+  type StudioMessageKey,
+  type StudioMessageOverrides,
+} from './messages.js';
 
 declare global {
   interface HTMLElementTagNameMap {
