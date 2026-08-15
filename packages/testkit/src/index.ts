@@ -1,0 +1,184 @@
+import { BlockRegistry, validateBlueprint } from '@kumwe/studio-core';
+import {
+  STUDIO_CONTRACT_VERSION,
+  STUDIO_WIRE_PROTOCOL_VERSION,
+  type BlockDefinition,
+  type BlockSlotDefinition,
+  type BlockType,
+  type BlueprintDocument,
+  type BlueprintBlockLock,
+  type BlueprintNode,
+  type JsonSchema,
+  type StudioConfiguration,
+  type StudioDiagnostic,
+} from '@kumwe/studio-protocol';
+
+export interface BlueprintFixtureOptions {
+  blockLocks?: BlueprintBlockLock[];
+  id?: string;
+  revision?: string;
+  roots?: BlueprintNode[];
+}
+
+export interface TestBlockOptions {
+  label?: string;
+  propertySchema?: JsonSchema;
+  slots?: BlockSlotDefinition[];
+  type: BlockType;
+  version?: string;
+}
+
+export interface StudioConfigurationFixtureOptions {
+  composite?: 'hybrid' | 'single';
+  mode?: 'blueprint' | 'content' | 'model';
+  sessionState?: 'editable' | 'read-only';
+}
+
+export function createBlueprintFixture(options: BlueprintFixtureOptions = {}): BlueprintDocument {
+  return {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    dependencyLock: {
+      blocks: cloneValue(options.blockLocks ?? []),
+      theme: { id: 'studio.test/theme', revision: 'theme-r1', version: '1.0.0' },
+    },
+    id: options.id ?? 'test.blueprint',
+    kind: 'blueprint',
+    label: { defaultMessage: 'Test Blueprint', key: 'studio.test/blueprint' },
+    model: { id: 'studio.test/model', revision: 'model-r1', version: '1.0.0' },
+    owner: { id: 'studio.test/testkit', version: '0.1.0-alpha.0' },
+    revision: options.revision ?? 'blueprint-r1',
+    roots: cloneValue(options.roots ?? []),
+    status: 'draft',
+    version: '1.0.0',
+  };
+}
+
+export function defineTestBlock(options: TestBlockOptions): BlockDefinition {
+  const label = options.label ?? 'Test block';
+  return {
+    accessibility: {
+      accessibleName: 'not-applicable',
+      category: 'structural',
+      keyboard: { defaultMessage: 'Use outline commands.', key: 'studio.test/block-keyboard' },
+      outputChecks: ['studio.check/test-block'],
+      reducedMotion: 'not-applicable',
+    },
+    category: 'studio.category/test',
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    editingModes: ['blueprint', 'content'],
+    kind: 'block-definition',
+    label: { defaultMessage: label, key: 'studio.test/block-label' },
+    owner: { id: 'studio.test/testkit', version: '0.1.0-alpha.0' },
+    ports: [],
+    propertySchema: cloneValue(options.propertySchema ?? { type: 'object' }),
+    rendererRequirements: [
+      { capability: 'studio.renderer/test', surface: 'preview', versions: '^0.1.0' },
+    ],
+    revision: 'block-r1',
+    slots: cloneValue(options.slots ?? []),
+    themeControls: [],
+    type: options.type,
+    version: options.version ?? '1.0.0',
+  };
+}
+
+export function createStudioConfigurationFixture(
+  options: StudioConfigurationFixtureOptions = {},
+): StudioConfiguration {
+  return {
+    actor: { displayName: 'Test Author', id: 'users/test-author' },
+    artifacts: {},
+    blocks: [],
+    composite: options.composite ?? 'single',
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    displayPreferences: {
+      calendar: 'gregory',
+      hourCycle: 'h23',
+      measurementSystem: 'metric',
+      numberingSystem: 'latn',
+    },
+    features: {
+      clipboardMediaUpload: false,
+      collaboration: false,
+      customInspectors: false,
+      executablePlugins: false,
+      externalMediaImport: false,
+      offlineRecovery: false,
+    },
+    hostCapabilities: {
+      capabilities: [],
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      host: { generation: 'host-r1', id: 'studio.test/host', version: '1.0.0' },
+      kind: 'host-capabilities',
+      ports: [],
+      protocolVersions: [STUDIO_WIRE_PROTOCOL_VERSION],
+    },
+    limits: {
+      maxChildrenPerSlot: 1_000,
+      maxCommandBatch: 100,
+      maxContributionsPerPlugin: 500,
+      maxDepth: 32,
+      maxExtensionBytes: 1_048_576,
+      maxHistoryEntries: 100,
+      maxLocaleBytes: 1_048_576,
+      maxMediaBatch: 50,
+      maxMediaUploadBytes: 1_073_741_824,
+      maxNodes: 5_000,
+      maxPluginCount: 20,
+      maxPreviewBytes: 10_485_760,
+      maxPreviewRequestsPerMinute: 120,
+      maxPropertyBytes: 1_048_576,
+      maxRichTextBytes: 1_048_576,
+      maxRichTextDepth: 32,
+      maxSlotsPerNode: 20,
+    },
+    locale: {
+      direction: 'ltr',
+      fallbacks: [],
+      requested: 'en',
+      resolved: 'en',
+      timeZone: 'UTC',
+    },
+    mode: options.mode ?? 'blueprint',
+    permissions: [],
+    plugins: [],
+    protocolVersion: STUDIO_WIRE_PROTOCOL_VERSION,
+    preview: { allowApproximateRenderer: false, enabled: false, sameOriginRequired: true },
+    sessionGeneration: 'session-r1',
+    sessionId: 'session-test',
+    sessionState: options.sessionState ?? 'editable',
+    resourceContext: {
+      key: 'contexts/test',
+      scopes: [],
+      surface: 'studio.test/fixture',
+    },
+  };
+}
+
+export function assertBlueprintConforms(
+  blueprint: BlueprintDocument,
+  definitions: readonly BlockDefinition[],
+): void {
+  const result = validateBlueprint(blueprint, new BlockRegistry(definitions));
+  if (!result.valid) {
+    throw new StudioConformanceError(result.diagnostics);
+  }
+}
+
+export class StudioConformanceError extends Error {
+  public readonly diagnostics: StudioDiagnostic[];
+
+  public constructor(diagnostics: StudioDiagnostic[]) {
+    super(
+      diagnostics
+        .map((entry) => `${entry.code}: ${entry.message.defaultMessage ?? entry.message.key}`)
+        .join('\n'),
+    );
+    this.name = 'StudioConformanceError';
+    this.diagnostics = cloneValue(diagnostics);
+  }
+}
+
+function cloneValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}

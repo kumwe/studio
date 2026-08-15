@@ -1,0 +1,37 @@
+{
+  "name": "@kumwe/studio",
+  "version": "0.1.0-alpha.0",
+  "description": "Accessible Lit Web Component shell for the Studio core engine.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "LICENSE",
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@kumwe/studio-core": "0.1.0-alpha.0",
+    "@kumwe/studio-protocol": "0.1.0-alpha.0",
+    "lit": "3.3.3"
+  },
+  "devDependencies": {
+    "@kumwe/studio-testkit": "0.1.0-alpha.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

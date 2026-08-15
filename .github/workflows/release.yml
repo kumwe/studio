@@ -1,0 +1,63 @@
+name: Release readiness (publication disabled)
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_sha:
+        description: Exact 40-character commit SHA of the accepted candidate
+        required: true
+        type: string
+      evidence_bundle_id:
+        description: Proposed Gate B evidence bundle identifier
+        required: true
+        type: string
+
+concurrency:
+  group: release-readiness
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Exercise the draft Gate B readiness guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha }}
+
+      - name: Check out later draft Gate B record
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: .release-evidence
+          persist-credentials: false
+          ref: main
+          sparse-checkout: evidence/gates/gate-b.json
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          cache: npm
+          node-version: 24
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify the draft gate record and repository checks
+        run: npm run release:readiness
+        env:
+          STUDIO_GATE_B_RECORD: .release-evidence/evidence/gates/gate-b.json
+          STUDIO_GATE_B_EVIDENCE_ID: ${{ inputs.evidence_bundle_id }}
+          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+
+      - name: Confirm publication remains disabled
+        run: |
+          echo "Registry publication is disabled until M1-04 implements and qualifies the release evidence system."
+          test -z "$(node -p \"require('./package.json').scripts.release || ''\")"

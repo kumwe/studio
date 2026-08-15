@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "access": "public",
+  "baseBranch": "main",
+  "bumpVersionsWithWorkspaceProtocolOnly": false,
+  "changelog": "@changesets/changelog-github",
+  "commit": false,
+  "fixed": [],
+  "ignore": [],
+  "linked": [],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  },
+  "snapshot": {
+    "prereleaseTemplate": "{tag}-{commit}-{datetime}"
+  },
+  "updateInternalDependencies": "patch"
+}
