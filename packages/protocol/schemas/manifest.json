@@ -19,7 +19,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
     },
     {
-      "digest": "sha256-E2GS4ssu1kPf5rn+LFlj6o9ziCcoYKxRIlXzolfyV1E=",
+      "digest": "sha256-Ye0Gyt+aI2mMGD36l7iUpz/WpuRz4hzYVO3MokDICh8=",
       "file": "command.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
     },
@@ -62,6 +62,11 @@
       "digest": "sha256-46XVlSre/jC+J75IDUDtCBq8yawymUGuVmUWyhM0GV8=",
       "file": "media-upload-session.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/media-upload-session.schema.json"
+    },
+    {
+      "digest": "sha256-ys69OuX6KO1efqLjTmOV3K0gQC2GZiAXDXkH06Ddh88=",
+      "file": "pattern.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/pattern.schema.json"
     },
     {
       "digest": "sha256-B5EppWg0j+8fx0wVffmoIYjuZsBSqjveB4Vbp2psRtI=",

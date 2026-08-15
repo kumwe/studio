@@ -1,4 +1,5 @@
 import type {
+  ApplyPatternPayload,
   BlueprintBatchOperation,
   BlueprintCommand,
   BlueprintDocument,
@@ -66,6 +67,8 @@ export function applyCommand(
     for (const operation of assertBatchOperations(command.payload.operations)) {
       applyOperation(next, operation);
     }
+  } else if (command.type === 'studio.command/apply-pattern') {
+    applyPattern(next, command.payload);
   } else {
     applyOperation(next, command);
   }
@@ -93,6 +96,16 @@ export function invertCommand(
       applyOperation(working, operation);
     }
     inverse = { operations };
+  } else if (command.type === 'studio.command/apply-pattern') {
+    const removals = command.payload.nodes.map((node): BlueprintBatchOperation => {
+      const mapped = ownMapValue(command.payload.idMap, node.id);
+      if (mapped === undefined) {
+        throw incompleteIdMap();
+      }
+      return { payload: { nodeId: mapped }, type: 'studio.command/remove-node' };
+    });
+    const [single] = removals;
+    inverse = removals.length === 1 && single !== undefined ? single : { operations: removals };
   } else {
     inverse = invertOperation(document, command);
   }
@@ -133,8 +146,12 @@ function assertBatchOperations(
     );
   }
   for (const operation of operations) {
-    if ((operation.type as string) === 'studio.command/batch') {
-      throw new StudioCommandError('invalid-batch', 'A batch cannot contain another batch.');
+    const type = operation.type as string;
+    if (type === 'studio.command/batch' || type === 'studio.command/apply-pattern') {
+      throw new StudioCommandError(
+        'invalid-batch',
+        `A batch cannot contain a ${type.slice(type.indexOf('/') + 1)} operation.`,
+      );
     }
   }
   return operations;
@@ -589,6 +606,51 @@ function remapSubtree(node: BlueprintNode, idMap: ReadonlyMap<NodeId, NodeId>): 
     }
   }
   return node;
+}
+
+function applyPattern(document: BlueprintDocument, payload: Readonly<ApplyPatternPayload>): void {
+  const subtreeIds = new Set<NodeId>();
+  for (const node of payload.nodes) {
+    for (const nodeId of collectSubtreeIds(node)) {
+      subtreeIds.add(nodeId);
+    }
+  }
+  const provided = new Map<NodeId, NodeId>();
+  for (const [from, to] of Object.entries(payload.idMap)) {
+    provided.set(from, to);
+  }
+  if (provided.size !== subtreeIds.size) {
+    throw incompleteIdMap();
+  }
+  const assigned = new Set<NodeId>();
+  for (const from of subtreeIds) {
+    const to = provided.get(from);
+    if (to === undefined) {
+      throw incompleteIdMap();
+    }
+    if (assigned.has(to)) {
+      throw new StudioCommandError(
+        'invalid-id-map',
+        `The identifier map assigns ${to} more than once.`,
+      );
+    }
+    assigned.add(to);
+    if (findNode(document.roots, to) !== undefined) {
+      throw new StudioCommandError('duplicate-node', `Node identifier ${to} is already present.`);
+    }
+  }
+
+  const collection = resolveTargetCollection(document, payload.destination);
+  for (const [index, node] of payload.nodes.entries()) {
+    const copy = remapSubtree(cloneContractValue(node), provided);
+    const extensions = (copy.extensions ??= {});
+    setOwnMapValue(extensions, 'studio.pattern/source', {
+      id: payload.pattern.id,
+      revision: payload.pattern.revision,
+      version: payload.pattern.version,
+    });
+    insertAt(collection, payload.destination.position + index, copy);
+  }
 }
 
 function dropEmptySlotCollection(document: BlueprintDocument, location: NodeLocation): void {

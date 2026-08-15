@@ -18,9 +18,12 @@ The `0.1-draft` canonical schema supplies payload contracts and portable reducer
 - `studio.command/set-property` (base value or one responsive viewport override);
 - `studio.command/unset-property` (base value or one responsive viewport override);
 - `studio.command/set-binding` and `studio.command/remove-binding`;
-- `studio.command/batch` (an atomic ordered sequence of the commands above); and
-- `studio.command/set-field-value` (payload contract only; the entry reducer is a Month 3
-  deliverable and is not yet part of the implemented subset).
+- `studio.command/apply-pattern` (deterministic multi-root fragment application with ID remapping
+  and per-root pattern provenance stamping; never nested inside a batch because its inverse is
+  itself a batch);
+- `studio.command/batch` (an atomic ordered sequence of the commands above, excluding
+  apply-pattern); and
+- `studio.command/set-field-value` (locale-guarded entry reducer).
 
 Other namespaced commands are accepted by the generic envelope only when the active immutable registry supplies their payload schema, reducer contract, permission operation, migration behavior and conformance fixtures. Envelope acceptance alone does not make a command portable or part of Studio core.
 
@@ -45,10 +48,8 @@ The Gate A contract is required to add or deliberately resolve the following voc
   restore command remains open);
 - set and reset inherited property (unset of a base value is delivered; explicit
   inheritance-reset semantics remain open);
-- set localized field value (schema delivered; entry reducer open);
 - select recipe or semantic design value;
 - resize responsive-role overrides beyond per-viewport property overrides;
-- apply a pattern with deterministic ID remapping beyond single-subtree duplication;
 - create a model-draft field through a host use case.
 
 Each target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
