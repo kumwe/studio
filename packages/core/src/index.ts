@@ -1,4 +1,10 @@
-export { applyCommand, StudioCommandError, type StudioCommandErrorCode } from './commands.js';
+export {
+  applyCommand,
+  invertCommand,
+  StudioCommandError,
+  type InverseCommandOptions,
+  type StudioCommandErrorCode,
+} from './commands.js';
 export { StudioHistory } from './history.js';
 export {
   BlockRegistry,

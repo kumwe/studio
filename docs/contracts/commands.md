@@ -13,25 +13,43 @@ The `0.1-draft` canonical schema supplies payload contracts and portable reducer
 - `studio.command/insert-node`;
 - `studio.command/remove-node`;
 - `studio.command/move-node`;
-- `studio.command/set-property`; and
-- `studio.command/set-field-value`.
+- `studio.command/duplicate-node` (deterministic ID remapping through a caller-allocated map);
+- `studio.command/reorder-children` (roots or one named slot);
+- `studio.command/set-property` (base value or one responsive viewport override);
+- `studio.command/unset-property` (base value or one responsive viewport override);
+- `studio.command/set-binding` and `studio.command/remove-binding`;
+- `studio.command/batch` (an atomic ordered sequence of the commands above); and
+- `studio.command/set-field-value` (payload contract only; the entry reducer is a Month 3
+  deliverable and is not yet part of the implemented subset).
 
 Other namespaced commands are accepted by the generic envelope only when the active immutable registry supplies their payload schema, reducer contract, permission operation, migration behavior and conformance fixtures. Envelope acceptance alone does not make a command portable or part of Studio core.
+
+## Canonical vectors
+
+Every implemented command carries canonical vectors in [`schemas/vectors/command/`](../../schemas/vectors/command/), published verbatim through `@kumwe/studio-testkit` under `vectors/command/`. A vector fixes one initial document, one command, and either the exact expected document or a stable failure code, plus the inverse command for successful transitions. The TypeScript reference replays the whole corpus (`packages/core/test/command-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same results and MUST compute the same inverse commands.
+
+Failure codes are closed and stable: `binding-not-found`, `duplicate-node`, `illegal-move`, `invalid-batch`, `invalid-id-map`, `invalid-index`, `invalid-order`, `node-not-found`, `parent-not-found`, `property-not-found`, `stale-state`, `unsupported-command`. Adding a code is an additive protocol change; renaming or removing one is breaking.
+
+## Canonical minimal form
+
+Reducers keep documents in canonical minimal form: an empty slot collection, an empty responsive
+viewport map, and an empty responsive record are never stored. Inserting into an unmaterialised
+slot creates its collection; removing or moving the last child drops it again. This keeps every
+successful command byte-invertible and keeps serialization canonical across runtimes.
 
 ## Gate A target vocabulary
 
 The Gate A contract is required to add or deliberately resolve the following vocabulary before claiming integration stability:
 
-- restore and duplicate node;
-- reorder roots or slot children;
-- set, unset and reset inherited property;
-- bind, unbind and change binding;
-- set localized field value;
+- restore node (currently realised as the verified inverse of `remove-node`; a host-facing
+  restore command remains open);
+- set and reset inherited property (unset of a base value is delivered; explicit
+  inheritance-reset semantics remain open);
+- set localized field value (schema delivered; entry reducer open);
 - select recipe or semantic design value;
-- add, remove and resize responsive-role overrides;
-- apply a pattern with deterministic ID remapping;
-- create a model-draft field through a host use case;
-- batch compatible commands atomically.
+- resize responsive-role overrides beyond per-viewport property overrides;
+- apply a pattern with deterministic ID remapping beyond single-subtree duplication;
+- create a model-draft field through a host use case.
 
 Each target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
 

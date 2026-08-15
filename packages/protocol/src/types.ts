@@ -523,6 +523,57 @@ export interface SetPropertyPayload {
 
 export type SetPropertyCommand = CommandBase<'studio.command/set-property', SetPropertyPayload>;
 
+export interface DuplicateNodePayload {
+  destination?: CommandDestination;
+  idMap: Record<NodeId, NodeId>;
+  nodeId: NodeId;
+}
+
+export type DuplicateNodeCommand = CommandBase<
+  'studio.command/duplicate-node',
+  DuplicateNodePayload
+>;
+
+export interface ReorderChildrenPayload {
+  order: NodeId[];
+  parentNodeId?: NodeId;
+  slot?: LocalName;
+}
+
+export type ReorderChildrenCommand = CommandBase<
+  'studio.command/reorder-children',
+  ReorderChildrenPayload
+>;
+
+export interface UnsetPropertyPayload {
+  nodeId: NodeId;
+  property: LocalName;
+  viewport?: LocalName;
+}
+
+export type UnsetPropertyCommand = CommandBase<
+  'studio.command/unset-property',
+  UnsetPropertyPayload
+>;
+
+export interface SetBindingPayload {
+  binding: FieldBinding;
+  nodeId: NodeId;
+  port: LocalName;
+}
+
+export type SetBindingCommand = CommandBase<'studio.command/set-binding', SetBindingPayload>;
+
+export interface RemoveBindingPayload {
+  nodeId: NodeId;
+  port: LocalName;
+}
+
+export type RemoveBindingCommand = CommandBase<
+  'studio.command/remove-binding',
+  RemoveBindingPayload
+>;
+
 export interface SetFieldValuePayload {
   fieldPath: LocalName[];
   locale?: string;
@@ -534,8 +585,39 @@ export type SetFieldValueCommand = CommandBase<
   SetFieldValuePayload
 >;
 
+export interface BatchOperation<TType extends QualifiedName, TPayload extends object> {
+  payload: TPayload;
+  type: TType;
+}
+
+export type BlueprintBatchOperation =
+  | BatchOperation<'studio.command/duplicate-node', DuplicateNodePayload>
+  | BatchOperation<'studio.command/insert-node', InsertNodePayload>
+  | BatchOperation<'studio.command/move-node', MoveNodePayload>
+  | BatchOperation<'studio.command/remove-binding', RemoveBindingPayload>
+  | BatchOperation<'studio.command/remove-node', RemoveNodePayload>
+  | BatchOperation<'studio.command/reorder-children', ReorderChildrenPayload>
+  | BatchOperation<'studio.command/set-binding', SetBindingPayload>
+  | BatchOperation<'studio.command/set-property', SetPropertyPayload>
+  | BatchOperation<'studio.command/unset-property', UnsetPropertyPayload>;
+
+export interface BatchPayload {
+  operations: BlueprintBatchOperation[];
+}
+
+export type BatchCommand = CommandBase<'studio.command/batch', BatchPayload>;
+
 export type BlueprintCommand =
-  InsertNodeCommand | MoveNodeCommand | RemoveNodeCommand | SetPropertyCommand;
+  | BatchCommand
+  | DuplicateNodeCommand
+  | InsertNodeCommand
+  | MoveNodeCommand
+  | RemoveBindingCommand
+  | RemoveNodeCommand
+  | ReorderChildrenCommand
+  | SetBindingCommand
+  | SetPropertyCommand
+  | UnsetPropertyCommand;
 
 export type StudioCommand = BlueprintCommand | SetFieldValueCommand;
 

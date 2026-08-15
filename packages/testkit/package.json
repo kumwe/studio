@@ -8,14 +8,16 @@
     "LICENSE",
     "dist",
     "fixtures",
-    "README.md"
+    "README.md",
+    "vectors"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./fixtures/*": "./fixtures/*"
+    "./fixtures/*": "./fixtures/*",
+    "./vectors/*": "./vectors/*"
   },
   "scripts": {
     "build": "tsc -b"
