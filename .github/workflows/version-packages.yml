@@ -7,11 +7,12 @@ on:
 
 permissions:
   contents: write
+  id-token: write
   pull-requests: write
 
 jobs:
   version:
-    name: Maintain Changesets release pull request
+    name: Maintain the Changesets release pull request and publish alphas
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,6 +27,7 @@ jobs:
         with:
           cache: npm
           node-version: 24
+          registry-url: https://registry.npmjs.org
 
       - name: Install locked dependencies
         run: npm ci
@@ -33,9 +35,15 @@ jobs:
       - name: Run quality gate
         run: npm run check
 
-      - name: Create or update version pull request
+      # With pending changesets this maintains the version pull request; once
+      # that pull request merges, it publishes the versioned packages instead.
+      # Changesets pre mode keeps every publish on the alpha dist-tag; stable
+      # releases stay behind the Gate B release-readiness guard.
+      - name: Create or update version pull request, or publish
         uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
         with:
           pr-title: 'chore: version Studio packages'
+          publish: npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
