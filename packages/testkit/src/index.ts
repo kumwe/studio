@@ -13,6 +13,17 @@ import {
   type StudioDiagnostic,
 } from '@kumwe/studio-protocol';
 
+export {
+  createHostRequestContextFixture,
+  createTestbedHost,
+  TestbedHostError,
+  type HostRequestContextFixtureOptions,
+  type TestbedControls,
+  type TestbedHost,
+  type TestbedHostOptions,
+  type TestbedPortName,
+} from './host-testbed.js';
+
 export interface BlueprintFixtureOptions {
   blockLocks?: BlueprintBlockLock[];
   id?: string;
