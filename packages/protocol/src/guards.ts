@@ -1,11 +1,50 @@
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
+  type HostPortError,
   type PreviewMessage,
 } from './types.js';
 
 const qualifiedName = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
 const localName = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
+
+const hostErrorCategories = new Set([
+  'cancelled',
+  'conflict',
+  'forbidden',
+  'incompatible',
+  'internal',
+  'invalid-request',
+  'limit-exceeded',
+  'not-found',
+  'rate-limited',
+  'unauthenticated',
+  'unavailable',
+  'validation-failed',
+]);
+
+export function isHostPortError(value: unknown): value is HostPortError {
+  return (
+    isRecord(value) &&
+    hasExactKeys(
+      value,
+      ['contractVersion', 'kind', 'category', 'message', 'retryable'],
+      ['correlationId', 'diagnostics', 'retryAfterMilliseconds', 'revision'],
+    ) &&
+    value.contractVersion === STUDIO_CONTRACT_VERSION &&
+    value.kind === 'host-error' &&
+    typeof value.category === 'string' &&
+    hostErrorCategories.has(value.category) &&
+    isMessageReference(value.message) &&
+    typeof value.retryable === 'boolean' &&
+    (value.correlationId === undefined || isStableId(value.correlationId)) &&
+    (value.revision === undefined || isRevision(value.revision)) &&
+    (value.retryAfterMilliseconds === undefined ||
+      (isNonNegativeInteger(value.retryAfterMilliseconds) &&
+        value.retryAfterMilliseconds <= 86_400_000)) &&
+    (value.diagnostics === undefined || isArrayOf(value.diagnostics, isDiagnostic, 1_000))
+  );
+}
 
 export function isPreviewMessage(value: unknown): value is PreviewMessage {
   if (

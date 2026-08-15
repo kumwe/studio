@@ -66,6 +66,8 @@ Success returns the accepted resource revision and normalized result. Failures u
 
 Errors include a correlation ID, safe localized message key, retry classification, and structured field/node diagnostics where disclosure is authorized. Stack traces, SQL, secrets, filesystem paths, and private resource existence are not returned to untrusted clients.
 
+The error document shape is canonical in [`host-error.schema.json`](../../schemas/host-error.schema.json), projected as `HostPortError` with the `isHostPortError` guard, and the port surface above is executable as the typed `HostAdapter` port interfaces in `@kumwe/studio-protocol`.
+
 ## Mutation guarantees
 
 A host mutation MUST be authenticated, authorized, schema- and domain-validated, audited according to host policy, concurrency-protected, and atomic for its declared unit. Retryable mutations require idempotency. Browser transports apply CSRF or equivalent same-origin protections.
