@@ -11,6 +11,7 @@ import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with {
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
 import previewMessageSchemaDocument from '../schemas/preview-message.schema.json' with { type: 'json' };
+import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
 import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'json' };
 import type { JsonSchema } from './types.js';
@@ -28,6 +29,7 @@ export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
 export const previewMessageSchema: JsonSchema = previewMessageSchemaDocument;
+export const richTextSchema: JsonSchema = richTextSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
 export const themeSchema: JsonSchema = themeSchemaDocument;
 
@@ -45,6 +47,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   mediaReferenceSchema,
   pluginManifestSchema,
   previewMessageSchema,
+  richTextSchema,
   studioConfigurationSchema,
   themeSchema,
 ]);
