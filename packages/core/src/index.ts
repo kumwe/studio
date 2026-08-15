@@ -21,6 +21,11 @@ export {
 } from './contributions.js';
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
+export {
+  negotiateCapabilities,
+  type CapabilityNegotiationOptions,
+  type CapabilityNegotiationResult,
+} from './negotiation.js';
 export { StudioSession, type StudioSessionOptions } from './session.js';
 export {
   BlockRegistry,
