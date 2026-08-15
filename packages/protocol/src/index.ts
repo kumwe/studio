@@ -14,6 +14,7 @@ export {
   pluginManifestSchema,
   previewMessageSchema,
   protocolSchemas,
+  richTextSchema,
   studioConfigurationSchema,
   themeSchema,
 } from './schemas.js';
