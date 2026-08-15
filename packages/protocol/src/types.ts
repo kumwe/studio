@@ -382,6 +382,147 @@ export interface ContentModelDocument {
   version: SemanticVersion;
 }
 
+export type PluginActivation = 'declarative' | 'executable';
+
+export type PluginEntryRealm = 'application' | 'sandboxed-frame' | 'worker';
+
+export interface PluginEntryModule {
+  integrity: string;
+  path: PackageRelativePath;
+  realm: PluginEntryRealm;
+}
+
+export type PluginContributionKind =
+  | 'block'
+  | 'command'
+  | 'field-adapter'
+  | 'inspector'
+  | 'locale'
+  | 'panel'
+  | 'pattern'
+  | 'renderer-capability'
+  | 'test-fixture'
+  | 'transform';
+
+export interface PluginContributionDeclaration {
+  executable?: boolean;
+  id: QualifiedName;
+  integrity: string;
+  kind: PluginContributionKind;
+  resource: PackageRelativePath;
+  version: SemanticVersion;
+}
+
+export interface PluginCapabilityRequirement {
+  id: QualifiedName;
+  versions: string;
+}
+
+export interface PluginDependency {
+  id: QualifiedName;
+  optional: boolean;
+  versions: string;
+}
+
+export interface PluginManifest {
+  activation: PluginActivation;
+  contractVersion: StudioContractVersion;
+  contributions: PluginContributionDeclaration[];
+  dependencies: PluginDependency[];
+  description?: MessageReference;
+  entryModules: PluginEntryModule[];
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: QualifiedName;
+  kind: 'plugin-manifest';
+  label: MessageReference;
+  locales?: string[];
+  optionalCapabilities: PluginCapabilityRequirement[];
+  owner: OwnerReference;
+  permissions: QualifiedName[];
+  requiredCapabilities: PluginCapabilityRequirement[];
+  version: SemanticVersion;
+}
+
+export interface ThemeViewport {
+  base: boolean;
+  id: LocalName;
+  label: MessageReference;
+  order: number;
+  previewWidth: number;
+}
+
+export type ThemeDesignControlKind =
+  | 'boolean'
+  | 'color-role'
+  | 'enum'
+  | 'integer'
+  | 'layer-role'
+  | 'motion-role'
+  | 'radius-role'
+  | 'shadow-role'
+  | 'size-role'
+  | 'spacing-role'
+  | 'typography-role';
+
+export interface ThemeDesignChoice {
+  deprecated?: boolean;
+  id: LocalName;
+  label: MessageReference;
+}
+
+export interface ThemeDesignControl {
+  choices: ThemeDesignChoice[];
+  description?: MessageReference;
+  id: LocalName;
+  kind: ThemeDesignControlKind;
+  label: MessageReference;
+}
+
+export interface ThemeRecipe {
+  blockType: QualifiedName;
+  designValues: Record<LocalName, JsonValue>;
+  id: LocalName;
+  label: MessageReference;
+}
+
+export interface ThemeRendererDeclaration {
+  exactPreview: boolean;
+  id: QualifiedName;
+  surfaces: RendererRequirement['surface'][];
+  version: SemanticVersion;
+}
+
+export interface ThemeBlockSupport {
+  renderer: QualifiedName;
+  type: QualifiedName;
+  versions: string;
+}
+
+export interface ThemeAlias {
+  equivalentMeaning: true;
+  from: LocalName;
+  kind: 'choice' | 'design-control' | 'recipe' | 'viewport';
+  to: LocalName;
+}
+
+export interface ThemeDocument {
+  aliases?: ThemeAlias[];
+  blockSupport: ThemeBlockSupport[];
+  contractVersion: StudioContractVersion;
+  description?: MessageReference;
+  designControls: ThemeDesignControl[];
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: StableId;
+  kind: 'theme';
+  label: MessageReference;
+  owner: OwnerReference;
+  recipes: ThemeRecipe[];
+  renderers: ThemeRendererDeclaration[];
+  revision: Revision;
+  version: SemanticVersion;
+  viewports: ThemeViewport[];
+}
+
 export type HostErrorCategory =
   | 'cancelled'
   | 'conflict'

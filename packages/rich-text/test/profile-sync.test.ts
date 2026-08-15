@@ -28,6 +28,6 @@ describe('portable rich-text profile', () => {
         properties?: { attrs?: { properties?: { level?: { enum?: number[] } } } };
       }
     ).properties?.attrs?.properties?.level?.enum;
-    expect([...DEFAULT_RICH_TEXT_PROFILE.headingLevels]).toEqual(levelEnum);
+    expect([...(DEFAULT_RICH_TEXT_PROFILE.headingLevels ?? [])]).toEqual(levelEnum);
   });
 });
