@@ -11,19 +11,32 @@ export interface StudioMessage {
 export type StudioMessageKey =
   | 'studio.shell/announce-command-failed'
   | 'studio.shell/announce-deleted'
+  | 'studio.shell/announce-drag-cancelled'
+  | 'studio.shell/announce-dropped'
   | 'studio.shell/announce-duplicated'
+  | 'studio.shell/announce-inserted'
   | 'studio.shell/announce-moved-down'
   | 'studio.shell/announce-moved-up'
   | 'studio.shell/announce-redid'
+  | 'studio.shell/announce-selection-cleared'
   | 'studio.shell/announce-undid'
   | 'studio.shell/announce-viewport-changed'
   | 'studio.shell/block-actions'
   | 'studio.shell/breadcrumb-label'
   | 'studio.shell/canvas-empty'
   | 'studio.shell/canvas-label'
+  | 'studio.shell/command-clear-selection'
+  | 'studio.shell/command-insert'
+  | 'studio.shell/command-palette-empty'
+  | 'studio.shell/command-palette-hint'
+  | 'studio.shell/command-palette-input-label'
+  | 'studio.shell/command-palette-label'
+  | 'studio.shell/command-palette-results-label'
+  | 'studio.shell/command-palette-toggle'
   | 'studio.shell/delete'
   | 'studio.shell/diagnostics-empty'
   | 'studio.shell/diagnostics-heading'
+  | 'studio.shell/drag-drop-position'
   | 'studio.shell/duplicate'
   | 'studio.shell/history-label'
   | 'studio.shell/inspector-empty'
@@ -55,19 +68,41 @@ export type StudioMessageOverrides = Partial<Record<StudioMessageKey, StudioMess
 export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   'studio.shell/announce-command-failed': { defaultMessage: 'Command failed: {message}' },
   'studio.shell/announce-deleted': { defaultMessage: 'Deleted {label} block' },
+  'studio.shell/announce-drag-cancelled': {
+    defaultMessage: 'Reorder cancelled. {label} kept its position.',
+  },
+  'studio.shell/announce-dropped': {
+    defaultMessage: 'Moved {label} to position {position} of {count}',
+  },
   'studio.shell/announce-duplicated': { defaultMessage: 'Duplicated {label}' },
+  'studio.shell/announce-inserted': { defaultMessage: 'Inserted {label}' },
   'studio.shell/announce-moved-down': { defaultMessage: 'Moved {label} down' },
   'studio.shell/announce-moved-up': { defaultMessage: 'Moved {label} up' },
   'studio.shell/announce-redid': { defaultMessage: 'Redid change' },
+  'studio.shell/announce-selection-cleared': { defaultMessage: 'Selection cleared' },
   'studio.shell/announce-undid': { defaultMessage: 'Undid change' },
   'studio.shell/announce-viewport-changed': { defaultMessage: 'Previewing the {label} viewport' },
   'studio.shell/block-actions': { defaultMessage: 'Block actions' },
   'studio.shell/breadcrumb-label': { defaultMessage: 'Selection path' },
   'studio.shell/canvas-empty': { defaultMessage: 'Choose a block to begin composing.' },
   'studio.shell/canvas-label': { defaultMessage: 'Blueprint structure' },
+  'studio.shell/command-clear-selection': { defaultMessage: 'Clear selection' },
+  'studio.shell/command-insert': { defaultMessage: 'Insert {label}' },
+  'studio.shell/command-palette-empty': { defaultMessage: 'No commands match the filter.' },
+  'studio.shell/command-palette-hint': {
+    defaultMessage:
+      'Type to filter commands. Arrow Down moves into the results, Arrow Up returns to the filter, Enter runs a command, Escape closes.',
+  },
+  'studio.shell/command-palette-input-label': { defaultMessage: 'Filter commands' },
+  'studio.shell/command-palette-label': { defaultMessage: 'Command palette' },
+  'studio.shell/command-palette-results-label': { defaultMessage: 'Matching commands' },
+  'studio.shell/command-palette-toggle': { defaultMessage: 'Commands' },
   'studio.shell/delete': { defaultMessage: 'Delete' },
   'studio.shell/diagnostics-empty': { defaultMessage: 'No issues' },
   'studio.shell/diagnostics-heading': { defaultMessage: 'Diagnostics' },
+  'studio.shell/drag-drop-position': {
+    defaultMessage: 'Moving {label} to position {position} of {count}',
+  },
   'studio.shell/duplicate': { defaultMessage: 'Duplicate' },
   'studio.shell/history-label': { defaultMessage: 'History' },
   'studio.shell/inspector-empty': { defaultMessage: 'Select a block to inspect its contract.' },
