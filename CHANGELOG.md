@@ -8,6 +8,31 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Closed threat registry and media vectors (M2-07, M2-05, M4-05, M1-05)
+
+- The threat enforcement registry closed at fourteen of fourteen. TH-008: a pure, deterministic
+  external-URL policy in the core (https-only default, credentials rejected, private, loopback,
+  link-local, unique-local, carrier-grade, and mapped hosts refused across decimal, octal,
+  hexadecimal, dotted-partial, and IPv6 encodings) with a closed rejection vocabulary, exercised
+  by a non-disclosing external-import drill in the host testbed; DNS rebinding, redirect
+  re-validation, and response verification are recorded as host runtime obligations, not claimed.
+  TH-013: the reference host is served and verified under a pinned content security policy with
+  no unsafe-inline and no unsafe-eval — inline scripts and handlers blocked, every other fetch
+  directive enumerated closed, zero violations across a real authoring pass, and an injected
+  inline script proven both blocked and detected; the schema compiler's string-compilation
+  dependency is the recorded gap before a bare script-src, and Trusted Types stay unclaimed.
+- Eleven canonical media policy vectors fix host policy, request, and the exact accepted plan or
+  stable rejection — byte boundaries, disallowed kinds, malformed filenames, cancellation
+  legality per state, and fresh-session retry — mirrored through the testkit and replayed
+  against the real upload controller; rejection vectors pin raw values the user-facing message
+  must never echo.
+- The shell announces preview renderer reload and channel teardown with qualified reasons
+  through a deterministic single-slot live-region queue that never loses or reorders an
+  in-flight outcome and never touches focus (SR-026).
+- The changeset gate learned that the release train's version pull request consumes changesets —
+  deleting them, or moving them into the pre directory in pre mode — and skips it, after the
+  gate falsely failed the first version pull request's checks.
+
 ### Preview geometry, accessibility lane, and fuzzing (M3-04, M1-06, M2-07)
 
 - The preview channel gained the marker geometry and measurement channel: bounded marker lists
