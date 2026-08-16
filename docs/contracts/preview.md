@@ -22,13 +22,14 @@ The `0.1-draft` canonical schema defines these message payloads:
 - `studio.preview/render`: request with artifact revision/digest or bounded draft payload reference.
 - `studio.preview/rendered`: accepted render sequence, diagnostics and node-marker inventory.
 - `studio.preview/select`: Studio asks preview to reveal a node.
+- `studio.preview/measure`: Studio requests on-screen geometry for a bounded list of render markers.
+- `studio.preview/measurements`: volatile marker rectangles and viewport metrics for overlay positioning, bound to a render digest.
 - `studio.preview/error`: structured rendering or protocol failure.
 
 Gate A must add canonical payloads and conformance behavior for this target vocabulary:
 
 - `studio.preview/activated`: preview reports a trusted node marker interaction.
 - `studio.preview/viewport`: set semantic role or bounded dimensions.
-- `studio.preview/measurements`: optional node rectangles for overlay positioning.
 - `studio.preview/dispose`: terminate channel and revoke resources.
 
 Until those target messages are added, an implementation may use a namespaced negotiated extension with its own registered schema, but cannot claim canonical preview conformance for that behavior. The generic envelope does not make an unregistered payload safe.
@@ -42,6 +43,18 @@ Every render request has a monotonically increasing sequence and draft digest. S
 In preview mode, trusted renderers associate output regions with opaque node IDs using a host-approved marker mechanism. Marker data contains no field values, permissions, queries, plugin internals, or database keys beyond the Blueprint node ID.
 
 Studio may draw overlays using returned measurements. It MUST NOT edit the iframe DOM as a persistence mechanism.
+
+## Marker geometry
+
+Studio obtains overlay geometry (selection outlines, drop indicators) exclusively through the measurement channel; it never reads the preview DOM itself.
+
+`studio.preview/measure` carries a bounded, explicit list of markers (at most 1000) plus a request identifier. There is no "measure everything" form: Studio names the markers it needs. `studio.preview/measurements` answers with, per measured marker, one or more axis-aligned rectangles (`x`, `y`, `width`, `height`) in CSS pixels relative to the preview viewport origin — one marker may produce several rectangles because inline content fragments across line boxes — plus a viewport record (`width`, `height`, `scrollX`, `scrollY`, `devicePixelRatio`).
+
+Requested markers the renderer cannot associate with any on-screen geometry are reported in the response's distinct `unknown` list. An unknown marker is a normal outcome, never an exception, and is never silently dropped. Markers a measurer volunteers beyond the request are discarded by the responder.
+
+Geometry is a volatile measurement, not document state. Every response carries the `draftDigest` of the render it was measured against; Studio discards geometry whose digest does not match its latest accepted render and surfaces it as a typed stale outcome, not an error. A reload voids in-flight measurements exactly like it voids renders. Measurements are never persisted, never serialized into an artifact, and are silently invalidated by scroll, resize, zoom, or late-loading assets — Studio re-measures instead of caching.
+
+The channel responder does not touch the DOM. The embedding renderer supplies the measurer — a function from marker IDs to raw rectangles and viewport metrics. A responder without a measurer answers measure requests with the qualified error `studio.preview/measure-unavailable`; a responder whose surface has not completed a render answers the same code marked retryable. A throwing or rejecting measurer is answered with `studio.preview/measure-failed`; measurer failure details never cross the channel.
 
 ## Security policy
 

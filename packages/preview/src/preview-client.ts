@@ -1,6 +1,8 @@
 import {
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
+  type PreviewMeasurePayload,
+  type PreviewMeasurementsPayload,
   type PreviewMessage,
   type PreviewReadyPayload,
   type PreviewRenderedPayload,
@@ -43,6 +45,19 @@ export interface PreviewRenderOptions {
   signal?: AbortSignal;
 }
 
+export interface PreviewMeasureOptions {
+  signal?: AbortSignal;
+}
+
+/**
+ * Result of a `measure()` call. Geometry whose render digest no longer matches the
+ * client's latest rendered digest is discarded and surfaced as a `stale` outcome —
+ * a typed signal to re-measure, not an error.
+ */
+export type PreviewMeasureOutcome =
+  | { geometry: PreviewMeasurementsPayload; status: 'measured' }
+  | { measuredDigest: string; status: 'stale' };
+
 export type PreviewProtocolListener = (message: PreviewMessage) => void;
 
 interface PendingReady {
@@ -59,11 +74,19 @@ interface PendingRender {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+interface PendingMeasure {
+  cleanup: () => void;
+  reject: (reason?: unknown) => void;
+  resolve: (outcome: PreviewMeasureOutcome) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 export class PreviewClient {
   readonly #channelId: string;
   readonly #listener: PreviewMessageListener;
   readonly #listeners = new Set<PreviewProtocolListener>();
   readonly #pending = new Map<string, PendingRender>();
+  readonly #pendingMeasures = new Map<string, PendingMeasure>();
   readonly #pendingReady = new Set<PendingReady>();
   readonly #sessionGeneration: string;
   readonly #source: PreviewMessageSource;
@@ -73,6 +96,7 @@ export class PreviewClient {
   #disposed = false;
   #lastInboundSequence = -1;
   #latestRenderDigest: string | undefined;
+  #latestRenderedDigest: string | undefined;
   #readyPayload: PreviewReadyPayload | undefined;
   #sequence = 0;
 
@@ -101,6 +125,12 @@ export class PreviewClient {
       pending.reject(new Error('Preview client was disposed.'));
     }
     this.#pending.clear();
+    for (const pending of this.#pendingMeasures.values()) {
+      clearTimeout(pending.timeout);
+      pending.cleanup();
+      pending.reject(new Error('Preview client was disposed.'));
+    }
+    this.#pendingMeasures.clear();
     for (const pending of this.#pendingReady) {
       clearTimeout(pending.timeout);
       pending.cleanup();
@@ -231,6 +261,78 @@ export class PreviewClient {
     });
   }
 
+  /**
+   * Requests the on-screen geometry of render markers from the responder. Resolves with a
+   * `measured` outcome carrying viewport-relative CSS-pixel rectangles, or a `stale`
+   * outcome when the response was measured against a render this client no longer
+   * considers latest. Rejects on teardown, reload, supersession, abort, timeout, and
+   * disposal exactly like `render()` does. Requires a completed render: geometry is a
+   * volatile measurement of a specific render digest, never document state.
+   */
+  public measure(
+    payload: PreviewMeasurePayload,
+    options: PreviewMeasureOptions = {},
+  ): Promise<PreviewMeasureOutcome> {
+    if (this.#disposed) {
+      return Promise.reject(new Error('Preview client was disposed.'));
+    }
+    if (options.signal?.aborted === true) {
+      return Promise.reject(
+        new Error('Preview measure was aborted.', { cause: options.signal.reason }),
+      );
+    }
+    if (this.#latestRenderedDigest === undefined) {
+      return Promise.reject(new Error('Preview measure requires a completed render.'));
+    }
+    if (this.#pendingMeasures.has(payload.requestId)) {
+      return Promise.reject(new Error(`Measure ${payload.requestId} is already pending.`));
+    }
+
+    for (const [requestId, pending] of this.#pendingMeasures) {
+      clearTimeout(pending.timeout);
+      pending.cleanup();
+      pending.reject(
+        new Error(`Preview measure ${requestId} was superseded by ${payload.requestId}.`),
+      );
+    }
+    this.#pendingMeasures.clear();
+
+    return new Promise<PreviewMeasureOutcome>((resolve, reject) => {
+      const abort = (): void => {
+        const pending = this.#pendingMeasures.get(payload.requestId);
+        if (pending !== undefined) {
+          clearTimeout(pending.timeout);
+          this.#pendingMeasures.delete(payload.requestId);
+          pending.cleanup();
+          pending.reject(new Error('Preview measure was aborted.'));
+        }
+      };
+      const cleanup = (): void => {
+        options.signal?.removeEventListener('abort', abort);
+      };
+      const timeout = setTimeout(() => {
+        const pending = this.#pendingMeasures.get(payload.requestId);
+        if (pending !== undefined) {
+          this.#pendingMeasures.delete(payload.requestId);
+          pending.cleanup();
+          pending.reject(new Error(`Preview measure ${payload.requestId} timed out.`));
+        }
+      }, this.#timeoutMilliseconds);
+
+      this.#pendingMeasures.set(payload.requestId, { cleanup, reject, resolve, timeout });
+      options.signal?.addEventListener('abort', abort, { once: true });
+      this.#post({
+        channelId: this.#channelId,
+        contractVersion: STUDIO_CONTRACT_VERSION,
+        kind: 'preview-message',
+        payload,
+        sequence: this.#sequence++,
+        sessionGeneration: this.#sessionGeneration,
+        type: 'studio.preview/measure',
+      });
+    });
+  }
+
   public select(payload: PreviewSelectPayload): void {
     this.#assertActive();
     this.#post({
@@ -277,22 +379,46 @@ export class PreviewClient {
         pending.cleanup();
         this.#pending.delete(event.data.payload.draftDigest);
         this.#latestRenderDigest = undefined;
+        this.#latestRenderedDigest = event.data.payload.draftDigest;
         pending.resolve(event.data.payload);
+      }
+    } else if (event.data.type === 'studio.preview/measurements') {
+      const pending = this.#pendingMeasures.get(event.data.payload.requestId);
+      if (pending !== undefined) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        this.#pendingMeasures.delete(event.data.payload.requestId);
+        // Geometry measured against a superseded render is discarded, not surfaced:
+        // the typed stale outcome tells the caller to re-measure.
+        if (event.data.payload.draftDigest === this.#latestRenderedDigest) {
+          pending.resolve({ geometry: event.data.payload, status: 'measured' });
+        } else {
+          pending.resolve({ measuredDigest: event.data.payload.draftDigest, status: 'stale' });
+        }
       }
     } else if (event.data.type === 'studio.preview/error') {
       const message = event.data.payload.message.defaultMessage ?? event.data.payload.message.key;
-      const correlatedDigest = event.data.payload.correlationId;
-      if (correlatedDigest !== undefined) {
-        const pending = this.#pending.get(correlatedDigest);
-        if (pending === undefined) {
+      const correlationId = event.data.payload.correlationId;
+      if (correlationId !== undefined) {
+        const pendingRender = this.#pending.get(correlationId);
+        const pendingMeasure = this.#pendingMeasures.get(correlationId);
+        if (pendingRender === undefined && pendingMeasure === undefined) {
           return;
         }
-        clearTimeout(pending.timeout);
-        pending.cleanup();
-        pending.reject(new Error(message));
-        this.#pending.delete(correlatedDigest);
-        if (this.#latestRenderDigest === correlatedDigest) {
-          this.#latestRenderDigest = undefined;
+        if (pendingRender !== undefined) {
+          clearTimeout(pendingRender.timeout);
+          pendingRender.cleanup();
+          pendingRender.reject(new Error(message));
+          this.#pending.delete(correlationId);
+          if (this.#latestRenderDigest === correlationId) {
+            this.#latestRenderDigest = undefined;
+          }
+        }
+        if (pendingMeasure !== undefined) {
+          clearTimeout(pendingMeasure.timeout);
+          pendingMeasure.cleanup();
+          pendingMeasure.reject(new Error(message));
+          this.#pendingMeasures.delete(correlationId);
         }
       } else {
         for (const pending of this.#pending.values()) {
@@ -301,6 +427,12 @@ export class PreviewClient {
           pending.reject(new Error(message));
         }
         this.#pending.clear();
+        for (const pending of this.#pendingMeasures.values()) {
+          clearTimeout(pending.timeout);
+          pending.cleanup();
+          pending.reject(new Error(message));
+        }
+        this.#pendingMeasures.clear();
         this.#latestRenderDigest = undefined;
       }
     } else if (event.data.type === 'studio.preview/ready') {
@@ -326,7 +458,16 @@ export class PreviewClient {
         pending.reject(new Error(reason));
       }
       this.#pending.clear();
+      // A reload voids in-flight measurements exactly like it voids renders, and the
+      // digest they were bound to no longer describes what the surface shows.
+      for (const pending of this.#pendingMeasures.values()) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        pending.reject(new Error(reason));
+      }
+      this.#pendingMeasures.clear();
       this.#latestRenderDigest = undefined;
+      this.#latestRenderedDigest = undefined;
       // A reloaded renderer announces itself again; the cached payload may
       // no longer describe it.
       this.#readyPayload = undefined;
