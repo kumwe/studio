@@ -1,5 +1,5 @@
-import { Ajv2020 } from 'ajv/dist/2020.js';
 import type { JsonSchema } from '@kumwe/studio-protocol';
+import { compileProfileSchema } from './profile-validator.js';
 
 const DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
 const MAX_ALTERNATIVES = 64;
@@ -98,7 +98,10 @@ export function assertStudioPropertySchema(schema: JsonSchema): void {
   }
 
   try {
-    new Ajv2020({ addUsedSchema: false, allErrors: true, strict: true }).compile(schema);
+    // The eval-free interpreter is the reference implementation: it validates
+    // keyword operands, compiles bounded lexical patterns, and resolves local
+    // references, so a schema that fails to compile is rejected atomically.
+    compileProfileSchema(schema);
   } catch (error) {
     throw new TypeError('Studio property schema does not compile under the strict profile.', {
       cause: error,

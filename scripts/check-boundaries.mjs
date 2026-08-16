@@ -7,8 +7,12 @@ const policies = [
     allowedImports: [/^\.\.?\//u],
   },
   {
+    // Runtime validation is interpreted by packages/core/src/profile-validator.ts;
+    // ajv is a dev-only reference implementation for tests and scripts and must
+    // never re-enter core src (it would reintroduce Function-constructor codegen
+    // and break the eval-free CSP claim in docs/contracts/security.md).
     directory: 'packages/core/src',
-    allowedImports: [/^\.\.?\//u, /^@kumwe\/studio-protocol$/u, /^ajv(?:\/|$)/u],
+    allowedImports: [/^\.\.?\//u, /^@kumwe\/studio-protocol$/u],
   },
   {
     directory: 'packages/testkit/src',
