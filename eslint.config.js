@@ -17,6 +17,7 @@ export default tseslint.config(
         project: [
           './packages/*/tsconfig.json',
           './examples/*/tsconfig.json',
+          './e2e/tsconfig.json',
           './tsconfig.tests.json',
         ],
         tsconfigRootDir: import.meta.dirname,
@@ -38,6 +39,7 @@ export default tseslint.config(
       'packages/{media,preview,rich-text,studio-lit}/src/**/*.ts',
       'packages/*/test/**/*.ts',
       'examples/*/src/**/*.ts',
+      'e2e/**/*.ts',
     ],
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
