@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-protocol",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Serializable, framework-neutral contracts for visual composition hosts.",
   "type": "module",
   "sideEffects": false,

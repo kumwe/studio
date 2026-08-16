@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-media",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Host-neutral media browsing, upload orchestration, and rendition selection.",
   "type": "module",
   "sideEffects": false,
@@ -19,7 +19,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-protocol": "0.1.0-alpha.0"
+    "@kumwe/studio-protocol": "0.1.0-alpha.1"
   },
   "publishConfig": {
     "access": "public",
