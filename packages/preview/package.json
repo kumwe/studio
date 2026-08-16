@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-preview",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/preview"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/preview#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Origin-bound request channel for server-rendered Studio previews.",
   "type": "module",
   "sideEffects": false,

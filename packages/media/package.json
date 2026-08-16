@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-media",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/media"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/media#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Host-neutral media browsing, upload orchestration, and rendition selection.",
   "type": "module",
   "sideEffects": false,

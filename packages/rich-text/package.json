@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-rich-text",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/rich-text"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/rich-text#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Bounded Tiptap rich-text contract for Studio leaf fields.",
   "type": "module",
   "sideEffects": false,
