@@ -19,7 +19,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
     },
     {
-      "digest": "sha256-BD+Ej0RZDZSNxRzFvIX+i1cDAGjT2QRfL7c1QYD1TBo=",
+      "digest": "sha256-Qghm6NeguRjl37F7+hZI2ojmGqkA6i12oFJ0i29skKM=",
       "file": "command.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
     },

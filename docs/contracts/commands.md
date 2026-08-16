@@ -8,24 +8,44 @@ A command contains an ID, command type, artifact ID, base revision or local stat
 
 ## Current canonical subset
 
-The `0.1-draft` canonical schema supplies payload contracts and portable reducer expectations for:
+The `0.1-draft` canonical schema supplies payload contracts and portable reducer expectations for
+fourteen commands:
 
-- `studio.command/insert-node`;
-- `studio.command/remove-node`;
+- `studio.command/insert-node` (rejects with `duplicate-node` when any identifier of the inserted
+  subtree — root or descendant — is already present in the document);
+- `studio.command/remove-node` (its verified inverse is `restore-node`);
+- `studio.command/restore-node` (same payload as insert-node; validates every identifier of the
+  restored subtree against the document; batchable; its verified inverse is `remove-node`);
 - `studio.command/move-node`;
 - `studio.command/duplicate-node` (deterministic ID remapping through a caller-allocated map);
 - `studio.command/reorder-children` (roots or one named slot);
 - `studio.command/set-property` (base value or one responsive viewport override);
 - `studio.command/unset-property` (base value or one responsive viewport override);
+- `studio.command/reset-inherited-property` (removes every responsive viewport override for one
+  property on one node so each viewport inherits the base value again; the base value is
+  untouched; never nested inside a batch because its inverse is itself a batch);
 - `studio.command/set-binding` and `studio.command/remove-binding`;
 - `studio.command/apply-pattern` (deterministic multi-root fragment application with ID remapping
   and per-root pattern provenance stamping; never nested inside a batch because its inverse is
   itself a batch);
 - `studio.command/batch` (an atomic ordered sequence of the commands above, excluding
-  apply-pattern);
+  apply-pattern and reset-inherited-property);
 - `studio.command/set-field-value` (locale-guarded entry reducer); and
 - `studio.command/add-model-field` (adds a declared field to a draft content model; published and
   retired models reject with `artifact-not-draft`).
+
+Restoration is first-class: the verified inverse of `remove-node` is the host-facing
+`restore-node` command, so undo, collaboration compensation, and host-driven restoration flows all
+dispatch the same portable command. Because a restore reinserts a whole recorded subtree, both
+`restore-node` and `insert-node` validate the complete subtree for identifier collisions and fail
+with `duplicate-node` naming the colliding identifier.
+
+Explicit inheritance reset is top-level only. `reset-inherited-property` fails with
+`node-not-found` when the node is missing and with `property-not-found` when the node has no
+responsive overrides for the property. Its inverse restores the removed overrides as one atomic
+batch of viewport-scoped `set-property` operations in ascending sorted viewport-name order,
+collapsing to a single `set-property` command when exactly one override existed — the same
+single-operation collapse `apply-pattern` uses.
 
 Recipe and semantic design-value selection is deliberately resolved without a dedicated command:
 a selection expands into one atomic batch of `set-property` operations — every design value of the
@@ -52,13 +72,17 @@ successful command byte-invertible and keeps serialization canonical across runt
 
 The Gate A contract is required to add or deliberately resolve the following vocabulary before claiming integration stability:
 
-- restore node (currently realised as the verified inverse of `remove-node`; a host-facing
-  restore command remains open);
-- set and reset inherited property (unset of a base value is delivered; explicit
-  inheritance-reset semantics remain open);
-- resize responsive-role overrides beyond per-viewport property overrides.
+- restore node — deliberately resolved: the verified inverse of `remove-node` is promoted to the
+  first-class host-facing command `studio.command/restore-node` with full-subtree identifier
+  validation, batch participation, and `remove-node` as its own verified inverse
+  ([ADR 0009](../decisions/0009-restore-and-inheritance-reset.md));
+- set and reset inherited property — deliberately resolved: base and per-viewport set/unset were
+  already delivered, and explicit inheritance reset is delivered as the top-level-only command
+  `studio.command/reset-inherited-property` whose inverse is a sorted batch of viewport-scoped
+  `set-property` operations ([ADR 0009](../decisions/0009-restore-and-inheritance-reset.md));
+- resize responsive-role overrides beyond per-viewport property overrides (still open).
 
-Each target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
+The remaining target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
 
 Plugins may add namespaced commands with schema, authorization operation, deterministic reducer, inverse/compensation behavior, and migration rules.
 

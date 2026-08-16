@@ -1,8 +1,8 @@
 {
   "contractVersion": "0.1-draft",
   "kind": "command-vector",
-  "id": "vector.command-vector.remove-node.empties-slot",
-  "description": "Removing the last child of a slot also drops the emptied slot collection, keeping the canonical minimal form.",
+  "id": "vector.command-vector.restore-node.subtree-into-slot",
+  "description": "Restoring a removed subtree reinserts the whole fragment, children included, at its destination slot; the inverse removal drops it again.",
   "initial": {
     "contractVersion": "0.1-draft",
     "dependencyLock": {
@@ -48,6 +48,33 @@
         "bindings": {},
         "id": "section-a",
         "properties": {},
+        "slots": {},
+        "type": "studio.vector/section",
+        "version": "1.0.0"
+      }
+    ],
+    "status": "draft",
+    "version": "1.0.0"
+  },
+  "command": {
+    "artifactId": "vector.blueprint",
+    "baseStateVersion": 0,
+    "contractVersion": "0.1-draft",
+    "id": "vector.command.restore-node.subtree-into-slot",
+    "kind": "command",
+    "payload": {
+      "destination": {
+        "parentNodeId": "section-a",
+        "position": 0,
+        "slot": "main"
+      },
+      "node": {
+        "authoring": {
+          "mode": "structural"
+        },
+        "bindings": {},
+        "id": "section-b",
+        "properties": {},
         "slots": {
           "main": [
             {
@@ -66,21 +93,9 @@
         "type": "studio.vector/section",
         "version": "1.0.0"
       }
-    ],
-    "status": "draft",
-    "version": "1.0.0"
-  },
-  "command": {
-    "artifactId": "vector.blueprint",
-    "baseStateVersion": 0,
-    "contractVersion": "0.1-draft",
-    "id": "vector.command.remove-node.empties-slot",
-    "kind": "command",
-    "payload": {
-      "nodeId": "text-a"
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/remove-node"
+    "type": "studio.command/restore-node"
   },
   "expect": {
     "document": {
@@ -128,7 +143,35 @@
           "bindings": {},
           "id": "section-a",
           "properties": {},
-          "slots": {},
+          "slots": {
+            "main": [
+              {
+                "authoring": {
+                  "mode": "structural"
+                },
+                "bindings": {},
+                "id": "section-b",
+                "properties": {},
+                "slots": {
+                  "main": [
+                    {
+                      "authoring": {
+                        "mode": "designer"
+                      },
+                      "bindings": {},
+                      "id": "text-a",
+                      "properties": {},
+                      "slots": {},
+                      "type": "studio.vector/text",
+                      "version": "1.0.0"
+                    }
+                  ]
+                },
+                "type": "studio.vector/section",
+                "version": "1.0.0"
+              }
+            ]
+          },
           "type": "studio.vector/section",
           "version": "1.0.0"
         }
@@ -141,27 +184,12 @@
     "artifactId": "vector.blueprint",
     "baseStateVersion": 1,
     "contractVersion": "0.1-draft",
-    "id": "vector.inverse.remove-node.empties-slot",
+    "id": "vector.inverse.restore-node.subtree-into-slot",
     "kind": "command",
     "payload": {
-      "destination": {
-        "parentNodeId": "section-a",
-        "position": 0,
-        "slot": "main"
-      },
-      "node": {
-        "authoring": {
-          "mode": "designer"
-        },
-        "bindings": {},
-        "id": "text-a",
-        "properties": {},
-        "slots": {},
-        "type": "studio.vector/text",
-        "version": "1.0.0"
-      }
+      "nodeId": "section-b"
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/restore-node"
+    "type": "studio.command/remove-node"
   }
 }

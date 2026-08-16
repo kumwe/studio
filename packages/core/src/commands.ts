@@ -8,6 +8,7 @@ import type {
   JsonValue,
   NodeId,
   ReorderChildrenPayload,
+  ResetInheritedPropertyPayload,
   StableId,
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
@@ -71,6 +72,8 @@ export function applyCommand(
     }
   } else if (command.type === 'studio.command/apply-pattern') {
     applyPattern(next, command.payload);
+  } else if (command.type === 'studio.command/reset-inherited-property') {
+    resetInheritedProperty(next, command.payload);
   } else {
     applyOperation(next, command);
   }
@@ -108,6 +111,11 @@ export function invertCommand(
     });
     const [single] = removals;
     inverse = removals.length === 1 && single !== undefined ? single : { operations: removals };
+  } else if (command.type === 'studio.command/reset-inherited-property') {
+    const restorations = resetInheritedPropertyInverseOperations(document, command.payload);
+    const [single] = restorations;
+    inverse =
+      restorations.length === 1 && single !== undefined ? single : { operations: restorations };
   } else {
     inverse = invertOperation(document, command);
   }
@@ -149,7 +157,11 @@ function assertBatchOperations(
   }
   for (const operation of operations) {
     const type = operation.type as string;
-    if (type === 'studio.command/batch' || type === 'studio.command/apply-pattern') {
+    if (
+      type === 'studio.command/batch' ||
+      type === 'studio.command/apply-pattern' ||
+      type === 'studio.command/reset-inherited-property'
+    ) {
       throw new StudioCommandError(
         'invalid-batch',
         `A batch cannot contain a ${type.slice(type.indexOf('/') + 1)} operation.`,
@@ -161,13 +173,9 @@ function assertBatchOperations(
 
 function applyOperation(document: BlueprintDocument, operation: BlueprintBatchOperation): void {
   switch (operation.type) {
-    case 'studio.command/insert-node': {
-      if (findNode(document.roots, operation.payload.node.id) !== undefined) {
-        throw new StudioCommandError(
-          'duplicate-node',
-          `Node identifier ${operation.payload.node.id} is already present.`,
-        );
-      }
+    case 'studio.command/insert-node':
+    case 'studio.command/restore-node': {
+      assertSubtreeIdsAbsent(document, operation.payload.node);
       const collection = resolveTargetCollection(document, operation.payload.destination);
       insertAt(
         collection,
@@ -347,7 +355,8 @@ function invertOperation(
   operation: BlueprintBatchOperation,
 ): BlueprintBatchOperation {
   switch (operation.type) {
-    case 'studio.command/insert-node': {
+    case 'studio.command/insert-node':
+    case 'studio.command/restore-node': {
       return {
         payload: { nodeId: operation.payload.node.id },
         type: 'studio.command/remove-node',
@@ -363,7 +372,7 @@ function invertOperation(
           destination: destinationOf(location),
           node: cloneContractValue(location.node),
         },
-        type: 'studio.command/insert-node',
+        type: 'studio.command/restore-node',
       };
     }
     case 'studio.command/move-node': {
@@ -591,6 +600,17 @@ function collectSubtreeIds(node: BlueprintNode): ReadonlySet<NodeId> {
   return identifiers;
 }
 
+function assertSubtreeIdsAbsent(document: BlueprintDocument, node: BlueprintNode): void {
+  for (const nodeId of collectSubtreeIds(node)) {
+    if (findNode(document.roots, nodeId) !== undefined) {
+      throw new StudioCommandError(
+        'duplicate-node',
+        `Node identifier ${nodeId} is already present.`,
+      );
+    }
+  }
+}
+
 function remapSubtree(node: BlueprintNode, idMap: ReadonlyMap<NodeId, NodeId>): BlueprintNode {
   const stack: BlueprintNode[] = [node];
   while (stack.length > 0) {
@@ -653,6 +673,60 @@ function applyPattern(document: BlueprintDocument, payload: Readonly<ApplyPatter
     });
     insertAt(collection, payload.destination.position + index, copy);
   }
+}
+
+interface InheritedPropertyOverrides {
+  node: BlueprintNode;
+  responsive: Record<string, Record<string, JsonValue>>;
+  values: Record<string, JsonValue>;
+}
+
+function resolveInheritedPropertyOverrides(
+  document: BlueprintDocument,
+  payload: Readonly<ResetInheritedPropertyPayload>,
+): InheritedPropertyOverrides {
+  const location = findNode(document.roots, payload.nodeId);
+  if (location === undefined) {
+    throw nodeNotFound(payload.nodeId);
+  }
+  const responsive = location.node.responsive;
+  const values = responsive === undefined ? undefined : ownMapValue(responsive, payload.property);
+  if (responsive === undefined || values === undefined || Object.keys(values).length === 0) {
+    throw new StudioCommandError(
+      'property-not-found',
+      `Property ${payload.property} has no responsive overrides on node ${payload.nodeId}.`,
+    );
+  }
+  return { node: location.node, responsive, values };
+}
+
+function resetInheritedProperty(
+  document: BlueprintDocument,
+  payload: Readonly<ResetInheritedPropertyPayload>,
+): void {
+  const { node, responsive } = resolveInheritedPropertyOverrides(document, payload);
+  deleteOwnMapValue(responsive, payload.property);
+  if (Object.keys(responsive).length === 0) {
+    delete node.responsive;
+  }
+}
+
+function resetInheritedPropertyInverseOperations(
+  document: BlueprintDocument,
+  payload: Readonly<ResetInheritedPropertyPayload>,
+): BlueprintBatchOperation[] {
+  const { values } = resolveInheritedPropertyOverrides(document, payload);
+  return Object.entries(values)
+    .sort(([left], [right]) => (left < right ? -1 : 1))
+    .map(([viewport, value]) => ({
+      payload: {
+        nodeId: payload.nodeId,
+        property: payload.property,
+        value: cloneContractValue(value),
+        viewport,
+      },
+      type: 'studio.command/set-property' as const,
+    }));
 }
 
 function dropEmptySlotCollection(document: BlueprintDocument, location: NodeLocation): void {

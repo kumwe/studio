@@ -162,6 +162,6 @@
       }
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/insert-node"
+    "type": "studio.command/restore-node"
   }
 }

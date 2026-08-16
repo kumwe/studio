@@ -12,5 +12,6 @@ These records capture foundational decisions whose reversal would materially aff
 | [0006](0006-host-owned-media.md)                   | Studio owns media UX; hosts own media custody                  | Proposed |
 | [0007](0007-portable-flutter-projection.md)        | Flutter uses shared protocols, not a coupled JS core           | Proposed |
 | [0008](0008-canonical-vectors-and-minimal-form.md) | Canonical command vectors and minimal document form            | Proposed |
+| [0009](0009-restore-and-inheritance-reset.md)      | First-class restoration and explicit inheritance reset         | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

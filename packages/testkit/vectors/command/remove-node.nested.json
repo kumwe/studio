@@ -2,7 +2,7 @@
   "contractVersion": "0.1-draft",
   "kind": "command-vector",
   "id": "vector.command-vector.remove-node.nested",
-  "description": "Removing a nested node splices only that node; the inverse insertion restores it at its original slot position.",
+  "description": "Removing a nested node splices only that node; the inverse restore command reinserts it at its original slot position.",
   "initial": {
     "contractVersion": "0.1-draft",
     "dependencyLock": {
@@ -187,6 +187,6 @@
       }
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/insert-node"
+    "type": "studio.command/restore-node"
   }
 }

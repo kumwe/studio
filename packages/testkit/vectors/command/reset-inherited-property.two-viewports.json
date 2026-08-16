@@ -1,8 +1,8 @@
 {
   "contractVersion": "0.1-draft",
   "kind": "command-vector",
-  "id": "vector.command-vector.remove-node.empties-slot",
-  "description": "Removing the last child of a slot also drops the emptied slot collection, keeping the canonical minimal form.",
+  "id": "vector.command-vector.reset-inherited-property.two-viewports",
+  "description": "Resetting an inherited property removes every responsive override for that property while the base value stays untouched; the inverse batch restores the overrides in ascending viewport order.",
   "initial": {
     "contractVersion": "0.1-draft",
     "dependencyLock": {
@@ -43,27 +43,21 @@
     "roots": [
       {
         "authoring": {
-          "mode": "structural"
+          "mode": "designer"
         },
         "bindings": {},
-        "id": "section-a",
-        "properties": {},
-        "slots": {
-          "main": [
-            {
-              "authoring": {
-                "mode": "designer"
-              },
-              "bindings": {},
-              "id": "text-a",
-              "properties": {},
-              "slots": {},
-              "type": "studio.vector/text",
-              "version": "1.0.0"
-            }
-          ]
+        "id": "text-a",
+        "properties": {
+          "emphasis": "regular"
         },
-        "type": "studio.vector/section",
+        "responsive": {
+          "emphasis": {
+            "wide": "subtle",
+            "compact": "strong"
+          }
+        },
+        "slots": {},
+        "type": "studio.vector/text",
         "version": "1.0.0"
       }
     ],
@@ -74,13 +68,14 @@
     "artifactId": "vector.blueprint",
     "baseStateVersion": 0,
     "contractVersion": "0.1-draft",
-    "id": "vector.command.remove-node.empties-slot",
+    "id": "vector.command.reset-inherited-property.two-viewports",
     "kind": "command",
     "payload": {
-      "nodeId": "text-a"
+      "nodeId": "text-a",
+      "property": "emphasis"
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/remove-node"
+    "type": "studio.command/reset-inherited-property"
   },
   "expect": {
     "document": {
@@ -123,13 +118,15 @@
       "roots": [
         {
           "authoring": {
-            "mode": "structural"
+            "mode": "designer"
           },
           "bindings": {},
-          "id": "section-a",
-          "properties": {},
+          "id": "text-a",
+          "properties": {
+            "emphasis": "regular"
+          },
           "slots": {},
-          "type": "studio.vector/section",
+          "type": "studio.vector/text",
           "version": "1.0.0"
         }
       ],
@@ -141,27 +138,31 @@
     "artifactId": "vector.blueprint",
     "baseStateVersion": 1,
     "contractVersion": "0.1-draft",
-    "id": "vector.inverse.remove-node.empties-slot",
+    "id": "vector.inverse.reset-inherited-property.two-viewports",
     "kind": "command",
     "payload": {
-      "destination": {
-        "parentNodeId": "section-a",
-        "position": 0,
-        "slot": "main"
-      },
-      "node": {
-        "authoring": {
-          "mode": "designer"
+      "operations": [
+        {
+          "payload": {
+            "nodeId": "text-a",
+            "property": "emphasis",
+            "value": "strong",
+            "viewport": "compact"
+          },
+          "type": "studio.command/set-property"
         },
-        "bindings": {},
-        "id": "text-a",
-        "properties": {},
-        "slots": {},
-        "type": "studio.vector/text",
-        "version": "1.0.0"
-      }
+        {
+          "payload": {
+            "nodeId": "text-a",
+            "property": "emphasis",
+            "value": "subtle",
+            "viewport": "wide"
+          },
+          "type": "studio.command/set-property"
+        }
+      ]
     },
     "sessionGeneration": "session-r1",
-    "type": "studio.command/restore-node"
+    "type": "studio.command/batch"
   }
 }

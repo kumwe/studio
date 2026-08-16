@@ -835,6 +835,13 @@ export interface RemoveNodePayload {
 
 export type RemoveNodeCommand = CommandBase<'studio.command/remove-node', RemoveNodePayload>;
 
+export interface RestoreNodePayload {
+  destination: CommandDestination;
+  node: BlueprintNode;
+}
+
+export type RestoreNodeCommand = CommandBase<'studio.command/restore-node', RestoreNodePayload>;
+
 export interface MoveNodePayload {
   destination: CommandDestination;
   nodeId: NodeId;
@@ -882,6 +889,16 @@ export interface UnsetPropertyPayload {
 export type UnsetPropertyCommand = CommandBase<
   'studio.command/unset-property',
   UnsetPropertyPayload
+>;
+
+export interface ResetInheritedPropertyPayload {
+  nodeId: NodeId;
+  property: LocalName;
+}
+
+export type ResetInheritedPropertyCommand = CommandBase<
+  'studio.command/reset-inherited-property',
+  ResetInheritedPropertyPayload
 >;
 
 export interface SetBindingPayload {
@@ -1001,6 +1018,7 @@ export type BlueprintBatchOperation =
   | BatchOperation<'studio.command/remove-binding', RemoveBindingPayload>
   | BatchOperation<'studio.command/remove-node', RemoveNodePayload>
   | BatchOperation<'studio.command/reorder-children', ReorderChildrenPayload>
+  | BatchOperation<'studio.command/restore-node', RestoreNodePayload>
   | BatchOperation<'studio.command/set-binding', SetBindingPayload>
   | BatchOperation<'studio.command/set-property', SetPropertyPayload>
   | BatchOperation<'studio.command/unset-property', UnsetPropertyPayload>;
@@ -1030,6 +1048,8 @@ export type BlueprintCommand =
   | RemoveBindingCommand
   | RemoveNodeCommand
   | ReorderChildrenCommand
+  | ResetInheritedPropertyCommand
+  | RestoreNodeCommand
   | SetBindingCommand
   | SetPropertyCommand
   | UnsetPropertyCommand;
