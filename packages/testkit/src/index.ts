@@ -24,6 +24,15 @@ export {
   type TestbedPortName,
 } from './host-testbed.js';
 
+export {
+  createHttpHostAdapter,
+  type HttpFetchLike,
+  type HttpHostAdapterOptions,
+  type HttpRequestInit,
+  type HttpResponseLike,
+  type HttpTimeoutHandle,
+} from './http-host-adapter.js';
+
 export interface BlueprintFixtureOptions {
   blockLocks?: BlueprintBlockLock[];
   id?: string;

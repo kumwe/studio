@@ -1,4 +1,5 @@
 import { defineKumweStudio, type KumweStudioElement } from '@kumwe/studio';
+import { PreviewClient } from '@kumwe/studio-preview';
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -7,6 +8,10 @@ import {
   type BlueprintNode,
   type ExperimentalShellConfiguration,
 } from '@kumwe/studio-protocol';
+import { computeDraftDigest } from './draft-digest.js';
+import { createPreviewChannel } from './preview-channel.js';
+import { connectReferenceRenderer } from './reference-renderer.js';
+import { referenceTheme } from './reference-theme.js';
 import './style.css';
 
 defineKumweStudio();
@@ -89,7 +94,7 @@ const configuration: ExperimentalShellConfiguration = {
     permissions: ['studio.permission/edit-blueprint'],
     plugins: [],
     protocolVersion: STUDIO_WIRE_PROTOCOL_VERSION,
-    preview: { allowApproximateRenderer: true, enabled: false, sameOriginRequired: true },
+    preview: { allowApproximateRenderer: true, enabled: true, sameOriginRequired: true },
     sessionGeneration: 'session-r1',
     sessionId: 'reference-session',
     sessionState: 'editable',
@@ -134,6 +139,10 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
     bindings: {},
     id: crypto.randomUUID(),
     properties: definition.type === 'studio.core/text' ? { text: 'Editable text' } : {},
+    // A named inline size role, not CSS: the reference renderer maps it to a
+    // column span at the active viewport, so a quarter block reflows
+    // four-to-two-to-one across the expanded/medium/compact switcher.
+    sizeRoles: { inline: definition.type === 'studio.core/section' ? 'quarter' : 'half' },
     slots: Object.fromEntries(definition.slots.map((slot) => [slot.id, []])),
     type: definition.type,
     version: definition.version,
@@ -151,6 +160,207 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
     type: 'studio.command/insert-node',
   });
 });
+
+// --- Preview bridge --------------------------------------------------------
+// The shell above is the Studio side; the reference renderer below is the
+// preview surface. They talk exclusively through the canonical preview
+// channel: a PreviewClient and PreviewHost joined by a real MessageChannel
+// (the contract's "equivalently isolated host mechanism" for a same-origin,
+// frameless page), with origin pinning, channel id, session generation, and
+// sequence filtering fully engaged on both sides.
+
+// Narrowed aliases: hoisted function declarations below cannot rely on the
+// module-level null checks, so they close over these non-null bindings.
+const shellElement: KumweStudioElement = studio;
+const previewSurface = requirePaneElement('.preview-surface');
+const previewStatus = requirePaneElement('.preview-status');
+const previewSelection = requirePaneElement('.preview-selection');
+
+studio.viewports = referenceTheme.viewports;
+
+const pageOrigin = window.location.origin;
+const previewChannelId = crypto.randomUUID();
+const sessionGeneration = configuration.session.sessionGeneration;
+// Digest-keyed draft store: the render request carries only the digest (the
+// contract's bounded draft payload reference); the renderer resolves the
+// composition back through this host-owned seam.
+const draftStore = new Map<string, BlueprintDocument>();
+const channel = createPreviewChannel(pageOrigin);
+
+const rendererHost = connectReferenceRenderer({
+  channelId: previewChannelId,
+  endpoint: channel.rendererEndpoint,
+  origin: pageOrigin,
+  resolveDraft: (draftDigest) => draftStore.get(draftDigest),
+  sessionGeneration,
+  surface: previewSurface,
+  theme: referenceTheme,
+});
+
+const previewClient = new PreviewClient({
+  channelId: previewChannelId,
+  sessionGeneration,
+  source: channel.studioEndpoint,
+  target: channel.studioEndpoint,
+  targetOrigin: pageOrigin,
+});
+previewClient.onMessage((message) => {
+  // Reload and teardown reach the shell's live region through its canonical
+  // preview-message entry point; everything else is host-side plumbing.
+  studio.notifyPreviewMessage(message);
+});
+
+let latestMarkerMap: Record<string, string> = {};
+let selectedNodeId: string | undefined;
+let measureSerial = 0;
+let renderChain: Promise<void> = Promise.resolve();
+
+rendererHost.announce();
+void previewClient.ready().then(
+  (ready) => {
+    previewStatus.textContent =
+      `Preview renderer ${ready.renderer} is ready ` +
+      `(viewports: ${ready.viewports.join(', ')}).`;
+    scheduleRender();
+  },
+  () => {
+    previewStatus.textContent = 'Preview is disconnected.';
+  },
+);
+
+studio.addEventListener('studio-document-change', () => {
+  scheduleRender();
+});
+studio.addEventListener('studio-viewport-change', () => {
+  scheduleRender();
+});
+
+// The shell keeps selection internal, so the host reads it the way assistive
+// technology does: from the outline's rendered aria-pressed state. Selection
+// then flows to the renderer through the canonical studio.preview/select
+// message and comes back as marker-map plus measured geometry.
+const selectionObserver = new MutationObserver(() => {
+  syncSelectionFromShell();
+});
+if (studio.shadowRoot !== null) {
+  selectionObserver.observe(studio.shadowRoot, {
+    attributeFilter: ['aria-pressed'],
+    attributes: true,
+    childList: true,
+    subtree: true,
+  });
+}
+
+/** Serializes renders so a draft digest is never concurrently pending twice. */
+function scheduleRender(): void {
+  renderChain = renderChain.then(() => performRender());
+}
+
+async function performRender(): Promise<void> {
+  const draft = shellElement.document;
+  const viewport = shellElement.activeViewport?.id;
+  if (draft === undefined || viewport === undefined) {
+    return;
+  }
+  const draftDigest = await computeDraftDigest(JSON.stringify(draft));
+  storeDraft(draftDigest, draft);
+  try {
+    const rendered = await previewClient.render({
+      artifactId: draft.id,
+      draftDigest,
+      draftRevision: draft.revision,
+      viewport,
+    });
+    latestMarkerMap = rendered.markerMap ?? {};
+    previewStatus.textContent =
+      `Preview: studio.renderer/reference rendered ${rendered.markers.length} ` +
+      `region(s) at the ${viewport} viewport.`;
+    await syncSelectedRegion();
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('superseded')) {
+      return;
+    }
+    // Degraded mode: authoring continues; the preview is marked, not hidden.
+    previewStatus.textContent = 'Preview is unavailable.';
+  }
+}
+
+function storeDraft(draftDigest: string, draft: BlueprintDocument): void {
+  draftStore.set(draftDigest, draft);
+  while (draftStore.size > 4) {
+    const oldest = draftStore.keys().next().value;
+    if (oldest === undefined) {
+      break;
+    }
+    draftStore.delete(oldest);
+  }
+}
+
+function markerForNode(nodeId: string): string | undefined {
+  for (const [marker, mapped] of Object.entries(latestMarkerMap)) {
+    if (mapped === nodeId) {
+      return marker;
+    }
+  }
+  return undefined;
+}
+
+function syncSelectionFromShell(): void {
+  const pressed = shellElement.shadowRoot?.querySelector<HTMLElement>(
+    '.outline-entry[aria-pressed="true"], .canvas-chip[aria-pressed="true"]',
+  );
+  const nodeId = pressed?.dataset.nodeId;
+  if (nodeId === selectedNodeId) {
+    return;
+  }
+  selectedNodeId = nodeId;
+  void syncSelectedRegion();
+}
+
+async function syncSelectedRegion(): Promise<void> {
+  const nodeId = selectedNodeId;
+  if (nodeId === undefined) {
+    previewSelection.textContent = 'No block is selected.';
+    return;
+  }
+  const marker = markerForNode(nodeId);
+  if (marker === undefined) {
+    previewSelection.textContent = 'The selected block has no rendered region yet.';
+    return;
+  }
+  measureSerial += 1;
+  const requestId = `measures/selection-${measureSerial}`;
+  try {
+    previewClient.select({ nodeId, reveal: true });
+    const outcome = await previewClient.measure({ markers: [marker], requestId });
+    if (nodeId !== selectedNodeId) {
+      return;
+    }
+    if (outcome.status === 'measured') {
+      const rect = outcome.geometry.measurements[marker]?.[0];
+      previewSelection.textContent =
+        rect === undefined
+          ? `Selected marker ${marker} for node ${nodeId}; its geometry is unknown.`
+          : `Selected marker ${marker} for node ${nodeId} — ` +
+            `${Math.round(rect.width)}×${Math.round(rect.height)} CSS px at ` +
+            `(${Math.round(rect.x)}, ${Math.round(rect.y)}).`;
+    } else {
+      previewSelection.textContent =
+        `Selected marker ${marker} for node ${nodeId}; ` +
+        `geometry is stale until the next render completes.`;
+    }
+  } catch {
+    previewSelection.textContent = `Selected marker ${marker} for node ${nodeId}.`;
+  }
+}
+
+function requirePaneElement(selector: string): HTMLElement {
+  const element = document.querySelector<HTMLElement>(selector);
+  if (element === null) {
+    throw new Error('Reference host is missing its preview pane.');
+  }
+  return element;
+}
 
 function defineBlock(
   type: BlockDefinition['type'],
