@@ -1,6 +1,6 @@
 # Programme status
 
-**Updated:** 2026-08-15
+**Updated:** 2026-08-16
 
 This file describes work still to be delivered. It does not claim that documented contracts or planned tests
 already exist in runtime code. Accepted work is recorded against immutable evidence and release history.
@@ -54,13 +54,13 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | Package | State           | Delivered (see changelog)                                            | Still blocking acceptance                                             |
 | ------- | --------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix      | Reviewer reproduction; CI artifact retention                          |
-| `M1-05` | active          | Secret scan, audit, SBOM, release train with provenance publishing   | Changeset enforcement                                                 |
-| `M1-06` | active          | Requirement registry with 22 bound obligations (20 enforced)         | Automated accessibility lane; open items SR-019, SR-020               |
+| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate              | Reviewer reproduction; first alpha publish not yet exercised          |
+| `M1-06` | active          | Requirement registry with 24 bound obligations (22 enforced)         | Automated accessibility lane; open items SR-019, SR-020               |
 | `M2-01` | evidence-review | Full schema list: patterns, provenance, unresolved, profile meta     | Reviewer reproduction                                                 |
-| `M2-02` | active          | Twelve-command subset, recipe expansion, model-draft field, vectors  | Restore command decision; inheritance-reset semantics                 |
+| `M2-02` | evidence-review | Fourteen-command subset with restore and inheritance-reset           | Responsive-role resize semantics; reviewer reproduction               |
 | `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime | Extension SDK surface; lifecycle fixtures beyond blocks               |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof | Reviewer reproduction                                                 |
-| `M2-05` | active          | Rich-text grammar, upload-session lifecycle, crop semantic rule      | Renderer conformance fixtures; media policy vectors                   |
+| `M2-05` | active          | Rich-text grammar, renderer projection corpus, upload lifecycle      | Media policy vectors                                                  |
 | `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles     | Dart model generation and round-trip (`M3-06` not started)            |
 | `M2-07` | active          | Threat registry TH-001..TH-014 with 11 enforced bindings             | TH-008 SSRF exercises; TH-013 CSP lane; TH-014 fuzz lane              |
 | `M3-01` | active          | Session, selection, migrations runner, canonical serialization       | Broader property/fuzz coverage                                        |
@@ -68,7 +68,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M3-03` | active          | In-memory host testbed with conflict/permission/disconnect drills    | Real-transport adapter exercises                                      |
 | `M3-04` | active          | Responder, handshake, reload/teardown, marker-to-node mapping        | Marker geometry and measurement channel                               |
 | `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag | Reviewer reproduction                                                 |
-| `M4-05` | active          | Keyboard parity, palette, drag-as-enhancement, live region, focus    | Parity for bind/configure/resize; conflict-survival announcements     |
+| `M4-05` | evidence-review | Full inspector parity, palette, drag, conflict announcements         | Reviewer reproduction; announcement survival across preview reload    |
 | `M5-01` | active          | Upload orchestration over the canonical session state machine        | Media browser UI; paste/drop capture; real host adapter exercises     |
 
 ## Next dependency-ordered actions

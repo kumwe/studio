@@ -8,6 +8,36 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Command vocabulary resolution (M2-02)
+
+- The two remaining open Gate A vocabulary items are deliberately resolved (ADR 0009). The
+  verified inverse of `remove-node` is promoted to the first-class, batchable `restore-node`
+  command with full-subtree duplicate validation — a check `insert-node` now also enforces — and
+  the top-level `reset-inherited-property` command removes every responsive override for a
+  property so all viewports inherit the base value again, inverting to a sorted batch of
+  viewport-scoped `set-property` operations. Six new canonical vectors (38 total) and a new
+  negative fixture (25 total) pin the semantics; only responsive-role resize remains open.
+
+### Renderer conformance and delivery controls (M2-05, M1-05)
+
+- Rich text gained a canonical renderer projection: per-block plain text with code-point
+  offsets, sorted and merged mark spans, and embed anchors, published as a strict schema with
+  seven conformance fixtures shipped through the testkit tarball. The pure `projectRichText`
+  reference replays every fixture; conforming renderers must reproduce the projection and apply
+  target-format encoding themselves — markup is never canonical.
+- The contracts lane now enforces changesets: publishable-path changes relative to the release
+  base without an unconsumed changeset fail the check with the changed paths and the one-line
+  fix, and CI fetches full history so the merge-base is always computable.
+
+### Inspector interaction parity (M4-05)
+
+- The inspector became a keyboard-complete editor: per-property JSON editing with commit and
+  revert semantics, unset and add-property controls, binding set and removal, and an
+  active-viewport override editor whose announcements name the viewport. Invalid input announces
+  without dispatching, read-only sessions disable every control with a textual explanation, and
+  conflict-class failures (stale state, stale generation, read-only) announce recovery guidance
+  while focus provably stays on the triggering control (SR-023, SR-024).
+
 ### Commands, provenance, and lifecycle proofs (M2-01, M2-02, M2-04, M2-07, M3-04)
 
 - Recipe and semantic design-value selection is deliberately resolved as one atomic batch of
