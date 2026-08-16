@@ -42,6 +42,10 @@ Viewport roles describe design states, not devices. A theme defines an ordered b
 
 Themes MUST define how responsive values inherit. Studio exposes explicit overrides and a way to reset to inherited values. It MUST NOT fabricate breakpoints absent from the theme.
 
+## Size roles
+
+Sizing intent is theme-remappable vocabulary, not stored measurement. A Blueprint node records at most one named size role per layout axis (`inline` or `block`), with responsive overrides per viewport role, instead of widths, column spans, or CSS fragments. The theme declares the available role names as choices of its `size-role` design controls and decides what each role means for a given block and renderer, so a redesign can remap what `half` or `full` resolves to — or carry a renamed role forward through an equivalent-meaning `choice` alias — without migrating stored documents. Whether a stored role names a declared choice is diagnostics-level validation surfaced during authoring and theme switching; the command layer requires only a bounded identifier.
+
 ## Recipes
 
 A recipe is a named combination of renderer behavior and allowed design choices for a block. In `0.1-draft`, it is versioned with its containing theme rather than carrying an independent version. Examples include `product-card`, `hero-split`, and `faq-bordered`. A recipe may narrow block properties and slot rules but may not expand authority beyond the block definition or host policy.

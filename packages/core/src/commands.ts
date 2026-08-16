@@ -9,7 +9,10 @@ import type {
   NodeId,
   ReorderChildrenPayload,
   ResetInheritedPropertyPayload,
+  SetSizeRolePayload,
+  SizeRoleAxis,
   StableId,
+  UnsetSizeRolePayload,
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
 
@@ -322,6 +325,69 @@ function applyOperation(document: BlueprintDocument, operation: BlueprintBatchOp
       }
       break;
     }
+    case 'studio.command/set-size-role': {
+      const location = findNode(document.roots, operation.payload.nodeId);
+      if (location === undefined) {
+        throw nodeNotFound(operation.payload.nodeId);
+      }
+      if (operation.payload.viewport === undefined) {
+        const sizeRoles = (location.node.sizeRoles ??= {});
+        setOwnMapValue(sizeRoles, operation.payload.axis, operation.payload.role);
+      } else {
+        const responsiveSizeRoles = (location.node.responsiveSizeRoles ??= {});
+        let roles = ownMapValue(responsiveSizeRoles, operation.payload.axis);
+        if (roles === undefined) {
+          roles = {};
+          setOwnMapValue(responsiveSizeRoles, operation.payload.axis, roles);
+        }
+        setOwnMapValue(roles, operation.payload.viewport, operation.payload.role);
+      }
+      break;
+    }
+    case 'studio.command/unset-size-role': {
+      const location = findNode(document.roots, operation.payload.nodeId);
+      if (location === undefined) {
+        throw nodeNotFound(operation.payload.nodeId);
+      }
+      if (operation.payload.viewport === undefined) {
+        const sizeRoles = location.node.sizeRoles;
+        if (
+          sizeRoles === undefined ||
+          ownMapValue(sizeRoles, operation.payload.axis) === undefined
+        ) {
+          throw sizeRoleNotFound(operation.payload.nodeId, operation.payload.axis);
+        }
+        deleteOwnMapValue(sizeRoles, operation.payload.axis);
+        if (Object.keys(sizeRoles).length === 0) {
+          delete location.node.sizeRoles;
+        }
+      } else {
+        const responsiveSizeRoles = location.node.responsiveSizeRoles;
+        const roles =
+          responsiveSizeRoles === undefined
+            ? undefined
+            : ownMapValue(responsiveSizeRoles, operation.payload.axis);
+        if (
+          responsiveSizeRoles === undefined ||
+          roles === undefined ||
+          ownMapValue(roles, operation.payload.viewport) === undefined
+        ) {
+          throw sizeRoleNotFound(
+            operation.payload.nodeId,
+            operation.payload.axis,
+            operation.payload.viewport,
+          );
+        }
+        deleteOwnMapValue(roles, operation.payload.viewport);
+        if (Object.keys(roles).length === 0) {
+          deleteOwnMapValue(responsiveSizeRoles, operation.payload.axis);
+        }
+        if (Object.keys(responsiveSizeRoles).length === 0) {
+          delete location.node.responsiveSizeRoles;
+        }
+      }
+      break;
+    }
     case 'studio.command/set-binding': {
       const location = findNode(document.roots, operation.payload.nodeId);
       if (location === undefined) {
@@ -461,6 +527,53 @@ function invertOperation(
         type: 'studio.command/set-property',
       };
     }
+    case 'studio.command/set-size-role': {
+      const location = findNode(document.roots, operation.payload.nodeId);
+      if (location === undefined) {
+        throw nodeNotFound(operation.payload.nodeId);
+      }
+      const previous = previousSizeRole(
+        location.node,
+        operation.payload.axis,
+        operation.payload.viewport,
+      );
+      if (previous === undefined) {
+        const payload: UnsetSizeRolePayload = {
+          axis: operation.payload.axis,
+          nodeId: operation.payload.nodeId,
+        };
+        if (operation.payload.viewport !== undefined) {
+          payload.viewport = operation.payload.viewport;
+        }
+        return { payload, type: 'studio.command/unset-size-role' };
+      }
+      return {
+        payload: restoreSizeRolePayload(operation.payload, previous),
+        type: 'studio.command/set-size-role',
+      };
+    }
+    case 'studio.command/unset-size-role': {
+      const location = findNode(document.roots, operation.payload.nodeId);
+      if (location === undefined) {
+        throw nodeNotFound(operation.payload.nodeId);
+      }
+      const previous = previousSizeRole(
+        location.node,
+        operation.payload.axis,
+        operation.payload.viewport,
+      );
+      if (previous === undefined) {
+        throw sizeRoleNotFound(
+          operation.payload.nodeId,
+          operation.payload.axis,
+          operation.payload.viewport,
+        );
+      }
+      return {
+        payload: restoreSizeRolePayload(operation.payload, previous),
+        type: 'studio.command/set-size-role',
+      };
+    }
     case 'studio.command/set-binding': {
       const location = findNode(document.roots, operation.payload.nodeId);
       if (location === undefined) {
@@ -530,6 +643,36 @@ function previousPropertyValue(
   }
   const values = node.responsive === undefined ? undefined : ownMapValue(node.responsive, property);
   return values === undefined ? undefined : ownMapValue(values, viewport);
+}
+
+function restoreSizeRolePayload(
+  payload: Readonly<UnsetSizeRolePayload>,
+  role: string,
+): SetSizeRolePayload {
+  const restored: SetSizeRolePayload = {
+    axis: payload.axis,
+    nodeId: payload.nodeId,
+    role,
+  };
+  if (payload.viewport !== undefined) {
+    restored.viewport = payload.viewport;
+  }
+  return restored;
+}
+
+function previousSizeRole(
+  node: BlueprintNode,
+  axis: SizeRoleAxis,
+  viewport: string | undefined,
+): string | undefined {
+  if (viewport === undefined) {
+    return node.sizeRoles === undefined ? undefined : ownMapValue(node.sizeRoles, axis);
+  }
+  const roles =
+    node.responsiveSizeRoles === undefined
+      ? undefined
+      : ownMapValue(node.responsiveSizeRoles, axis);
+  return roles === undefined ? undefined : ownMapValue(roles, viewport);
 }
 
 function destinationOf(location: NodeLocation): CommandDestination {
@@ -896,6 +1039,14 @@ function propertyNotFound(nodeId: NodeId, property: string, viewport?: string): 
   return new StudioCommandError(
     'property-not-found',
     `Property ${target} is not set on node ${nodeId}.`,
+  );
+}
+
+function sizeRoleNotFound(nodeId: NodeId, axis: string, viewport?: string): StudioCommandError {
+  const target = viewport === undefined ? `axis ${axis}` : `axis ${axis} for viewport ${viewport}`;
+  return new StudioCommandError(
+    'property-not-found',
+    `No size role is set on node ${nodeId} for ${target}.`,
   );
 }
 

@@ -78,6 +78,7 @@
     }
   ],
   "$defs": {
+    "sizeRoleAxis": { "enum": ["inline", "block"] },
     "node": {
       "type": "object",
       "additionalProperties": false,
@@ -117,6 +118,23 @@
             "maxProperties": 20,
             "propertyNames": { "$ref": "common.schema.json#/$defs/localName" },
             "additionalProperties": { "$ref": "common.schema.json#/$defs/jsonValue" }
+          }
+        },
+        "sizeRoles": {
+          "type": "object",
+          "maxProperties": 2,
+          "propertyNames": { "$ref": "#/$defs/sizeRoleAxis" },
+          "additionalProperties": { "$ref": "common.schema.json#/$defs/localName" }
+        },
+        "responsiveSizeRoles": {
+          "type": "object",
+          "maxProperties": 2,
+          "propertyNames": { "$ref": "#/$defs/sizeRoleAxis" },
+          "additionalProperties": {
+            "type": "object",
+            "maxProperties": 20,
+            "propertyNames": { "$ref": "common.schema.json#/$defs/localName" },
+            "additionalProperties": { "$ref": "common.schema.json#/$defs/localName" }
           }
         },
         "authoring": {

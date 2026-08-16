@@ -9,7 +9,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/block-definition.schema.json"
     },
     {
-      "digest": "sha256-hYSn9/ft0AMu+kR1eRYlHV100hNiqJJkH0nm3NBcJZQ=",
+      "digest": "sha256-FM2btrBFMUTl/HFU2G/zWu+r9tK0n0ucTOuqmMlUI7Q=",
       "file": "blueprint.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
     },
@@ -19,7 +19,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
     },
     {
-      "digest": "sha256-Qghm6NeguRjl37F7+hZI2ojmGqkA6i12oFJ0i29skKM=",
+      "digest": "sha256-WbphD4VZ5xZqAP4fkJ1ghebx/PAMLUpqCRHpE9SBjRQ=",
       "file": "command.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
     },

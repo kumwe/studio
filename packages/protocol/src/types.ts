@@ -133,6 +133,9 @@ export interface NodeAuthoringPolicy {
   requiredPermission?: QualifiedName;
 }
 
+/** Layout axes addressable by size-role commands; the schema admits no other member names. */
+export type SizeRoleAxis = 'block' | 'inline';
+
 export interface BlueprintNode {
   authoring: NodeAuthoringPolicy;
   bindings: Record<LocalName, FieldBinding>;
@@ -140,6 +143,10 @@ export interface BlueprintNode {
   id: NodeId;
   properties: JsonObject;
   responsive?: Record<LocalName, Record<LocalName, JsonValue>>;
+  /** Responsive size-role overrides per axis and viewport role, mirroring `responsive`. */
+  responsiveSizeRoles?: Record<LocalName, Record<LocalName, LocalName>>;
+  /** Base named size role per layout axis (`inline` or `block`). */
+  sizeRoles?: Record<LocalName, LocalName>;
   slots: Record<LocalName, BlueprintNode[]>;
   type: BlockType;
   version: SemanticVersion;
@@ -891,6 +898,26 @@ export type UnsetPropertyCommand = CommandBase<
   UnsetPropertyPayload
 >;
 
+export interface SetSizeRolePayload {
+  axis: SizeRoleAxis;
+  nodeId: NodeId;
+  role: LocalName;
+  viewport?: LocalName;
+}
+
+export type SetSizeRoleCommand = CommandBase<'studio.command/set-size-role', SetSizeRolePayload>;
+
+export interface UnsetSizeRolePayload {
+  axis: SizeRoleAxis;
+  nodeId: NodeId;
+  viewport?: LocalName;
+}
+
+export type UnsetSizeRoleCommand = CommandBase<
+  'studio.command/unset-size-role',
+  UnsetSizeRolePayload
+>;
+
 export interface ResetInheritedPropertyPayload {
   nodeId: NodeId;
   property: LocalName;
@@ -1021,7 +1048,9 @@ export type BlueprintBatchOperation =
   | BatchOperation<'studio.command/restore-node', RestoreNodePayload>
   | BatchOperation<'studio.command/set-binding', SetBindingPayload>
   | BatchOperation<'studio.command/set-property', SetPropertyPayload>
-  | BatchOperation<'studio.command/unset-property', UnsetPropertyPayload>;
+  | BatchOperation<'studio.command/set-size-role', SetSizeRolePayload>
+  | BatchOperation<'studio.command/unset-property', UnsetPropertyPayload>
+  | BatchOperation<'studio.command/unset-size-role', UnsetSizeRolePayload>;
 
 export interface BatchPayload {
   operations: BlueprintBatchOperation[];
@@ -1052,7 +1081,9 @@ export type BlueprintCommand =
   | RestoreNodeCommand
   | SetBindingCommand
   | SetPropertyCommand
-  | UnsetPropertyCommand;
+  | SetSizeRoleCommand
+  | UnsetPropertyCommand
+  | UnsetSizeRoleCommand;
 
 export type StudioCommand = AddModelFieldCommand | BlueprintCommand | SetFieldValueCommand;
 
