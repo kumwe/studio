@@ -37,11 +37,18 @@ import type {
   SetBindingCommand,
   SetPropertyCommand,
   SetPropertyPayload,
+  SetSizeRoleCommand,
+  SetSizeRolePayload,
+  SizeRoleAxis,
   StudioContractVersion,
   StudioDiagnostic,
+  ThemeDesignChoice,
+  ThemeDesignControl,
   ThemeViewport,
   UnsetPropertyCommand,
   UnsetPropertyPayload,
+  UnsetSizeRoleCommand,
+  UnsetSizeRolePayload,
 } from '@kumwe/studio-protocol';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 import {
@@ -104,6 +111,7 @@ export class KumweStudioElement extends LitElement {
   public static override properties = {
     announcement: { attribute: false, state: true },
     configuration: { attribute: false },
+    designControls: { attribute: false },
     document: { attribute: false },
     messages: { attribute: false },
     paletteFilter: { attribute: false, state: true },
@@ -435,6 +443,34 @@ export class KumweStudioElement extends LitElement {
       opacity: 0.55;
     }
 
+    .inspector select {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      flex: 1 1 6rem;
+      font: inherit;
+      min-inline-size: 0;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .inspector select:disabled {
+      background: var(--studio-panel);
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .inspector-provenance {
+      color: #5d6671;
+      flex-basis: 100%;
+      font-size: 0.75rem;
+    }
+
+    .outline-slot-label {
+      color: #5d6671;
+      display: block;
+      font-size: 0.75rem;
+      margin: 0.25rem 0;
+    }
+
     .inspector button {
       font-size: 0.8125rem;
       padding: 0.375rem 0.5rem;
@@ -474,6 +510,7 @@ export class KumweStudioElement extends LitElement {
   `;
 
   declare public configuration: ExperimentalShellConfiguration | undefined;
+  declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
   declare public viewports: ThemeViewport[] | undefined;
@@ -630,6 +667,13 @@ export class KumweStudioElement extends LitElement {
     if (this.#pendingPaletteFocus) {
       this.#pendingPaletteFocus = false;
       this.shadowRoot?.querySelector<HTMLInputElement>('.command-palette input')?.focus();
+    }
+    // A select's user-chosen value survives re-renders, so every update
+    // re-aligns each size-role select with the assignment it renders.
+    for (const select of this.shadowRoot?.querySelectorAll<HTMLSelectElement>(
+      'select.layout-role-select',
+    ) ?? []) {
+      select.value = select.dataset.role ?? '';
     }
     const nodeId = this.#pendingFocusNodeId;
     if (nodeId === undefined) {
@@ -841,6 +885,24 @@ export class KumweStudioElement extends LitElement {
   #assignInternalDocument(document: BlueprintDocument): void {
     this.#internalDocumentUpdate = true;
     this.document = document;
+  }
+
+  /**
+   * The size role assigned in the targeted responsive context: the base
+   * assignment without a viewport, the viewport override otherwise.
+   */
+  #assignedSizeRole(
+    node: BlueprintNode,
+    axis: SizeRoleAxis,
+    viewport: ThemeViewport | undefined,
+  ): string | undefined {
+    return viewport === undefined
+      ? node.sizeRoles?.[axis]
+      : node.responsiveSizeRoles?.[axis]?.[viewport.id];
+  }
+
+  #axisText(axis: SizeRoleAxis): string {
+    return this.#text(AXIS_MESSAGE_KEYS[axis]);
   }
 
   /**
@@ -1267,6 +1329,63 @@ export class KumweStudioElement extends LitElement {
       const current = this.#currentInspectorNode(node.id) ?? node;
       input.value = this.#serializedInspectorValue(current, property, viewport);
       this.#announce('studio.shell/announce-edit-cancelled', { property });
+    }
+  }
+
+  /**
+   * A size-role select commits on change: the chosen role dispatches
+   * set-size-role for the targeted context immediately. The placeholder is a
+   * disabled option, so closing the picker without choosing — or choosing the
+   * already-assigned role — dispatches nothing, and a rejected command snaps
+   * the select back to the committed assignment.
+   */
+  #onLayoutRoleChange(event: Event, node: BlueprintNode, axis: SizeRoleAxis): void {
+    const select = event.currentTarget;
+    if (!(select instanceof HTMLSelectElement)) {
+      return;
+    }
+    const role = select.value;
+    const viewport = this.#sizeRoleTargetViewport();
+    if (role.length === 0 || role === this.#assignedSizeRole(node, axis, viewport)) {
+      return;
+    }
+    if (!this.#setSizeRole(node, axis, role)) {
+      const current = this.#currentInspectorNode(node.id) ?? node;
+      select.value = this.#assignedSizeRole(current, axis, viewport) ?? '';
+    }
+  }
+
+  /**
+   * The fallback identifier input used when no theme size-role vocabulary is
+   * available. Enter validates the text as a bounded lower-case identifier
+   * and dispatches set-size-role; an invalid identifier announces the
+   * rejection and dispatches nothing. Escape reverts to the committed
+   * assignment and announces the cancellation.
+   */
+  #onLayoutRoleInputKeydown(event: KeyboardEvent, node: BlueprintNode, axis: SizeRoleAxis): void {
+    const input = event.currentTarget;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    const viewport = this.#sizeRoleTargetViewport();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const role = input.value.trim();
+      if (!isSizeRoleIdentifier(role)) {
+        this.#announce('studio.shell/announce-size-role-invalid', { axis: this.#axisText(axis) });
+        return;
+      }
+      this.#setSizeRole(node, axis, role);
+      const current = this.#currentInspectorNode(node.id) ?? node;
+      input.value = this.#assignedSizeRole(current, axis, viewport) ?? '';
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      const current = this.#currentInspectorNode(node.id) ?? node;
+      input.value = this.#assignedSizeRole(current, axis, viewport) ?? '';
+      this.#announce('studio.shell/announce-edit-cancelled', { property: this.#axisText(axis) });
     }
   }
 
@@ -1759,6 +1878,7 @@ export class KumweStudioElement extends LitElement {
       ${this.#renderInspectorProperties(node, readOnly)}
       ${this.#renderInspectorBindings(node, readOnly)}
       ${this.#renderInspectorOverrides(node, readOnly)}
+      ${this.#renderInspectorLayout(node, readOnly)}
     `;
   }
 
@@ -1831,10 +1951,54 @@ export class KumweStudioElement extends LitElement {
   }
 
   /**
+   * The layout section: one row per layout axis showing the base size-role
+   * assignment, the active-viewport inheritance provenance, and the role
+   * control. The role vocabulary comes from the theme document's `size-role`
+   * design controls, fed to the shell over the same host path as the
+   * viewport switcher. A theme that declares no size roles is stated
+   * textually with no controls; with no theme vocabulary available at all
+   * the editor falls back to a validated identifier input.
+   */
+  #renderInspectorLayout(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const vocabulary = this.#sizeRoleVocabulary();
+    return html`
+      <section
+        class="inspector-section inspector-layout"
+        aria-label=${this.#text('studio.shell/inspector-layout-heading')}
+      >
+        <h3>${this.#text('studio.shell/inspector-layout-heading')}</h3>
+        ${
+          vocabulary?.length === 0
+            ? html`<p class="inspector-empty layout-no-roles">
+                ${this.#text('studio.shell/inspector-layout-no-roles')}
+              </p>`
+            : html`
+                ${
+                  vocabulary === undefined
+                    ? html`<p class="hint layout-fallback-hint">
+                        ${this.#text('studio.shell/inspector-layout-fallback-hint')}
+                      </p>`
+                    : nothing
+                }
+                <ul class="inspector-rows">
+                  ${SIZE_ROLE_AXES.map((axis) =>
+                    this.#renderLayoutAxis(node, axis, vocabulary, readOnly),
+                  )}
+                </ul>
+              `
+        }
+      </section>
+    `;
+  }
+
+  /**
    * The per-viewport override editor for the active viewport of the switcher.
    * Overrides dispatch the same set-property and unset-property commands as
    * base properties, carrying the viewport, and every announcement names the
    * viewport — the keyboard path that stands in for visual resize work.
+   * Every listed value carries textual provenance: an overridden row names
+   * the supplying viewport, and a base property without an override for the
+   * active viewport is listed as inheriting from base.
    */
   #renderInspectorOverrides(
     node: BlueprintNode,
@@ -1845,11 +2009,22 @@ export class KumweStudioElement extends LitElement {
       return nothing;
     }
     const viewportLabel = referenceText(viewport.label);
-    const rows: [string, JsonValue][] = [];
+    interface ResponsiveRow {
+      base: JsonValue | undefined;
+      override: JsonValue | undefined;
+      property: string;
+    }
+    const rows: ResponsiveRow[] = [];
+    for (const [property, base] of Object.entries(node.properties)) {
+      rows.push({ base, override: node.responsive?.[property]?.[viewport.id], property });
+    }
     for (const [property, values] of Object.entries(node.responsive ?? {})) {
-      const value = values[viewport.id];
-      if (value !== undefined) {
-        rows.push([property, value]);
+      if (Object.hasOwn(node.properties, property)) {
+        continue;
+      }
+      const override = values[viewport.id];
+      if (override !== undefined) {
+        rows.push({ base: undefined, override, property });
       }
     }
     return html`
@@ -1871,41 +2046,64 @@ export class KumweStudioElement extends LitElement {
               </p>`
             : html`
                 <ul class="inspector-rows">
-                  ${rows.map(
-                    ([property, value]) => html`
-                      <li class="inspector-row">
-                        <span class="inspector-name">${property}</span>
-                        <input
-                          type="text"
-                          class="inspector-override-input"
-                          data-property=${property}
-                          aria-label=${this.#text('studio.shell/inspector-override-value-label', {
-                            property,
-                            viewport: viewportLabel,
-                          })}
-                          .value=${JSON.stringify(value)}
-                          ?disabled=${readOnly}
-                          @keydown=${(event: KeyboardEvent): void => {
-                            this.#onInspectorValueKeydown(event, node, property, viewport);
-                          }}
-                        />
-                        <button
-                          type="button"
-                          class="inspector-override-remove"
-                          data-property=${property}
-                          aria-label=${this.#text('studio.shell/inspector-remove-override-label', {
-                            property,
-                            viewport: viewportLabel,
-                          })}
-                          ?disabled=${readOnly}
-                          @click=${(): void => {
-                            this.#unsetNodeProperty(node, property, viewport);
-                          }}
-                        >
-                          ${this.#text('studio.shell/inspector-remove-override')}
-                        </button>
-                      </li>
-                    `,
+                  ${rows.map(({ base, override, property }) =>
+                    override === undefined
+                      ? html`
+                          <li class="inspector-row inspector-inherited" data-property=${property}>
+                            <span class="inspector-name">${property}</span>
+                            <span class="inspector-provenance">
+                              ${this.#text('studio.shell/inspector-provenance-inherited', {
+                                value: JSON.stringify(base),
+                              })}
+                            </span>
+                          </li>
+                        `
+                      : html`
+                          <li class="inspector-row">
+                            <span class="inspector-name">${property}</span>
+                            <span class="inspector-provenance">
+                              ${this.#text('studio.shell/inspector-provenance-overridden', {
+                                value: JSON.stringify(override),
+                                viewport: viewportLabel,
+                              })}
+                            </span>
+                            <input
+                              type="text"
+                              class="inspector-override-input"
+                              data-property=${property}
+                              aria-label=${this.#text(
+                                'studio.shell/inspector-override-value-label',
+                                {
+                                  property,
+                                  viewport: viewportLabel,
+                                },
+                              )}
+                              .value=${JSON.stringify(override)}
+                              ?disabled=${readOnly}
+                              @keydown=${(event: KeyboardEvent): void => {
+                                this.#onInspectorValueKeydown(event, node, property, viewport);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              class="inspector-override-remove"
+                              data-property=${property}
+                              aria-label=${this.#text(
+                                'studio.shell/inspector-remove-override-label',
+                                {
+                                  property,
+                                  viewport: viewportLabel,
+                                },
+                              )}
+                              ?disabled=${readOnly}
+                              @click=${(): void => {
+                                this.#unsetNodeProperty(node, property, viewport);
+                              }}
+                            >
+                              ${this.#text('studio.shell/inspector-remove-override')}
+                            </button>
+                          </li>
+                        `,
                   )}
                 </ul>
               `
@@ -1957,6 +2155,9 @@ export class KumweStudioElement extends LitElement {
                     ([property, value]) => html`
                       <li class="inspector-row">
                         <span class="inspector-name">${property}</span>
+                        <span class="inspector-provenance">
+                          ${this.#text('studio.shell/inspector-provenance-base')}
+                        </span>
                         <input
                           type="text"
                           class="inspector-property-input"
@@ -2015,6 +2216,125 @@ export class KumweStudioElement extends LitElement {
           </button>
         </div>
       </section>
+    `;
+  }
+
+  /**
+   * One layout row: the axis name, the base assignment as text, the
+   * active-viewport provenance (overridden for that viewport, or inherited
+   * from base) when the switcher is on a non-base viewport, then the role
+   * control and its remove button. The control targets the base assignment
+   * while the switcher is on the base viewport (or no viewports exist) and
+   * the active viewport's override otherwise — the same base-versus-viewport
+   * split the responsive property editor dispatches with.
+   */
+  #renderLayoutAxis(
+    node: BlueprintNode,
+    axis: SizeRoleAxis,
+    vocabulary: ThemeDesignChoice[] | undefined,
+    readOnly: boolean,
+  ): TemplateResult {
+    const axisLabel = this.#axisText(axis);
+    const baseRole = node.sizeRoles?.[axis];
+    const viewport = this.#sizeRoleTargetViewport();
+    const assigned = this.#assignedSizeRole(node, axis, viewport);
+    const viewportLabel = viewport === undefined ? undefined : referenceText(viewport.label);
+    const controlLabel =
+      viewportLabel === undefined
+        ? this.#text('studio.shell/inspector-layout-role-label-base', { axis: axisLabel })
+        : this.#text('studio.shell/inspector-layout-role-label-viewport', {
+            axis: axisLabel,
+            viewport: viewportLabel,
+          });
+    const unsetLabel =
+      viewportLabel === undefined
+        ? this.#text('studio.shell/inspector-layout-unset-label-base', { axis: axisLabel })
+        : this.#text('studio.shell/inspector-layout-unset-label-viewport', {
+            axis: axisLabel,
+            viewport: viewportLabel,
+          });
+    return html`
+      <li class="inspector-row layout-axis" data-axis=${axis}>
+        <span class="inspector-name">${axisLabel}</span>
+        <span class="inspector-provenance layout-base-state" data-axis=${axis}>
+          ${
+            baseRole === undefined
+              ? this.#text('studio.shell/inspector-layout-base-none')
+              : this.#text('studio.shell/inspector-layout-base-role', { role: baseRole })
+          }
+        </span>
+        ${
+          viewportLabel === undefined
+            ? nothing
+            : html`
+                <span class="inspector-provenance layout-viewport-state" data-axis=${axis}>
+                  ${
+                    assigned !== undefined
+                      ? this.#text('studio.shell/inspector-provenance-overridden', {
+                          value: assigned,
+                          viewport: viewportLabel,
+                        })
+                      : baseRole !== undefined
+                        ? this.#text('studio.shell/inspector-provenance-inherited', {
+                            value: baseRole,
+                          })
+                        : this.#text('studio.shell/inspector-provenance-inherited-none')
+                  }
+                </span>
+              `
+        }
+        ${
+          vocabulary === undefined
+            ? html`
+                <input
+                  type="text"
+                  class="layout-role-input"
+                  data-axis=${axis}
+                  aria-label=${controlLabel}
+                  .value=${assigned ?? ''}
+                  ?disabled=${readOnly}
+                  @keydown=${(event: KeyboardEvent): void => {
+                    this.#onLayoutRoleInputKeydown(event, node, axis);
+                  }}
+                />
+              `
+            : html`
+                <select
+                  class="layout-role-select"
+                  data-axis=${axis}
+                  data-role=${assigned ?? ''}
+                  aria-label=${controlLabel}
+                  ?disabled=${readOnly}
+                  @change=${(event: Event): void => {
+                    this.#onLayoutRoleChange(event, node, axis);
+                  }}
+                >
+                  <option value="" disabled ?selected=${assigned === undefined}>
+                    ${this.#text('studio.shell/inspector-layout-role-placeholder')}
+                  </option>
+                  ${vocabulary.map(
+                    (choice) => html`
+                      <option value=${choice.id} ?selected=${assigned === choice.id}>
+                        ${referenceText(choice.label)}
+                      </option>
+                    `,
+                  )}
+                </select>
+              `
+        }
+        <button
+          type="button"
+          class="layout-role-unset"
+          data-axis=${axis}
+          aria-label=${unsetLabel}
+          ?disabled=${readOnly || assigned === undefined}
+          @click=${(): void => {
+            this.#unsetSizeRole(node, axis);
+          }}
+        >
+          ${this.#text('studio.shell/inspector-layout-unset')}
+        </button>
+      </li>
     `;
   }
 
@@ -2100,17 +2420,22 @@ export class KumweStudioElement extends LitElement {
           }
         </button>
         ${selected ? this.#renderOutlineControls(node) : nothing}
-        ${nested.map(([slot, children]) =>
-          children.length === 0
-            ? nothing
-            : html`
-                <section class="node-children" aria-label=${slot}>
-                  <ul class="tree">
-                    ${children.map((child) => this.#renderOutlineNode(child))}
-                  </ul>
-                </section>
-              `,
-        )}
+        ${nested.map(([slot, children]) => {
+          if (children.length === 0) {
+            return nothing;
+          }
+          // The slot name is visible text, not only a region label, so the
+          // composition structure stays perceivable in the outline.
+          const slotText = this.#slotLabel(node, slot);
+          return html`
+            <section class="node-children" aria-label=${slotText}>
+              <span class="outline-slot-label">${slotText}</span>
+              <ul class="tree">
+                ${children.map((child) => this.#renderOutlineNode(child))}
+              </ul>
+            </section>
+          `;
+        })}
       </li>
     `;
   }
@@ -2365,6 +2690,97 @@ export class KumweStudioElement extends LitElement {
     return true;
   }
 
+  /**
+   * Dispatches set-size-role for one axis, targeting the base assignment or
+   * the active viewport's override per `#sizeRoleTargetViewport`, and
+   * announces the outcome naming the axis, the role, and — for overrides —
+   * the viewport. Returns whether the command applied.
+   */
+  #setSizeRole(node: BlueprintNode, axis: SizeRoleAxis, role: string): boolean {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return false;
+    }
+    const viewport = this.#sizeRoleTargetViewport();
+    const payload: SetSizeRolePayload = { axis, nodeId: node.id, role };
+    if (viewport !== undefined) {
+      payload.viewport = viewport.id;
+    }
+    const command: SetSizeRoleCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload,
+      type: 'studio.command/set-size-role',
+    };
+    if (!this.#runShellCommand(command)) {
+      return false;
+    }
+    if (viewport === undefined) {
+      this.#announce('studio.shell/announce-size-role-set', {
+        axis: this.#axisText(axis),
+        role,
+      });
+    } else {
+      this.#announce('studio.shell/announce-size-role-set-viewport', {
+        axis: this.#axisText(axis),
+        role,
+        viewport: referenceText(viewport.label),
+      });
+    }
+    return true;
+  }
+
+  /**
+   * The responsive context size-role edits target: the active viewport when
+   * the switcher is on a non-base viewport, otherwise the base assignment —
+   * the same base-versus-viewport split responsive property dispatch uses,
+   * resolved from the viewport switcher.
+   */
+  #sizeRoleTargetViewport(): ThemeViewport | undefined {
+    const viewport = this.activeViewport;
+    return viewport === undefined || viewport.base ? undefined : viewport;
+  }
+
+  /**
+   * The declared size-role vocabulary of the active theme: the choices of
+   * every `size-role` design control the host feeds through
+   * `designControls`, deduplicated by identifier in declaration order.
+   * Undefined when the host supplies no theme design controls at all —
+   * the layout editor then falls back to a validated identifier input.
+   */
+  #sizeRoleVocabulary(): ThemeDesignChoice[] | undefined {
+    const controls = this.designControls;
+    if (controls === undefined) {
+      return undefined;
+    }
+    const choices: ThemeDesignChoice[] = [];
+    const seen = new Set<string>();
+    for (const control of controls) {
+      if (control.kind !== 'size-role') {
+        continue;
+      }
+      for (const choice of control.choices) {
+        if (!seen.has(choice.id)) {
+          seen.add(choice.id);
+          choices.push(choice);
+        }
+      }
+    }
+    return choices;
+  }
+
+  /**
+   * The visible outline label for a slot: the declared slot label from the
+   * parent's block definition when resolvable, otherwise the raw slot name,
+   * rendered through the catalog's slot template.
+   */
+  #slotLabel(node: BlueprintNode, slot: string): string {
+    const declared = this.#findDefinition(node)?.slots.find((candidate) => candidate.id === slot);
+    return this.#text('studio.shell/outline-slot', {
+      slot: declared === undefined ? slot : referenceText(declared.label),
+    });
+  }
+
   #syncDirty(): void {
     const dirty = this.#session?.dirty ?? false;
     if (dirty === this.#lastDirty) {
@@ -2427,6 +2843,42 @@ export class KumweStudioElement extends LitElement {
       });
     }
   }
+
+  /**
+   * Dispatches unset-size-role for one axis against the context
+   * `#sizeRoleTargetViewport` resolves, announcing the removal with the
+   * axis and — for overrides — the viewport.
+   */
+  #unsetSizeRole(node: BlueprintNode, axis: SizeRoleAxis): void {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return;
+    }
+    const viewport = this.#sizeRoleTargetViewport();
+    const payload: UnsetSizeRolePayload = { axis, nodeId: node.id };
+    if (viewport !== undefined) {
+      payload.viewport = viewport.id;
+    }
+    const command: UnsetSizeRoleCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload,
+      type: 'studio.command/unset-size-role',
+    };
+    if (!this.#runShellCommand(command)) {
+      return;
+    }
+    if (viewport === undefined) {
+      this.#announce('studio.shell/announce-size-role-removed', {
+        axis: this.#axisText(axis),
+      });
+    } else {
+      this.#announce('studio.shell/announce-size-role-removed-viewport', {
+        axis: this.#axisText(axis),
+        viewport: referenceText(viewport.label),
+      });
+    }
+  }
 }
 
 /**
@@ -2438,6 +2890,28 @@ const CONFLICT_ERROR_CODES: ReadonlySet<StudioCommandErrorCode> = new Set([
   'read-only-session',
   'stale-generation',
   'stale-state',
+]);
+
+const AXIS_MESSAGE_KEYS: Record<SizeRoleAxis, StudioMessageKey> = {
+  block: 'studio.shell/inspector-layout-axis-block',
+  inline: 'studio.shell/inspector-layout-axis-inline',
+};
+
+/** Both layout axes in the order the layout section renders them. */
+const SIZE_ROLE_AXES: readonly SizeRoleAxis[] = ['inline', 'block'];
+
+/**
+ * The canonical bounded lower-case identifier shape (the shared local-name
+ * pattern of the command schema) the fallback role input validates against
+ * before dispatching, with the prototype-polluting names the schema also
+ * excludes.
+ */
+const SIZE_ROLE_IDENTIFIER = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
+
+const FORBIDDEN_ROLE_IDENTIFIERS: ReadonlySet<string> = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
 ]);
 
 const SEVERITY_MESSAGE_KEYS: Record<StudioDiagnostic['severity'], StudioMessageKey> = {
@@ -2464,6 +2938,15 @@ function diagnosticText(entry: StudioDiagnostic): string {
     text = text.replaceAll(`{${name}}`, String(value));
   }
   return text;
+}
+
+function isSizeRoleIdentifier(text: string): boolean {
+  return (
+    text.length > 0 &&
+    text.length <= 100 &&
+    SIZE_ROLE_IDENTIFIER.test(text) &&
+    !FORBIDDEN_ROLE_IDENTIFIERS.has(text)
+  );
 }
 
 function referenceText(reference: MessageReference): string {

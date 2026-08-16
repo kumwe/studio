@@ -50,13 +50,20 @@ region.
 ## Inspector
 
 The inspector edits the selected node without leaving the keyboard. Every value input holds the
-JSON serialization of its property, binding, or override, and every control is a native input or
-button, so `Tab` moves through them in one documented order: base property rows (value input,
-then its `Unset` button), the add-property row (name, value, `Add property`), binding rows (one
-`Remove` button per port), the set-binding form (port, value, `Set binding`), then — when the
-host supplies viewports — the active-viewport override rows (value input, `Remove`) and the
-add-override form (name, value, `Add override`). In read-only sessions every editing control is
+JSON serialization of its property, binding, or override, and every control is a native input,
+select, or button, so `Tab` moves through them in one documented order: base property rows (value
+input, then its `Unset` button), the add-property row (name, value, `Add property`), binding rows
+(one `Remove` button per port), the set-binding form (port, value, `Set binding`), then — when
+the host supplies viewports — the responsive rows for the active viewport (an editable value
+input and `Remove` button per overridden property; inherited values are text only) and the
+add-override form (name, value, `Add override`), and finally the Layout section (per axis, the
+role control and then its `Remove` button). In read-only sessions every editing control is
 disabled and the inspector states the reason textually.
+
+Every responsive value carries its provenance as text, never as color or position alone: an
+override row states `Overridden for the {viewport} viewport: {value}`, a property the active
+viewport does not override states `Inherited from base: {value}`, and base property rows are
+marked `Base value`.
 
 | Keys              | Operation                                                               |
 | ----------------- | ----------------------------------------------------------------------- |
@@ -74,6 +81,36 @@ correction. A command the session rejects as stale, conflicting, or read-only is
 recovery guidance, focus stays on the triggering control, and the inputs revert to the document's
 committed values.
 
+### Layout size roles
+
+The Layout section edits the named size role of each layout axis (`inline` and `block`) for the
+selected node. Its rows render the base assignment (`Base: half` or `Base: none`) and, while the
+viewport switcher is on a non-base viewport, that viewport's provenance (`Overridden for the
+Narrow viewport: full` or `Inherited from base: half`) as text. The role control targets the base
+assignment while the switcher is on the base viewport (or the host supplies no viewports),
+dispatching `set-size-role` without a viewport; on any other viewport it targets that viewport's
+override and the command carries the viewport — the same base-versus-override split the
+responsive property editor dispatches with. The `Remove` button dispatches `unset-size-role` for
+the same context and is disabled while the targeted assignment is absent. Announcements name the
+axis, the role, and — for overrides — the viewport.
+
+The role control is a native `<select>` populated from the active theme's declared size-role
+vocabulary — the choices of its `size-role` design controls, supplied to the shell by the host
+alongside the theme's viewports. Operating the select is native keyboard interaction (arrow keys,
+`Enter`, `Escape` to close without choosing); committing a choice dispatches immediately, and the
+placeholder entry is disabled so closing the picker without a choice dispatches nothing. When the
+active theme declares no size roles, the section states that textually and offers no controls —
+never a free-text input. Only when no theme vocabulary is available at all does the control fall
+back to a validated identifier input:
+
+| Keys     | Operation                                                                        |
+| -------- | -------------------------------------------------------------------------------- |
+| `Enter`  | In the fallback role input, validate the lower-case identifier and commit it     |
+| `Escape` | In the fallback role input, revert to the committed role and announce the cancel |
+
+An identifier that fails validation is announced through the polite live region and dispatches
+nothing; the text stays in the input for correction.
+
 ## Global
 
 | Keys                                                                     | Operation |
@@ -85,9 +122,10 @@ committed values.
 
 These interactions are executable assertions in
 `packages/studio-lit/test/kumwe-studio.test.ts`,
-`packages/studio-lit/test/command-surfaces.test.ts`, and
-`packages/studio-lit/test/inspector.test.ts`: keyboard dispatch, disabled states at
+`packages/studio-lit/test/command-surfaces.test.ts`,
+`packages/studio-lit/test/inspector.test.ts`, and
+`packages/studio-lit/test/layout-editing.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
-cancellation, inspector editing with its Tab order and conflict recovery, and the documented focus
-targets are all verified there. A change to this table without a matching assertion change is a
-contract violation.
+cancellation, inspector editing with its Tab order and conflict recovery, size-role editing with
+its inheritance provenance, and the documented focus targets are all verified there. A change to
+this table without a matching assertion change is a contract violation.
