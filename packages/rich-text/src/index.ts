@@ -24,6 +24,24 @@ export interface StudioRichTextOptions {
   headingLevels?: readonly (1 | 2 | 3 | 4 | 5 | 6)[];
 }
 
+export interface RichTextSpanProjection {
+  end: number;
+  marks: string[];
+  start: number;
+}
+
+export interface RichTextEmbedProjection {
+  index: number;
+  kind: string;
+}
+
+export interface RichTextBlockProjection {
+  embeds: RichTextEmbedProjection[];
+  spans: RichTextSpanProjection[];
+  text: string;
+  type: string;
+}
+
 export interface StudioRichTextAttributeLimits {
   maximumDepth: number;
   maximumItemsPerArray: number;
@@ -146,6 +164,85 @@ export function parseRichTextDocument(
 
 export function isRichTextDocumentEmpty(document: StudioRichTextDocument): boolean {
   return document.content.every((node) => nodeText(node).trim().length === 0);
+}
+
+export function projectRichText(document: StudioRichTextDocument): RichTextBlockProjection[] {
+  const projections: RichTextBlockProjection[] = [];
+  for (const block of document.content) {
+    collectBlockProjections(block, projections);
+  }
+  return projections;
+}
+
+function collectBlockProjections(
+  node: StudioRichTextNode,
+  projections: RichTextBlockProjection[],
+): void {
+  switch (node.type) {
+    case 'heading':
+    case 'paragraph':
+      projections.push(projectLeafBlock(node));
+      break;
+    case 'horizontalRule':
+      projections.push({ embeds: [], spans: [], text: '', type: 'horizontalRule' });
+      break;
+    case 'blockquote':
+    case 'bulletList':
+    case 'listItem':
+    case 'orderedList':
+      for (const child of node.content ?? []) {
+        collectBlockProjections(child, projections);
+      }
+      break;
+    default:
+      throw new TypeError(`Node type "${node.type}" has no renderer projection.`);
+  }
+}
+
+function projectLeafBlock(node: StudioRichTextNode): RichTextBlockProjection {
+  const embeds: RichTextEmbedProjection[] = [];
+  const spans: RichTextSpanProjection[] = [];
+  let text = '';
+  let offset = 0;
+  for (const inline of node.content ?? []) {
+    if (inline.type === 'text') {
+      const value = inline.text ?? '';
+      const length = codePointLength(value);
+      const marks = (inline.marks ?? []).map((mark) => mark.type).sort();
+      if (marks.length > 0 && length > 0) {
+        const previous = spans.at(-1);
+        if (previous?.end === offset && sameMarkNames(previous.marks, marks)) {
+          previous.end = offset + length;
+        } else {
+          spans.push({ end: offset + length, marks, start: offset });
+        }
+      }
+      text += value;
+      offset += length;
+    } else {
+      embeds.push({ index: offset, kind: inline.type });
+    }
+  }
+  return { embeds, spans, text, type: node.type };
+}
+
+function sameMarkNames(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((name, index) => name === right[index]);
+}
+
+function codePointLength(value: string): number {
+  let length = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        index += 1;
+      }
+    }
+    length += 1;
+  }
+  return length;
 }
 
 function parseNode(

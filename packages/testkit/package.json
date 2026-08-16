@@ -6,6 +6,7 @@
   "sideEffects": false,
   "files": [
     "LICENSE",
+    "conformance",
     "dist",
     "fixtures",
     "invalid",
@@ -17,6 +18,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./conformance/*": "./conformance/*",
     "./fixtures/*": "./fixtures/*",
     "./invalid/*": "./invalid/*",
     "./vectors/*": "./vectors/*"

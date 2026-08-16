@@ -11,6 +11,11 @@ const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.u
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const rootInvalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const packageInvalidDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
+const rootConformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
+const packageConformanceDirectory = new URL(
+  '../packages/testkit/conformance/rich-text/',
+  import.meta.url,
+);
 
 const schemaFiles = (await readdir(rootSchemaDirectory))
   .filter((name) => name.endsWith('.schema.json'))
@@ -51,6 +56,16 @@ const packageInvalidFiles = (await readdir(packageInvalidDirectory))
 
 assertSameNames('testkit negative-fixture copies', invalidFiles, packageInvalidFiles);
 await assertCopies(rootInvalidDirectory, packageInvalidDirectory, invalidFiles);
+
+const conformanceFiles = (await readdir(rootConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageConformanceFiles = (await readdir(packageConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames('testkit renderer-conformance copies', conformanceFiles, packageConformanceFiles);
+await assertCopies(rootConformanceDirectory, packageConformanceDirectory, conformanceFiles);
 
 const manifest = JSON.parse(
   await readFile(new URL('manifest.json', packageSchemaDirectory), 'utf8'),
@@ -175,6 +190,59 @@ for (const invalidFile of invalidFiles) {
   const validate = getCanonicalValidator(fixture.schema);
   if (validate(fixture.value)) {
     throw new Error(`${invalidFile} must be rejected by ${fixture.schema}: ${fixture.description}`);
+  }
+}
+
+if (conformanceFiles.length === 0) {
+  throw new Error('The renderer-conformance corpus is empty.');
+}
+const validateProjectionFixture = getCanonicalValidator('rich-text-projection.schema.json');
+const validateRichTextDocument = getCanonicalValidator('rich-text.schema.json');
+for (const conformanceFile of conformanceFiles) {
+  const fixture = JSON.parse(
+    await readFile(new URL(conformanceFile, rootConformanceDirectory), 'utf8'),
+  );
+  if (!validateProjectionFixture(fixture)) {
+    throw new Error(
+      `${conformanceFile} violates rich-text-projection.schema.json: ` +
+        ajv.errorsText(validateProjectionFixture.errors),
+    );
+  }
+  if (!validateRichTextDocument(fixture.document)) {
+    throw new Error(
+      `${conformanceFile} document violates rich-text.schema.json: ` +
+        ajv.errorsText(validateRichTextDocument.errors),
+    );
+  }
+  for (const [blockIndex, block] of fixture.projection.entries()) {
+    let previousSpan;
+    for (const span of block.spans) {
+      if (span.end <= span.start) {
+        throw new Error(
+          `${conformanceFile} projection[${blockIndex}] contains a zero-length or inverted span.`,
+        );
+      }
+      if (span.marks.join(' ') !== [...span.marks].sort().join(' ')) {
+        throw new Error(
+          `${conformanceFile} projection[${blockIndex}] span mark names are not sorted.`,
+        );
+      }
+      if (previousSpan !== undefined && compareProjectionSpans(previousSpan, span) >= 0) {
+        throw new Error(
+          `${conformanceFile} projection[${blockIndex}] spans are not sorted by (start, end, marks).`,
+        );
+      }
+      previousSpan = span;
+    }
+    let previousEmbedIndex = -1;
+    for (const embed of block.embeds) {
+      if (embed.index < previousEmbedIndex) {
+        throw new Error(
+          `${conformanceFile} projection[${blockIndex}] embeds are not sorted by index.`,
+        );
+      }
+      previousEmbedIndex = embed.index;
+    }
   }
 }
 
@@ -423,7 +491,8 @@ assertRejected('empty published content model', validateContentModel, {
 
 console.log(
   `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
-    `${vectorFiles.length} command vectors, and ${invalidFiles.length} negative fixtures verified.`,
+    `${vectorFiles.length} command vectors, ${invalidFiles.length} negative fixtures, and ` +
+    `${conformanceFiles.length} renderer-conformance fixtures verified.`,
 );
 
 function assertSameNames(label, expected, actual) {
@@ -464,6 +533,21 @@ function assertOpenObjectsConstrainMemberNames(file, value, path = '#') {
   for (const [name, item] of Object.entries(value)) {
     assertOpenObjectsConstrainMemberNames(file, item, `${path}/${name}`);
   }
+}
+
+function compareProjectionSpans(left, right) {
+  if (left.start !== right.start) {
+    return left.start - right.start;
+  }
+  if (left.end !== right.end) {
+    return left.end - right.end;
+  }
+  const leftMarks = left.marks.join(' ');
+  const rightMarks = right.marks.join(' ');
+  if (leftMarks === rightMarks) {
+    return 0;
+  }
+  return leftMarks < rightMarks ? -1 : 1;
 }
 
 function getCanonicalValidator(schemaFile) {

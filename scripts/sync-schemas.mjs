@@ -10,6 +10,11 @@ const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const invalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const invalidTargetDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
+const conformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
+const conformanceTargetDirectory = new URL(
+  '../packages/testkit/conformance/rich-text/',
+  import.meta.url,
+);
 
 await rm(targetDirectory, { force: true, recursive: true });
 await mkdir(targetDirectory, { recursive: true });
@@ -22,6 +27,11 @@ await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
 await mkdir(vectorTargetDirectory, { recursive: true });
 await rm(invalidTargetDirectory, { force: true, recursive: true });
 await mkdir(invalidTargetDirectory, { recursive: true });
+await rm(new URL('../packages/testkit/conformance/', import.meta.url), {
+  force: true,
+  recursive: true,
+});
+await mkdir(conformanceTargetDirectory, { recursive: true });
 
 for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.schema.json')) {
@@ -47,6 +57,15 @@ for (const entry of await readdir(invalidDirectory, { withFileTypes: true })) {
   }
 }
 
+for (const entry of await readdir(conformanceDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, conformanceDirectory),
+      new URL(entry.name, conformanceTargetDirectory),
+    );
+  }
+}
+
 const copied = (await readdir(targetDirectory)).filter((name) => name.endsWith('.schema.json'));
 if (copied.length === 0) {
   throw new Error(`No schemas were copied to ${join(targetDirectory.pathname)}.`);
@@ -65,6 +84,15 @@ if (vectors.length === 0) {
 const invalid = (await readdir(invalidTargetDirectory)).filter((name) => name.endsWith('.json'));
 if (invalid.length === 0) {
   throw new Error(`No negative fixtures were copied to ${join(invalidTargetDirectory.pathname)}.`);
+}
+
+const conformance = (await readdir(conformanceTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (conformance.length === 0) {
+  throw new Error(
+    `No renderer-conformance fixtures were copied to ${join(conformanceTargetDirectory.pathname)}.`,
+  );
 }
 
 const manifestEntries = [];
