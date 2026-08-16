@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-core",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -26,7 +26,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-protocol": "0.1.0-alpha.1",
+    "@kumwe/studio-protocol": "0.1.0-alpha.2",
     "ajv": "8.20.0"
   },
   "publishConfig": {
