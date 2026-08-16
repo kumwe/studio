@@ -8,6 +8,24 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Visual composition depth (M4-02, M4-03, M3-04, M3-03)
+
+- Layout size roles are editable: per axis, the base role and the active viewport's assignment come
+  from the theme-declared vocabulary, and every value states its provenance textually — base,
+  overridden for the named viewport, or inherited from base — across the layout section and the
+  responsive property editor (SR-027).
+- Sessions carry one of five editing modes. Blueprint permits the structure commands, content permits
+  field values, model permits draft model fields, hybrid bounds structure edits to slots governed by
+  structural nodes and never moves locked subtrees, and read-only keeps its refusal. One frozen total
+  table maps every command type per mode, exposed so interfaces render what the engine enforces;
+  violations fail closed with the new `mode-forbidden` code leaving document, history and selection
+  untouched (ADR 0011).
+- The reference host renders compositions through the real preview channel: semantic DOM built without
+  markup strings, theme tokens as custom properties, size-role-driven layout at the active viewport, a
+  returned marker map and real measured geometry. The testkit gained an HTTP host adapter with an
+  injected fetch, mapping transport refusals, error statuses and malformed bodies onto canonical
+  non-disclosing host errors and exercised against a real server through the session lifecycle.
+
 ### Complete command vocabulary, eval-free validation, extension SDK (M2-02, M2-03, M6-02)
 
 - The Gate A command vocabulary is complete. Size roles are first-class data: `set-size-role`
