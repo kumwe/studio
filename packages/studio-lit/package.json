@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Accessible Lit Web Component shell for the Studio core engine.",
   "type": "module",
   "sideEffects": false,
@@ -19,12 +19,12 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.0",
-    "@kumwe/studio-protocol": "0.1.0-alpha.0",
+    "@kumwe/studio-core": "0.1.0-alpha.1",
+    "@kumwe/studio-protocol": "0.1.0-alpha.1",
     "lit": "3.3.3"
   },
   "devDependencies": {
-    "@kumwe/studio-testkit": "0.1.0-alpha.0"
+    "@kumwe/studio-testkit": "0.1.0-alpha.1"
   },
   "publishConfig": {
     "access": "public",

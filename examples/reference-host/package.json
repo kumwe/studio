@@ -8,8 +8,8 @@
     "dev": "vite"
   },
   "dependencies": {
-    "@kumwe/studio-protocol": "0.1.0-alpha.0",
-    "@kumwe/studio": "0.1.0-alpha.0"
+    "@kumwe/studio-protocol": "0.1.0-alpha.1",
+    "@kumwe/studio": "0.1.0-alpha.1"
   },
   "devDependencies": {
     "vite": "8.2.1"
