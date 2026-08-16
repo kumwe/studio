@@ -180,6 +180,9 @@ export {
   type SetFieldValuePayload,
   type SetPropertyCommand,
   type SetPropertyPayload,
+  type SetSizeRoleCommand,
+  type SetSizeRolePayload,
+  type SizeRoleAxis,
   type StableId,
   type StaticValueBindingSource,
   type StudioArtifact,
@@ -209,4 +212,6 @@ export {
   type UnresolvedContributionReference,
   type UnsetPropertyCommand,
   type UnsetPropertyPayload,
+  type UnsetSizeRoleCommand,
+  type UnsetSizeRolePayload,
 } from './types.js';

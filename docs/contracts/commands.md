@@ -9,7 +9,7 @@ A command contains an ID, command type, artifact ID, base revision or local stat
 ## Current canonical subset
 
 The `0.1-draft` canonical schema supplies payload contracts and portable reducer expectations for
-fourteen commands:
+sixteen commands:
 
 - `studio.command/insert-node` (rejects with `duplicate-node` when any identifier of the inserted
   subtree — root or descendant — is already present in the document);
@@ -24,6 +24,11 @@ fourteen commands:
 - `studio.command/reset-inherited-property` (removes every responsive viewport override for one
   property on one node so each viewport inherits the base value again; the base value is
   untouched; never nested inside a batch because its inverse is itself a batch);
+- `studio.command/set-size-role` (assigns the named size role for one layout axis — `inline` or
+  `block` — as the base assignment or one responsive viewport override; batchable);
+- `studio.command/unset-size-role` (removes the base size-role assignment or one viewport
+  override for one axis; fails with `property-not-found` when the addressed assignment is
+  absent; batchable);
 - `studio.command/set-binding` and `studio.command/remove-binding`;
 - `studio.command/apply-pattern` (deterministic multi-root fragment application with ID remapping
   and per-root pattern provenance stamping; never nested inside a batch because its inverse is
@@ -46,6 +51,19 @@ responsive overrides for the property. Its inverse restores the removed override
 batch of viewport-scoped `set-property` operations in ascending sorted viewport-name order,
 collapsing to a single `set-property` command when exactly one override existed — the same
 single-operation collapse `apply-pattern` uses.
+
+Named size roles are first-class layout semantics, distinct from per-viewport property values.
+A node stores at most one role per layout axis under the reserved `sizeRoles` member, plus
+responsive overrides under `responsiveSizeRoles`, mirroring exactly how responsive property
+overrides cascade from a base value; both records obey canonical minimal form and are never
+stored empty. The command layer validates a role only as a bounded lower-case identifier —
+whether it names a declared choice of the active theme's `size-role` design controls is a
+diagnostics-level concern, so reducers stay registry-independent and themes can remap role
+meanings without migrating documents. Inverses mirror the set/unset-property precedent: a set
+inverts to a set of the previous role or to an unset when none existed, and an unset inverts to
+a set of the removed role. Unsetting an absent assignment fails with the existing
+`property-not-found` code because size roles address named per-node values exactly as
+properties do, keeping the closed failure taxonomy unchanged.
 
 Recipe and semantic design-value selection is deliberately resolved without a dedicated command:
 a selection expands into one atomic batch of `set-property` operations — every design value of the
@@ -80,9 +98,16 @@ The Gate A contract is required to add or deliberately resolve the following voc
   already delivered, and explicit inheritance reset is delivered as the top-level-only command
   `studio.command/reset-inherited-property` whose inverse is a sorted batch of viewport-scoped
   `set-property` operations ([ADR 0009](../decisions/0009-restore-and-inheritance-reset.md));
-- resize responsive-role overrides beyond per-viewport property overrides (still open).
+- resize responsive-role overrides beyond per-viewport property overrides — deliberately
+  resolved: named size roles are first-class data through the batchable commands
+  `studio.command/set-size-role` and `studio.command/unset-size-role`, stored per layout axis
+  under the reserved `sizeRoles` member with responsive overrides under `responsiveSizeRoles`
+  ([ADR 0010](../decisions/0010-responsive-role-resize.md)).
 
-The remaining target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
+No target item remains open — the list above is fully resolved and the Gate A command
+vocabulary is complete. Every command of the canonical subset carries a payload schema, reducer
+semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules;
+future vocabulary additions follow the additive protocol-change rules rather than this list.
 
 Plugins may add namespaced commands with schema, authorization operation, deterministic reducer, inverse/compensation behavior, and migration rules.
 

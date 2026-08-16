@@ -14,7 +14,9 @@ import {
   type NodeId,
   type ReorderChildrenPayload,
   type SetPropertyPayload,
+  type SetSizeRolePayload,
   type UnsetPropertyPayload,
+  type UnsetSizeRolePayload,
 } from '@kumwe/studio-protocol';
 import {
   applyCommand,
@@ -39,6 +41,8 @@ const BLOCK_TYPES = ['studio.fuzz/media', 'studio.fuzz/section', 'studio.fuzz/te
 const PROPERTY_NAMES = ['align', 'label', 'spacing', 'text', 'tone'] as const;
 const VIEWPORTS = ['desktop', 'mobile', 'tablet'] as const;
 const SLOT_NAMES = ['aside', 'items', 'main'] as const;
+const SIZE_ROLE_AXES = ['block', 'inline'] as const;
+const SIZE_ROLE_NAMES = ['full', 'half', 'third', 'two-thirds'] as const;
 const PORT_NAMES = ['media', 'source', 'text'] as const;
 const MEMBER_NAMES = ['alpha', 'beta', 'delta', 'gamma'] as const;
 const STRING_VALUES = [
@@ -183,6 +187,18 @@ function makeNode(rng: Rng, allocate: () => NodeId, depth: number): BlueprintNod
       responsive[pick(rng, PROPERTY_NAMES)] = overrides;
     }
     node.responsive = responsive;
+  }
+  if (rng() < 0.25) {
+    const sizeRoles: Record<string, string> = {};
+    sizeRoles[pick(rng, SIZE_ROLE_AXES)] = pick(rng, SIZE_ROLE_NAMES);
+    node.sizeRoles = sizeRoles;
+  }
+  if (rng() < 0.2) {
+    const overrides: Record<string, string> = {};
+    for (let inner = 1 + integer(rng, 2); inner > 0; inner -= 1) {
+      overrides[pick(rng, VIEWPORTS)] = pick(rng, SIZE_ROLE_NAMES);
+    }
+    node.responsiveSizeRoles = { [pick(rng, SIZE_ROLE_AXES)]: overrides };
   }
   if (depth < 2) {
     for (const slot of SLOT_NAMES) {
@@ -341,6 +357,26 @@ function listUnsetCandidates(document: BlueprintDocument): UnsetCandidate[] {
   return candidates;
 }
 
+function listSizeRoleUnsetCandidates(document: BlueprintDocument): UnsetSizeRolePayload[] {
+  const candidates: UnsetSizeRolePayload[] = [];
+  for (const entry of listNodes(document)) {
+    for (const axis of SIZE_ROLE_AXES) {
+      if (entry.node.sizeRoles !== undefined && Object.hasOwn(entry.node.sizeRoles, axis)) {
+        candidates.push({ axis, nodeId: entry.node.id });
+      }
+      const overrides =
+        entry.node.responsiveSizeRoles !== undefined &&
+        Object.hasOwn(entry.node.responsiveSizeRoles, axis)
+          ? entry.node.responsiveSizeRoles[axis]
+          : undefined;
+      for (const viewport of Object.keys(overrides ?? {})) {
+        candidates.push({ axis, nodeId: entry.node.id, viewport });
+      }
+    }
+  }
+  return candidates;
+}
+
 function listBindingCandidates(document: BlueprintDocument): { nodeId: NodeId; port: string }[] {
   const candidates: { nodeId: NodeId; port: string }[] = [];
   for (const entry of listNodes(document)) {
@@ -461,6 +497,17 @@ function generateOperation(
         },
         type: 'studio.command/set-binding',
       }),
+      () => {
+        const payload: SetSizeRolePayload = {
+          axis: pick(rng, SIZE_ROLE_AXES),
+          nodeId: pick(rng, entries).node.id,
+          role: pick(rng, SIZE_ROLE_NAMES),
+        };
+        if (rng() < 0.35) {
+          payload.viewport = pick(rng, VIEWPORTS);
+        }
+        return { payload, type: 'studio.command/set-size-role' };
+      },
     );
   }
   const reorderable = listCollections(document).filter((target) => target.collection.length >= 2);
@@ -483,6 +530,13 @@ function generateOperation(
     factories.push(() => ({
       payload: structuredClone(pick(rng, unsettable).payload),
       type: 'studio.command/unset-property',
+    }));
+  }
+  const unsettableSizeRoles = listSizeRoleUnsetCandidates(document);
+  if (unsettableSizeRoles.length > 0) {
+    factories.push(() => ({
+      payload: structuredClone(pick(rng, unsettableSizeRoles)),
+      type: 'studio.command/unset-size-role',
     }));
   }
   const removableBindings = listBindingCandidates(document);
@@ -869,6 +923,18 @@ function generateBrokenCommand(
       }),
       () => ({
         command: buildCommand(commandId, {
+          payload: {
+            axis: pick(rng, SIZE_ROLE_AXES),
+            nodeId: pick(rng, entries).node.id,
+            viewport: 'ghost-viewport',
+          },
+          type: 'studio.command/unset-size-role',
+        }),
+        description: 'broken unset-missing-size-role-override',
+        expectedCodes: ['property-not-found'],
+      }),
+      () => ({
+        command: buildCommand(commandId, {
           payload: { nodeId: pick(rng, entries).node.id, property: 'ghost-property' },
           type: 'studio.command/reset-inherited-property',
         }),
@@ -940,6 +1006,21 @@ function collectMinimalFormViolations(document: BlueprintDocument): string[] {
         const overrides = node.responsive[property];
         if (overrides === undefined || Object.keys(overrides).length === 0) {
           violations.push(`${path}.responsive.${property} is an empty record`);
+        }
+      }
+    }
+    if (node.sizeRoles !== undefined && Object.keys(node.sizeRoles).length === 0) {
+      violations.push(`${path}.sizeRoles is an empty record`);
+    }
+    if (node.responsiveSizeRoles !== undefined) {
+      const axes = Object.keys(node.responsiveSizeRoles);
+      if (axes.length === 0) {
+        violations.push(`${path}.responsiveSizeRoles is an empty record`);
+      }
+      for (const axis of axes) {
+        const overrides = node.responsiveSizeRoles[axis];
+        if (overrides === undefined || Object.keys(overrides).length === 0) {
+          violations.push(`${path}.responsiveSizeRoles.${axis} is an empty record`);
         }
       }
     }
