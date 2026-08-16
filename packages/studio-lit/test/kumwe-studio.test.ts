@@ -333,12 +333,25 @@ describe('kumwe-studio element', () => {
   it('announces command failures with their message', async () => {
     const element = await mountShell({ roots: structuredRoots() });
 
+    const duplicate = insertTextCommand(element, 'text-1');
+    expect(() => element.execute(duplicate)).toThrow();
+    await element.updateComplete;
+
+    expect(liveRegionText(element)).toContain('Command failed:');
+    expect(liveRegionText(element)).toContain('text-1');
+    element.remove();
+  });
+
+  it('announces stale-generation rejections through the conflict message', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
     const stale = { ...insertTextCommand(element), sessionGeneration: 'session-r999' };
     expect(() => element.execute(stale)).toThrow();
     await element.updateComplete;
 
-    expect(liveRegionText(element)).toContain('Command failed:');
+    expect(liveRegionText(element)).toContain('The change was rejected:');
     expect(liveRegionText(element)).toContain('session-r999');
+    expect(liveRegionText(element)).toContain('refresh the session or undo');
     element.remove();
   });
 

@@ -31,6 +31,8 @@ evidence.
 | SR-020 | Authoring surfaces reflow at 400% zoom without loss of function                                     | accessibility.md     | open                                               |
 | SR-021 | The command palette exposes every structural operation of the current selection, keyboard-navigable | keyboard.md          | packages/studio-lit/test/command-surfaces.test.ts  |
 | SR-022 | A cancelled canvas drag leaves the document unchanged                                               | interaction-model.md | packages/studio-lit/test/command-surfaces.test.ts  |
+| SR-023 | Property, binding, and responsive-override editing is keyboard-complete through the inspector       | keyboard.md          | packages/studio-lit/test/inspector.test.ts         |
+| SR-024 | Conflict and failure announcements preserve focus and speak through the polite live region          | accessibility.md     | packages/studio-lit/test/inspector.test.ts         |
 
 ## Manual procedures
 
