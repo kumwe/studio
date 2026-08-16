@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
+  protocolSchemas,
   STUDIO_CONTRACT_VERSION,
   type BlockDefinition,
   type BlueprintDocument,
@@ -162,7 +164,13 @@ describe('ContributionRuntime', () => {
     runtime.disable(ownerA.id, { generation: 'gen-2' });
     expect(runtime.current.resolveBlock('org.example/hero', '1.0.0')).toBeUndefined();
     expect(runtime.unresolvedNodes(document)).toEqual([
-      { nodeId: 'node-a', type: 'org.example/hero', version: '1.0.0' },
+      {
+        nodeId: 'node-a',
+        owner: ownerA,
+        reason: 'owner-disabled',
+        type: 'org.example/hero',
+        version: '1.0.0',
+      },
     ]);
     const result = validateBlueprint(document, runtime.current.registry);
     expect(result.valid).toBe(false);
@@ -225,5 +233,71 @@ describe('ContributionRuntime', () => {
       StudioContributionError,
     );
     expect(() => runtime.assertCurrent('gen-9')).toThrow(StudioCommandError);
+  });
+});
+
+describe('unresolved contribution reporting', () => {
+  it('distinguishes disabled, revoked, incompatible, and uninstalled reasons', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    runtime.activate(
+      ownerA,
+      { blocks: [block('org.example/hero', ownerA)] },
+      { generation: 'gen-1' },
+    );
+
+    runtime.disable(ownerA.id, { generation: 'gen-2' });
+    expect(runtime.unresolvedNodes(documentUsing('org.example/hero'))[0]?.reason).toBe(
+      'owner-disabled',
+    );
+
+    runtime.revokeTrust(ownerA.id, { generation: 'gen-3' });
+    expect(runtime.unresolvedNodes(documentUsing('org.example/hero'))[0]?.reason).toBe(
+      'owner-revoked',
+    );
+
+    const incompatible = documentUsing('org.example/hero');
+    for (const root of incompatible.roots) {
+      root.version = '9.9.9';
+    }
+    expect(runtime.unresolvedNodes(incompatible)[0]?.reason).toBe('incompatible');
+
+    expect(runtime.unresolvedNodes(documentUsing('org.example/unknown'))[0]?.reason).toBe(
+      'not-installed',
+    );
+  });
+
+  it('aggregates schema-valid unresolved-contribution documents per block version', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    runtime.activate(
+      ownerA,
+      { blocks: [block('org.example/hero', ownerA)] },
+      { generation: 'gen-1' },
+    );
+    runtime.disable(ownerA.id, { generation: 'gen-2' });
+
+    const document = documentUsing('org.example/hero');
+    const [firstRoot] = document.roots;
+    if (firstRoot === undefined) {
+      throw new Error('fixture requires a root');
+    }
+    document.roots.push({ ...firstRoot, id: 'node-b' });
+    const contributions = runtime.unresolvedContributions(document);
+    expect(contributions).toHaveLength(1);
+    expect(contributions[0]).toMatchObject({
+      affectedNodes: ['node-a', 'node-b'],
+      kind: 'unresolved-contribution',
+      owner: ownerA,
+      reason: 'owner-disabled',
+      reference: { contribution: 'block', id: 'org.example/hero', version: '1.0.0' },
+    });
+
+    const ajv = new Ajv2020({ allErrors: true, strict: true });
+    for (const schema of protocolSchemas) {
+      ajv.addSchema(schema);
+    }
+    const validate = ajv.getSchema(
+      'https://schemas.kumwe.org/studio/v1/unresolved-contribution.schema.json',
+    );
+    expect(validate?.(contributions[0]), ajv.errorsText(validate?.errors)).toBe(true);
   });
 });

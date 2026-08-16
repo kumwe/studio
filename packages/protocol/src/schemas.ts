@@ -13,10 +13,12 @@ import mediaUploadSessionSchemaDocument from '../schemas/media-upload-session.sc
 import patternSchemaDocument from '../schemas/pattern.schema.json' with { type: 'json' };
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
 import previewMessageSchemaDocument from '../schemas/preview-message.schema.json' with { type: 'json' };
+import provenanceSchemaDocument from '../schemas/provenance.schema.json' with { type: 'json' };
 import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
 import schemaProfileSchemaDocument from '../schemas/schema-profile.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
 import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'json' };
+import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribution.schema.json' with { type: 'json' };
 import type { JsonSchema } from './types.js';
 
 export const blockDefinitionSchema: JsonSchema = blockDefinitionSchemaDocument;
@@ -34,10 +36,12 @@ export const mediaUploadSessionSchema: JsonSchema = mediaUploadSessionSchemaDocu
 export const patternSchema: JsonSchema = patternSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
 export const previewMessageSchema: JsonSchema = previewMessageSchemaDocument;
+export const provenanceSchema: JsonSchema = provenanceSchemaDocument;
 export const richTextSchema: JsonSchema = richTextSchemaDocument;
 export const schemaProfileSchema: JsonSchema = schemaProfileSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
 export const themeSchema: JsonSchema = themeSchemaDocument;
+export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSchemaDocument;
 
 export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   commonSchema,
@@ -55,8 +59,10 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   patternSchema,
   pluginManifestSchema,
   previewMessageSchema,
+  provenanceSchema,
   richTextSchema,
   schemaProfileSchema,
   studioConfigurationSchema,
   themeSchema,
+  unresolvedContributionSchema,
 ]);

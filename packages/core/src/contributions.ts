@@ -1,3 +1,4 @@
+import { STUDIO_CONTRACT_VERSION } from '@kumwe/studio-protocol';
 import type {
   BlockDefinition,
   BlockType,
@@ -8,6 +9,8 @@ import type {
   OwnerReference,
   Revision,
   StudioDiagnostic,
+  UnresolvedContribution,
+  UnresolvedContributionReason,
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
 import { StudioCommandError } from './commands.js';
@@ -29,6 +32,8 @@ export interface GenerationOptions {
 
 export interface UnresolvedNodeReport {
   nodeId: NodeId;
+  owner?: OwnerReference;
+  reason: UnresolvedContributionReason;
   type: BlockType;
   version: string;
 }
@@ -182,7 +187,9 @@ export class ContributionRuntime {
   public revokeTrust(ownerId: string, options: Readonly<GenerationOptions>): RegistryGeneration {
     const record = this.#requireExtension(ownerId);
     record.state = 'trust-revoked';
-    record.contributions = { blocks: [] };
+    // Contribution DATA is retained for the diagnostics inventory the
+    // lifecycle contract requires; only resolution excludes it, because a
+    // published generation includes active extensions exclusively.
     this.#current = this.#publish(options.generation);
     return this.#current;
   }
@@ -216,13 +223,84 @@ export class ContributionRuntime {
         break;
       }
       if (this.#current.resolveBlock(node.type, node.version) === undefined) {
-        unresolved.push({ nodeId: node.id, type: node.type, version: node.version });
+        const { owner, reason } = this.#unresolvedReason(node.type, node.version);
+        const report: UnresolvedNodeReport = {
+          nodeId: node.id,
+          reason,
+          type: node.type,
+          version: node.version,
+        };
+        if (owner !== undefined) {
+          report.owner = cloneContractValue(owner);
+        }
+        unresolved.push(report);
       }
       for (const children of Object.values(node.slots)) {
         stack.push(...[...children].reverse());
       }
     }
     return unresolved;
+  }
+
+  /**
+   * The portable unresolved-contribution documents for a Blueprint: one per
+   * unresolved block type and version, carrying the affected nodes and a
+   * localizable diagnostic, without interpreting node data through another
+   * owner.
+   */
+  public unresolvedContributions(document: BlueprintDocument): UnresolvedContribution[] {
+    const grouped = new Map<string, UnresolvedContribution>();
+    for (const report of this.unresolvedNodes(document)) {
+      const key = `${report.type}@${report.version}`;
+      let entry = grouped.get(key);
+      if (entry === undefined) {
+        entry = {
+          affectedNodes: [],
+          contractVersion: STUDIO_CONTRACT_VERSION,
+          diagnostics: [
+            {
+              code: 'studio.validation/block-unavailable',
+              message: {
+                defaultMessage: `The ${report.type} block is currently unavailable; its content is preserved.`,
+                key: 'studio.validation/block-unavailable',
+              },
+              severity: 'warning',
+            },
+          ],
+          kind: 'unresolved-contribution',
+          reason: report.reason,
+          reference: { contribution: 'block', id: report.type, version: report.version },
+        };
+        if (report.owner !== undefined) {
+          entry.owner = report.owner;
+        }
+        grouped.set(key, entry);
+      }
+      entry.affectedNodes?.push(report.nodeId);
+    }
+    return [...grouped.values()];
+  }
+
+  #unresolvedReason(
+    type: BlockType,
+    version: string,
+  ): { owner?: OwnerReference; reason: UnresolvedContributionReason } {
+    for (const record of this.#extensions.values()) {
+      const versions = record.contributions.blocks
+        .filter((block) => block.type === type)
+        .map((block) => block.version);
+      if (versions.length === 0) {
+        continue;
+      }
+      if (!versions.includes(version)) {
+        return { owner: record.owner, reason: 'incompatible' };
+      }
+      if (record.state === 'trust-revoked') {
+        return { owner: record.owner, reason: 'owner-revoked' };
+      }
+      return { owner: record.owner, reason: 'owner-disabled' };
+    }
+    return { reason: 'not-installed' };
   }
 
   #collectActivationDiagnostics(

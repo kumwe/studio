@@ -16,10 +16,12 @@ export {
   pluginManifestSchema,
   previewMessageSchema,
   protocolSchemas,
+  provenanceSchema,
   richTextSchema,
   schemaProfileSchema,
   studioConfigurationSchema,
   themeSchema,
+  unresolvedContributionSchema,
 } from './schemas.js';
 export {
   STUDIO_CONTRACT_VERSION,
@@ -138,6 +140,10 @@ export {
   type PreviewSelectPayload,
   type PreviewTeardownMessage,
   type PreviewTeardownPayload,
+  type ProvenanceActor,
+  type ProvenanceEntry,
+  type ProvenanceOrigin,
+  type ProvenanceRecord,
   type QualifiedName,
   type QueryReferenceBindingSource,
   type RecoveryPort,
@@ -188,6 +194,9 @@ export {
   type ThemeRecipe,
   type ThemeRendererDeclaration,
   type ThemeViewport,
+  type UnresolvedContribution,
+  type UnresolvedContributionReason,
+  type UnresolvedContributionReference,
   type UnsetPropertyCommand,
   type UnsetPropertyPayload,
 } from './types.js';

@@ -79,6 +79,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/preview-message.schema.json"
     },
     {
+      "digest": "sha256-QURE0s0zSfvGXEvy3meE4rQeofecsUVZksqQKfKv4ys=",
+      "file": "provenance.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/provenance.schema.json"
+    },
+    {
       "digest": "sha256-PgFfnylfsJzq7B0wQq1gAxYA0r6gMx+xiKeT3NiDVqc=",
       "file": "rich-text.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/rich-text.schema.json"
@@ -97,6 +102,11 @@
       "digest": "sha256-xzhCb8J2nx+K6kBMciFj1glB4Q6jT8+KUdbUBsNM4h8=",
       "file": "theme.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/theme.schema.json"
+    },
+    {
+      "digest": "sha256-+0z2ALVZk0I2TVSqtdd150pmB36AIYYi6HsWpNPSATg=",
+      "file": "unresolved-contribution.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/unresolved-contribution.schema.json"
     }
   ]
 }

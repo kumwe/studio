@@ -110,9 +110,11 @@ const schemaByExample = new Map([
   ['pattern.example.json', 'pattern.schema.json'],
   ['plugin.example.json', 'plugin-manifest.schema.json'],
   ['preview.render.example.json', 'preview-message.schema.json'],
+  ['provenance.example.json', 'provenance.schema.json'],
   ['rich-text.example.json', 'rich-text.schema.json'],
   ['studio-config.example.json', 'studio-config.schema.json'],
   ['theme.example.json', 'theme.schema.json'],
+  ['unresolved-contribution.example.json', 'unresolved-contribution.schema.json'],
 ]);
 
 for (const exampleFile of exampleFiles) {

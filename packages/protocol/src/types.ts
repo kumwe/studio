@@ -913,6 +913,53 @@ export type SetFieldValueCommand = CommandBase<
   SetFieldValuePayload
 >;
 
+export type ProvenanceOrigin =
+  'authoring' | 'import' | 'migration' | 'pattern' | 'plugin' | 'system';
+
+export interface ProvenanceActor {
+  displayName?: string;
+  id: StableId;
+}
+
+export interface ProvenanceEntry {
+  actor: ProvenanceActor;
+  commandCount?: number;
+  fromRevision?: Revision;
+  migrationId?: QualifiedName;
+  origin: ProvenanceOrigin;
+  recordedAt: string;
+  sessionId?: StableId;
+  source?: ArtifactReference;
+  toRevision: Revision;
+}
+
+export interface ProvenanceRecord {
+  artifact: { id: StableId; revision: Revision };
+  chain: ProvenanceEntry[];
+  contractVersion: StudioContractVersion;
+  extensions?: Record<QualifiedName, JsonValue>;
+  kind: 'provenance';
+}
+
+export type UnresolvedContributionReason =
+  'incompatible' | 'not-installed' | 'owner-disabled' | 'owner-revoked';
+
+export interface UnresolvedContributionReference {
+  contribution: Exclude<PluginContributionKind, 'test-fixture'>;
+  id: QualifiedName;
+  version: SemanticVersion;
+}
+
+export interface UnresolvedContribution {
+  affectedNodes?: StableId[];
+  contractVersion: StudioContractVersion;
+  diagnostics?: StudioDiagnostic[];
+  kind: 'unresolved-contribution';
+  owner?: OwnerReference;
+  reason: UnresolvedContributionReason;
+  reference: UnresolvedContributionReference;
+}
+
 export interface PatternDocument {
   blockDependencies: BlueprintBlockLock[];
   contractVersion: StudioContractVersion;
