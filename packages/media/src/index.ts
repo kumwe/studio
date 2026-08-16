@@ -17,4 +17,10 @@ export {
   type MediaUploadListener,
   type MediaUploadTransport,
 } from './upload-controller.js';
+export {
+  evaluateUploadPolicy,
+  planFromPolicy,
+  type MediaUploadPolicy,
+  type MediaUploadPolicyDecision,
+} from './upload-policy.js';
 export { validateMediaReference } from './validate-media-reference.js';

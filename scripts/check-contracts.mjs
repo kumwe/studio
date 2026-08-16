@@ -9,6 +9,8 @@ const rootExampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const packageFixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
 const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
+const rootMediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
+const packageMediaVectorDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
 const rootInvalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const packageInvalidDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
 const rootConformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
@@ -46,6 +48,16 @@ const packageVectorFiles = (await readdir(packageVectorDirectory))
 
 assertSameNames('testkit command-vector copies', vectorFiles, packageVectorFiles);
 await assertCopies(rootVectorDirectory, packageVectorDirectory, vectorFiles);
+
+const mediaVectorFiles = (await readdir(rootMediaVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageMediaVectorFiles = (await readdir(packageMediaVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames('testkit media-vector copies', mediaVectorFiles, packageMediaVectorFiles);
+await assertCopies(rootMediaVectorDirectory, packageMediaVectorDirectory, mediaVectorFiles);
 
 const invalidFiles = (await readdir(rootInvalidDirectory))
   .filter((name) => name.endsWith('.json'))
@@ -171,6 +183,69 @@ for (const vectorFile of vectorFiles) {
   }
   if (vector.inverse !== undefined && vector.expect.document === undefined) {
     throw new Error(`${vectorFile} declares an inverse for a failing command.`);
+  }
+}
+
+const validateMediaVector = getCanonicalValidator('media-vector.schema.json');
+if (mediaVectorFiles.length === 0) {
+  throw new Error('The canonical media policy vector corpus is empty.');
+}
+const mediaUploadSessionSchema = schemas.find(
+  (candidate) => basename(new URL(candidate.$id).pathname) === 'media-upload-session.schema.json',
+);
+if (mediaUploadSessionSchema === undefined) {
+  throw new Error('The media-upload-session schema is unavailable.');
+}
+const validateCanonicalUploadRequest = ajv.compile({
+  $ref: `${mediaUploadSessionSchema.$id}#/properties/request`,
+});
+const mediaVectorIdentifiers = new Set();
+for (const mediaVectorFile of mediaVectorFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(mediaVectorFile, rootMediaVectorDirectory), 'utf8'),
+  );
+  if (!validateMediaVector(vector)) {
+    throw new Error(
+      `${mediaVectorFile} violates media-vector.schema.json: ${ajv.errorsText(validateMediaVector.errors)}`,
+    );
+  }
+  if (mediaVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Media vector identifier ${vector.id} is duplicated.`);
+  }
+  mediaVectorIdentifiers.add(vector.id);
+  if (vector.expect.outcome === 'accepted') {
+    if (!validateCanonicalUploadRequest(vector.request)) {
+      throw new Error(
+        `${mediaVectorFile} accepts a request the canonical upload request shape refuses: ` +
+          ajv.errorsText(validateCanonicalUploadRequest.errors),
+      );
+    }
+    const plan = vector.expect.plan;
+    if (
+      plan.maximumBytes !== vector.policy.maximumBytes ||
+      plan.resumable !== vector.policy.resumable ||
+      plan.chunkBytes !== vector.policy.chunkBytes
+    ) {
+      throw new Error(`${mediaVectorFile} expects a plan that is not derived from its policy.`);
+    }
+    if (vector.request.byteSize > vector.policy.maximumBytes) {
+      throw new Error(`${mediaVectorFile} accepts a request larger than the policy maximum.`);
+    }
+    if (!vector.policy.acceptedMediaTypes.includes(vector.request.mediaType)) {
+      throw new Error(`${mediaVectorFile} accepts a media type the policy does not accept.`);
+    }
+  }
+  if (vector.cancel !== undefined) {
+    if (vector.expect.outcome !== 'accepted') {
+      throw new Error(`${mediaVectorFile} cancels an upload the policy never accepts.`);
+    }
+    const expectedFinalState = vector.cancel.during === 'complete' ? 'complete' : 'cancelled';
+    if (vector.cancel.finalState !== expectedFinalState) {
+      throw new Error(`${mediaVectorFile} declares an impossible cancellation outcome.`);
+    }
+  }
+  if (vector.retry !== undefined && vector.expect.outcome !== 'rejected') {
+    throw new Error(`${mediaVectorFile} declares a retry for an upload that never fails.`);
   }
 }
 
@@ -491,7 +566,8 @@ assertRejected('empty published content model', validateContentModel, {
 
 console.log(
   `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
-    `${vectorFiles.length} command vectors, ${invalidFiles.length} negative fixtures, and ` +
+    `${vectorFiles.length} command vectors, ${mediaVectorFiles.length} media policy vectors, ` +
+    `${invalidFiles.length} negative fixtures, and ` +
     `${conformanceFiles.length} renderer-conformance fixtures verified.`,
 );
 
