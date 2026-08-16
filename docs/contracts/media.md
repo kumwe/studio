@@ -43,6 +43,10 @@ The media port supports negotiated subsets of:
 
 Failed or abandoned upload sessions do not create an accepted asset identity. A rejected or quarantined accepted asset remains stably identifiable for diagnostics and authorized replacement, but is not thereby usable or publishable.
 
+## Canonical policy vectors
+
+Upload policy behaviour carries canonical vectors in [`schemas/vectors/media/`](../../schemas/vectors/media/), published verbatim through `@kumwe/studio-testkit` under `vectors/media/`. A vector fixes one host-declared upload policy, one upload request, and either the deterministic policy-derived upload plan or a stable failure code from the closed media failure vocabulary; vectors additionally fix cancellation legality per session state and retry-under-a-fresh-session legality. Rejection vectors may pin raw request values — byte counts, declared media types, filenames — that the user-facing failure message MUST NOT echo; oversize byte counts travel only as machine-readable diagnostic parameters. The TypeScript reference replays the whole corpus (`packages/media/test/media-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same outcomes.
+
 ## Author assistance
 
 For informative images, Studio requires an accessible text alternative or a binding to a field that will provide one. Decorative media requires an explicit decorative choice. Automated suggestions are labeled suggestions and require human confirmation where content meaning is involved.
@@ -54,6 +58,12 @@ Studio exposes focal point, crop previews, intrinsic dimensions, rendition warni
 Media search results, thumbnails, metadata and counts are authorization-filtered by the host. Upload filenames are display metadata, not storage paths. SVG, HTML, PDF, video and other active formats follow host sanitization and content-disposition policy. EXIF/location and other sensitive metadata handling is explicit.
 
 Remote URL import is disabled by default and, when enabled, is performed by a hardened host fetcher with SSRF, redirect, DNS rebinding, size, timeout and content checks. Studio never fetches arbitrary author URLs with privileged browser or host credentials.
+
+## External sources
+
+When host policy enables remote URL import or embed resolution, every author-supplied external source URL MUST pass the canonical external-URL policy exported by `@kumwe/studio-core` (`validateExternalUrl` with `STUDIO_DEFAULT_URL_POLICY`) before the host fetches anything. The default policy admits only `https:` URLs of bounded length and rejects, with a stable reason, malformed candidates, embedded credentials, disallowed schemes, and hosts naming loopback, private, link-local, carrier-grade NAT, unspecified, or broadcast addresses in any numeric encoding the URL parser accepts — including IPv6 special ranges and IPv4-mapped forms — as well as `localhost`, `.localhost`, `.local`, `.internal`, and `.home.arpa` names. Ordinary public hosts, punycode/IDN hosts included, are accepted lexically.
+
+The policy is deliberately lexical and performs no DNS resolution. DNS-rebinding defence, refusing to follow redirects across a policy boundary, re-validating every redirect target against the same policy, response content-type and size verification, and timeout enforcement are host runtime obligations of the hardened fetcher and are not claimed by the policy.
 
 ## Repository boundary
 

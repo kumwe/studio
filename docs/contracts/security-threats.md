@@ -16,7 +16,7 @@ breaking change to recorded evidence.
 | TH-005 | Resource exhaustion                       | packages/core/test/core.test.ts                          |
 | TH-006 | Malicious plugin                          | packages/core/test/contributions.test.ts                 |
 | TH-007 | Preview channel spoofing                  | packages/preview/test/preview-host.test.ts               |
-| TH-008 | SSRF through media or embeds              | open                                                     |
+| TH-008 | SSRF through media or embeds              | packages/core/test/url-policy.test.ts                    |
 | TH-009 | Confused deputy                           | packages/testkit/test/host-testbed.test.ts               |
 | TH-010 | Stale-write corruption                    | packages/testkit/test/session-lifecycle.test.ts          |
 | TH-011 | Supply-chain substitution                 | scripts/check-contracts.mjs                              |
@@ -36,8 +36,11 @@ breaking change to recorded evidence.
   bounds, and the schema-profile complexity limits.
 - TH-007 is additionally covered by the preview client suite (replayed sequences, wrong origin,
   wrong channel) and the reload/teardown semantics.
-- TH-008 requires host-side hardened-fetcher exercises; artifact schemas already store no URLs
-  outside schema-defined safe fields.
+- TH-008 is enforced by the canonical lexical external-URL policy in
+  `packages/core/src/url-policy.ts` and additionally covered by the testbed external-import
+  drill in `packages/testkit/test/media-import-policy.test.ts`; DNS-rebinding defence and
+  redirect hardening remain host runtime obligations and are deliberately not claimed.
+  Artifact schemas already store no URLs outside schema-defined safe fields.
 - TH-011 is additionally covered by the lockfile, the schema digest manifest, the secret-scan
   lane, npm provenance publishing, and the SBOM lane in CI.
 - TH-013 is a Gate B qualification lane (`M6-02`) and is deliberately not claimed.
