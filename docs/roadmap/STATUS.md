@@ -51,25 +51,25 @@ Repository-verified increments per work package, with the scope that still block
 the programme vocabulary; `evidence-review` here means the implementation is complete against its
 acceptance list and awaits an evidence bundle plus an independent reviewer.
 
-| Package | State           | Delivered (see changelog)                                             | Still blocking acceptance                                             |
-| ------- | --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix       | Reviewer reproduction; CI artifact retention                          |
-| `M1-05` | active          | Secret scan, audit, SBOM, release train with provenance publishing    | Changeset enforcement                                                 |
-| `M1-06` | active          | Keyboard reference and machine-checked requirement registry           | Automated accessibility lane; open items SR-017, SR-019, SR-020       |
-| `M2-01` | active          | Negative corpus, scalar profiles, pattern schema, profile meta-schema | Provenance and unresolved-contribution schemas                        |
-| `M2-02` | active          | Eleven-command canonical subset, 32 vectors, inverse commands         | Recipe and model-draft commands; restore command decision             |
-| `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime  | Extension SDK surface; lifecycle fixtures beyond blocks               |
-| `M2-04` | active          | Error taxonomy, typed ports, negotiation algorithm, ready handshake   | Session lifecycle vectors; recovery-envelope contract fixtures        |
-| `M2-05` | active          | Rich-text grammar, upload-session lifecycle, crop semantic rule       | Renderer conformance fixtures; media policy vectors                   |
-| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles      | Dart model generation and round-trip (`M3-06` not started)            |
-| `M2-07` | active          | Negative corpus, secret lane, injection-rejection assertions          | Threat-mapped corpus per boundary; fuzz lane                          |
-| `M3-01` | active          | Session, selection, migrations runner, canonical serialization        | Broader property/fuzz coverage                                        |
-| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations          | Reviewer reproduction; lifecycle fixtures for non-block contributions |
-| `M3-03` | active          | In-memory host testbed with conflict/permission/disconnect drills     | Real-transport adapter exercises                                      |
-| `M3-04` | active          | Responder, handshake, reload and teardown vocabulary                  | Render-marker geometry mapping                                        |
-| `M4-01` | active          | Outline, viewport switcher, breadcrumb, diagnostics, save state       | Canvas drag enhancement; command palette                              |
-| `M4-05` | active          | Keyboard parity for move/duplicate/delete, live region, focus rules   | Parity for bind/configure/resize; conflict-survival announcements     |
-| `M5-01` | active          | Upload orchestration over the canonical session state machine         | Media browser UI; paste/drop capture; real host adapter exercises     |
+| Package | State           | Delivered (see changelog)                                            | Still blocking acceptance                                             |
+| ------- | --------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix      | Reviewer reproduction; CI artifact retention                          |
+| `M1-05` | active          | Secret scan, audit, SBOM, release train with provenance publishing   | Changeset enforcement                                                 |
+| `M1-06` | active          | Requirement registry with 22 bound obligations (20 enforced)         | Automated accessibility lane; open items SR-019, SR-020               |
+| `M2-01` | evidence-review | Full schema list: patterns, provenance, unresolved, profile meta     | Reviewer reproduction                                                 |
+| `M2-02` | active          | Twelve-command subset, recipe expansion, model-draft field, vectors  | Restore command decision; inheritance-reset semantics                 |
+| `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime | Extension SDK surface; lifecycle fixtures beyond blocks               |
+| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof | Reviewer reproduction                                                 |
+| `M2-05` | active          | Rich-text grammar, upload-session lifecycle, crop semantic rule      | Renderer conformance fixtures; media policy vectors                   |
+| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles     | Dart model generation and round-trip (`M3-06` not started)            |
+| `M2-07` | active          | Threat registry TH-001..TH-014 with 11 enforced bindings             | TH-008 SSRF exercises; TH-013 CSP lane; TH-014 fuzz lane              |
+| `M3-01` | active          | Session, selection, migrations runner, canonical serialization       | Broader property/fuzz coverage                                        |
+| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations         | Reviewer reproduction; lifecycle fixtures for non-block contributions |
+| `M3-03` | active          | In-memory host testbed with conflict/permission/disconnect drills    | Real-transport adapter exercises                                      |
+| `M3-04` | active          | Responder, handshake, reload/teardown, marker-to-node mapping        | Marker geometry and measurement channel                               |
+| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag | Reviewer reproduction                                                 |
+| `M4-05` | active          | Keyboard parity, palette, drag-as-enhancement, live region, focus    | Parity for bind/configure/resize; conflict-survival announcements     |
+| `M5-01` | active          | Upload orchestration over the canonical session state machine        | Media browser UI; paste/drop capture; real host adapter exercises     |
 
 ## Next dependency-ordered actions
 

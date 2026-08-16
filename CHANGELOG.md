@@ -8,6 +8,36 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Commands, provenance, and lifecycle proofs (M2-01, M2-02, M2-04, M2-07, M3-04)
+
+- Recipe and semantic design-value selection is deliberately resolved as one atomic batch of
+  `set-property` operations expanded by `recipeSelectionOperations` — sorted design values plus the
+  reserved `studio.recipe` marker — inheriting batch atomicity and verified inverses. The
+  `add-model-field` command adds declared fields to draft content models, failing closed on
+  published models (`artifact-not-draft`) and duplicate identifiers (`duplicate-field`).
+- Provenance became a portable artifact (host-recorded chains of authoring, migration, pattern,
+  import, plugin, and system transitions), and unresolved contributions gained a canonical
+  document with reason, owner, affected nodes, and diagnostics; the contribution runtime reports
+  those reasons per node and aggregates schema-valid documents.
+- A session-lifecycle integration suite drives the session and host testbed together through
+  load, edit, optimistic save, a lost race with the safe conflict revision, recovery-envelope
+  reconciliation, and permission changes invalidating a whole session generation.
+- The rendered preview payload maps opaque markers to nodes; the strict guard bounds the map and
+  rejects unsafe member names.
+- Fourteen threats carry stable identifiers in a machine-checked enforcement registry
+  (TH-001..TH-014); SSRF hardening, CSP verification, and fuzzing are recorded as open gaps.
+- The changesets action's second renamed input (`publish` → `publish-script`) was fixed, restoring
+  the version workflow on main.
+
+### Authoring experience (M4-01, M4-05)
+
+- The shell gained a command palette (Ctrl/Meta+K, filterable, arrow-navigable, focus-restoring,
+  read-only-aware, with per-block insert entries) and canvas pointer drag as a pure enhancement
+  over the keyboard paths — same `reorder-children` command, textual drop indicator, live-region
+  announcements, and cancelled drags provably changing nothing. Requirements SR-017, SR-021, and
+  SR-022 bind those behaviours to their suite, and the boundary scanner was fixed to stop
+  string literals from tripping its import matcher.
+
 ### Versioning, migrations, and patterns (M3-01, M2-01, M2-02)
 
 - The deterministic migration runner landed with strict SemVer parsing, precedence comparison,
