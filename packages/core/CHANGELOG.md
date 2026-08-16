@@ -1,5 +1,18 @@
 # @kumwe/studio-core
 
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- [#15](https://github.com/kumwe/studio/pull/15) [`4bb7480`](https://github.com/kumwe/studio/commit/4bb74808bd58c31728f9643f0e11a6e0ff250f00) Thanks [@lemuelvdm](https://github.com/lemuelvdm)! - Make runtime schema validation eval-free: Blueprint, block property, and plugin-manifest
+  documents are now checked by a pure interpreting validator for the Studio Schema Profile
+  (`profile-validator.ts`) instead of code-generating compilation, removing ajv from the
+  package's runtime dependencies (it remains a dev-only reference implementation pinned by a
+  seeded agreement suite). With no string-to-code compilation left on the boot path, the
+  reference host's pinned Content-Security-Policy tightens to `default-src 'none'; script-src
+'self'` and now enforces Trusted Types with `lit-html` as the only allowed policy, all
+  verified by the TH-013 e2e lane.
+
 ## 0.1.0-alpha.3
 
 ### Minor Changes
