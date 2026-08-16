@@ -1062,7 +1062,10 @@ export interface PreviewRenderPayload {
 export interface PreviewRenderedPayload {
   diagnostics: StudioDiagnostic[];
   draftDigest: string;
+  /** Opaque render markers in document order. */
   markers: StableId[];
+  /** Optional mapping from an opaque marker to the node it renders. */
+  markerMap?: Record<StableId, NodeId>;
 }
 
 export interface PreviewSelectPayload {
