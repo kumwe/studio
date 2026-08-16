@@ -62,17 +62,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # A package that has never had a stable release is published to the
-      # latest dist-tag regardless of pre mode, so the alpha tag stops
-      # advancing after the first publish and resolves to a stale prerelease.
-      # Re-point it at exactly what this run published.
-      - name: Point the alpha dist-tag at the published prereleases
-        if: steps.release.outputs.published == 'true'
-        run: |
-          printf '%s' "$PUBLISHED" | jq -r '.[] | "\(.name)@\(.version)"' | while read -r package; do
-            echo "Tagging ${package} as alpha"
-            npm dist-tag add "${package}" alpha
-          done
+      # Runs on every push rather than only after a publish, so drift left by
+      # an earlier run is repaired on the next run instead of outliving it.
+      - name: Reconcile the alpha dist-tag
+        run: node scripts/reconcile-alpha-tag.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          PUBLISHED: ${{ steps.release.outputs.publishedPackages }}
