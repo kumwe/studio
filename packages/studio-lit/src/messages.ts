@@ -25,6 +25,8 @@ export type StudioMessageKey =
   | 'studio.shell/announce-name-required'
   | 'studio.shell/announce-override-removed'
   | 'studio.shell/announce-override-set'
+  | 'studio.shell/announce-preview-reloaded'
+  | 'studio.shell/announce-preview-torn-down'
   | 'studio.shell/announce-property-set'
   | 'studio.shell/announce-property-unset'
   | 'studio.shell/announce-redid'
@@ -132,6 +134,12 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   },
   'studio.shell/announce-override-set': {
     defaultMessage: 'Set the {property} override for the {viewport} viewport',
+  },
+  'studio.shell/announce-preview-reloaded': {
+    defaultMessage: 'The preview reloaded ({reason}). The document is unchanged.',
+  },
+  'studio.shell/announce-preview-torn-down': {
+    defaultMessage: 'The preview closed ({reason}). The document is unchanged.',
   },
   'studio.shell/announce-property-set': { defaultMessage: 'Set {property}' },
   'studio.shell/announce-property-unset': { defaultMessage: 'Unset {property}' },

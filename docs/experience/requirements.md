@@ -34,6 +34,7 @@ evidence.
 | SR-023 | Property, binding, and responsive-override editing is keyboard-complete through the inspector       | keyboard.md          | packages/studio-lit/test/inspector.test.ts         |
 | SR-024 | Conflict and failure announcements preserve focus and speak through the polite live region          | accessibility.md     | packages/studio-lit/test/inspector.test.ts         |
 | SR-025 | Authoring chrome passes the automated WCAG 2.1 AA scan                                              | accessibility.md     | e2e/specs/wcag-scan.spec.ts                        |
+| SR-026 | Announcements and focus survive preview renderer reload and teardown                                | accessibility.md     | packages/studio-lit/test/preview-lifecycle.test.ts |
 
 ## Manual procedures
 
