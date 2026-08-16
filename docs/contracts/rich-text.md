@@ -32,6 +32,36 @@ be raised by configuration.
 - **Renderers** map nodes and marks to their output medium and MUST NOT execute or interpolate
   document content as code, templates, or unescaped markup.
 
+## Renderer conformance
+
+Renderer conformance is defined against a canonical, language-neutral projection — never against
+HTML or any other target format. For a document, the canonical renderer projection is the array of
+its leaf block projections in document order: container blocks (`blockquote`, `bulletList`,
+`orderedList`, `listItem`) contribute no entries of their own and are traversed into, while every
+leaf block (`paragraph`, `heading`, `horizontalRule`) projects to
+`{ type, text, spans, embeds }`:
+
+- `text` is the concatenation of the block's text-node contents; non-text inline nodes contribute
+  no characters.
+- Every offset counts Unicode code points, never UTF-16 code units or bytes.
+- `spans` lists the maximal runs of identically marked characters as half-open `[start, end)`
+  ranges with `marks` sorted lexicographically. Zero-length spans are forbidden, adjacent text
+  nodes carrying the same mark set merge into one span, an inline embed does not interrupt a
+  span, and spans are sorted by `(start, end, marks)`.
+- `embeds` lists non-text inline nodes as `{ index, kind }`, where `index` is the code-point
+  offset in `text` at which the embed is anchored. `hardBreak` is the only portable embed kind in
+  this profile; future media and link embeds project the same way.
+
+The executable corpus lives in
+[`schemas/conformance/rich-text/`](../../schemas/conformance/rich-text/): each fixture pairs a
+schema-valid document with its canonical projection and validates against
+[`rich-text-projection.schema.json`](../../schemas/rich-text-projection.schema.json). The corpus
+is mirrored into `@kumwe/studio-testkit` and replayed against the reference implementation
+(`projectRichText` in `@kumwe/studio-rich-text`). A conforming renderer MUST be able to reproduce
+the projection of every fixture exactly, and MUST apply its target format's encoding and escaping
+on output — the projection carries unencoded text only, and target-format markup is never
+canonical.
+
 ## Evolution
 
 Adding a node, mark, or attribute is an additive protocol change gated on renderer capability
