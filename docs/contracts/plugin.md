@@ -32,6 +32,53 @@ Plugins register against a scoped registrar during session compilation. Registra
 
 The registrar exposes only the contribution kinds declared and permitted for that plugin. Most plugins SHOULD be declarative and require no JavaScript initialization.
 
+## Authoring SDK
+
+`@kumwe/studio-core` exports `defineStudioPlugin` as the typed authoring surface for plugin packages. At compile time it is an identity function over the closed manifest and block-definition types, so a misspelled or missing field is an editor error. At runtime it front-loads activation and nothing else. It checks:
+
+- the manifest against the canonical `plugin-manifest.schema.json`;
+- namespace ownership: every contribution ID sits in the plugin's namespace or a dotted sub-namespace of it;
+- duplicate declarations: the same contribution ID may recur only at distinct versions;
+- declaration coverage: every bundled block definition must be declared as a `block` contribution at the same ID and version;
+- capability coverage: every renderer capability a bundled block requires must appear among the declared required or optional capabilities, and a contribution marked `executable` requires the manifest to declare `executable` activation;
+- the contribution runtime's own activation transaction, applied as a dry run — owner match, per-owner duplicate rules, and the Studio Schema Profile check on property schemas are reused from the runtime, not reimplemented.
+
+The SDK is a front-loaded mirror of activation and adds no invariant of its own: everything it rejects would be rejected identically by the extension lifecycle's activation step, and a violation throws the runtime's error shape — `StudioContributionError` carrying blocking diagnostics. A valid definition is deep-frozen and returned unchanged.
+
+```ts
+import { defineStudioPlugin } from '@kumwe/studio-core';
+
+export default defineStudioPlugin({
+  blocks: [priceBlockDefinition],
+  manifest: {
+    activation: 'declarative',
+    contractVersion: '0.1-draft',
+    contributions: [
+      {
+        executable: false,
+        id: 'org.example.catalog/price',
+        integrity: 'sha256-…',
+        kind: 'block',
+        resource: 'blocks/price.json',
+        version: '1.0.0',
+      },
+    ],
+    dependencies: [],
+    entryModules: [],
+    id: 'org.example/catalog-plugin',
+    kind: 'plugin-manifest',
+    label: { key: 'org.example.catalog/plugin' },
+    optionalCapabilities: [],
+    owner: { id: 'org.example/catalog', version: '1.0.0' },
+    permissions: [],
+    requiredCapabilities: [{ id: 'studio.renderer/web', versions: '^1.0.0' }],
+    version: '1.0.0',
+  },
+});
+```
+
+Two companions keep hosts on the same single authority: `activateStudioPlugin` runs the same coherence checks and then hands the definition to the contribution runtime's transactional activation, and `unresolvedDeclaredContributions` projects the runtime's unresolved-reason vocabulary (`not-installed`, `incompatible`, `owner-disabled`, `owner-revoked`) onto declared non-block contributions so inactive-owner surfaces stay diagnosable without executing plugin code.
+
 ## Dependencies
 
 Dependencies are identified by plugin ID and semantic version range. Required dependencies must be active and compatible before registration. Optional dependencies may enrich behavior through negotiated capabilities but their absence cannot invalidate the plugin's base contract.

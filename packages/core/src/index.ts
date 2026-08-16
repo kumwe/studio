@@ -19,6 +19,12 @@ export {
   type GenerationOptions,
   type UnresolvedNodeReport,
 } from './contributions.js';
+export {
+  activateStudioPlugin,
+  defineStudioPlugin,
+  unresolvedDeclaredContributions,
+  type StudioPluginDefinition,
+} from './extension-sdk.js';
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
 export { applyModelCommand } from './model-commands.js';
