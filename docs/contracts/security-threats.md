@@ -21,7 +21,7 @@ breaking change to recorded evidence.
 | TH-010 | Stale-write corruption                    | packages/testkit/test/session-lifecycle.test.ts          |
 | TH-011 | Supply-chain substitution                 | scripts/check-contracts.mjs                              |
 | TH-012 | Unsafe fallback                           | packages/core/test/contributions.test.ts                 |
-| TH-013 | CSP and Trusted Types verification        | open                                                     |
+| TH-013 | CSP and Trusted Types verification        | e2e/specs/csp.spec.ts                                    |
 | TH-014 | Parser and reducer fuzzing                | packages/core/test/fuzz-commands.test.ts                 |
 
 ## Notes
@@ -43,6 +43,14 @@ breaking change to recorded evidence.
   Artifact schemas already store no URLs outside schema-defined safe fields.
 - TH-011 is additionally covered by the lockfile, the schema digest manifest, the secret-scan
   lane, npm provenance publishing, and the SBOM lane in CI.
-- TH-013 is a Gate B qualification lane (`M6-02`) and is deliberately not claimed.
+- TH-013 claims the CSP part only: `e2e/specs/csp.spec.ts` pins the reference host's policy
+  verbatim on the document response, completes an authoring pass (insert, select, inspector
+  edit, command palette) with zero `securitypolicyviolation` events, and proves enforcement with
+  an inline-script negative control that must not execute and must raise a violation. Not
+  claimed and deliberately open as `M6-02` follow-ups: governing string-to-code compilation
+  (`script-src`/`default-src`) and Trusted Types — core Blueprint validation compiles JSON
+  Schemas through Ajv's `Function`-constructor codegen at runtime, so `script-src 'self'` and
+  `require-trusted-types-for 'script'` each stop the shell from booting today (verified
+  empirically; Lit itself is compatible through its `lit-html` policy).
 - TH-014 is additionally covered by the rich-text structural-mutation and projection fuzz suite
   in `packages/rich-text/test/fuzz.test.ts`.
