@@ -34,3 +34,18 @@ kumwe-studio {
   max-width: 90rem;
   overflow: hidden;
 }
+
+/* SR-019: the host document owes authors the same guarantee as the shell —
+   a reduced-motion preference disables every non-essential motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 0s !important;
+  }
+}

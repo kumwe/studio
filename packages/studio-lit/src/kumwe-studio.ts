@@ -454,6 +454,22 @@ export class KumweStudioElement extends LitElement {
         grid-template-columns: minmax(16rem, 1fr);
       }
     }
+
+    /* SR-019: no chrome motion is essential, so a reduced-motion preference
+       zeroes every animation and transition the shell declares now or later. */
+    @media (prefers-reduced-motion: reduce) {
+      :host,
+      *,
+      *::before,
+      *::after {
+        animation-delay: 0s !important;
+        animation-duration: 0s !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-delay: 0s !important;
+        transition-duration: 0s !important;
+      }
+    }
   `;
 
   declare public configuration: ExperimentalShellConfiguration | undefined;
@@ -652,7 +668,7 @@ export class KumweStudioElement extends LitElement {
             ${this.#text('studio.shell/command-palette-toggle')}
           </button>
           ${this.#renderCommandPalette()}
-          <div class="toolbar" aria-label=${this.#text('studio.shell/history-label')}>
+          <div class="toolbar" role="group" aria-label=${this.#text('studio.shell/history-label')}>
             <button
               type="button"
               ?disabled=${session?.canUndo !== true || readOnly}

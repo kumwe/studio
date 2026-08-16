@@ -27,12 +27,13 @@ evidence.
 | SR-016 | Selection only ever references nodes present in the document                                        | interaction-model.md | packages/core/test/session.test.ts                 |
 | SR-017 | Canvas pointer dragging is an enhancement layered over the non-drag paths                           | interaction-model.md | packages/studio-lit/test/command-surfaces.test.ts  |
 | SR-018 | Supported screen-reader matrix passes the manual authoring workflow procedures                      | accessibility.md     | manual:screen-reader-matrix                        |
-| SR-019 | Reduced-motion preferences disable non-essential motion                                             | accessibility.md     | open                                               |
-| SR-020 | Authoring surfaces reflow at 400% zoom without loss of function                                     | accessibility.md     | open                                               |
+| SR-019 | Reduced-motion preferences disable non-essential motion                                             | accessibility.md     | e2e/specs/reduced-motion.spec.ts                   |
+| SR-020 | Authoring surfaces reflow at 400% zoom without loss of function                                     | accessibility.md     | e2e/specs/reflow.spec.ts                           |
 | SR-021 | The command palette exposes every structural operation of the current selection, keyboard-navigable | keyboard.md          | packages/studio-lit/test/command-surfaces.test.ts  |
 | SR-022 | A cancelled canvas drag leaves the document unchanged                                               | interaction-model.md | packages/studio-lit/test/command-surfaces.test.ts  |
 | SR-023 | Property, binding, and responsive-override editing is keyboard-complete through the inspector       | keyboard.md          | packages/studio-lit/test/inspector.test.ts         |
 | SR-024 | Conflict and failure announcements preserve focus and speak through the polite live region          | accessibility.md     | packages/studio-lit/test/inspector.test.ts         |
+| SR-025 | Authoring chrome passes the automated WCAG 2.1 AA scan                                              | accessibility.md     | e2e/specs/wcag-scan.spec.ts                        |
 
 ## Manual procedures
 
