@@ -24,6 +24,8 @@ export {
 export {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
+  type AddModelFieldCommand,
+  type AddModelFieldPayload,
   type ApplyPatternCommand,
   type ApplyPatternPayload,
   type ArtifactPort,

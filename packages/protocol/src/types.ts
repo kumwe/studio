@@ -964,6 +964,16 @@ export interface BatchPayload {
 
 export type BatchCommand = CommandBase<'studio.command/batch', BatchPayload>;
 
+export interface AddModelFieldPayload {
+  field: FieldDefinition;
+  position?: number;
+}
+
+export type AddModelFieldCommand = CommandBase<
+  'studio.command/add-model-field',
+  AddModelFieldPayload
+>;
+
 export type BlueprintCommand =
   | ApplyPatternCommand
   | BatchCommand
@@ -977,7 +987,7 @@ export type BlueprintCommand =
   | SetPropertyCommand
   | UnsetPropertyCommand;
 
-export type StudioCommand = BlueprintCommand | SetFieldValueCommand;
+export type StudioCommand = AddModelFieldCommand | BlueprintCommand | SetFieldValueCommand;
 
 export interface PreviewMessageBase<TType extends QualifiedName, TPayload extends object> {
   channelId: StableId;

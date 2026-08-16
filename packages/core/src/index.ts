@@ -21,6 +21,8 @@ export {
 } from './contributions.js';
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
+export { applyModelCommand } from './model-commands.js';
+export { RECIPE_MARKER_PROPERTY, recipeSelectionOperations } from './recipes.js';
 export {
   MigrationRunner,
   StudioMigrationError,

@@ -14,12 +14,12 @@
       "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
     },
     {
-      "digest": "sha256-kD5A8TQeV6FgkN9KGf43uJ8+VUDeaq0IaOMeU/1qsVA=",
+      "digest": "sha256-cpuqAnGwwvMacksx7zezMZhQQGdQAanor4Pwatynic0=",
       "file": "command-vector.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
     },
     {
-      "digest": "sha256-Ye0Gyt+aI2mMGD36l7iUpz/WpuRz4hzYVO3MokDICh8=",
+      "digest": "sha256-BD+Ej0RZDZSNxRzFvIX+i1cDAGjT2QRfL7c1QYD1TBo=",
       "file": "command.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command.schema.json"
     },

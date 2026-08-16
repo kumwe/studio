@@ -41,7 +41,9 @@
   "$defs": {
     "commandErrorCode": {
       "enum": [
+        "artifact-not-draft",
         "binding-not-found",
+        "duplicate-field",
         "duplicate-node",
         "illegal-move",
         "invalid-batch",
