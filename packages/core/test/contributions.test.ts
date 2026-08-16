@@ -6,12 +6,20 @@ import {
   type BlockDefinition,
   type BlueprintDocument,
   type OwnerReference,
+  type PluginContributionDeclaration,
+  type PluginContributionKind,
+  type SemanticVersion,
+  type UnresolvedContributionReference,
 } from '@kumwe/studio-protocol';
 import {
+  activateStudioPlugin,
   ContributionRuntime,
+  defineStudioPlugin,
   StudioCommandError,
   StudioContributionError,
+  unresolvedDeclaredContributions,
   validateBlueprint,
+  type StudioPluginDefinition,
 } from '../src/index.js';
 
 const ownerA: OwnerReference = { id: 'org.example/blocks', version: '1.0.0' };
@@ -76,6 +84,56 @@ function documentUsing(type: `${string}/${string}`): BlueprintDocument {
     status: 'draft',
     version: '1.0.0',
   };
+}
+
+const toolkitKinds = [
+  'field-adapter',
+  'pattern',
+  'transform',
+  'renderer-capability',
+  'inspector',
+] as const;
+
+function toolkitDeclaration(
+  kind: PluginContributionKind,
+  version: SemanticVersion,
+): PluginContributionDeclaration {
+  return {
+    executable: false,
+    id: `org.example.toolkit/${kind}`,
+    integrity: 'sha256-gEReHtrWQj4XVxU9b3Yie2ssI8Wsy/nv+rvEe6RcFac=',
+    kind,
+    resource: `contributions/${kind}.json`,
+    version,
+  };
+}
+
+function toolkitDefinition(version: SemanticVersion = '1.0.0'): StudioPluginDefinition {
+  return {
+    manifest: {
+      activation: 'declarative',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      contributions: toolkitKinds.map((kind) => toolkitDeclaration(kind, version)),
+      dependencies: [],
+      entryModules: [],
+      id: 'org.example/toolkit',
+      kind: 'plugin-manifest',
+      label: { defaultMessage: 'Toolkit', key: 'org.example.toolkit/plugin' },
+      optionalCapabilities: [],
+      owner: { id: 'org.example/toolkit', version },
+      permissions: [],
+      requiredCapabilities: [],
+      version,
+    },
+  };
+}
+
+function toolkitReferences(version: SemanticVersion = '1.0.0'): UnresolvedContributionReference[] {
+  return toolkitKinds.map((kind) => ({
+    contribution: kind,
+    id: `org.example.toolkit/${kind}`,
+    version,
+  }));
 }
 
 describe('ContributionRuntime', () => {
@@ -299,5 +357,143 @@ describe('unresolved contribution reporting', () => {
       'https://schemas.kumwe.org/studio/v1/unresolved-contribution.schema.json',
     );
     expect(validate?.(contributions[0]), ajv.errorsText(validate?.errors)).toBe(true);
+  });
+});
+
+describe('extension lifecycle beyond blocks', () => {
+  it('activates declared non-block kinds into a sealed immutable generation', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+    const generation = activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+    expect(generation.generation).toBe('gen-1');
+    expect(generation.owners()).toEqual([definition.manifest.owner]);
+    expect(() => generation.registry.register(block('org.example/late', ownerA))).toThrow(
+      'immutable',
+    );
+    expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
+    expect(runtime.inventory()).toEqual([expect.objectContaining({ state: 'active' }) as object]);
+  });
+
+  it('owner disable removes the executable surface while every declared kind stays diagnosable', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+
+    runtime.disable('org.example/toolkit', { generation: 'gen-2' });
+    expect(runtime.current.owners()).toEqual([]);
+    const unresolved = unresolvedDeclaredContributions(runtime, [definition], toolkitReferences());
+    expect(unresolved.map((entry) => [entry.reference.contribution, entry.reason])).toEqual(
+      toolkitKinds.map((kind) => [kind, 'owner-disabled']),
+    );
+    expect(unresolved.every((entry) => entry.owner?.id === 'org.example/toolkit')).toBe(true);
+
+    const ajv = new Ajv2020({ allErrors: true, strict: true });
+    for (const schema of protocolSchemas) {
+      ajv.addSchema(schema);
+    }
+    const validate = ajv.getSchema(
+      'https://schemas.kumwe.org/studio/v1/unresolved-contribution.schema.json',
+    );
+    for (const entry of unresolved) {
+      expect(validate?.(entry), ajv.errorsText(validate?.errors)).toBe(true);
+    }
+
+    runtime.reactivate('org.example/toolkit', { generation: 'gen-3' });
+    expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
+  });
+
+  it('trust revocation reports owner-revoked per kind and blocks reactivation', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+
+    runtime.revokeTrust('org.example/toolkit', { generation: 'gen-2' });
+    const unresolved = unresolvedDeclaredContributions(runtime, [definition], toolkitReferences());
+    expect(unresolved.map((entry) => [entry.reference.contribution, entry.reason])).toEqual(
+      toolkitKinds.map((kind) => [kind, 'owner-revoked']),
+    );
+    expect(() => runtime.reactivate('org.example/toolkit', { generation: 'gen-3' })).toThrow(
+      StudioContributionError,
+    );
+
+    activateStudioPlugin(runtime, definition, { generation: 'gen-4' });
+    expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
+  });
+
+  it('incompatible-owner and duplicate-id definitions fail closed without disturbing the active generation', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+
+    const foreignNamespace: StudioPluginDefinition = {
+      manifest: {
+        ...toolkitDefinition().manifest,
+        contributions: [toolkitDeclaration('pattern', '1.0.0')],
+        id: 'org.other/tools',
+        owner: { id: 'org.other/tools', version: '1.0.0' },
+      },
+    };
+    expect(() => activateStudioPlugin(runtime, foreignNamespace, { generation: 'gen-2' })).toThrow(
+      StudioContributionError,
+    );
+
+    const duplicateId: StudioPluginDefinition = {
+      manifest: {
+        ...toolkitDefinition().manifest,
+        contributions: [
+          toolkitDeclaration('field-adapter', '1.0.0'),
+          toolkitDeclaration('field-adapter', '1.0.0'),
+        ],
+      },
+    };
+    expect(() => activateStudioPlugin(runtime, duplicateId, { generation: 'gen-2' })).toThrow(
+      StudioContributionError,
+    );
+
+    expect(runtime.current.generation).toBe('gen-1');
+    expect(runtime.current.owners()).toEqual([definition.manifest.owner]);
+    expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
+  });
+
+  it('upgrade replaces declared versions atomically and reports retired versions incompatible', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    activateStudioPlugin(runtime, defineStudioPlugin(toolkitDefinition('1.0.0')), {
+      generation: 'gen-1',
+    });
+
+    const upgraded = defineStudioPlugin(toolkitDefinition('2.0.0'));
+    const generation = activateStudioPlugin(runtime, upgraded, { generation: 'gen-2' });
+    expect(generation.generation).toBe('gen-2');
+    expect(runtime.inventory()).toEqual([expect.objectContaining({ state: 'active' }) as object]);
+    expect(
+      unresolvedDeclaredContributions(runtime, [upgraded], toolkitReferences('2.0.0')),
+    ).toEqual([]);
+
+    const retired = unresolvedDeclaredContributions(
+      runtime,
+      [upgraded],
+      toolkitReferences('1.0.0'),
+    );
+    expect(retired.map((entry) => [entry.reference.contribution, entry.reason])).toEqual(
+      toolkitKinds.map((kind) => [kind, 'incompatible']),
+    );
+    expect(retired[0]?.owner).toEqual({ id: 'org.example/toolkit', version: '2.0.0' });
+  });
+
+  it('reports not-installed for declarations no activated extension provides', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+
+    const inactive = unresolvedDeclaredContributions(runtime, [definition], toolkitReferences());
+    expect(inactive.every((entry) => entry.reason === 'not-installed')).toBe(true);
+    expect(inactive.every((entry) => entry.owner === undefined)).toBe(true);
+
+    activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+    const unknown = unresolvedDeclaredContributions(
+      runtime,
+      [definition],
+      [{ contribution: 'panel', id: 'org.example.toolkit/missing', version: '1.0.0' }],
+    );
+    expect(unknown).toEqual([expect.objectContaining({ reason: 'not-installed' }) as object]);
   });
 });
