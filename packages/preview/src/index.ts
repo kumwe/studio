@@ -1,6 +1,8 @@
 export {
   PreviewClient,
   type PreviewClientOptions,
+  type PreviewMeasureOptions,
+  type PreviewMeasureOutcome,
   type PreviewMessageEvent,
   type PreviewMessageListener,
   type PreviewMessageSource,
@@ -12,6 +14,8 @@ export {
 export {
   PreviewHost,
   type PreviewHostOptions,
+  type PreviewMeasureCallback,
+  type PreviewMeasurement,
   type PreviewRenderCallback,
   type PreviewSelectListener,
 } from './preview-host.js';

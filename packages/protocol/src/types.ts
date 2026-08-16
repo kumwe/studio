@@ -1093,6 +1093,45 @@ export interface PreviewSelectPayload {
   reveal?: boolean;
 }
 
+/** Axis-aligned rectangle in CSS pixels, relative to the preview viewport origin. */
+export interface PreviewMarkerRect {
+  height: number;
+  width: number;
+  x: number;
+  y: number;
+}
+
+/** Preview viewport metrics captured at measurement time. */
+export interface PreviewViewportMetrics {
+  devicePixelRatio: number;
+  height: number;
+  scrollX: number;
+  scrollY: number;
+  width: number;
+}
+
+export interface PreviewMeasurePayload {
+  /** Opaque render markers to measure, as a bounded explicit list. */
+  markers: StableId[];
+  requestId: StableId;
+}
+
+/**
+ * Volatile on-screen geometry for render markers. Measurements are never document
+ * state: they are bound to the render digest they were measured against and become
+ * meaningless as soon as a newer render or reload supersedes that digest.
+ */
+export interface PreviewMeasurementsPayload {
+  /** Digest of the render the geometry was measured against. */
+  draftDigest: string;
+  /** One or more rectangles per measured marker; inline content fragments across lines. */
+  measurements: Record<StableId, PreviewMarkerRect[]>;
+  requestId: StableId;
+  /** Requested markers the renderer could not associate with any on-screen geometry. */
+  unknown: StableId[];
+  viewport: PreviewViewportMetrics;
+}
+
 export interface PreviewErrorPayload {
   code: QualifiedName;
   correlationId?: StableId;
@@ -1117,6 +1156,16 @@ export type PreviewSelectMessage = PreviewMessageBase<
   PreviewSelectPayload
 >;
 
+export type PreviewMeasureMessage = PreviewMessageBase<
+  'studio.preview/measure',
+  PreviewMeasurePayload
+>;
+
+export type PreviewMeasurementsMessage = PreviewMessageBase<
+  'studio.preview/measurements',
+  PreviewMeasurementsPayload
+>;
+
 export type PreviewErrorMessage = PreviewMessageBase<'studio.preview/error', PreviewErrorPayload>;
 
 export interface PreviewReloadPayload {
@@ -1139,6 +1188,8 @@ export type PreviewTeardownMessage = PreviewMessageBase<
 
 export type PreviewMessage =
   | PreviewErrorMessage
+  | PreviewMeasureMessage
+  | PreviewMeasurementsMessage
   | PreviewReadyMessage
   | PreviewReloadMessage
   | PreviewRenderMessage

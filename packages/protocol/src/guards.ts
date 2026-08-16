@@ -78,6 +78,10 @@ export function isPreviewMessage(value: unknown): value is PreviewMessage {
       return isRenderedPayload(value.payload);
     case 'studio.preview/select':
       return isSelectPayload(value.payload);
+    case 'studio.preview/measure':
+      return isMeasurePayload(value.payload);
+    case 'studio.preview/measurements':
+      return isMeasurementsPayload(value.payload);
     case 'studio.preview/error':
       return isErrorPayload(value.payload);
     case 'studio.preview/reload':
@@ -131,6 +135,66 @@ function isMarkerMap(value: unknown): boolean {
   return (
     entries.length <= 100_000 &&
     entries.every(([marker, nodeId]) => isStableId(marker) && isStableId(nodeId))
+  );
+}
+
+function isMeasurePayload(value: Record<string, unknown>): boolean {
+  return (
+    hasExactKeys(value, ['requestId', 'markers']) &&
+    isStableId(value.requestId) &&
+    isStringArray(value.markers, isStableId, 1_000)
+  );
+}
+
+function isMeasurementsPayload(value: Record<string, unknown>): boolean {
+  return (
+    hasExactKeys(value, ['requestId', 'draftDigest', 'measurements', 'unknown', 'viewport']) &&
+    isStableId(value.requestId) &&
+    typeof value.draftDigest === 'string' &&
+    /^[a-f0-9]{64}$/u.test(value.draftDigest) &&
+    isMeasurementMap(value.measurements) &&
+    isStringArray(value.unknown, isStableId, 1_000) &&
+    isViewportMetrics(value.viewport)
+  );
+}
+
+function isMeasurementMap(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const entries = Object.entries(value);
+  return (
+    entries.length <= 1_000 &&
+    entries.every(
+      ([marker, rects]) =>
+        isStableId(marker) && isArrayOf(rects, isMarkerRect, 1_000) && rects.length >= 1,
+    )
+  );
+}
+
+function isMarkerRect(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['x', 'y', 'width', 'height']) &&
+    isCssCoordinate(value.x) &&
+    isCssCoordinate(value.y) &&
+    isCssExtent(value.width) &&
+    isCssExtent(value.height)
+  );
+}
+
+function isViewportMetrics(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['width', 'height', 'scrollX', 'scrollY', 'devicePixelRatio']) &&
+    isCssExtent(value.width) &&
+    isCssExtent(value.height) &&
+    isCssCoordinate(value.scrollX) &&
+    isCssCoordinate(value.scrollY) &&
+    typeof value.devicePixelRatio === 'number' &&
+    Number.isFinite(value.devicePixelRatio) &&
+    value.devicePixelRatio > 0 &&
+    value.devicePixelRatio <= 100
   );
 }
 
@@ -238,6 +302,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+// CSS-pixel geometry stays finite and bounded so a hostile responder cannot smuggle
+// NaN, infinities, or absurd magnitudes into overlay arithmetic.
+const cssPixelLimit = 100_000_000;
+
+function isCssCoordinate(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= cssPixelLimit;
+}
+
+function isCssExtent(value: unknown): value is number {
+  return (
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= cssPixelLimit
+  );
 }
 
 function isQualifiedName(value: unknown): value is `${string}/${string}` {

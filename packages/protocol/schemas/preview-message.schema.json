@@ -45,6 +45,14 @@
       "then": { "properties": { "payload": { "$ref": "#/$defs/select" } } }
     },
     {
+      "if": { "properties": { "type": { "const": "studio.preview/measure" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/measure" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "studio.preview/measurements" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/measurements" } } }
+    },
+    {
       "if": { "properties": { "type": { "const": "studio.preview/error" } } },
       "then": { "properties": { "payload": { "$ref": "#/$defs/error" } } }
     },
@@ -120,6 +128,71 @@
       "properties": {
         "nodeId": { "$ref": "common.schema.json#/$defs/stableId" },
         "reveal": { "type": "boolean", "default": true }
+      }
+    },
+    "measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "markers"],
+      "properties": {
+        "requestId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "markers": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "$ref": "common.schema.json#/$defs/stableId" }
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestId", "draftDigest", "measurements", "unknown", "viewport"],
+      "properties": {
+        "requestId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "draftDigest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}(?![\\s\\S])"
+        },
+        "measurements": {
+          "type": "object",
+          "maxProperties": 1000,
+          "propertyNames": { "$ref": "common.schema.json#/$defs/stableId" },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1000,
+            "items": { "$ref": "#/$defs/markerRect" }
+          }
+        },
+        "unknown": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "$ref": "common.schema.json#/$defs/stableId" }
+        },
+        "viewport": { "$ref": "#/$defs/viewportMetrics" }
+      }
+    },
+    "markerRect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number", "minimum": -100000000, "maximum": 100000000 },
+        "y": { "type": "number", "minimum": -100000000, "maximum": 100000000 },
+        "width": { "type": "number", "minimum": 0, "maximum": 100000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 100000000 }
+      }
+    },
+    "viewportMetrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "scrollX", "scrollY", "devicePixelRatio"],
+      "properties": {
+        "width": { "type": "number", "minimum": 0, "maximum": 100000000 },
+        "height": { "type": "number", "minimum": 0, "maximum": 100000000 },
+        "scrollX": { "type": "number", "minimum": -100000000, "maximum": 100000000 },
+        "scrollY": { "type": "number", "minimum": -100000000, "maximum": 100000000 },
+        "devicePixelRatio": { "type": "number", "exclusiveMinimum": 0, "maximum": 100 }
       }
     },
     "error": {

@@ -31,6 +31,24 @@ The handshake and request flow is announce → ready → render → rendered:
    details never cross the channel.
 5. `client.select()` forwards `studio.preview/select` to the host's `onSelect` listeners.
 
+## Marker geometry
+
+`client.measure()` posts `studio.preview/measure` with a bounded marker list and resolves with the
+`studio.preview/measurements` answer: per marker, one or more CSS-pixel rectangles relative to the
+preview viewport origin (inline content fragments across lines), plus viewport metrics. Markers the
+renderer cannot place are returned in a distinct `unknown` list, never thrown.
+
+The host never reads the DOM. The embedding renderer passes a `measure` callback in
+`PreviewHostOptions`; without one, measure requests are answered with the qualified
+`studio.preview/measure-unavailable` error, and a throwing measurer is answered with
+`studio.preview/measure-failed` — measurer failure details never cross the channel.
+
+Geometry is volatile, not document state: each response is stamped with the digest of the render it
+was measured against. A response whose digest no longer matches the client's latest completed render
+resolves as a typed `{ status: 'stale' }` outcome instead of geometry, and a reload voids in-flight
+measurements exactly like it voids renders. Newer measure requests supersede older ones on both
+sides.
+
 Version negotiation currently requires the exact draft wire version on both sides: schema filtering
 accepts only `STUDIO_WIRE_PROTOCOL_VERSION`, so a ready announcement from a host speaking any other
 version is discarded and `ready()` times out instead of resolving against an incompatible host.
