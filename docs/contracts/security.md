@@ -74,6 +74,8 @@ StudioConfig resource-context keys and their scope/resource projections are non-
 
 Files are validated by content, scanned and processed by the host. Active formats receive dedicated policy. Rich-text JSON is rendered through allowlisted nodes/marks with contextual escaping; pasted HTML is sanitized or converted by a bounded importer and never retained as executable source.
 
+Against SSRF through media or embeds, external source URLs MUST pass the canonical lexical URL policy in `@kumwe/studio-core` before any host fetch, as specified by the media contract's external-sources rules; DNS-rebinding defence and redirect re-validation remain hardened-fetcher obligations of the host.
+
 ## Privacy
 
 Telemetry is optional, documented and data-minimized. It does not include field values, rich text, media contents, secrets, raw artifacts, private identifiers, search terms or unauthorized diagnostics by default. Correlation identifiers are scoped and rotated according to host policy.

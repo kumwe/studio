@@ -1,3 +1,4 @@
+import { validateExternalUrl } from '@kumwe/studio-core';
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -9,6 +10,7 @@ import {
   type JsonObject,
   type JsonPrimitive,
   type MediaAsset,
+  type MediaUploadAcceptedAsset,
   type PermissionExplanation,
   type PreviewRenderPayload,
   type PreviewRenderedPayload,
@@ -43,6 +45,21 @@ export interface TestbedHostOptions {
 export interface TestbedControls {
   disconnect(): void;
   failNext(portName: TestbedPortName, operation: string, category: HostErrorCategory): void;
+  /**
+   * Standalone external-import drill. The wire protocol's media port does not
+   * yet carry the media contract's explicit external-import operation, so the
+   * testbed exercises the canonical external-URL policy here, under the same
+   * request guards as the wire ports (`failNext` targets port `media`,
+   * operation `import-external`). A candidate that fails the default policy
+   * rejects with a `validation-failed` host error that names the stable
+   * rejection reason but never echoes the candidate URL. An accepted
+   * candidate mints a deterministic asset identity in `processing` state that
+   * the media port can then serve.
+   */
+  importExternalMedia(
+    candidate: string,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<MediaUploadAcceptedAsset>>;
   reconnect(): void;
   revisionOf(id: StableId): Revision | undefined;
   readonly sessionGeneration: Revision;
@@ -116,6 +133,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   let generationSerial = 1;
   let connected = true;
   let correlationSerial = 0;
+  let importSerial = 0;
 
   function currentGeneration(): Revision {
     return `session-r${generationSerial}`;
@@ -432,6 +450,36 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     },
     failNext(portName: TestbedPortName, operation: string, category: HostErrorCategory): void {
       injectedFailures.push({ category, operation, portName });
+    },
+    importExternalMedia(
+      candidate: string,
+      context: HostRequestContext,
+    ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
+      return run('media', 'import-external', context, () => {
+        const verdict = validateExternalUrl(candidate);
+        if (!verdict.ok) {
+          fail(
+            'validation-failed',
+            `The external media source is not allowed by the URL policy (${verdict.reason}).`,
+          );
+        }
+        importSerial += 1;
+        const id = `media/import-${importSerial}`;
+        const revision = `${id}-r1`;
+        mediaAssets.push({
+          byteSize: 0,
+          contractVersion: STUDIO_CONTRACT_VERSION,
+          filename: `import-${importSerial}`,
+          id,
+          kind: 'media-asset',
+          mediaKind: 'other',
+          mediaType: 'application/octet-stream',
+          metadata: {},
+          revision,
+          state: 'processing',
+        });
+        return { revision, value: { id, revision, state: 'processing' } };
+      });
     },
     reconnect(): void {
       connected = true;

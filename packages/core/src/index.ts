@@ -52,6 +52,13 @@ export {
 } from './registry.js';
 export { assertStudioPropertySchema, STUDIO_SCHEMA_PROFILE_LIMITS } from './schema-profile.js';
 export {
+  STUDIO_DEFAULT_URL_POLICY,
+  validateExternalUrl,
+  type ExternalUrlPolicy,
+  type ExternalUrlRejectionReason,
+  type ExternalUrlValidationResult,
+} from './url-policy.js';
+export {
   validateBlueprint,
   type BlueprintValidationOptions,
   type BlueprintValidationResult,
