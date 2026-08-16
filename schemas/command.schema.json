@@ -77,6 +77,10 @@
       "then": { "properties": { "payload": { "$ref": "#/$defs/applyPattern" } } }
     },
     {
+      "if": { "properties": { "type": { "const": "studio.command/add-model-field" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/addModelField" } } }
+    },
+    {
       "if": { "properties": { "type": { "const": "studio.command/batch" } } },
       "then": { "properties": { "payload": { "$ref": "#/$defs/batch" } } }
     }
@@ -211,6 +215,15 @@
         },
         "locale": { "$ref": "common.schema.json#/$defs/locale" },
         "value": { "$ref": "common.schema.json#/$defs/jsonValue" }
+      }
+    },
+    "addModelField": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["field"],
+      "properties": {
+        "field": { "$ref": "content-model.schema.json#/$defs/field" },
+        "position": { "type": "integer", "minimum": 0, "maximum": 1000 }
       }
     },
     "applyPattern": {

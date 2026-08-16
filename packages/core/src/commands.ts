@@ -13,7 +13,9 @@ import type {
 import { cloneContractValue } from './clone.js';
 
 export type StudioCommandErrorCode =
+  | 'artifact-not-draft'
   | 'binding-not-found'
+  | 'duplicate-field'
   | 'duplicate-node'
   | 'illegal-move'
   | 'invalid-batch'

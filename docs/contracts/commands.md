@@ -22,8 +22,16 @@ The `0.1-draft` canonical schema supplies payload contracts and portable reducer
   and per-root pattern provenance stamping; never nested inside a batch because its inverse is
   itself a batch);
 - `studio.command/batch` (an atomic ordered sequence of the commands above, excluding
-  apply-pattern); and
-- `studio.command/set-field-value` (locale-guarded entry reducer).
+  apply-pattern);
+- `studio.command/set-field-value` (locale-guarded entry reducer); and
+- `studio.command/add-model-field` (adds a declared field to a draft content model; published and
+  retired models reject with `artifact-not-draft`).
+
+Recipe and semantic design-value selection is deliberately resolved without a dedicated command:
+a selection expands into one atomic batch of `set-property` operations — every design value of the
+recipe in sorted member order, then the reserved `studio.recipe` marker property recording the
+selection. The expansion is canonical in `recipeSelectionOperations`, inherits batch atomicity and
+verified inverses, and a theme switch can locate recipe-derived state through the marker.
 
 Other namespaced commands are accepted by the generic envelope only when the active immutable registry supplies their payload schema, reducer contract, permission operation, migration behavior and conformance fixtures. Envelope acceptance alone does not make a command portable or part of Studio core.
 
@@ -31,7 +39,7 @@ Other namespaced commands are accepted by the generic envelope only when the act
 
 Every implemented command carries canonical vectors in [`schemas/vectors/command/`](../../schemas/vectors/command/), published verbatim through `@kumwe/studio-testkit` under `vectors/command/`. A vector fixes one initial document, one command, and either the exact expected document or a stable failure code, plus the inverse command for successful transitions. The TypeScript reference replays the whole corpus (`packages/core/test/command-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same results and MUST compute the same inverse commands.
 
-Failure codes are closed and stable: `binding-not-found`, `duplicate-node`, `illegal-move`, `invalid-batch`, `invalid-id-map`, `invalid-index`, `invalid-order`, `locale-mismatch`, `node-not-found`, `parent-not-found`, `property-not-found`, `read-only-session`, `stale-generation`, `stale-state`, `unsupported-command`. Adding a code is an additive protocol change; renaming or removing one is breaking.
+Failure codes are closed and stable: `artifact-not-draft`, `binding-not-found`, `duplicate-field`, `duplicate-node`, `illegal-move`, `invalid-batch`, `invalid-id-map`, `invalid-index`, `invalid-order`, `locale-mismatch`, `node-not-found`, `parent-not-found`, `property-not-found`, `read-only-session`, `stale-generation`, `stale-state`, `unsupported-command`. Adding a code is an additive protocol change; renaming or removing one is breaking.
 
 ## Canonical minimal form
 
@@ -48,9 +56,7 @@ The Gate A contract is required to add or deliberately resolve the following voc
   restore command remains open);
 - set and reset inherited property (unset of a base value is delivered; explicit
   inheritance-reset semantics remain open);
-- select recipe or semantic design value;
-- resize responsive-role overrides beyond per-viewport property overrides;
-- create a model-draft field through a host use case.
+- resize responsive-role overrides beyond per-viewport property overrides.
 
 Each target command must receive a canonical payload schema, reducer semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules. Listing it here is a Gate A requirement, not a claim that the `0.1-draft` subset implements it.
 
