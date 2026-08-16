@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-testkit",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/testkit"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/testkit#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Draft canonical fixtures, builders, and the initial Blueprint assertion for Studio.",
   "type": "module",
   "sideEffects": false,

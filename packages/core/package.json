@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-core",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/core#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Framework-neutral Studio registry, validation, command, and history engine.",
   "type": "module",
   "sideEffects": false,

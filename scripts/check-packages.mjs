@@ -31,6 +31,18 @@ for (const packageName of packageNames) {
   if (typeof manifest.version !== 'string' || !manifest.version.includes('-')) {
     throw new Error(`${manifest.name ?? packageName} must remain a prerelease before Gate B.`);
   }
+  // Provenance-signed publishes verify repository.url against the repository
+  // named in the signed build environment; an absent or mismatched field is
+  // rejected by the registry at publish time (E422).
+  if (
+    manifest.repository?.type !== 'git' ||
+    manifest.repository.url !== 'git+https://github.com/kumwe/studio.git' ||
+    manifest.repository.directory !== `packages/${packageName}`
+  ) {
+    throw new Error(
+      `${manifest.name ?? packageName} must declare the canonical repository with its package directory.`,
+    );
+  }
 
   const { stdout } = await execFileAsync(
     'npm',

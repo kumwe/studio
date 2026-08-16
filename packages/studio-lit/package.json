@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/studio-lit"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/studio-lit#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Accessible Lit Web Component shell for the Studio core engine.",
   "type": "module",
   "sideEffects": false,

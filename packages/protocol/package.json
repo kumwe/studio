@@ -1,6 +1,13 @@
 {
   "name": "@kumwe/studio-protocol",
   "version": "0.1.0-alpha.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kumwe/studio.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://github.com/kumwe/studio/tree/main/packages/protocol#readme",
+  "bugs": "https://github.com/kumwe/studio/issues",
   "description": "Serializable, framework-neutral contracts for visual composition hosts.",
   "type": "module",
   "sideEffects": false,
