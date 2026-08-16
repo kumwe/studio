@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-testkit",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "Draft canonical fixtures, builders, and the initial Blueprint assertion for Studio.",
   "type": "module",
   "sideEffects": false,
@@ -25,8 +25,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.0",
-    "@kumwe/studio-protocol": "0.1.0-alpha.0"
+    "@kumwe/studio-core": "0.1.0-alpha.1",
+    "@kumwe/studio-protocol": "0.1.0-alpha.1"
   },
   "publishConfig": {
     "access": "public",
