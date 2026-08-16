@@ -15,6 +15,13 @@ if (baseRef === undefined) {
     'Changeset check skipped: no release base is available ' +
       '(no origin/main and no CHANGESETS_BASE_REF).',
   );
+} else if (await consumesChangesets(baseRef)) {
+  // The version pull request produced by the release train deletes the
+  // changesets it applies while bumping the manifests it covers; that diff is
+  // the one legitimate publishable change with no unconsumed changeset left.
+  console.log(
+    'Changeset check skipped: this change consumes changesets, which is the release train itself.',
+  );
 } else {
   const changedPaths = await listChangedPaths(baseRef);
   const publishablePaths = changedPaths.filter((path) => isPublishablePath(path)).sort();
@@ -100,6 +107,32 @@ async function listChangedPaths(base) {
     paths.add(path);
   }
   return [...paths];
+}
+
+async function consumesChangesets(base) {
+  const head = (await git(['rev-parse', 'HEAD'])).trim();
+  if ((await tryResolveCommit(base)) === head) {
+    return false;
+  }
+  let nameStatus;
+  try {
+    const mergeBase = (await git(['merge-base', base, 'HEAD'])).trim();
+    nameStatus = await git(['diff', '--name-status', `${mergeBase}..HEAD`]);
+  } catch {
+    return false;
+  }
+  // A version commit deletes the changesets it applies, except in pre mode,
+  // where it moves them into .changeset/pre/ instead; both count as consumed.
+  return nameStatus.split('\n').some((line) => {
+    const [status, source] = line.split('\t');
+    if (status === undefined || source === undefined) {
+      return false;
+    }
+    if (status !== 'D' && !/^R\d*$/u.test(status)) {
+      return false;
+    }
+    return /^\.changeset\/[^/]+\.md$/u.test(source) && !source.endsWith('/README.md');
+  });
 }
 
 async function listUnconsumedChangesets() {
