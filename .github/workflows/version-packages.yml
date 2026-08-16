@@ -35,6 +35,19 @@ jobs:
       - name: Run quality gate
         run: npm run check
 
+      # Fails fast with a clear identity when the npm token is missing,
+      # invisible to this repository, or invalid — separating secret-delivery
+      # problems from token-permission problems before any publish attempt.
+      - name: Verify npm authentication
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo '::error::NPM_TOKEN is empty in this job - the secret is not reaching the workflow.'
+            exit 1
+          fi
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       # With pending changesets this maintains the version pull request; once
       # that pull request merges, it publishes the versioned packages instead.
       # Changesets pre mode keeps every publish on the alpha dist-tag; stable
