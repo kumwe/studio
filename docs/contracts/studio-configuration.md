@@ -26,6 +26,8 @@ A session MUST define:
 
 `hybrid` is not a fourth editing mode. It coordinates only the authorized Blueprint and Content operations and is invalid with Model mode. `read-only` is not a mode: it is a session state that rejects every persistent command regardless of the visible editing mode or declared permissions.
 
+The headless session flattens the three members above into one session mode — `model`, `blueprint`, `content`, `hybrid`, or `read-only` — fixed at session creation: a read-only session state always flattens to `read-only`, the hybrid composite flattens to `hybrid`, and every other session keeps its editing mode. One deterministic mode-to-permitted-command table decides every dispatch; a command outside the active mode's permitted set fails closed with the stable `mode-forbidden` code, while a read-only session keeps rejecting with `read-only-session`. UIs MUST derive disabled affordances from the same exported table rather than duplicating it, and MUST NOT treat a hidden or disabled control as a substitute for the session-level check ([ADR 0011](../decisions/0011-editing-modes.md)).
+
 ## Contract and protocol selection
 
 `contractVersion` selects the StudioConfig document shape and semantics. In the current draft it is `0.1-draft`; it is not SemVer. `protocolVersion` is the single SemVer wire version selected during negotiation from the versions supported by Studio and `hostCapabilities.protocolVersions`. In the current alpha, the only supported wire version is `0.1.0-draft.1`.

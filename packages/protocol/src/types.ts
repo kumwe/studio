@@ -719,6 +719,18 @@ export interface EntryDocument {
 
 export type StudioAuthoringMode = 'blueprint' | 'content' | 'model';
 
+/**
+ * The single permission determinant of a headless editing session, fixed at
+ * session creation. It flattens the configuration triple of editing `mode`,
+ * `composite`, and `sessionState`: a read-only session state flattens to
+ * `read-only`, the bounded hybrid composite flattens to `hybrid`, and every
+ * other session flattens to its authoring mode. `hybrid` remains the bounded
+ * Blueprint-plus-Content composite — not a fourth editing mode — and
+ * `read-only` is the canonical session-mode spelling of the read-only
+ * session state.
+ */
+export type StudioSessionMode = StudioAuthoringMode | 'hybrid' | 'read-only';
+
 export interface StudioDisplayPreferences {
   calendar: LocalName;
   hourCycle: 'h11' | 'h12' | 'h23' | 'h24';
