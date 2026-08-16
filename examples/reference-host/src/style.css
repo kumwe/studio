@@ -35,6 +35,75 @@ kumwe-studio {
   overflow: hidden;
 }
 
+/* The renderer pane. Layout-affecting values arrive exclusively as custom
+   properties (--theme-* from the theme document, --preview-columns from the
+   active viewport), so this stylesheet stays a bundled, CSP-clean asset. */
+.preview-pane {
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
+  margin: 1.5rem auto 0;
+  max-width: 90rem;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.preview-pane h2 {
+  font-size: 1rem;
+  margin: 0 0 0.25rem;
+}
+
+.preview-status,
+.preview-selection {
+  color: #3f4854;
+  font-size: 0.8125rem;
+  margin: 0 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.preview-surface {
+  border: 1px solid #d7dce2;
+  border-radius: 0.5rem;
+  padding: var(--theme-block-gap, 0.75rem);
+}
+
+.preview-grid {
+  display: grid;
+  gap: var(--theme-block-gap, 0.75rem);
+  grid-template-columns: repeat(var(--preview-columns, 1), minmax(0, 1fr));
+}
+
+.preview-block {
+  background: var(--theme-surface-tone, #ffffff);
+  border: 1px solid #d7dce2;
+  border-radius: 0.375rem;
+  color: #1f2430;
+  margin: 0;
+  min-height: 3rem;
+  min-width: 0;
+  padding: 0.625rem;
+}
+
+.preview-section h3 {
+  font-size: var(--theme-heading-scale, 1rem);
+  margin: 0 0 0.375rem;
+}
+
+.preview-slot {
+  display: grid;
+  gap: var(--theme-block-gap, 0.75rem);
+  margin-top: 0.375rem;
+}
+
+.preview-empty {
+  color: #3f4854;
+  margin: 0;
+}
+
+.preview-surface [data-selected='true'] {
+  outline: 0.1875rem solid #3157d5;
+  outline-offset: 0.125rem;
+}
+
 /* SR-019: the host document owes authors the same guarantee as the shell —
    a reduced-motion preference disables every non-essential motion. */
 @media (prefers-reduced-motion: reduce) {

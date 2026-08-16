@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@kumwe/studio-preview": "0.1.0-alpha.2",
     "@kumwe/studio-protocol": "0.1.0-alpha.2",
     "@kumwe/studio": "0.1.0-alpha.4"
   },
