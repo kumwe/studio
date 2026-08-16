@@ -8,6 +8,28 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Complete command vocabulary, eval-free validation, extension SDK (M2-02, M2-03, M6-02)
+
+- The Gate A command vocabulary is complete. Size roles are first-class data: `set-size-role`
+  and `unset-size-role` assign a named role per layout axis as the base assignment or a
+  responsive viewport override, stored in reserved node members keeping canonical minimal form,
+  so themes remap sizing vocabulary without migrating documents (ADR 0010). Sixteen commands,
+  44 vectors, 26 negative fixtures; no target vocabulary item remains open.
+- Core validation is eval-free: an interpreting validator covers exactly the schema profile's
+  closed keyword set (in-registry references, code-point string bounds, mirrored numeric
+  division, fail-closed cycle guard), proven by thousands of seeded agreement verdicts against
+  the reference compiler, which left the runtime entirely; the boundary lane now forbids string
+  compilation in core sources.
+- That unlocked the full browser qualification claim: the pinned policy is `default-src 'none'`
+  with a bare self `script-src`, and Trusted Types are enforced and claimed with the renderer's
+  single policy name, proven by three negative controls (governed sink, rogue policy creation,
+  staged inline script).
+- The typed extension authoring surface landed: `defineStudioPlugin` front-loads activation —
+  canonical manifest validation, namespace ownership, duplicate and coverage checks, and the
+  contribution runtime's own rules through dry-run activation, byte-identical to registry
+  rejections — and lifecycle conformance fixtures now cover field-adapter, pattern, transform,
+  renderer-capability, and inspector contributions.
+
 ### Closed threat registry and media vectors (M2-07, M2-05, M4-05, M1-05)
 
 - The threat enforcement registry closed at fourteen of fourteen. TH-008: a pure, deterministic
