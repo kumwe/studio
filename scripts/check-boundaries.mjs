@@ -34,7 +34,7 @@ const failures = [];
 for (const policy of policies) {
   for await (const file of glob(`${policy.directory}/**/*.ts`)) {
     const source = await readFile(file, 'utf8');
-    for (const match of source.matchAll(/(?:from\s+|import\s*)['"]([^'"]+)['"]/gu)) {
+    for (const match of source.matchAll(/(?:\bfrom\s+|^\s*import\s+)['"]([^'"]+)['"]/gmu)) {
       const specifier = match[1];
       if (specifier !== undefined && !policy.allowedImports.some((rule) => rule.test(specifier))) {
         failures.push(`${file}: forbidden inner-package import ${specifier}`);

@@ -21,6 +21,32 @@ After a deletion, focus moves to the previous sibling entry, then the parent, th
 entry; after duplication, focus moves to the copy. The polite live region announces every outcome,
 including failures.
 
+## Command palette
+
+The palette is a labelled region containing a labelled filter input and a list of real buttons —
+deliberately not an ARIA combobox. Tab enters and leaves it in document order; the keys below are
+layered on top. Every entry dispatches the same canonical command as its outline or block-palette
+counterpart, with identical disabled and read-only rules. Filtering is a case-insensitive
+substring match on the localized entry label.
+
+| Keys                | Operation                                                            |
+| ------------------- | -------------------------------------------------------------------- |
+| `Ctrl+K` / `Meta+K` | Open or close the palette (also available as the `Commands` button)  |
+| `Arrow Down`        | From the input, focus the first enabled result; then the next result |
+| `Arrow Up`          | Focus the previous result; from the first, return to the input       |
+| `Enter`             | Run the focused result; from the input, run the first enabled result |
+| `Escape`            | Close the palette and return focus to the invoking element           |
+
+## Canvas pointer drag
+
+Dragging a canvas chip with the pointer is a pure enhancement over the paths above (SR-017): it
+dispatches the same `reorder-children` command as `Alt+Arrow`, adds no capability the outline
+lacks, and is inert in read-only sessions. A drag reorders only within the chip's own collection —
+cross-slot reparenting stays on the outline and palette paths in this pass. While dragging, a
+textual drop-position indicator names the target position; `Escape` or `pointercancel` abandons
+the drag with no document change. Drops and cancellations are announced through the polite live
+region.
+
 ## Global
 
 | Keys                                                                     | Operation |
@@ -31,7 +57,8 @@ including failures.
 ## Conformance
 
 These interactions are executable assertions in
-`packages/studio-lit/test/kumwe-studio.test.ts`: keyboard dispatch, disabled states at collection
-edges and in read-only sessions, live-region announcements, and the documented focus targets are
-all verified there. A change to this table without a matching assertion change is a contract
-violation.
+`packages/studio-lit/test/kumwe-studio.test.ts` and
+`packages/studio-lit/test/command-surfaces.test.ts`: keyboard dispatch, disabled states at
+collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
+cancellation, and the documented focus targets are all verified there. A change to this table
+without a matching assertion change is a contract violation.

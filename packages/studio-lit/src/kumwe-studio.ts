@@ -18,8 +18,10 @@ import type {
   BlueprintCommand,
   BlueprintDocument,
   BlueprintNode,
+  CommandDestination,
   DuplicateNodeCommand,
   ExperimentalShellConfiguration,
+  InsertNodeCommand,
   MessageReference,
   NodeId,
   RemoveNodeCommand,
@@ -31,7 +33,12 @@ import type {
   ThemeViewport,
 } from '@kumwe/studio-protocol';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
-import { allocateDuplicateIdMap, findAncestry, findOutlineLocation } from './outline.js';
+import {
+  allocateDuplicateIdMap,
+  collectDocumentIds,
+  findAncestry,
+  findOutlineLocation,
+} from './outline.js';
 
 export interface StudioDocumentChangeDetail {
   command: BlueprintCommand | null;
@@ -62,12 +69,34 @@ interface ShellCommandEnvelope {
   sessionGeneration: Revision;
 }
 
+interface CommandPaletteEntry {
+  disabled: boolean;
+  id: string;
+  label: string;
+  run: () => void;
+}
+
+interface CanvasDragState {
+  active: boolean;
+  capture?: Element;
+  label: string;
+  nodeId: NodeId;
+  order: NodeId[];
+  parentNodeId?: NodeId;
+  pointerId: number;
+  slot?: string;
+  sourceIndex: number;
+  targetIndex: number;
+}
+
 export class KumweStudioElement extends LitElement {
   public static override properties = {
     announcement: { attribute: false, state: true },
     configuration: { attribute: false },
     document: { attribute: false },
     messages: { attribute: false },
+    paletteFilter: { attribute: false, state: true },
+    paletteOpen: { attribute: false, state: true },
     selectedNodeId: { attribute: false, state: true },
     viewports: { attribute: false },
   };
@@ -150,6 +179,58 @@ export class KumweStudioElement extends LitElement {
       gap: 0.5rem;
       justify-content: flex-end;
       margin-bottom: 1rem;
+    }
+
+    .command-palette-toggle {
+      font-size: 0.8125rem;
+      margin-bottom: 0.75rem;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .command-palette {
+      background: var(--studio-panel);
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+    }
+
+    .command-palette input {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      font: inherit;
+      padding: 0.5rem 0.625rem;
+    }
+
+    .command-palette .hint {
+      margin: 0;
+    }
+
+    .command-results {
+      display: grid;
+      gap: 0.375rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .command-empty {
+      color: #5d6671;
+      margin: 0;
+    }
+
+    .canvas-chip {
+      touch-action: none;
+    }
+
+    .drop-indicator {
+      border: 1px dashed var(--studio-primary);
+      border-radius: 0.375rem;
+      font-weight: 600;
+      margin: 0 0 0.75rem;
+      padding: 0.375rem 0.5rem;
     }
 
     .node-children {
@@ -308,14 +389,19 @@ export class KumweStudioElement extends LitElement {
   declare public messages: StudioMessageOverrides | undefined;
   declare public viewports: ThemeViewport[] | undefined;
   declare protected announcement: string | undefined;
+  declare protected paletteFilter: string | undefined;
+  declare protected paletteOpen: boolean | undefined;
   declare protected selectedNodeId: string | undefined;
 
   #activeViewportId: string | undefined;
   #commandSequence = 0;
   #diagnostics: StudioDiagnostic[] = [];
+  #drag: CanvasDragState | undefined;
   #internalDocumentUpdate = false;
   #lastDirty = false;
+  #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
+  #pendingPaletteFocus = false;
   #registry: BlockRegistry | undefined;
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
@@ -415,6 +501,10 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override updated(): void {
+    if (this.#pendingPaletteFocus) {
+      this.#pendingPaletteFocus = false;
+      this.shadowRoot?.querySelector<HTMLInputElement>('.command-palette input')?.focus();
+    }
     const nodeId = this.#pendingFocusNodeId;
     if (nodeId === undefined) {
       return;
@@ -433,7 +523,12 @@ export class KumweStudioElement extends LitElement {
         : findOutlineLocation(this.document.roots, this.selectedNodeId)?.node;
 
     return html`
-      <div class="workspace">
+      <div
+        class="workspace"
+        @keydown=${(event: KeyboardEvent): void => {
+          this.#onWorkspaceKeydown(event);
+        }}
+      >
         <aside class="panel" aria-label=${this.#text('studio.shell/palette-label')}>
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
           <ul class="palette">
@@ -457,8 +552,28 @@ export class KumweStudioElement extends LitElement {
           class="canvas"
           aria-label=${this.#text('studio.shell/canvas-label')}
           data-viewport=${this.activeViewport?.id ?? nothing}
+          @pointermove=${(event: PointerEvent): void => {
+            this.#onCanvasPointerMove(event);
+          }}
+          @pointerup=${(event: PointerEvent): void => {
+            this.#onCanvasPointerUp(event);
+          }}
+          @pointercancel=${(event: PointerEvent): void => {
+            this.#onCanvasPointerCancel(event);
+          }}
         >
           ${this.#renderViewportSwitcher()} ${this.#renderBreadcrumb()}
+          <button
+            type="button"
+            class="command-palette-toggle"
+            aria-expanded=${this.paletteOpen === true ? 'true' : 'false'}
+            @click=${(event: Event): void => {
+              this.#togglePalette(event);
+            }}
+          >
+            ${this.#text('studio.shell/command-palette-toggle')}
+          </button>
+          ${this.#renderCommandPalette()}
           <div class="toolbar" aria-label=${this.#text('studio.shell/history-label')}>
             <button
               type="button"
@@ -479,6 +594,7 @@ export class KumweStudioElement extends LitElement {
               ${this.#text('studio.shell/redo')}
             </button>
           </div>
+          ${this.#renderDropIndicator()}
           ${
             roots.length === 0
               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
@@ -567,6 +683,25 @@ export class KumweStudioElement extends LitElement {
     this.document = document;
   }
 
+  /**
+   * Abandons an in-progress canvas drag without touching the document.
+   * Returns whether a drag was actually pending, so keyboard handling can
+   * consume the Escape key only when it cancelled something.
+   */
+  #cancelDrag(): boolean {
+    const drag = this.#drag;
+    if (drag === undefined) {
+      return false;
+    }
+    this.#drag = undefined;
+    this.#releaseDragCapture(drag);
+    if (drag.active) {
+      this.#announce('studio.shell/announce-drag-cancelled', { label: drag.label });
+    }
+    this.requestUpdate();
+    return true;
+  }
+
   #captureOutlineFocus(): void {
     const active = this.shadowRoot?.activeElement;
     if (
@@ -575,6 +710,16 @@ export class KumweStudioElement extends LitElement {
       active.dataset.nodeId !== undefined
     ) {
       this.#pendingFocusNodeId = active.dataset.nodeId;
+    }
+  }
+
+  #closePalette(restoreFocus: boolean): void {
+    this.paletteOpen = false;
+    this.paletteFilter = '';
+    const invoker = this.#paletteInvoker;
+    this.#paletteInvoker = undefined;
+    if (restoreFocus && invoker?.isConnected === true) {
+      invoker.focus();
     }
   }
 
@@ -652,6 +797,15 @@ export class KumweStudioElement extends LitElement {
     );
   }
 
+  #filteredPaletteEntries(): CommandPaletteEntry[] {
+    const filter = (this.paletteFilter ?? '').trim().toLowerCase();
+    const entries = this.#paletteEntries();
+    if (filter.length === 0) {
+      return entries;
+    }
+    return entries.filter((entry) => entry.label.toLowerCase().includes(filter));
+  }
+
   #findDefinition(node: BlueprintNode): BlockDefinition | undefined {
     return this.configuration?.blockDefinitions.find(
       (candidate) => candidate.type === node.type && candidate.version === node.version,
@@ -668,6 +822,68 @@ export class KumweStudioElement extends LitElement {
         entry.focus();
         return;
       }
+    }
+  }
+
+  /**
+   * Inserts a fresh node for a palette block definition: into the selected
+   * node's first declared slot when its definition declares slots, otherwise
+   * at the end of the document roots — the same placement an outline insert
+   * resolves to.
+   */
+  #insertDefinition(definition: BlockDefinition): void {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return;
+    }
+    const selected =
+      this.selectedNodeId === undefined
+        ? undefined
+        : findOutlineLocation(document.roots, this.selectedNodeId)?.node;
+    const selectedDefinition = selected === undefined ? undefined : this.#findDefinition(selected);
+    const firstSlot = selectedDefinition?.slots[0];
+    let destination: CommandDestination;
+    if (selected !== undefined && firstSlot !== undefined) {
+      const children = Object.hasOwn(selected.slots, firstSlot.id)
+        ? selected.slots[firstSlot.id]
+        : undefined;
+      destination = {
+        parentNodeId: selected.id,
+        position: children?.length ?? 0,
+        slot: firstSlot.id,
+      };
+    } else {
+      destination = { position: document.roots.length };
+    }
+    const taken = collectDocumentIds(document.roots);
+    const base = definition.type.slice(definition.type.indexOf('/') + 1);
+    let counter = 1;
+    let nodeId = `${base}-${counter}`;
+    while (taken.has(nodeId)) {
+      counter += 1;
+      nodeId = `${base}-${counter}`;
+    }
+    const node: BlueprintNode = {
+      authoring: { mode: 'content' },
+      bindings: {},
+      id: nodeId,
+      properties: {},
+      slots: {},
+      type: definition.type,
+      version: definition.version,
+    };
+    const command: InsertNodeCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { destination, node },
+      type: 'studio.command/insert-node',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#selectNode(nodeId);
+      this.#pendingFocusNodeId = nodeId;
+      this.#announce('studio.shell/announce-inserted', {
+        label: referenceText(definition.label),
+      });
     }
   }
 
@@ -733,6 +949,123 @@ export class KumweStudioElement extends LitElement {
     return definition === undefined ? node.type : referenceText(definition.label);
   }
 
+  #onCanvasPointerCancel(event: PointerEvent): void {
+    if (this.#drag?.pointerId === event.pointerId) {
+      this.#cancelDrag();
+    }
+  }
+
+  #onCanvasPointerMove(event: PointerEvent): void {
+    const drag = this.#drag;
+    if (drag === undefined) {
+      return;
+    }
+    if (event.pointerId !== drag.pointerId) {
+      return;
+    }
+    drag.active = true;
+    const index = this.#resolveDragIndex(event, drag);
+    if (index !== undefined) {
+      drag.targetIndex = index;
+    }
+    this.requestUpdate();
+  }
+
+  #onCanvasPointerUp(event: PointerEvent): void {
+    const drag = this.#drag;
+    if (drag === undefined) {
+      return;
+    }
+    if (event.pointerId !== drag.pointerId) {
+      return;
+    }
+    this.#drag = undefined;
+    this.#releaseDragCapture(drag);
+    if (!drag.active) {
+      // A plain press stays a click; selection is handled by the click path.
+      return;
+    }
+    this.requestUpdate();
+    if (drag.targetIndex === drag.sourceIndex) {
+      this.#announce('studio.shell/announce-drag-cancelled', { label: drag.label });
+      return;
+    }
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return;
+    }
+    const order = [...drag.order];
+    const [movedId] = order.splice(drag.sourceIndex, 1);
+    if (movedId === undefined) {
+      return;
+    }
+    order.splice(drag.targetIndex, 0, movedId);
+    const payload: ReorderChildrenPayload = { order };
+    if (drag.parentNodeId !== undefined && drag.slot !== undefined) {
+      payload.parentNodeId = drag.parentNodeId;
+      payload.slot = drag.slot;
+    }
+    const command: ReorderChildrenCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload,
+      type: 'studio.command/reorder-children',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#selectNode(drag.nodeId);
+      this.#announce('studio.shell/announce-dropped', {
+        count: String(drag.order.length),
+        label: drag.label,
+        position: String(drag.targetIndex + 1),
+      });
+    }
+  }
+
+  /**
+   * Starts tracking a possible chip drag. The drag only becomes active on the
+   * first pointer move, so a plain press-and-release stays an ordinary click.
+   * Read-only sessions and single-child collections never start tracking.
+   */
+  #onChipPointerDown(event: PointerEvent, node: BlueprintNode): void {
+    const document = this.document;
+    if (
+      document === undefined ||
+      this.#session === undefined ||
+      this.#isReadOnly() ||
+      event.button !== 0 ||
+      this.#drag !== undefined
+    ) {
+      return;
+    }
+    const location = findOutlineLocation(document.roots, node.id);
+    if (location === undefined || location.collection.length < 2) {
+      return;
+    }
+    const drag: CanvasDragState = {
+      active: false,
+      label: this.#nodeLabel(node),
+      nodeId: node.id,
+      order: location.collection.map((sibling) => sibling.id),
+      pointerId: event.pointerId,
+      sourceIndex: location.index,
+      targetIndex: location.index,
+    };
+    if (location.parentNodeId !== undefined && location.slot !== undefined) {
+      drag.parentNodeId = location.parentNodeId;
+      drag.slot = location.slot;
+    }
+    const chip = event.currentTarget;
+    if (chip instanceof Element) {
+      drag.capture = chip;
+      try {
+        chip.setPointerCapture(event.pointerId);
+      } catch {
+        // Pointer capture is a progressive nicety; tracking works without it.
+      }
+    }
+    this.#drag = drag;
+  }
+
   #onOutlineKeydown(event: KeyboardEvent, node: BlueprintNode): void {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
@@ -755,8 +1088,165 @@ export class KumweStudioElement extends LitElement {
     }
   }
 
+  #onPaletteEntryKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+      return;
+    }
+    event.preventDefault();
+    const buttons = this.#paletteResultButtons();
+    const index = buttons.findIndex((button) => button === event.currentTarget);
+    if (index === -1) {
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      buttons[index + 1]?.focus();
+      return;
+    }
+    if (index === 0) {
+      this.shadowRoot?.querySelector<HTMLInputElement>('.command-palette input')?.focus();
+      return;
+    }
+    buttons[index - 1]?.focus();
+  }
+
+  #onPaletteInputKeydown(event: KeyboardEvent): void {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.#paletteResultButtons()[0]?.focus();
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const first = this.#filteredPaletteEntries().find((entry) => !entry.disabled);
+      if (first !== undefined) {
+        this.#runPaletteEntry(first);
+      }
+    }
+  }
+
+  #onWorkspaceKeydown(event: KeyboardEvent): void {
+    if ((event.key === 'k' || event.key === 'K') && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      this.#togglePalette(event);
+      return;
+    }
+    if (event.key === 'Escape') {
+      if (this.#cancelDrag()) {
+        event.preventDefault();
+        return;
+      }
+      if (this.paletteOpen === true) {
+        event.preventDefault();
+        this.#closePalette(true);
+      }
+    }
+  }
+
   #orderedViewports(): ThemeViewport[] {
     return [...(this.viewports ?? [])].sort((left, right) => left.order - right.order);
+  }
+
+  /**
+   * The executable command list for the palette. Selection-scoped structural
+   * entries reuse the outline's dispatch paths and its exact disabled rules;
+   * insert entries mirror the block palette. Labels are catalog strings so the
+   * case-insensitive filter operates on localized text.
+   */
+  #paletteEntries(): CommandPaletteEntry[] {
+    const session = this.#session;
+    const document = this.document;
+    const readOnly = this.#isReadOnly();
+    const entries: CommandPaletteEntry[] = [];
+    const location =
+      document === undefined || this.selectedNodeId === undefined
+        ? undefined
+        : findOutlineLocation(document.roots, this.selectedNodeId);
+    if (location !== undefined) {
+      const node = location.node;
+      const first = location.index === 0;
+      const last = location.index === location.collection.length - 1;
+      entries.push(
+        {
+          disabled: readOnly || first,
+          id: 'move-up',
+          label: this.#text('studio.shell/move-up'),
+          run: (): void => {
+            this.#moveNode(node, -1);
+          },
+        },
+        {
+          disabled: readOnly || last,
+          id: 'move-down',
+          label: this.#text('studio.shell/move-down'),
+          run: (): void => {
+            this.#moveNode(node, 1);
+          },
+        },
+        {
+          disabled: readOnly,
+          id: 'duplicate',
+          label: this.#text('studio.shell/duplicate'),
+          run: (): void => {
+            this.#duplicateNode(node);
+          },
+        },
+        {
+          disabled: readOnly,
+          id: 'delete',
+          label: this.#text('studio.shell/delete'),
+          run: (): void => {
+            this.#deleteNode(node);
+          },
+        },
+      );
+    }
+    entries.push(
+      {
+        disabled: readOnly || session?.canUndo !== true,
+        id: 'undo',
+        label: this.#text('studio.shell/undo'),
+        run: (): void => {
+          this.undo();
+        },
+      },
+      {
+        disabled: readOnly || session?.canRedo !== true,
+        id: 'redo',
+        label: this.#text('studio.shell/redo'),
+        run: (): void => {
+          this.redo();
+        },
+      },
+      {
+        disabled: location === undefined,
+        id: 'clear-selection',
+        label: this.#text('studio.shell/command-clear-selection'),
+        run: (): void => {
+          this.#session?.clearSelection();
+          this.selectedNodeId = undefined;
+          this.#announce('studio.shell/announce-selection-cleared');
+        },
+      },
+    );
+    for (const definition of this.configuration?.blockDefinitions ?? []) {
+      entries.push({
+        disabled: readOnly,
+        id: `insert-${definition.type}@${definition.version}`,
+        label: this.#text('studio.shell/command-insert', {
+          label: referenceText(definition.label),
+        }),
+        run: (): void => {
+          this.#insertDefinition(definition);
+        },
+      });
+    }
+    return entries;
+  }
+
+  #paletteResultButtons(): HTMLButtonElement[] {
+    return [
+      ...(this.shadowRoot?.querySelectorAll<HTMLButtonElement>('button.command-entry') ?? []),
+    ].filter((button) => !button.disabled);
   }
 
   #rebuildRegistry(): void {
@@ -789,8 +1279,17 @@ export class KumweStudioElement extends LitElement {
       this.#session = new StudioSession(options);
       this.#sessionGeneration = generation;
     }
+    this.#drag = undefined;
     this.selectedNodeId = undefined;
     this.#syncDirty();
+  }
+
+  #releaseDragCapture(drag: CanvasDragState): void {
+    try {
+      drag.capture?.releasePointerCapture(drag.pointerId);
+    } catch {
+      // The capture may already have been released by the platform.
+    }
   }
 
   #renderBreadcrumb(): TemplateResult | typeof nothing {
@@ -837,9 +1336,14 @@ export class KumweStudioElement extends LitElement {
       <li>
         <button
           type="button"
+          class="canvas-chip"
+          data-node-id=${node.id}
           aria-pressed=${this.selectedNodeId === node.id ? 'true' : 'false'}
           @click=${(): void => {
             this.#selectNode(node.id);
+          }}
+          @pointerdown=${(event: PointerEvent): void => {
+            this.#onChipPointerDown(event, node);
           }}
         >
           ${definition === undefined ? node.type : referenceText(definition.label)}
@@ -854,6 +1358,73 @@ export class KumweStudioElement extends LitElement {
           `,
         )}
       </li>
+    `;
+  }
+
+  /**
+   * The palette is deliberately not an ARIA combobox: it is a labelled region
+   * holding a labelled filter input and a list of real, natively focusable
+   * buttons. Arrow keys move between the input and the enabled results, Enter
+   * activates, Tab leaves in document order — behavior documented in
+   * docs/experience/keyboard.md.
+   */
+  #renderCommandPalette(): TemplateResult | typeof nothing {
+    if (this.paletteOpen !== true) {
+      return nothing;
+    }
+    const entries = this.#filteredPaletteEntries();
+    return html`
+      <section
+        class="command-palette"
+        aria-label=${this.#text('studio.shell/command-palette-label')}
+      >
+        <input
+          type="text"
+          aria-label=${this.#text('studio.shell/command-palette-input-label')}
+          .value=${this.paletteFilter ?? ''}
+          @input=${(event: Event): void => {
+            const target = event.currentTarget;
+            if (target instanceof HTMLInputElement) {
+              this.paletteFilter = target.value;
+            }
+          }}
+          @keydown=${(event: KeyboardEvent): void => {
+            this.#onPaletteInputKeydown(event);
+          }}
+        />
+        <p class="hint">${this.#text('studio.shell/command-palette-hint')}</p>
+        ${
+          entries.length === 0
+            ? html`<p class="command-empty">${this.#text('studio.shell/command-palette-empty')}</p>`
+            : html`
+                <ul
+                  class="command-results"
+                  aria-label=${this.#text('studio.shell/command-palette-results-label')}
+                >
+                  ${entries.map(
+                    (entry) => html`
+                      <li>
+                        <button
+                          type="button"
+                          class="command-entry"
+                          data-command-id=${entry.id}
+                          ?disabled=${entry.disabled}
+                          @click=${(): void => {
+                            this.#runPaletteEntry(entry);
+                          }}
+                          @keydown=${(event: KeyboardEvent): void => {
+                            this.#onPaletteEntryKeydown(event);
+                          }}
+                        >
+                          ${entry.label}
+                        </button>
+                      </li>
+                    `,
+                  )}
+                </ul>
+              `
+        }
+      </section>
     `;
   }
 
@@ -882,6 +1453,23 @@ export class KumweStudioElement extends LitElement {
               `
         }
       </li>
+    `;
+  }
+
+  /** Textual drop-position readout shown while a canvas chip drag is active. */
+  #renderDropIndicator(): TemplateResult | typeof nothing {
+    const drag = this.#drag;
+    if (drag?.active !== true) {
+      return nothing;
+    }
+    return html`
+      <p class="drop-indicator">
+        ${this.#text('studio.shell/drag-drop-position', {
+          count: String(drag.order.length),
+          label: drag.label,
+          position: String(drag.targetIndex + 1),
+        })}
+      </p>
     `;
   }
 
@@ -1019,6 +1607,54 @@ export class KumweStudioElement extends LitElement {
     );
   }
 
+  /**
+   * Maps a pointer position onto a target position within the dragged node's
+   * own collection. Chips with measurable geometry are hit-tested by their
+   * vertical extent; environments without layout (such as the test DOM) fall
+   * back to the event's composed path. Only the source collection's chips are
+   * considered — cross-slot reparenting is out of scope for pointer drag.
+   */
+  #resolveDragIndex(event: PointerEvent, drag: CanvasDragState): number | undefined {
+    const chips = [
+      ...(this.shadowRoot?.querySelectorAll<HTMLButtonElement>('button.canvas-chip') ?? []),
+    ].filter((chip) => {
+      const nodeId = chip.dataset.nodeId;
+      return nodeId !== undefined && drag.order.includes(nodeId);
+    });
+    let nearestIndex: number | undefined;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const chip of chips) {
+      const rect = chip.getBoundingClientRect();
+      if (rect.height <= 0) {
+        continue;
+      }
+      const nodeId = chip.dataset.nodeId;
+      if (nodeId === undefined) {
+        continue;
+      }
+      if (event.clientY >= rect.top && event.clientY <= rect.bottom) {
+        return drag.order.indexOf(nodeId);
+      }
+      const distance = Math.abs(event.clientY - (rect.top + rect.height / 2));
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = drag.order.indexOf(nodeId);
+      }
+    }
+    if (nearestIndex !== undefined) {
+      return nearestIndex;
+    }
+    for (const hop of event.composedPath()) {
+      if (hop instanceof HTMLElement) {
+        const nodeId = hop.dataset.nodeId;
+        if (nodeId !== undefined && drag.order.includes(nodeId)) {
+          return drag.order.indexOf(nodeId);
+        }
+      }
+    }
+    return undefined;
+  }
+
   #revalidate(): void {
     if (this.document === undefined) {
       this.#diagnostics = [];
@@ -1035,6 +1671,18 @@ export class KumweStudioElement extends LitElement {
     this.#selectNode(nodeId);
     this.#pendingFocusNodeId = nodeId;
     this.requestUpdate();
+  }
+
+  #runPaletteEntry(entry: CommandPaletteEntry): void {
+    if (entry.disabled) {
+      return;
+    }
+    const invoker = this.#paletteInvoker;
+    this.#closePalette(false);
+    entry.run();
+    if (this.#pendingFocusNodeId === undefined && invoker?.isConnected === true) {
+      invoker.focus();
+    }
   }
 
   #runShellCommand(command: BlueprintCommand): boolean {
@@ -1095,6 +1743,18 @@ export class KumweStudioElement extends LitElement {
 
   #text(key: StudioMessageKey, parameters?: Readonly<Record<string, string>>): string {
     return messageText(key, this.messages, parameters);
+  }
+
+  #togglePalette(event?: Event): void {
+    if (this.paletteOpen === true) {
+      this.#closePalette(true);
+      return;
+    }
+    const origin = event?.composedPath()[0];
+    this.#paletteInvoker = origin instanceof HTMLElement ? origin : undefined;
+    this.paletteOpen = true;
+    this.paletteFilter = '';
+    this.#pendingPaletteFocus = true;
   }
 }
 
