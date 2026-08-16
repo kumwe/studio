@@ -8,6 +8,28 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Preview geometry, accessibility lane, and fuzzing (M3-04, M1-06, M2-07)
+
+- The preview channel gained the marker geometry and measurement channel: bounded marker lists
+  in, per-marker rectangle lists in CSS pixels relative to the preview viewport out, with a
+  viewport record, an unknown-marker list, and digest binding so geometry from a superseded
+  render surfaces as a typed stale outcome. The renderer supplies the measurer, keeping the
+  responder DOM-free; reload, supersession, and disposal void in-flight measurements.
+- An automated accessibility lane runs a WCAG 2.1 AA axe scan over the populated authoring
+  chrome including shadow roots (zero violations, no rules disabled — the scan surfaced and
+  fixed a prohibited aria-label on a role-generic toolbar), proves 320-pixel reflow keeps the
+  outline, inspector, and palette functional, and proves reduced-motion collapses every
+  animation to zero. SR-019, SR-020, and the new SR-025 move to enforced: the requirement
+  registry has zero open rows.
+- Seeded deterministic fuzz suites close TH-014: hundreds of generated document and command
+  pairs prove the reducers fail only through the closed taxonomy, never mutate input, and stay
+  byte-invertible in canonical minimal form, while structural mutations prove the rich-text
+  parser rejects malformed and prototype-polluting input through deliberate diagnostics and
+  the projection holds its invariants, including inert pass-through of markup payloads.
+  TH-008 and TH-013 are the two remaining open threat rows.
+- The release workflow verifies npm authentication before publishing, separating
+  secret-delivery failures from token-permission failures.
+
 ### Command vocabulary resolution (M2-02)
 
 - The two remaining open Gate A vocabulary items are deliberately resolved (ADR 0009). The
