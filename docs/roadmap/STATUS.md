@@ -57,8 +57,8 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate              | Reviewer reproduction; first alpha publish not yet exercised          |
 | `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane         | Reviewer reproduction                                                 |
 | `M2-01` | evidence-review | Full schema list: patterns, provenance, unresolved, profile meta     | Reviewer reproduction                                                 |
-| `M2-02` | evidence-review | Fourteen-command subset with restore and inheritance-reset           | Responsive-role resize semantics; reviewer reproduction               |
-| `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime | Extension SDK surface; lifecycle fixtures beyond blocks               |
+| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete            | Reviewer reproduction                                                 |
+| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds         | Reviewer reproduction                                                 |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof | Reviewer reproduction                                                 |
 | `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors        | Reviewer reproduction                                                 |
 | `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles     | Dart model generation and round-trip (`M3-06` not started)            |
