@@ -6,20 +6,21 @@ import { openShell, populateShell } from '../support/shell.js';
  * Policy the reference host serves (examples/reference-host/vite.config.ts).
  * The spec pins the exact policy string so any drift fails the lane, drives
  * the populated chrome while listening for securitypolicyviolation events,
- * and proves the policy is genuinely enforced with an inline-script negative
- * control.
+ * and proves the policy is genuinely enforced with negative controls: an
+ * injected inline script, a raw string written to a Trusted Types-governed
+ * sink, and a rogue trusted-types policy registration.
  *
- * Known, deliberately pinned gaps (recorded in the TH-013 registry note):
- * string-to-code compilation stays ungoverned and Trusted Types stays off
- * because @kumwe/core compiles JSON Schemas through Ajv's Function
- * constructor at runtime — under `script-src 'self'` or
- * `require-trusted-types-for 'script'` the shell fails to boot. When core
- * validation goes eval-free, tighten the policy back to the contract's
- * `default-src 'none'; script-src 'self'` target and revisit Trusted Types.
+ * Core validation is interpreted (packages/core/src/profile-validator.ts),
+ * so the policy carries the contract's `default-src 'none'; script-src
+ * 'self'` baseline with no 'unsafe-eval', and Trusted Types is enforced with
+ * `lit-html` as the only allowed policy (Lit parses its static template
+ * strings through it; the shell itself creates no other policy).
  */
 const PINNED_POLICY = [
-  "script-src-elem 'self'",
-  "script-src-attr 'none'",
+  "default-src 'none'",
+  "script-src 'self'",
+  "require-trusted-types-for 'script'",
+  'trusted-types lit-html',
   "style-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",
@@ -98,11 +99,58 @@ test('the chrome completes an authoring pass under the pinned policy without vio
 
   expect(await page.evaluate(() => window.__cspViolations)).toEqual([]);
 
-  // Pins the known gap: Ajv-based validation in @kumwe/core needs runtime
-  // string compilation, so the policy cannot govern eval yet. Flip this
-  // expectation to a rejection when core validation goes eval-free and the
-  // policy gains `default-src 'none'; script-src 'self'`.
-  expect(await page.evaluate(() => eval('6 * 7') as number)).toBe(42);
+  // The eval-free claim itself cannot be probed through page.evaluate:
+  // DevTools-protocol evaluation is exempt from the page's eval directive
+  // (CDP's allowUnsafeEvalBlockedByCSP), so an eval() here would succeed
+  // regardless of policy. The claim is carried by the pinned header (a bare
+  // `script-src 'self'` with no 'unsafe-eval') plus the clean authoring pass
+  // above: the shell's own bundled code IS governed by the directive, and
+  // before core validation went eval-free this exact boot demonstrably
+  // failed under it.
+
+  // Negative control for Trusted Types: a raw string written to a governed
+  // sink must be refused and reported, because only the `lit-html` policy
+  // exists and no default policy is registered.
+  const rawSinkRefused = await page.evaluate(() => {
+    try {
+      document.createElement('div').innerHTML = '<img alt="">';
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  expect(rawSinkRefused).toBe(true);
+
+  // A page script also cannot mint itself an escape hatch: the policy list
+  // admits `lit-html` only, so creating any other policy is refused.
+  const roguePolicyRefused = await page.evaluate(() => {
+    const factory = (
+      window as unknown as {
+        trustedTypes?: {
+          createPolicy: (name: string, rules: { createHTML: (input: string) => string }) => unknown;
+        };
+      }
+    ).trustedTypes;
+    if (factory === undefined) {
+      return false;
+    }
+    try {
+      factory.createPolicy('rogue', { createHTML: (value: string) => value });
+      return false;
+    } catch {
+      return true;
+    }
+  });
+  expect(roguePolicyRefused).toBe(true);
+
+  await expect
+    .poll(async () => await page.evaluate(() => window.__cspViolations?.length ?? 0))
+    .toBeGreaterThanOrEqual(2);
+  const directives = await page.evaluate(() =>
+    (window.__cspViolations ?? []).map((violation) => violation.directive),
+  );
+  expect(directives).toContain('require-trusted-types-for');
+  expect(directives).toContain('trusted-types');
 });
 
 test('an injected inline script does not run and raises a violation event', async ({ page }) => {
@@ -110,11 +158,15 @@ test('an injected inline script does not run and raises a violation event', asyn
 
   // Negative control, mirroring the reduced-motion spec's pattern: prove the
   // listener and the policy both work by injecting markup the policy must
-  // refuse. The script must neither execute nor stay silent.
+  // refuse. The script must neither execute nor stay silent. Under Trusted
+  // Types a direct `textContent` assignment already throws at the sink, so
+  // the injection stages its payload through a text node — the one route
+  // that reaches script-preparation — where enforcement must still refuse
+  // to execute it and must report the violation.
   const executed = await page.evaluate(() => {
     window.__inlineExecuted = false;
     const script = document.createElement('script');
-    script.textContent = 'window.__inlineExecuted = true;';
+    script.appendChild(document.createTextNode('window.__inlineExecuted = true;'));
     document.body.append(script);
     return window.__inlineExecuted;
   });
@@ -124,6 +176,6 @@ test('an injected inline script does not run and raises a violation event', asyn
     .poll(async () => await page.evaluate(() => window.__cspViolations?.length ?? 0))
     .toBeGreaterThan(0);
   const violations = await page.evaluate(() => window.__cspViolations ?? []);
-  expect(violations.map((violation) => violation.directive)).toContain('script-src-elem');
-  expect(violations.map((violation) => violation.blockedURI)).toContain('inline');
+  expect(violations.map((violation) => violation.directive)).toContain('require-trusted-types-for');
+  expect(violations.map((violation) => violation.blockedURI)).toContain('trusted-types-sink');
 });

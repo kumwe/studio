@@ -8,10 +8,17 @@ import { defineConfig } from 'vite';
  *
  * Directive rationale — nothing here is looser than the app demonstrably
  * needs:
- * - script-src-elem 'self': only bundled same-origin script elements load;
- *   inline <script> is refused (no 'unsafe-inline', no hashes, no nonces).
- * - script-src-attr 'none': inline event-handler attributes never run; the
- *   shell binds listeners programmatically.
+ * - default-src 'none': every fetch directive without an explicit entry
+ *   below falls back to a refusal.
+ * - script-src 'self': only bundled same-origin scripts load; inline
+ *   <script>, inline event-handler attributes, and string-to-code
+ *   compilation (eval, Function) are all refused. Core validation is
+ *   interpreted (packages/core/src/profile-validator.ts), so the shell needs
+ *   no 'unsafe-eval'.
+ * - require-trusted-types-for 'script' + trusted-types lit-html: every
+ *   HTML/script sink takes a typed value. `lit-html` is the only policy the
+ *   shell creates (Lit parses its static template strings through it);
+ *   nothing else writes to a governed sink.
  * - style-src 'self': the host stylesheet is a bundled asset and the Lit
  *   shell adopts constructed stylesheets, so inline styles stay refused.
  * - img-src 'self' data:: bundled assets plus data: icon payloads; no remote
@@ -19,25 +26,16 @@ import { defineConfig } from 'vite';
  * - font-src/connect-src 'self': system-ui fonts and same-origin fetches
  *   only.
  * - media-src/worker-src/frame-src/manifest-src/object-src 'none': the shell
- *   embeds no media, workers, frames, manifests, or plugin documents.
+ *   embeds no media, workers, frames, manifests, or plugin documents
+ *   (explicit even though default-src already refuses them).
  * - frame-ancestors 'self' keeps the chrome out of foreign frames; base-uri
  *   and form-action 'none' close base hijacking and form exfiltration.
- *
- * Known gap (TH-013 note): the contract baseline is `default-src 'none';
- * script-src 'self'`, but @kumwe/core compiles JSON Schemas through Ajv's
- * Function-constructor codegen at runtime, so any policy that governs string
- * compilation (a script-src or default-src fallback without 'unsafe-eval')
- * stops the shell from booting. Until core validation is eval-free, the
- * policy therefore enumerates every other directive explicitly and leaves
- * only string compilation ungoverned instead of granting 'unsafe-eval'.
- * Restore `default-src 'none'; script-src 'self'` when that lands. The same
- * Ajv sink stops `require-trusted-types-for 'script'` (verified empirically:
- * the shell fails to boot; Lit itself is compatible through its `lit-html`
- * policy), so Trusted Types stays an open follow-up as well.
  */
 export const contentSecurityPolicy = [
-  "script-src-elem 'self'",
-  "script-src-attr 'none'",
+  "default-src 'none'",
+  "script-src 'self'",
+  "require-trusted-types-for 'script'",
+  'trusted-types lit-html',
   "style-src 'self'",
   "img-src 'self' data:",
   "font-src 'self'",

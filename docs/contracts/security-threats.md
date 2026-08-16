@@ -43,14 +43,16 @@ breaking change to recorded evidence.
   Artifact schemas already store no URLs outside schema-defined safe fields.
 - TH-011 is additionally covered by the lockfile, the schema digest manifest, the secret-scan
   lane, npm provenance publishing, and the SBOM lane in CI.
-- TH-013 claims the CSP part only: `e2e/specs/csp.spec.ts` pins the reference host's policy
-  verbatim on the document response, completes an authoring pass (insert, select, inspector
-  edit, command palette) with zero `securitypolicyviolation` events, and proves enforcement with
-  an inline-script negative control that must not execute and must raise a violation. Not
-  claimed and deliberately open as `M6-02` follow-ups: governing string-to-code compilation
-  (`script-src`/`default-src`) and Trusted Types — core Blueprint validation compiles JSON
-  Schemas through Ajv's `Function`-constructor codegen at runtime, so `script-src 'self'` and
-  `require-trusted-types-for 'script'` each stop the shell from booting today (verified
-  empirically; Lit itself is compatible through its `lit-html` policy).
+- TH-013 claims both the CSP and Trusted Types parts: `e2e/specs/csp.spec.ts` pins the
+  reference host's policy verbatim on the document response — `default-src 'none'; script-src
+'self'` with no `unsafe-eval`, plus `require-trusted-types-for 'script'; trusted-types
+lit-html` — completes an authoring pass (insert, select, inspector edit, command palette)
+  with zero `securitypolicyviolation` events, and proves enforcement with negative controls:
+  an injected inline script that must not execute and must raise a violation, a raw string
+  written to a Trusted Types-governed sink, and a rogue `trustedTypes.createPolicy` attempt,
+  each of which must be refused and reported. Both directives are viable because core schema
+  validation is interpreted eval-free (`packages/core/src/profile-validator.ts`, with an
+  Ajv-agreement suite in `packages/core/test/profile-validator.test.ts`); `lit-html` is the
+  only allowed policy (Lit parses its static template strings through it).
 - TH-014 is additionally covered by the rich-text structural-mutation and projection fuzz suite
   in `packages/rich-text/test/fuzz.test.ts`.
