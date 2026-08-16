@@ -1,5 +1,12 @@
 # @kumwe/studio-media
 
+## 0.1.0-alpha.2
+
+### Patch Changes
+
+- Updated dependencies [[`084dc0b`](https://github.com/kumwe/studio/commit/084dc0bd7248264a50728c6f38d06eb7c6dc6a8e)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.2
+
 ## 0.1.0-alpha.1
 
 ### Minor Changes
