@@ -31,6 +31,11 @@ export type StudioMessageKey =
   | 'studio.shell/announce-property-unset'
   | 'studio.shell/announce-redid'
   | 'studio.shell/announce-selection-cleared'
+  | 'studio.shell/announce-size-role-invalid'
+  | 'studio.shell/announce-size-role-removed'
+  | 'studio.shell/announce-size-role-removed-viewport'
+  | 'studio.shell/announce-size-role-set'
+  | 'studio.shell/announce-size-role-set-viewport'
   | 'studio.shell/announce-undid'
   | 'studio.shell/announce-viewport-changed'
   | 'studio.shell/block-actions'
@@ -65,12 +70,29 @@ export type StudioMessageKey =
   | 'studio.shell/inspector-heading'
   | 'studio.shell/inspector-hint'
   | 'studio.shell/inspector-identifier'
+  | 'studio.shell/inspector-layout-axis-block'
+  | 'studio.shell/inspector-layout-axis-inline'
+  | 'studio.shell/inspector-layout-base-none'
+  | 'studio.shell/inspector-layout-base-role'
+  | 'studio.shell/inspector-layout-fallback-hint'
+  | 'studio.shell/inspector-layout-heading'
+  | 'studio.shell/inspector-layout-no-roles'
+  | 'studio.shell/inspector-layout-role-label-base'
+  | 'studio.shell/inspector-layout-role-label-viewport'
+  | 'studio.shell/inspector-layout-role-placeholder'
+  | 'studio.shell/inspector-layout-unset'
+  | 'studio.shell/inspector-layout-unset-label-base'
+  | 'studio.shell/inspector-layout-unset-label-viewport'
   | 'studio.shell/inspector-override-value-label'
   | 'studio.shell/inspector-overrides-empty'
   | 'studio.shell/inspector-overrides-heading'
   | 'studio.shell/inspector-properties'
   | 'studio.shell/inspector-properties-empty'
   | 'studio.shell/inspector-property-value-label'
+  | 'studio.shell/inspector-provenance-base'
+  | 'studio.shell/inspector-provenance-inherited'
+  | 'studio.shell/inspector-provenance-inherited-none'
+  | 'studio.shell/inspector-provenance-overridden'
   | 'studio.shell/inspector-read-only'
   | 'studio.shell/inspector-remove-binding'
   | 'studio.shell/inspector-remove-binding-label'
@@ -85,6 +107,7 @@ export type StudioMessageKey =
   | 'studio.shell/outline-empty'
   | 'studio.shell/outline-heading'
   | 'studio.shell/outline-hint'
+  | 'studio.shell/outline-slot'
   | 'studio.shell/palette-heading'
   | 'studio.shell/palette-label'
   | 'studio.shell/redo'
@@ -145,6 +168,18 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   'studio.shell/announce-property-unset': { defaultMessage: 'Unset {property}' },
   'studio.shell/announce-redid': { defaultMessage: 'Redid change' },
   'studio.shell/announce-selection-cleared': { defaultMessage: 'Selection cleared' },
+  'studio.shell/announce-size-role-invalid': {
+    defaultMessage:
+      'The {axis} role must be a lower-case identifier such as half or full-width. Nothing was changed.',
+  },
+  'studio.shell/announce-size-role-removed': { defaultMessage: 'Removed the {axis} role' },
+  'studio.shell/announce-size-role-removed-viewport': {
+    defaultMessage: 'Removed the {axis} role for the {viewport} viewport',
+  },
+  'studio.shell/announce-size-role-set': { defaultMessage: 'Set the {axis} role to {role}' },
+  'studio.shell/announce-size-role-set-viewport': {
+    defaultMessage: 'Set the {axis} role to {role} for the {viewport} viewport',
+  },
   'studio.shell/announce-undid': { defaultMessage: 'Undid change' },
   'studio.shell/announce-viewport-changed': { defaultMessage: 'Previewing the {label} viewport' },
   'studio.shell/block-actions': { defaultMessage: 'Block actions' },
@@ -188,6 +223,30 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
     defaultMessage: 'Inputs hold JSON values. Enter applies the edit, Escape reverts it.',
   },
   'studio.shell/inspector-identifier': { defaultMessage: 'Identifier' },
+  'studio.shell/inspector-layout-axis-block': { defaultMessage: 'Block size' },
+  'studio.shell/inspector-layout-axis-inline': { defaultMessage: 'Inline size' },
+  'studio.shell/inspector-layout-base-none': { defaultMessage: 'Base: none' },
+  'studio.shell/inspector-layout-base-role': { defaultMessage: 'Base: {role}' },
+  'studio.shell/inspector-layout-fallback-hint': {
+    defaultMessage:
+      'No theme size-role vocabulary is available. Enter a lower-case role identifier; Enter applies it, Escape cancels.',
+  },
+  'studio.shell/inspector-layout-heading': { defaultMessage: 'Layout' },
+  'studio.shell/inspector-layout-no-roles': {
+    defaultMessage: 'The active theme declares no size roles, so none can be assigned.',
+  },
+  'studio.shell/inspector-layout-role-label-base': { defaultMessage: '{axis} role (base)' },
+  'studio.shell/inspector-layout-role-label-viewport': {
+    defaultMessage: '{axis} role override for the {viewport} viewport',
+  },
+  'studio.shell/inspector-layout-role-placeholder': { defaultMessage: 'Choose a role' },
+  'studio.shell/inspector-layout-unset': { defaultMessage: 'Remove' },
+  'studio.shell/inspector-layout-unset-label-base': {
+    defaultMessage: 'Remove the {axis} base role',
+  },
+  'studio.shell/inspector-layout-unset-label-viewport': {
+    defaultMessage: 'Remove the {axis} role override for the {viewport} viewport',
+  },
   'studio.shell/inspector-override-value-label': {
     defaultMessage: 'Override of {property} for the {viewport} viewport as JSON',
   },
@@ -200,6 +259,16 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
   'studio.shell/inspector-properties': { defaultMessage: 'Properties' },
   'studio.shell/inspector-properties-empty': { defaultMessage: 'No properties' },
   'studio.shell/inspector-property-value-label': { defaultMessage: 'Value of {property} as JSON' },
+  'studio.shell/inspector-provenance-base': { defaultMessage: 'Base value' },
+  'studio.shell/inspector-provenance-inherited': {
+    defaultMessage: 'Inherited from base: {value}',
+  },
+  'studio.shell/inspector-provenance-inherited-none': {
+    defaultMessage: 'Inherited from base: none',
+  },
+  'studio.shell/inspector-provenance-overridden': {
+    defaultMessage: 'Overridden for the {viewport} viewport: {value}',
+  },
   'studio.shell/inspector-read-only': {
     defaultMessage: 'Editing is disabled because this session is read-only.',
   },
@@ -223,6 +292,7 @@ export const studioMessages: Record<StudioMessageKey, StudioMessage> = {
     defaultMessage:
       'Arrow keys move focus. Alt+Arrow moves the block. Delete removes it. Ctrl+D or Cmd+D duplicates it.',
   },
+  'studio.shell/outline-slot': { defaultMessage: 'Slot: {slot}' },
   'studio.shell/palette-heading': { defaultMessage: 'Blocks' },
   'studio.shell/palette-label': { defaultMessage: 'Block palette' },
   'studio.shell/redo': { defaultMessage: 'Redo' },

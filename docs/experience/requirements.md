@@ -35,6 +35,7 @@ evidence.
 | SR-024 | Conflict and failure announcements preserve focus and speak through the polite live region          | accessibility.md     | packages/studio-lit/test/inspector.test.ts         |
 | SR-025 | Authoring chrome passes the automated WCAG 2.1 AA scan                                              | accessibility.md     | e2e/specs/wcag-scan.spec.ts                        |
 | SR-026 | Announcements and focus survive preview renderer reload and teardown                                | accessibility.md     | packages/studio-lit/test/preview-lifecycle.test.ts |
+| SR-027 | Layout size roles are editable and their inheritance provenance is textually perceivable            | keyboard.md          | packages/studio-lit/test/layout-editing.test.ts    |
 
 ## Manual procedures
 

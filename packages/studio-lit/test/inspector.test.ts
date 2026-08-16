@@ -323,6 +323,10 @@ describe('inspector property editing', () => {
       'inspector-add-override-name',
       'inspector-add-override-value',
       'inspector-add-override-submit',
+      'layout-role-input',
+      'layout-role-unset',
+      'layout-role-input',
+      'layout-role-unset',
     ]);
     element.remove();
   });
