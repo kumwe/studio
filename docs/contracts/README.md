@@ -22,6 +22,7 @@ This directory contains the normative contracts between Studio core, user interf
 - [Extension lifecycle](extension-lifecycle.md)
 - [Compatibility](compatibility.md)
 - [Security](security.md)
+- [Threat enforcement registry](security-threats.md)
 - [Accessibility](accessibility.md)
 
 Machine-readable artifact shapes live in [`schemas/`](../../schemas/README.md). Schema validation is necessary but not sufficient: implementations must also enforce the semantic rules in these documents.
