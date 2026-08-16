@@ -58,6 +58,24 @@ Schemas use closed objects by default. Extension maps are namespaced, schema-reg
 - Clipboard, drag/drop, file, link and paste inputs are treated as untrusted.
 - External navigation is handed to the host and uses safe opener behavior.
 
+### Content Security Policy baseline
+
+Hosts MUST be able to embed the authoring shell under a policy at least as strict as the pinned
+baseline below, which the reference host serves on every response and `e2e/specs/csp.spec.ts`
+verifies verbatim (TH-013):
+
+```
+script-src-elem 'self'; script-src-attr 'none'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'none'; worker-src 'none'; frame-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+```
+
+The chrome runs without inline scripts, inline event handlers, inline styles, or cross-origin
+subresources under this baseline. The baseline does not yet govern string-to-code compilation and
+does not enable Trusted Types: core Blueprint validation compiles JSON Schemas through Ajv's
+`Function`-constructor codegen at runtime, so a `script-src`/`default-src` directive without
+`unsafe-eval` and `require-trusted-types-for 'script'` each stop the shell today. Both remain
+recorded `M6-02` follow-ups in the threat registry; once validation is eval-free the baseline
+tightens to `default-src 'none'; script-src 'self'`.
+
 ## Plugin controls
 
 Declarative plugins are preferred. Executable plugins cannot claim authority from their manifest and receive only a scoped SDK. Trust revocation invalidates affected sessions and generations. Extension diagnostics are core-owned so plugin code is unnecessary for inspection or removal.
