@@ -1,5 +1,22 @@
 # @kumwe/studio
 
+## 0.1.0-alpha.3
+
+### Minor Changes
+
+- [#13](https://github.com/kumwe/studio/pull/13) [`a2975b3`](https://github.com/kumwe/studio/commit/a2975b36300121f1826e1e2f0627e4720f4b2159) Thanks [@lemuelvdm](https://github.com/lemuelvdm)! - Close the threat enforcement registry at fourteen of fourteen and extend the canonical corpus:
+  the core gains the deterministic external-URL policy hosts must apply before fetching media or
+  embed sources, the testkit gains the non-disclosing external-import drill, the reference host is
+  served and verified under a pinned content security policy with no unsafe-inline or unsafe-eval,
+  eleven canonical media policy vectors replay against the real upload controller through the
+  testkit, and the shell announces preview reload and teardown with a deterministic live-region
+  queue while never touching focus.
+
+### Patch Changes
+
+- Updated dependencies [[`a2975b3`](https://github.com/kumwe/studio/commit/a2975b36300121f1826e1e2f0627e4720f4b2159)]:
+  - @kumwe/studio-core@0.1.0-alpha.3
+
 ## 0.1.0-alpha.2
 
 ### Minor Changes

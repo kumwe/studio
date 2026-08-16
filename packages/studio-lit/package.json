@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -26,12 +26,12 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.2",
+    "@kumwe/studio-core": "0.1.0-alpha.3",
     "@kumwe/studio-protocol": "0.1.0-alpha.2",
     "lit": "3.3.3"
   },
   "devDependencies": {
-    "@kumwe/studio-testkit": "0.1.0-alpha.2"
+    "@kumwe/studio-testkit": "0.1.0-alpha.3"
   },
   "publishConfig": {
     "access": "public",
