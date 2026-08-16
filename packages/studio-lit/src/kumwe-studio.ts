@@ -28,6 +28,7 @@ import type {
   JsonValue,
   MessageReference,
   NodeId,
+  PreviewMessage,
   RemoveBindingCommand,
   RemoveNodeCommand,
   ReorderChildrenCommand,
@@ -482,6 +483,7 @@ export class KumweStudioElement extends LitElement {
   declare protected selectedNodeId: string | undefined;
 
   #activeViewportId: string | undefined;
+  #announcementPending = false;
   #commandSequence = 0;
   #diagnostics: StudioDiagnostic[] = [];
   #drag: CanvasDragState | undefined;
@@ -490,6 +492,7 @@ export class KumweStudioElement extends LitElement {
   #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
   #pendingPaletteFocus = false;
+  readonly #pendingPreviewAnnouncements: string[] = [];
   #registry: BlockRegistry | undefined;
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
@@ -547,6 +550,27 @@ export class KumweStudioElement extends LitElement {
     this.requestUpdate();
   }
 
+  /**
+   * Consumes preview channel messages a host forwards (for example from
+   * `PreviewClient.onMessage`). Renderer reload and channel teardown are
+   * announced through the single polite live region with their qualified
+   * reason, via the message catalog. The handler never moves focus and never
+   * touches the document or session: a preview restart is presentation-only.
+   * Read-only sessions announce identically. All other message types are
+   * ignored here.
+   */
+  public notifyPreviewMessage(message: PreviewMessage): void {
+    if (message.type === 'studio.preview/reload') {
+      this.#queuePreviewAnnouncement('studio.shell/announce-preview-reloaded', {
+        reason: message.payload.reason,
+      });
+    } else if (message.type === 'studio.preview/teardown') {
+      this.#queuePreviewAnnouncement('studio.shell/announce-preview-torn-down', {
+        reason: message.payload.reason,
+      });
+    }
+  }
+
   public redo(): BlueprintDocument | undefined {
     const session = this.#session;
     if (this.#isReadOnly() || session?.canRedo !== true) {
@@ -595,6 +619,14 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override updated(): void {
+    // The announcement rendered; a preview lifecycle announcement deferred
+    // behind it now takes the slot on the next update, so both are spoken.
+    this.#announcementPending = false;
+    const deferred = this.#pendingPreviewAnnouncements.shift();
+    if (deferred !== undefined && deferred !== this.announcement) {
+      this.announcement = deferred;
+      this.#announcementPending = true;
+    }
     if (this.#pendingPaletteFocus) {
       this.#pendingPaletteFocus = false;
       this.shadowRoot?.querySelector<HTMLInputElement>('.command-palette input')?.focus();
@@ -803,6 +835,7 @@ export class KumweStudioElement extends LitElement {
 
   #announce(key: StudioMessageKey, parameters?: Readonly<Record<string, string>>): void {
     this.announcement = messageText(key, this.messages, parameters);
+    this.#announcementPending = true;
   }
 
   #assignInternalDocument(document: BlueprintDocument): void {
@@ -1433,6 +1466,27 @@ export class KumweStudioElement extends LitElement {
       this.#announce('studio.shell/announce-invalid-value', { label });
       return undefined;
     }
+  }
+
+  /**
+   * Announces a preview lifecycle message through the single polite live
+   * region. The region is a single slot, so deterministic ordering matters:
+   * when an operation-outcome announcement from the same tick is still
+   * waiting to render, the lifecycle text is queued and takes the slot on
+   * the update after the outcome has rendered — queued after, never instead.
+   * With no announcement in flight it is announced immediately. A queued
+   * text identical to the one already showing is dropped, since re-rendering
+   * identical text would not be re-announced anyway.
+   */
+  #queuePreviewAnnouncement(
+    key: StudioMessageKey,
+    parameters: Readonly<Record<string, string>>,
+  ): void {
+    if (this.#announcementPending && this.isUpdatePending) {
+      this.#pendingPreviewAnnouncements.push(messageText(key, this.messages, parameters));
+      return;
+    }
+    this.#announce(key, parameters);
   }
 
   #rebuildRegistry(): void {
