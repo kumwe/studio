@@ -1,5 +1,3 @@
-import { Ajv2020 } from 'ajv/dist/2020.js';
-import type { ErrorObject, ValidateFunction } from 'ajv';
 import {
   blueprintSchema,
   commonSchema,
@@ -10,6 +8,11 @@ import {
   type QualifiedName,
   type StudioDiagnostic,
 } from '@kumwe/studio-protocol';
+import {
+  compileProfileSchema,
+  type CompiledSchemaValidator,
+  type SchemaValidationError,
+} from './profile-validator.js';
 import type { BlockRegistry } from './registry.js';
 
 export interface BlueprintValidationOptions {
@@ -23,16 +26,14 @@ export interface BlueprintValidationResult {
   valid: boolean;
 }
 
-const canonicalAjv = new Ajv2020({ allErrors: true, strict: true });
-canonicalAjv.addSchema(commonSchema);
-const validateBlueprintSchema: ValidateFunction = canonicalAjv.compile(blueprintSchema);
+// The canonical Blueprint schema is interpreted, not code-generated, so
+// boot-path validation stays eval-free and runs under a CSP that forbids
+// string-to-code compilation (TH-013).
+const validateBlueprintSchema: CompiledSchemaValidator = compileProfileSchema(blueprintSchema, {
+  schemas: [commonSchema],
+});
 
-interface RegistryValidatorCache {
-  ajv: Ajv2020;
-  validators: Map<string, ValidateFunction>;
-}
-
-const propertyValidators = new WeakMap<BlockRegistry, RegistryValidatorCache>();
+const propertyValidators = new WeakMap<BlockRegistry, Map<string, CompiledSchemaValidator>>();
 const MAX_BLUEPRINT_JSON_BYTES = 16 * 1_024 * 1_024;
 const MAX_BLUEPRINT_JSON_DEPTH = 64;
 const MAX_BLUEPRINT_JSON_VALUES = 1_000_000;
@@ -71,7 +72,7 @@ export function validateBlueprint(
     return { diagnostics: [valuePreflightDiagnostic], valid: false };
   }
 
-  if (!validateBlueprintSchema(document)) {
+  if (!validateBlueprintSchema.validate(document)) {
     diagnostics.push(...schemaDiagnostics(validateBlueprintSchema.errors));
     return { diagnostics, valid: false };
   }
@@ -413,14 +414,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function schemaDiagnostics(errors: ErrorObject[] | null | undefined): StudioDiagnostic[] {
+function schemaDiagnostics(errors: SchemaValidationError[] | null): StudioDiagnostic[] {
   return (errors ?? []).map((error) =>
-    diagnostic(
-      `schema-${error.keyword}`,
-      error.message ?? 'Blueprint does not satisfy its schema.',
-      undefined,
-      error.instancePath,
-    ),
+    diagnostic(`schema-${error.keyword}`, error.message, undefined, error.instancePath),
   );
 }
 
@@ -433,20 +429,17 @@ function validateNodeProperties(
   const key = `${definition.type}@${definition.version}`;
   let cache = propertyValidators.get(registry);
   if (cache === undefined) {
-    cache = {
-      ajv: new Ajv2020({ addUsedSchema: false, allErrors: true, strict: true }),
-      validators: new Map<string, ValidateFunction>(),
-    };
+    cache = new Map<string, CompiledSchemaValidator>();
     propertyValidators.set(registry, cache);
   }
-  let validator = cache.validators.get(key);
+  let validator = cache.get(key);
   if (validator === undefined) {
-    const compiled = cache.ajv.compile(definition.propertySchema);
-    cache.validators.set(key, compiled);
+    const compiled = compileProfileSchema(definition.propertySchema);
+    cache.set(key, compiled);
     validator = compiled;
   }
 
-  if (!validator(node.properties)) {
+  if (!validator.validate(node.properties)) {
     diagnostics.push(
       ...schemaDiagnostics(validator.errors).map((entry) => ({
         ...entry,
