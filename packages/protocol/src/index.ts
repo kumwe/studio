@@ -195,6 +195,7 @@ export {
   type StudioLimits,
   type StudioResourceContext,
   type StudioResourceScope,
+  type StudioSessionMode,
   type StudioWireProtocolVersion,
   type TelemetryEvent,
   type TelemetryPort,

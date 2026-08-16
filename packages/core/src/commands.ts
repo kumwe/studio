@@ -27,6 +27,7 @@ export type StudioCommandErrorCode =
   | 'invalid-index'
   | 'invalid-order'
   | 'locale-mismatch'
+  | 'mode-forbidden'
   | 'node-not-found'
   | 'parent-not-found'
   | 'property-not-found'
@@ -174,7 +175,15 @@ function assertBatchOperations(
   return operations;
 }
 
-function applyOperation(document: BlueprintDocument, operation: BlueprintBatchOperation): void {
+/**
+ * Applies one batchable operation to a document in place. Exported for the
+ * package-internal hybrid-bound trial evaluation in `modes.ts`; the public
+ * reducer surface remains `applyCommand`.
+ */
+export function applyOperation(
+  document: BlueprintDocument,
+  operation: BlueprintBatchOperation,
+): void {
   switch (operation.type) {
     case 'studio.command/insert-node':
     case 'studio.command/restore-node': {

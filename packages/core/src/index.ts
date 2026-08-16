@@ -28,6 +28,12 @@ export {
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
 export { applyModelCommand } from './model-commands.js';
+export {
+  permittedCommandTypes,
+  resolveSessionMode,
+  STUDIO_SESSION_MODES,
+  type StudioCommandType,
+} from './modes.js';
 export { RECIPE_MARKER_PROPERTY, recipeSelectionOperations } from './recipes.js';
 export {
   MigrationRunner,
