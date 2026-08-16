@@ -22,7 +22,7 @@ breaking change to recorded evidence.
 | TH-011 | Supply-chain substitution                 | scripts/check-contracts.mjs                              |
 | TH-012 | Unsafe fallback                           | packages/core/test/contributions.test.ts                 |
 | TH-013 | CSP and Trusted Types verification        | open                                                     |
-| TH-014 | Parser and reducer fuzzing                | open                                                     |
+| TH-014 | Parser and reducer fuzzing                | packages/core/test/fuzz-commands.test.ts                 |
 
 ## Notes
 
@@ -40,4 +40,6 @@ breaking change to recorded evidence.
   outside schema-defined safe fields.
 - TH-011 is additionally covered by the lockfile, the schema digest manifest, the secret-scan
   lane, npm provenance publishing, and the SBOM lane in CI.
-- TH-013 and TH-014 are Gate B qualification lanes (`M6-02`) and are deliberately not claimed.
+- TH-013 is a Gate B qualification lane (`M6-02`) and is deliberately not claimed.
+- TH-014 is additionally covered by the rich-text structural-mutation and projection fuzz suite
+  in `packages/rich-text/test/fuzz.test.ts`.
