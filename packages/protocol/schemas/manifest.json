@@ -74,7 +74,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/plugin-manifest.schema.json"
     },
     {
-      "digest": "sha256-I5b/08TVyNY5oN/FQIkYgsRgx1fkNier1cmmVTJgyCE=",
+      "digest": "sha256-IeSwlr3dWSPcAsDAH76o3uTLFpl1UidSfxipSvv9Cco=",
       "file": "preview-message.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/preview-message.schema.json"
     },

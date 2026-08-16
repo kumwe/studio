@@ -188,3 +188,52 @@ describe('reload and teardown messages', () => {
     expect(isPreviewMessage(extra)).toBe(false);
   });
 });
+
+describe('rendered marker maps', () => {
+  function renderedMessage(): Record<string, unknown> {
+    return {
+      channelId: 'preview-channel-1',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: {
+        diagnostics: [],
+        draftDigest: 'a'.repeat(64),
+        markerMap: { 'marker-1': 'node-1', 'marker-2': 'node-2' },
+        markers: ['marker-1', 'marker-2'],
+      },
+      sequence: 4,
+      sessionGeneration: 'session-r1',
+      type: 'studio.preview/rendered',
+    };
+  }
+
+  it('accepts an optional marker-to-node map', () => {
+    expect(isPreviewMessage(renderedMessage())).toBe(true);
+    const withoutMap = renderedMessage();
+    withoutMap.payload = {
+      diagnostics: [],
+      draftDigest: 'a'.repeat(64),
+      markers: ['marker-1'],
+    };
+    expect(isPreviewMessage(withoutMap)).toBe(true);
+  });
+
+  it('rejects unsafe marker map member names and values', () => {
+    const polluted = renderedMessage();
+    polluted.payload = {
+      diagnostics: [],
+      draftDigest: 'a'.repeat(64),
+      markerMap: JSON.parse('{"__proto__": "node-1"}') as Record<string, string>,
+      markers: ['marker-1'],
+    };
+    const badValue = renderedMessage();
+    badValue.payload = {
+      diagnostics: [],
+      draftDigest: 'a'.repeat(64),
+      markerMap: { 'marker-1': '' },
+      markers: ['marker-1'],
+    };
+    expect(isPreviewMessage(polluted)).toBe(false);
+    expect(isPreviewMessage(badValue)).toBe(false);
+  });
+});

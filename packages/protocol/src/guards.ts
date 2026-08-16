@@ -114,11 +114,23 @@ function isRenderPayload(value: Record<string, unknown>): boolean {
 
 function isRenderedPayload(value: Record<string, unknown>): boolean {
   return (
-    hasExactKeys(value, ['draftDigest', 'markers', 'diagnostics']) &&
+    hasExactKeys(value, ['draftDigest', 'markers', 'diagnostics'], ['markerMap']) &&
     typeof value.draftDigest === 'string' &&
     /^[a-f0-9]{64}$/u.test(value.draftDigest) &&
     isStringArray(value.markers, isStableId, 100_000) &&
-    isArrayOf(value.diagnostics, isDiagnostic, 10_000)
+    isArrayOf(value.diagnostics, isDiagnostic, 10_000) &&
+    (value.markerMap === undefined || isMarkerMap(value.markerMap))
+  );
+}
+
+function isMarkerMap(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const entries = Object.entries(value);
+  return (
+    entries.length <= 100_000 &&
+    entries.every(([marker, nodeId]) => isStableId(marker) && isStableId(nodeId))
   );
 }
 

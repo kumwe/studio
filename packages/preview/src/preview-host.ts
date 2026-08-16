@@ -241,6 +241,7 @@ export class PreviewHost {
         diagnostics: rendered.diagnostics,
         draftDigest,
         markers: rendered.markers,
+        ...(rendered.markerMap === undefined ? {} : { markerMap: rendered.markerMap }),
       },
       sequence: this.#sequence++,
       sessionGeneration: this.#sessionGeneration,
