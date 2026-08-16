@@ -60,15 +60,15 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M2-02` | evidence-review | Fourteen-command subset with restore and inheritance-reset           | Responsive-role resize semantics; reviewer reproduction               |
 | `M2-03` | active          | Plugin/theme projections, lifecycle vocabulary, contribution runtime | Extension SDK surface; lifecycle fixtures beyond blocks               |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof | Reviewer reproduction                                                 |
-| `M2-05` | active          | Rich-text grammar, renderer projection corpus, upload lifecycle      | Media policy vectors                                                  |
+| `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors        | Reviewer reproduction                                                 |
 | `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles     | Dart model generation and round-trip (`M3-06` not started)            |
-| `M2-07` | active          | Threat registry with 12 of 14 enforced; reducer and parser fuzzing   | TH-008 SSRF exercises; TH-013 CSP lane                                |
+| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals    | Reviewer reproduction                                                 |
 | `M3-01` | active          | Session, selection, migrations runner, canonical serialization       | Broader property/fuzz coverage                                        |
 | `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations         | Reviewer reproduction; lifecycle fixtures for non-block contributions |
 | `M3-03` | active          | In-memory host testbed with conflict/permission/disconnect drills    | Real-transport adapter exercises                                      |
 | `M3-04` | evidence-review | Responder, handshake, reload/teardown, marker geometry channel       | Reviewer reproduction                                                 |
 | `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag | Reviewer reproduction                                                 |
-| `M4-05` | evidence-review | Full inspector parity, palette, drag, conflict announcements         | Reviewer reproduction; announcement survival across preview reload    |
+| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload      | Reviewer reproduction                                                 |
 | `M5-01` | active          | Upload orchestration over the canonical session state machine        | Media browser UI; paste/drop capture; real host adapter exercises     |
 
 ## Next dependency-ordered actions
