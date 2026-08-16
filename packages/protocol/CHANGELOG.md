@@ -1,5 +1,13 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-alpha.3
+
+### Minor Changes
+
+- [#17](https://github.com/kumwe/studio/pull/17) [`b1132d6`](https://github.com/kumwe/studio/commit/b1132d6c5fe040085f780102c984160638d1dd04) Thanks [@lemuelvdm](https://github.com/lemuelvdm)! - Publish the size-role command vocabulary in the wire types: the axis union, the set and unset
+  payloads and commands, and the reserved node members for base assignments and responsive
+  overrides, completing the Gate A command surface in the protocol projection.
+
 ## 0.1.0-alpha.2
 
 ### Minor Changes

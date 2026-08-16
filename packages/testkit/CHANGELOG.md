@@ -1,5 +1,13 @@
 # @kumwe/studio-testkit
 
+## 0.1.0-alpha.5
+
+### Patch Changes
+
+- Updated dependencies [[`b1132d6`](https://github.com/kumwe/studio/commit/b1132d6c5fe040085f780102c984160638d1dd04)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.3
+  - @kumwe/studio-core@0.1.0-alpha.5
+
 ## 0.1.0-alpha.4
 
 ### Patch Changes

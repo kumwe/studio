@@ -1,5 +1,12 @@
 # @kumwe/studio-preview
 
+## 0.1.0-alpha.3
+
+### Patch Changes
+
+- Updated dependencies [[`b1132d6`](https://github.com/kumwe/studio/commit/b1132d6c5fe040085f780102c984160638d1dd04)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.3
+
 ## 0.1.0-alpha.2
 
 ### Minor Changes
