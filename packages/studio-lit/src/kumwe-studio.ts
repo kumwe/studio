@@ -9,8 +9,10 @@ import {
 } from 'lit';
 import {
   BlockRegistry,
+  StudioCommandError,
   StudioSession,
   validateBlueprint,
+  type StudioCommandErrorCode,
   type StudioSessionOptions,
 } from '@kumwe/studio-core';
 import type {
@@ -21,16 +23,24 @@ import type {
   CommandDestination,
   DuplicateNodeCommand,
   ExperimentalShellConfiguration,
+  FieldBinding,
   InsertNodeCommand,
+  JsonValue,
   MessageReference,
   NodeId,
+  RemoveBindingCommand,
   RemoveNodeCommand,
   ReorderChildrenCommand,
   ReorderChildrenPayload,
   Revision,
+  SetBindingCommand,
+  SetPropertyCommand,
+  SetPropertyPayload,
   StudioContractVersion,
   StudioDiagnostic,
   ThemeViewport,
+  UnsetPropertyCommand,
+  UnsetPropertyPayload,
 } from '@kumwe/studio-protocol';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 import {
@@ -377,6 +387,68 @@ export class KumweStudioElement extends LitElement {
       overflow-wrap: anywhere;
     }
 
+    .inspector-section {
+      margin-top: 1rem;
+    }
+
+    .inspector-section h3 {
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      margin: 0 0 0.5rem;
+      text-transform: uppercase;
+    }
+
+    .inspector-rows {
+      display: grid;
+      gap: 0.5rem;
+      list-style: none;
+      margin: 0 0 0.5rem;
+      padding: 0;
+    }
+
+    .inspector-row {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.375rem;
+    }
+
+    .inspector-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector input {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      flex: 1 1 6rem;
+      font: inherit;
+      min-inline-size: 0;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .inspector input:disabled {
+      background: var(--studio-panel);
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .inspector button {
+      font-size: 0.8125rem;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .inspector-binding-value {
+      font-size: 0.75rem;
+      overflow-wrap: anywhere;
+    }
+
+    .inspector-empty {
+      color: #5d6671;
+      margin: 0 0 0.5rem;
+    }
+
     @media (max-width: 60rem) {
       .workspace {
         grid-template-columns: minmax(16rem, 1fr);
@@ -421,7 +493,9 @@ export class KumweStudioElement extends LitElement {
 
   public execute(command: BlueprintCommand): BlueprintDocument {
     if (this.configuration?.session.sessionState === 'read-only') {
-      throw new Error('The current Studio session is read-only.');
+      const message = 'The current Studio session is read-only.';
+      this.#announce('studio.shell/announce-conflict', { message });
+      throw new Error(message);
     }
     const session = this.#session;
     if (session === undefined) {
@@ -431,9 +505,13 @@ export class KumweStudioElement extends LitElement {
     try {
       next = session.execute(command);
     } catch (error) {
-      this.#announce('studio.shell/announce-command-failed', {
-        message: error instanceof Error ? error.message : String(error),
-      });
+      if (error instanceof StudioCommandError && CONFLICT_ERROR_CODES.has(error.code)) {
+        this.#announce('studio.shell/announce-conflict', { message: error.message });
+      } else {
+        this.#announce('studio.shell/announce-command-failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
       throw error;
     }
     this.#assignInternalDocument(next);
@@ -621,22 +699,7 @@ export class KumweStudioElement extends LitElement {
           ${
             selected === undefined
               ? html`<p>${this.#text('studio.shell/inspector-empty')}</p>`
-              : html`
-                  <dl>
-                    <div>
-                      <dt>${this.#text('studio.shell/inspector-identifier')}</dt>
-                      <dd>${selected.id}</dd>
-                    </div>
-                    <div>
-                      <dt>${this.#text('studio.shell/inspector-type')}</dt>
-                      <dd>${selected.type}@${selected.version}</dd>
-                    </div>
-                    <div>
-                      <dt>${this.#text('studio.shell/inspector-properties')}</dt>
-                      <dd>${JSON.stringify(selected.properties)}</dd>
-                    </div>
-                  </dl>
-                `
+              : this.#renderInspector(selected)
           }
         </aside>
 
@@ -672,6 +735,54 @@ export class KumweStudioElement extends LitElement {
         </footer>
       </div>
     `;
+  }
+
+  #addOverride(node: BlueprintNode, viewport: ThemeViewport): void {
+    const nameInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-add-override-name') ?? null;
+    const valueInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-add-override-value') ??
+      null;
+    if (nameInput === null || valueInput === null) {
+      return;
+    }
+    const property = nameInput.value.trim();
+    if (property.length === 0) {
+      this.#announce('studio.shell/announce-name-required');
+      return;
+    }
+    const parsed = this.#parseJsonInput(valueInput.value, property);
+    if (parsed === undefined) {
+      return;
+    }
+    if (this.#setNodeProperty(node, property, parsed.value, viewport)) {
+      nameInput.value = '';
+      valueInput.value = '';
+    }
+  }
+
+  #addProperty(node: BlueprintNode): void {
+    const nameInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-add-property-name') ?? null;
+    const valueInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-add-property-value') ??
+      null;
+    if (nameInput === null || valueInput === null) {
+      return;
+    }
+    const property = nameInput.value.trim();
+    if (property.length === 0) {
+      this.#announce('studio.shell/announce-name-required');
+      return;
+    }
+    const parsed = this.#parseJsonInput(valueInput.value, property);
+    if (parsed === undefined) {
+      return;
+    }
+    if (this.#setNodeProperty(node, property, parsed.value, undefined)) {
+      nameInput.value = '';
+      valueInput.value = '';
+    }
   }
 
   #announce(key: StudioMessageKey, parameters?: Readonly<Record<string, string>>): void {
@@ -733,6 +844,12 @@ export class KumweStudioElement extends LitElement {
       kind: 'command',
       sessionGeneration: this.#sessionGeneration,
     };
+  }
+
+  #currentInspectorNode(nodeId: NodeId): BlueprintNode | undefined {
+    return this.document === undefined
+      ? undefined
+      : findOutlineLocation(this.document.roots, nodeId)?.node;
   }
 
   #deleteNode(node: BlueprintNode): void {
@@ -1066,6 +1183,44 @@ export class KumweStudioElement extends LitElement {
     this.#drag = drag;
   }
 
+  /**
+   * The shared keyboard contract of every inspector value input: Enter parses
+   * the text as JSON and commits it through set-property (with the viewport
+   * when the input edits an override); Escape reverts to the committed value
+   * and announces the cancellation. Both success and failure re-align the
+   * input with the document, so a rejected command never leaves optimistic
+   * text behind while focus stays on the input.
+   */
+  #onInspectorValueKeydown(
+    event: KeyboardEvent,
+    node: BlueprintNode,
+    property: string,
+    viewport: ThemeViewport | undefined,
+  ): void {
+    const input = event.currentTarget;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const parsed = this.#parseJsonInput(input.value, property);
+      if (parsed === undefined) {
+        return;
+      }
+      this.#setNodeProperty(node, property, parsed.value, viewport);
+      const current = this.#currentInspectorNode(node.id) ?? node;
+      input.value = this.#serializedInspectorValue(current, property, viewport);
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      const current = this.#currentInspectorNode(node.id) ?? node;
+      input.value = this.#serializedInspectorValue(current, property, viewport);
+      this.#announce('studio.shell/announce-edit-cancelled', { property });
+    }
+  }
+
   #onOutlineKeydown(event: KeyboardEvent, node: BlueprintNode): void {
     if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
@@ -1249,6 +1404,21 @@ export class KumweStudioElement extends LitElement {
     ].filter((button) => !button.disabled);
   }
 
+  /**
+   * Parses one inspector input as JSON. A parse failure announces the
+   * invalid-value message naming the edited field and returns undefined so
+   * the caller dispatches nothing; the wrapper object distinguishes a parsed
+   * null from a failed parse.
+   */
+  #parseJsonInput(text: string, label: string): { value: JsonValue } | undefined {
+    try {
+      return { value: JSON.parse(text) as JsonValue };
+    } catch {
+      this.#announce('studio.shell/announce-invalid-value', { label });
+      return undefined;
+    }
+  }
+
   #rebuildRegistry(): void {
     const registry = new BlockRegistry();
     for (const definition of this.configuration?.blockDefinitions ?? []) {
@@ -1289,6 +1459,22 @@ export class KumweStudioElement extends LitElement {
       drag.capture?.releasePointerCapture(drag.pointerId);
     } catch {
       // The capture may already have been released by the platform.
+    }
+  }
+
+  #removeBinding(node: BlueprintNode, port: string): void {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return;
+    }
+    const command: RemoveBindingCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { nodeId: node.id, port },
+      type: 'studio.command/remove-binding',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#announce('studio.shell/announce-binding-removed', { port });
     }
   }
 
@@ -1470,6 +1656,295 @@ export class KumweStudioElement extends LitElement {
           position: String(drag.targetIndex + 1),
         })}
       </p>
+    `;
+  }
+
+  /**
+   * The editable inspector: contract facts, then keyboard-complete editors
+   * for base properties, bindings, and active-viewport overrides. Tab order
+   * follows the DOM order documented in docs/experience/keyboard.md. In
+   * read-only sessions every control renders disabled and the hint line
+   * states the reason textually.
+   */
+  #renderInspector(node: BlueprintNode): TemplateResult {
+    const readOnly = this.#isReadOnly();
+    return html`
+      <dl>
+        <div>
+          <dt>${this.#text('studio.shell/inspector-identifier')}</dt>
+          <dd>${node.id}</dd>
+        </div>
+        <div>
+          <dt>${this.#text('studio.shell/inspector-type')}</dt>
+          <dd>${node.type}@${node.version}</dd>
+        </div>
+      </dl>
+      ${
+        readOnly
+          ? html`<p class="hint inspector-read-only">
+              ${this.#text('studio.shell/inspector-read-only')}
+            </p>`
+          : html`<p class="hint">${this.#text('studio.shell/inspector-hint')}</p>`
+      }
+      ${this.#renderInspectorProperties(node, readOnly)}
+      ${this.#renderInspectorBindings(node, readOnly)}
+      ${this.#renderInspectorOverrides(node, readOnly)}
+    `;
+  }
+
+  #renderInspectorBindings(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const entries = Object.entries(node.bindings);
+    return html`
+      <section
+        class="inspector-section inspector-bindings"
+        aria-label=${this.#text('studio.shell/inspector-bindings-heading')}
+      >
+        <h3>${this.#text('studio.shell/inspector-bindings-heading')}</h3>
+        ${
+          entries.length === 0
+            ? html`<p class="inspector-empty">
+                ${this.#text('studio.shell/inspector-bindings-empty')}
+              </p>`
+            : html`
+                <ul class="inspector-rows">
+                  ${entries.map(
+                    ([port, binding]) => html`
+                      <li class="inspector-row">
+                        <span class="inspector-name">${port}</span>
+                        <code class="inspector-binding-value">${JSON.stringify(binding)}</code>
+                        <button
+                          type="button"
+                          class="inspector-binding-remove"
+                          data-port=${port}
+                          aria-label=${this.#text('studio.shell/inspector-remove-binding-label', {
+                            port,
+                          })}
+                          ?disabled=${readOnly}
+                          @click=${(): void => {
+                            this.#removeBinding(node, port);
+                          }}
+                        >
+                          ${this.#text('studio.shell/inspector-remove-binding')}
+                        </button>
+                      </li>
+                    `,
+                  )}
+                </ul>
+              `
+        }
+        <div class="inspector-row inspector-set-binding-form">
+          <input
+            type="text"
+            class="inspector-binding-port"
+            aria-label=${this.#text('studio.shell/inspector-binding-port-label')}
+            ?disabled=${readOnly}
+          />
+          <input
+            type="text"
+            class="inspector-binding-value-input"
+            aria-label=${this.#text('studio.shell/inspector-binding-value-label')}
+            ?disabled=${readOnly}
+          />
+          <button
+            type="button"
+            class="inspector-binding-set"
+            ?disabled=${readOnly}
+            @click=${(): void => {
+              this.#setBinding(node);
+            }}
+          >
+            ${this.#text('studio.shell/inspector-set-binding')}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  /**
+   * The per-viewport override editor for the active viewport of the switcher.
+   * Overrides dispatch the same set-property and unset-property commands as
+   * base properties, carrying the viewport, and every announcement names the
+   * viewport — the keyboard path that stands in for visual resize work.
+   */
+  #renderInspectorOverrides(
+    node: BlueprintNode,
+    readOnly: boolean,
+  ): TemplateResult | typeof nothing {
+    const viewport = this.activeViewport;
+    if (viewport === undefined) {
+      return nothing;
+    }
+    const viewportLabel = referenceText(viewport.label);
+    const rows: [string, JsonValue][] = [];
+    for (const [property, values] of Object.entries(node.responsive ?? {})) {
+      const value = values[viewport.id];
+      if (value !== undefined) {
+        rows.push([property, value]);
+      }
+    }
+    return html`
+      <section
+        class="inspector-section inspector-overrides"
+        aria-label=${this.#text('studio.shell/inspector-overrides-heading', {
+          viewport: viewportLabel,
+        })}
+      >
+        <h3>
+          ${this.#text('studio.shell/inspector-overrides-heading', { viewport: viewportLabel })}
+        </h3>
+        ${
+          rows.length === 0
+            ? html`<p class="inspector-empty">
+                ${this.#text('studio.shell/inspector-overrides-empty', {
+                  viewport: viewportLabel,
+                })}
+              </p>`
+            : html`
+                <ul class="inspector-rows">
+                  ${rows.map(
+                    ([property, value]) => html`
+                      <li class="inspector-row">
+                        <span class="inspector-name">${property}</span>
+                        <input
+                          type="text"
+                          class="inspector-override-input"
+                          data-property=${property}
+                          aria-label=${this.#text('studio.shell/inspector-override-value-label', {
+                            property,
+                            viewport: viewportLabel,
+                          })}
+                          .value=${JSON.stringify(value)}
+                          ?disabled=${readOnly}
+                          @keydown=${(event: KeyboardEvent): void => {
+                            this.#onInspectorValueKeydown(event, node, property, viewport);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          class="inspector-override-remove"
+                          data-property=${property}
+                          aria-label=${this.#text('studio.shell/inspector-remove-override-label', {
+                            property,
+                            viewport: viewportLabel,
+                          })}
+                          ?disabled=${readOnly}
+                          @click=${(): void => {
+                            this.#unsetNodeProperty(node, property, viewport);
+                          }}
+                        >
+                          ${this.#text('studio.shell/inspector-remove-override')}
+                        </button>
+                      </li>
+                    `,
+                  )}
+                </ul>
+              `
+        }
+        <div class="inspector-row inspector-add-override-form">
+          <input
+            type="text"
+            class="inspector-add-override-name"
+            aria-label=${this.#text('studio.shell/inspector-add-override-name-label')}
+            ?disabled=${readOnly}
+          />
+          <input
+            type="text"
+            class="inspector-add-override-value"
+            aria-label=${this.#text('studio.shell/inspector-add-override-value-label')}
+            ?disabled=${readOnly}
+          />
+          <button
+            type="button"
+            class="inspector-add-override-submit"
+            ?disabled=${readOnly}
+            @click=${(): void => {
+              this.#addOverride(node, viewport);
+            }}
+          >
+            ${this.#text('studio.shell/inspector-add-override')}
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
+  #renderInspectorProperties(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const entries = Object.entries(node.properties);
+    return html`
+      <section
+        class="inspector-section inspector-properties"
+        aria-label=${this.#text('studio.shell/inspector-properties')}
+      >
+        <h3>${this.#text('studio.shell/inspector-properties')}</h3>
+        ${
+          entries.length === 0
+            ? html`<p class="inspector-empty">
+                ${this.#text('studio.shell/inspector-properties-empty')}
+              </p>`
+            : html`
+                <ul class="inspector-rows">
+                  ${entries.map(
+                    ([property, value]) => html`
+                      <li class="inspector-row">
+                        <span class="inspector-name">${property}</span>
+                        <input
+                          type="text"
+                          class="inspector-property-input"
+                          data-property=${property}
+                          aria-label=${this.#text('studio.shell/inspector-property-value-label', {
+                            property,
+                          })}
+                          .value=${JSON.stringify(value)}
+                          ?disabled=${readOnly}
+                          @keydown=${(event: KeyboardEvent): void => {
+                            this.#onInspectorValueKeydown(event, node, property, undefined);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          class="inspector-property-unset"
+                          data-property=${property}
+                          aria-label=${this.#text('studio.shell/inspector-unset-label', {
+                            property,
+                          })}
+                          ?disabled=${readOnly}
+                          @click=${(): void => {
+                            this.#unsetNodeProperty(node, property, undefined);
+                          }}
+                        >
+                          ${this.#text('studio.shell/inspector-unset')}
+                        </button>
+                      </li>
+                    `,
+                  )}
+                </ul>
+              `
+        }
+        <div class="inspector-row inspector-add-property-form">
+          <input
+            type="text"
+            class="inspector-add-property-name"
+            aria-label=${this.#text('studio.shell/inspector-add-property-name-label')}
+            ?disabled=${readOnly}
+          />
+          <input
+            type="text"
+            class="inspector-add-property-value"
+            aria-label=${this.#text('studio.shell/inspector-add-property-value-label')}
+            ?disabled=${readOnly}
+          />
+          <button
+            type="button"
+            class="inspector-add-property-submit"
+            ?disabled=${readOnly}
+            @click=${(): void => {
+              this.#addProperty(node);
+            }}
+          >
+            ${this.#text('studio.shell/inspector-add-property')}
+          </button>
+        </div>
+      </section>
     `;
   }
 
@@ -1726,6 +2201,100 @@ export class KumweStudioElement extends LitElement {
     this.requestUpdate();
   }
 
+  #serializedInspectorValue(
+    node: BlueprintNode,
+    property: string,
+    viewport: ThemeViewport | undefined,
+  ): string {
+    const value =
+      viewport === undefined
+        ? node.properties[property]
+        : node.responsive?.[property]?.[viewport.id];
+    return value === undefined ? '' : JSON.stringify(value);
+  }
+
+  #setBinding(node: BlueprintNode): void {
+    const session = this.#session;
+    const document = this.document;
+    const portInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-binding-port') ?? null;
+    const valueInput =
+      this.shadowRoot?.querySelector<HTMLInputElement>('input.inspector-binding-value-input') ??
+      null;
+    if (
+      session === undefined ||
+      document === undefined ||
+      this.#isReadOnly() ||
+      portInput === null ||
+      valueInput === null
+    ) {
+      return;
+    }
+    const port = portInput.value.trim();
+    if (port.length === 0) {
+      this.#announce('studio.shell/announce-name-required');
+      return;
+    }
+    const parsed = this.#parseJsonInput(valueInput.value, port);
+    if (parsed === undefined) {
+      return;
+    }
+    const value = parsed.value;
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      this.#announce('studio.shell/announce-invalid-value', { label: port });
+      return;
+    }
+    const command: SetBindingCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { binding: value as unknown as FieldBinding, nodeId: node.id, port },
+      type: 'studio.command/set-binding',
+    };
+    if (this.#runShellCommand(command)) {
+      portInput.value = '';
+      valueInput.value = '';
+      this.#announce('studio.shell/announce-binding-set', { port });
+    }
+  }
+
+  /**
+   * Dispatches set-property for a base value or, with a viewport, for a
+   * responsive override, and announces the outcome — naming the viewport for
+   * overrides. Returns whether the command applied.
+   */
+  #setNodeProperty(
+    node: BlueprintNode,
+    property: string,
+    value: JsonValue,
+    viewport: ThemeViewport | undefined,
+  ): boolean {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return false;
+    }
+    const payload: SetPropertyPayload = { nodeId: node.id, property, value };
+    if (viewport !== undefined) {
+      payload.viewport = viewport.id;
+    }
+    const command: SetPropertyCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload,
+      type: 'studio.command/set-property',
+    };
+    if (!this.#runShellCommand(command)) {
+      return false;
+    }
+    if (viewport === undefined) {
+      this.#announce('studio.shell/announce-property-set', { property });
+    } else {
+      this.#announce('studio.shell/announce-override-set', {
+        property,
+        viewport: referenceText(viewport.label),
+      });
+    }
+    return true;
+  }
+
   #syncDirty(): void {
     const dirty = this.#session?.dirty ?? false;
     if (dirty === this.#lastDirty) {
@@ -1756,7 +2325,50 @@ export class KumweStudioElement extends LitElement {
     this.paletteFilter = '';
     this.#pendingPaletteFocus = true;
   }
+
+  #unsetNodeProperty(
+    node: BlueprintNode,
+    property: string,
+    viewport: ThemeViewport | undefined,
+  ): void {
+    const session = this.#session;
+    const document = this.document;
+    if (session === undefined || document === undefined || this.#isReadOnly()) {
+      return;
+    }
+    const payload: UnsetPropertyPayload = { nodeId: node.id, property };
+    if (viewport !== undefined) {
+      payload.viewport = viewport.id;
+    }
+    const command: UnsetPropertyCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload,
+      type: 'studio.command/unset-property',
+    };
+    if (!this.#runShellCommand(command)) {
+      return;
+    }
+    if (viewport === undefined) {
+      this.#announce('studio.shell/announce-property-unset', { property });
+    } else {
+      this.#announce('studio.shell/announce-override-removed', {
+        property,
+        viewport: referenceText(viewport.label),
+      });
+    }
+  }
 }
+
+/**
+ * Session-level rejections meaning the document/session pairing is stale or
+ * non-writable rather than the command being malformed. They surface through
+ * the conflict announcement, which carries recovery guidance.
+ */
+const CONFLICT_ERROR_CODES: ReadonlySet<StudioCommandErrorCode> = new Set([
+  'read-only-session',
+  'stale-generation',
+  'stale-state',
+]);
 
 const SEVERITY_MESSAGE_KEYS: Record<StudioDiagnostic['severity'], StudioMessageKey> = {
   blocking: 'studio.shell/severity-blocking',

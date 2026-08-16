@@ -47,6 +47,33 @@ textual drop-position indicator names the target position; `Escape` or `pointerc
 the drag with no document change. Drops and cancellations are announced through the polite live
 region.
 
+## Inspector
+
+The inspector edits the selected node without leaving the keyboard. Every value input holds the
+JSON serialization of its property, binding, or override, and every control is a native input or
+button, so `Tab` moves through them in one documented order: base property rows (value input,
+then its `Unset` button), the add-property row (name, value, `Add property`), binding rows (one
+`Remove` button per port), the set-binding form (port, value, `Set binding`), then — when the
+host supplies viewports — the active-viewport override rows (value input, `Remove`) and the
+add-override form (name, value, `Add override`). In read-only sessions every editing control is
+disabled and the inspector states the reason textually.
+
+| Keys              | Operation                                                               |
+| ----------------- | ----------------------------------------------------------------------- |
+| `Tab`             | Move through the inspector controls in the documented order             |
+| `Enter`           | In a value input, parse the text as JSON and commit it                  |
+| `Escape`          | In a value input, revert to the committed value and announce the cancel |
+| `Enter` / `Space` | Activate the focused unset, add, set-binding, or remove button          |
+
+Property commits dispatch `set-property`, unset buttons `unset-property`, the binding form
+`set-binding`, and binding removal `remove-binding`. Override rows dispatch the same property
+commands carrying the active viewport of the viewport switcher, and their announcements name that
+viewport — this is the non-visual path to responsive resize work. Invalid JSON never dispatches:
+the polite live region announces the invalid value and the text stays in the input for
+correction. A command the session rejects as stale, conflicting, or read-only is announced with
+recovery guidance, focus stays on the triggering control, and the inputs revert to the document's
+committed values.
+
 ## Global
 
 | Keys                                                                     | Operation |
@@ -57,8 +84,10 @@ region.
 ## Conformance
 
 These interactions are executable assertions in
-`packages/studio-lit/test/kumwe-studio.test.ts` and
-`packages/studio-lit/test/command-surfaces.test.ts`: keyboard dispatch, disabled states at
+`packages/studio-lit/test/kumwe-studio.test.ts`,
+`packages/studio-lit/test/command-surfaces.test.ts`, and
+`packages/studio-lit/test/inspector.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
-cancellation, and the documented focus targets are all verified there. A change to this table
-without a matching assertion change is a contract violation.
+cancellation, inspector editing with its Tab order and conflict recovery, and the documented focus
+targets are all verified there. A change to this table without a matching assertion change is a
+contract violation.
