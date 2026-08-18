@@ -4,6 +4,7 @@ import type {
   BlueprintDocument,
   BlueprintNode,
   CommandDestination,
+  LocalName,
   NodeId,
   StudioCommand,
   StudioConfiguration,
@@ -204,7 +205,7 @@ function assertHybridOperationInBounds(
         return;
       }
       assertSubtreeUnlocked(location.node);
-      assertComposableParent(location.parent);
+      assertComposableParent(location.parent, location.slot);
       return;
     }
     case 'studio.command/move-node': {
@@ -213,7 +214,7 @@ function assertHybridOperationInBounds(
         return;
       }
       assertSubtreeUnlocked(location.node);
-      assertComposableParent(location.parent);
+      assertComposableParent(location.parent, location.slot);
       assertComposableDestination(document, operation.payload.destination, location.node);
       return;
     }
@@ -224,9 +225,9 @@ function assertHybridOperationInBounds(
       }
       assertSubtreeUnlocked(location.node);
       if (operation.payload.destination === undefined) {
-        assertComposableParent(location.parent);
+        assertComposableParent(location.parent, location.slot);
         if (location.parent !== undefined) {
-          assertAllowedBlock(location.parent, location.node);
+          assertAllowedBlock(location.parent, location.slot, location.node);
         }
       } else {
         assertComposableDestination(document, operation.payload.destination, location.node);
@@ -237,7 +238,10 @@ function assertHybridOperationInBounds(
       if (operation.payload.parentNodeId === undefined) {
         throw rootsOutOfBounds();
       }
-      assertComposableParent(locateNode(document.roots, operation.payload.parentNodeId)?.node);
+      assertComposableParent(
+        locateNode(document.roots, operation.payload.parentNodeId)?.node,
+        operation.payload.slot,
+      );
       return;
     }
     default:
@@ -252,19 +256,24 @@ function assertHybridOperationInBounds(
 interface HybridNodeLocation {
   node: BlueprintNode;
   parent?: BlueprintNode;
+  slot?: LocalName;
 }
 
 function locateNode(
   nodes: readonly BlueprintNode[],
   nodeId: NodeId,
   parent?: BlueprintNode,
+  slot?: LocalName,
 ): HybridNodeLocation | undefined {
   for (const node of nodes) {
     if (node.id === nodeId) {
-      return parent === undefined ? { node } : { node, parent };
+      if (parent === undefined) {
+        return { node };
+      }
+      return slot === undefined ? { node, parent } : { node, parent, slot };
     }
-    for (const children of Object.values(node.slots)) {
-      const nested = locateNode(children, nodeId, node);
+    for (const [slotName, children] of Object.entries(node.slots)) {
+      const nested = locateNode(children, nodeId, node, slotName);
       if (nested !== undefined) {
         return nested;
       }
@@ -286,28 +295,43 @@ function assertComposableDestination(
     // The reducer's canonical parent-not-found rejection resurfaces.
     return;
   }
-  assertComposableParent(parent);
-  assertAllowedBlock(parent, node);
+  assertComposableParent(parent, destination.slot);
+  assertAllowedBlock(parent, destination.slot, node);
 }
 
-function assertComposableParent(parent: BlueprintNode | undefined): void {
+/**
+ * A collection is composable when its parent node declares structural
+ * authoring, or when the parent's per-slot composition marker names the slot
+ * (ADR 0013). The marker only grants composability; it never revokes what
+ * the node-level policy permits.
+ */
+function assertComposableParent(parent: BlueprintNode | undefined, slot?: LocalName): void {
   if (parent === undefined) {
     throw rootsOutOfBounds();
   }
-  if (parent.authoring.mode !== 'structural') {
-    throw new StudioCommandError(
-      'mode-forbidden',
-      `Hybrid composition is bounded to structural slots; node ${parent.id} does not declare structural authoring.`,
-    );
+  if (parent.authoring.mode === 'structural') {
+    return;
   }
+  if (slot !== undefined && parent.authoring.slots?.[slot]?.composable === true) {
+    return;
+  }
+  throw new StudioCommandError(
+    'mode-forbidden',
+    `Hybrid composition is bounded to structural slots; node ${parent.id} declares neither structural authoring nor a composable marker for the affected slot.`,
+  );
 }
 
-function assertAllowedBlock(parent: BlueprintNode, node: BlueprintNode): void {
-  const allowedBlocks = parent.authoring.allowedBlocks;
+function assertAllowedBlock(
+  parent: BlueprintNode,
+  slot: LocalName | undefined,
+  node: BlueprintNode,
+): void {
+  const slotPolicy = slot === undefined ? undefined : parent.authoring.slots?.[slot];
+  const allowedBlocks = slotPolicy?.allowedBlocks ?? parent.authoring.allowedBlocks;
   if (allowedBlocks !== undefined && !allowedBlocks.includes(node.type)) {
     throw new StudioCommandError(
       'mode-forbidden',
-      `Block type ${node.type} is not an allowed block inside structural node ${parent.id}.`,
+      `Block type ${node.type} is not an allowed block inside the composable region of node ${parent.id}.`,
     );
   }
 }

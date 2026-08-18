@@ -188,6 +188,7 @@ export {
   type SetSizeRoleCommand,
   type SetSizeRolePayload,
   type SizeRoleAxis,
+  type SlotCompositionPolicy,
   type StableId,
   type StaticValueBindingSource,
   type StudioArtifact,

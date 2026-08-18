@@ -9,7 +9,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/block-definition.schema.json"
     },
     {
-      "digest": "sha256-FM2btrBFMUTl/HFU2G/zWu+r9tK0n0ucTOuqmMlUI7Q=",
+      "digest": "sha256-MsFQU2lUG7oNfV9WyzVraH3uwd/+AHpdlsh9inHgBu0=",
       "file": "blueprint.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
     },
