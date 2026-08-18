@@ -14,7 +14,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
     },
     {
-      "digest": "sha256-cpuqAnGwwvMacksx7zezMZhQQGdQAanor4Pwatynic0=",
+      "digest": "sha256-GEoWp72qtRDvyf9V7pyQzshlqDecOjtUxIYCY7TJ8SA=",
       "file": "command-vector.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"
     },

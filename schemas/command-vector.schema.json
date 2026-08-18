@@ -14,6 +14,9 @@
       "minLength": 1,
       "maxLength": 500
     },
+    "mode": {
+      "enum": ["blueprint", "content", "hybrid", "model", "read-only"]
+    },
     "initial": { "$ref": "blueprint.schema.json" },
     "command": { "$ref": "command.schema.json" },
     "expect": {
@@ -51,6 +54,7 @@
         "invalid-index",
         "invalid-order",
         "locale-mismatch",
+        "mode-forbidden",
         "node-not-found",
         "parent-not-found",
         "property-not-found",

@@ -1,8 +1,17 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { BlueprintCommand, BlueprintDocument } from '@kumwe/studio-protocol';
-import { applyCommand, invertCommand, type StudioCommandErrorCode } from '../src/index.js';
+import type {
+  BlueprintCommand,
+  BlueprintDocument,
+  StudioSessionMode,
+} from '@kumwe/studio-protocol';
+import {
+  applyCommand,
+  invertCommand,
+  StudioSession,
+  type StudioCommandErrorCode,
+} from '../src/index.js';
 
 interface CommandVector {
   command: BlueprintCommand;
@@ -11,6 +20,7 @@ interface CommandVector {
   id: string;
   initial: BlueprintDocument;
   inverse?: BlueprintCommand;
+  mode?: StudioSessionMode;
 }
 
 const vectorDirectory = join(process.cwd(), 'packages/testkit/vectors/command');
@@ -34,14 +44,35 @@ describe('canonical command vectors', () => {
     it('reduces to the canonical result without mutating its input', () => {
       const pristine = structuredClone(vector.initial);
 
-      if ('errorCode' in vector.expect) {
-        const failure = vector.expect;
-        expect(() => applyCommand(vector.initial, vector.command)).toThrow(
-          expect.objectContaining({ code: failure.errorCode }) as Error,
-        );
+      if (vector.mode === undefined) {
+        if ('errorCode' in vector.expect) {
+          const failure = vector.expect;
+          expect(() => applyCommand(vector.initial, vector.command)).toThrow(
+            expect.objectContaining({ code: failure.errorCode }) as Error,
+          );
+        } else {
+          const result = applyCommand(vector.initial, vector.command);
+          expect(result).toStrictEqual(vector.expect.document);
+        }
       } else {
-        const result = applyCommand(vector.initial, vector.command);
-        expect(result).toStrictEqual(vector.expect.document);
+        // A mode vector replays through the session so the boundary guards
+        // run exactly as a host dispatch would encounter them.
+        const session = new StudioSession({
+          document: vector.initial,
+          mode: vector.mode,
+          sessionGeneration: vector.command.sessionGeneration,
+        });
+        if ('errorCode' in vector.expect) {
+          const failure = vector.expect;
+          expect(() => session.execute(vector.command)).toThrow(
+            expect.objectContaining({ code: failure.errorCode }) as Error,
+          );
+          expect(session.document).toStrictEqual(pristine);
+          expect(session.stateVersion).toBe(0);
+        } else {
+          expect(session.execute(vector.command)).toStrictEqual(vector.expect.document);
+          expect(session.stateVersion).toBe(1);
+        }
       }
       expect(vector.initial).toStrictEqual(pristine);
     });
