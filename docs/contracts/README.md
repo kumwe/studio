@@ -13,6 +13,7 @@ This directory contains the normative contracts between Studio core, user interf
 - [Blocks](block.md)
 - [Plugins](plugin.md)
 - [Host adapters](host-adapter.md)
+- [Host transport binding](host-transport.md)
 - [Commands and history](commands.md)
 - [Preview](preview.md)
 - [Media](media.md)

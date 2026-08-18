@@ -61,7 +61,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M2-01` | evidence-review | Full schema list, plus the declaration-kind payload schemas              | Reviewer reproduction                                                 |
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                | Reviewer reproduction                                                 |
 | `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds             | Reviewer reproduction                                                 |
-| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof     | Reviewer reproduction                                                 |
+| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding     | Reviewer reproduction                                                 |
 | `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors            | Reviewer reproduction                                                 |
 | `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles         | Dart model generation and round-trip (`M3-06` not started)            |
 | `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals        | Reviewer reproduction                                                 |
@@ -100,15 +100,17 @@ core coverage. The next actions in dependency order:
 1. Close the `host-baseline` recorded limitations so the host profile asserts every obligation a
    production host carries: artifact-level authorization refusals, idempotent replay of a retried
    mutation, and reproducible preconditions for rate limiting and cancellation.
-2. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
+2. Give the media port its upload lifecycle on the wire. `S-E` has no operation to implement today:
+   the port carries `get` and `list` while the media contract describes upload initiation, chunking,
+   completion, processing status, replacement and external import.
+3. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.
-3. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`),
-   including the wire-port expansion the media contract records as a Gate A/B target.
-4. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
+4. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`).
+5. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
    `studio.preview/dispose` — so the channel can claim canonical conformance for trusted marker
    interaction and viewport control (`M3-04` follow-on).
-5. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
+6. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
    the gate on every profile claim and therefore on the beta channel; Dart model generation and
    round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
 
