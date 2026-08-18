@@ -53,10 +53,10 @@ packages/
   preview/       Versioned host-preview messaging: client, host responder, handshake
   rich-text/     Bounded rich-text integration pinned to the canonical grammar
   media/         Host-neutral media contracts, orchestration, and semantic validation
-  testkit/       Fixtures, builders, command vectors, negative corpus, conformance assertions
+  testkit/       Fixtures, builders, command/media/host vectors, negative corpus, conformance assertions
 examples/
   reference-host/ Experimental Lit-shell development harness
-schemas/          Canonical JSON Schemas, examples, command vectors, and negative fixtures
+schemas/          Canonical JSON Schemas, examples, command/media/host vectors, and negative fixtures
 evidence/         Machine-checkable evidence bundles, schemas, and gate records
 docs/             Normative architecture, contracts, integration, roadmap, and quality guidance
 ```

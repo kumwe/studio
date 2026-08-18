@@ -14,16 +14,16 @@ the first stable release.
 
 ## Version axes
 
-| Axis                          | Meaning                                                                                           |
-| ----------------------------- | ------------------------------------------------------------------------------------------------- |
-| Schema epoch URI              | Major compatibility family and reference base for serialized document schemas                     |
-| Artifact contract version     | Schema/semantic revision for model, Blueprint, entry, theme, media, rich text or another artifact |
-| Command/port/message version  | Behavioural version of a command family, host port or preview channel                             |
-| Package semantic version      | npm or Dart API/distribution version                                                              |
-| Contribution semantic version | Block, pattern, theme profile, renderer or plugin implementation version                          |
-| Contribution contract version | Stored schema/behaviour version used by documents and migrations                                  |
-| Conformance profile version   | Exact assertions required to claim a host/client/renderer profile                                 |
-| Release manifest version      | Tested set of package, schema, fixture and SDK digests                                            |
+| Axis                          | Meaning                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Schema epoch URI              | Major compatibility family and reference base for serialized document schemas                                                               |
+| Artifact contract version     | Schema/semantic revision for model, Blueprint, entry, theme, media, rich text or another artifact                                           |
+| Command/port/message version  | Behavioural version of a command family, host port or preview channel                                                                       |
+| Package semantic version      | npm or Dart API/distribution version                                                                                                        |
+| Contribution semantic version | Block, pattern, theme profile, renderer or plugin implementation version                                                                    |
+| Contribution contract version | Stored schema/behaviour version used by documents and migrations                                                                            |
+| Conformance profile version   | Exact assertions required to claim a host/client/renderer profile, declared in [conformance profiles](../contracts/conformance-profiles.md) |
+| Release manifest version      | Tested set of package, schema, fixture and SDK digests                                                                                      |
 
 These values are explicit and must not be guessed from one another. All first-party packages declare their
 supported schema epochs, document contract revisions, and wire-protocol ranges, then publish a release manifest

@@ -6,23 +6,29 @@ readiness for the whole product.
 
 ## Channels
 
-| Channel              | Purpose                                            | Compatibility/support claim                                              |
-| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
-| Development snapshot | Internal branch integration and CI                 | None; not published as stable                                            |
-| `alpha`              | Contract/interaction discovery with early adopters | May break with changeset and fixtures; no durable host commitment        |
-| `beta`               | Feature-complete candidate for a declared profile  | Contract changes treated as release blockers and reviewed explicitly     |
-| `rc`                 | Immutable candidate for gate/release evidence      | Only release-blocking corrections; every rebuild creates a new candidate |
-| Stable               | Gate B-qualified supported release set             | Semantic version, compatibility and support policies apply               |
+| Channel              | Purpose                                                                                   | Compatibility/support claim                                              |
+| -------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Development snapshot | Internal branch integration and CI                                                        | None; not published as stable                                            |
+| `alpha`              | Contract/interaction discovery with early adopters                                        | May break with changeset and fixtures; no durable host commitment        |
+| `beta`               | Feature-complete candidate for a [declared profile](../contracts/conformance-profiles.md) | Contract changes treated as release blockers and reviewed explicitly     |
+| `rc`                 | Immutable candidate for gate/release evidence                                             | Only release-blocking corrections; every rebuild creates a new candidate |
+| Stable               | Gate B-qualified supported release set                                                    | Semantic version, compatibility and support policies apply               |
 
 Gate A normally publishes a contract release candidate, not a stable production package. The first stable
 release is impossible before Gate B.
 
-The foundation repository wires a non-authoritative release-readiness check only. All registry publication,
-including `alpha`, `beta`, `rc`, and stable channels, remains disabled until `M1-04` implements and qualifies
-the candidate evidence manifest, protected evidence retrieval, signature and freshness verification, artifact
-hashes, reviewer-independence policy, and channel-specific npm tags. A prerelease version in a local manifest
-is scaffolding and MUST NOT be published manually around that control. The current readiness workflow cannot
-publish or authenticate to a registry, and passing it is not Gate A or Gate B evidence.
+The `alpha` channel is live: the release train publishes the workspace packages to the `alpha` distribution
+tag with provenance on every merge to the default branch, and no `alpha` publish carries a support or
+compatibility claim. Publication on the `beta`, `rc`, and stable channels remains disabled until `M1-04` is
+accepted, qualifying the candidate evidence manifest, protected evidence retrieval, signature and freshness
+verification, artifact hashes, reviewer-independence policy, and channel-specific npm tags. A prerelease
+version in a local manifest is scaffolding and MUST NOT be published manually around that control. The
+release-readiness workflow cannot publish or authenticate to a registry, and passing it is not Gate A or
+Gate B evidence.
+
+Promotion from `alpha` to `beta` additionally requires a declared, executable conformance profile the
+candidate is feature-complete against, claimed with reproduced evidence. The profiles and their assertion
+sets are in [conformance profiles](../contracts/conformance-profiles.md).
 
 ## Release unit and manifest
 

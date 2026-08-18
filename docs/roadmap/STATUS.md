@@ -13,6 +13,8 @@ already exist in runtime code. Accepted work is recorded against immutable evide
 | Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                               |
 | Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                          |
 | Published Studio packages         | Seven alpha prereleases on the npm `alpha` dist-tag; none supported, none accepted by evidence review                                                                    |
+| Declared conformance profiles     | `studio.profile/host-baseline` declared and executable; `engine-core` and `media-policy` declared; renderer and authoring profiles are targets                           |
+| Release channel                   | `alpha`. Promotion to `beta` needs a profile claim backed by reproduced evidence — see the road to beta below                                                            |
 | Supported production hosts        | None                                                                                                                                                                     |
 | Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                        |
 | Earliest durable host integration | After Gate A                                                                                                                                                             |
@@ -65,7 +67,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals        | Reviewer reproduction                                                 |
 | `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes         | Reviewer reproduction; Dart cross-runtime fixtures ride `M3-06`       |
 | `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations             | Reviewer reproduction; lifecycle fixtures for non-block contributions |
-| `M3-03` | evidence-review | Testbed plus an HTTP adapter drilled against a real server               | Reviewer reproduction                                                 |
+| `M3-03` | evidence-review | Testbed, HTTP adapter, and the published host conformance corpus         | Reviewer reproduction                                                 |
 | `M3-04` | evidence-review | Responder, handshake, reload/teardown, marker geometry channel           | Reviewer reproduction                                                 |
 | `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations | Kumwe's Gate A contribution contract; its host adapter at its Gate B  |
 | `M4-02` | active          | Size-role editing with textual inheritance provenance                    | Grid and column composition; two-theme four-to-two-to-one proof       |
@@ -95,16 +97,45 @@ The eighth wave delivered the surface Kumwe freezes against at its Gate A — th
 schemas, the portable mode-boundary corpus, the per-slot composition marker, and the generative
 core coverage. The next actions in dependency order:
 
-1. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
+1. Close the `host-baseline` recorded limitations so the host profile asserts every obligation a
+   production host carries: artifact-level authorization refusals, idempotent replay of a retried
+   mutation, and reproducible preconditions for rate limiting and cancellation.
+2. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.
-2. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`),
+3. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`),
    including the wire-port expansion the media contract records as a Gate A/B target.
-3. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
+4. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
    `studio.preview/dispose` — so the channel can claim canonical conformance for trusted marker
    interaction and viewport control (`M3-04` follow-on).
-4. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles;
-   Dart model generation and round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
+5. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
+   the gate on every profile claim and therefore on the beta channel; Dart model generation and
+   round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
+
+## Road to beta
+
+The [release policy](../governance/releases.md) defines `beta` as a feature-complete candidate for a
+declared profile, with contract changes treated as release blockers. Three things gate the promotion,
+and only the first is now in place:
+
+1. **A declared, executable profile.** Done for the host boundary:
+   [`studio.profile/host-baseline`](../contracts/conformance-profiles.md) carries an assertion set any
+   implementation replays. `engine-core` and `media-policy` are declared against the existing command
+   and media corpora. The renderer and authoring profiles remain targets — their assertion sets are not
+   yet executable, so no package may advertise them.
+2. **Feature-completeness against the profile a package advertises.** The recorded limitations of
+   `host-baseline` (artifact-level authorization, idempotent replay, rate limiting, cancellation) are
+   the remaining gap for the host boundary. For an authoring package, feature-completeness additionally
+   means the Month 4 and Month 5 authoring scope — grid and column composition, the media surface, and
+   rich text — which is still active or planned.
+3. **An evidence-backed claim.** A profile claim names the profile, the corpus version, and the commit
+   it was replayed at, reproduced by an independent reviewer under the [evidence model](evidence.md).
+   No evidence bundle has been reproduced yet, so no claim can currently be made.
+
+Beta is therefore not blocked on Gate A ratification, but it is blocked on the same evidence discipline:
+the fastest honest route is to close the `host-baseline` limitations, reproduce one evidence bundle, and
+promote the packages whose profile is executable — protocol, core, and testkit — ahead of the authoring
+shell, which cannot be feature-complete until its own profile is executable.
 
 ## Programme risks under active control
 

@@ -76,6 +76,10 @@ A host mutation MUST be authenticated, authorized, schema- and domain-validated,
 
 Resource search, counts, facets, pagination, relations and projections enforce authorization inside the host query. Studio never post-filters unauthorized results. Opaque cursors are preferred over client-constructed offsets for mutable datasets.
 
+## Proving conformance
+
+A host adapter claims [`studio.profile/host-baseline`](conformance-profiles.md) by replaying the canonical host conformance corpus published as `vectors/host/` in `@kumwe/studio-testkit`. Each vector fixes reproducible host state, the request envelope and argument, and the required outcome, so an adapter in any language proves the persistence, concurrency, envelope, bounded-query, absence, authority, and telemetry obligations above without executing Studio code. The corpus records its own limitations; obligations it does not yet assert remain obligations.
+
 ## Reference implementation requirements
 
 The Kumwe adapter must call application services rather than querying Doctrine, resolving the DI container dynamically, or putting business rules in TypeScript. Twig renderers remain server-side. Flutter and other hosts can implement the same behavior through HTTP or a native bridge.
