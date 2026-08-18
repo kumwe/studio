@@ -668,6 +668,115 @@ describe('hybrid bounded composition', () => {
   });
 });
 
+describe('per-slot composition markers', () => {
+  /**
+   * One designer panel whose `inlay` slot carries the composition marker
+   * (bounded to cards ahead of the node-level section list) while its `trim`
+   * slot stays unmarked, so the marker's grant is observable slot by slot.
+   */
+  function markedDocument(): BlueprintDocument {
+    return {
+      ...fixtureDocument(),
+      roots: [
+        node('panel', {
+          authoring: {
+            allowedBlocks: ['studio.test/section'],
+            mode: 'designer',
+            slots: { inlay: { allowedBlocks: ['studio.test/card'], composable: true } },
+          },
+          slots: {
+            inlay: [
+              card('card-1'),
+              node('seal', { authoring: { mode: 'locked' }, type: 'studio.test/card' }),
+            ],
+            trim: [node('fixed')],
+          },
+        }),
+      ],
+    };
+  }
+
+  function markedSession(): StudioSession {
+    return new StudioSession({
+      document: markedDocument(),
+      mode: 'hybrid',
+      sessionGeneration: 'generation-1',
+    });
+  }
+
+  function expectMarkerOutOfBounds(command: BlueprintCommand): void {
+    const session = markedSession();
+    const before = session.document;
+    expect(() => session.execute(command)).toThrow(
+      expect.objectContaining({ code: 'mode-forbidden' }) as Error,
+    );
+    expect(session.document).toStrictEqual(before);
+    expect(session.canUndo).toBe(false);
+  }
+
+  it('permits composing into a marked slot of a non-structural node', () => {
+    const session = markedSession();
+    const inserted = session.execute(
+      structureCommand('studio.command/insert-node', {
+        destination: { parentNodeId: 'panel', position: 1, slot: 'inlay' },
+        node: card('card-2'),
+      }),
+    );
+    expect(inserted.roots[0]?.slots.inlay?.map((child) => child.id)).toEqual([
+      'card-1',
+      'card-2',
+      'seal',
+    ]);
+  });
+
+  it('tracks the source slot for removal and reordering inside the marked slot', () => {
+    const removal = markedSession();
+    const removed = removal.execute(
+      structureCommand('studio.command/remove-node', { nodeId: 'card-1' }),
+    );
+    expect(removed.roots[0]?.slots.inlay?.map((child) => child.id)).toEqual(['seal']);
+
+    const reordering = markedSession();
+    const reordered = reordering.execute(
+      structureCommand('studio.command/reorder-children', {
+        order: ['seal', 'card-1'],
+        parentNodeId: 'panel',
+        slot: 'inlay',
+      }),
+    );
+    expect(reordered.roots[0]?.slots.inlay?.map((child) => child.id)).toEqual(['seal', 'card-1']);
+  });
+
+  it('bounds the marked slot by its own allowed blocks ahead of the node-level list', () => {
+    expectMarkerOutOfBounds(
+      structureCommand('studio.command/insert-node', {
+        destination: { parentNodeId: 'panel', position: 0, slot: 'inlay' },
+        node: node('free-section'),
+      }),
+    );
+  });
+
+  it('keeps unmarked sibling slots out of bounds', () => {
+    expectMarkerOutOfBounds(
+      structureCommand('studio.command/insert-node', {
+        destination: { parentNodeId: 'panel', position: 0, slot: 'trim' },
+        node: card('card-2'),
+      }),
+    );
+    expectMarkerOutOfBounds(
+      structureCommand('studio.command/reorder-children', {
+        order: ['fixed'],
+        parentNodeId: 'panel',
+        slot: 'trim',
+      }),
+    );
+  });
+
+  it('still never composes locked structure inside a marked slot', () => {
+    expectMarkerOutOfBounds(structureCommand('studio.command/remove-node', { nodeId: 'seal' }));
+  });
+});
+
 describe('undo, redo, and inverse closure', () => {
   it('undo and redo only revisit states permitted commands produced', () => {
     const session = sessionFor('hybrid');

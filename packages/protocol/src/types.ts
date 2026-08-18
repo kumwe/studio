@@ -127,10 +127,23 @@ export interface FieldBinding {
   transforms: BindingTransform[];
 }
 
+/**
+ * The per-slot composition marker: declares one named slot of a node as a
+ * hybrid-composable region on its own, without making the whole node
+ * structural. The marker only ever grants composability — it never revokes
+ * what the node-level policy already permits — and its `allowedBlocks`, when
+ * declared, bounds that slot ahead of the node-level list.
+ */
+export interface SlotCompositionPolicy {
+  allowedBlocks?: BlockType[];
+  composable: true;
+}
+
 export interface NodeAuthoringPolicy {
   allowedBlocks?: BlockType[];
   mode: 'content' | 'designer' | 'locked' | 'structural' | 'variant';
   requiredPermission?: QualifiedName;
+  slots?: Record<LocalName, SlotCompositionPolicy>;
 }
 
 /** Layout axes addressable by size-role commands; the schema admits no other member names. */

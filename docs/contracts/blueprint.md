@@ -46,6 +46,8 @@ For a grid, a Blueprint stores bounded column count, span, order, alignment, gap
 
 Blueprint policy determines whether an entry author may edit content, choose variants, reorder children, insert allowed blocks, or not change the node. Studio MUST make locked state visible and MUST reject forbidden commands even when issued programmatically.
 
+Beyond the node-level mode, an authoring policy may carry per-slot composition markers ([ADR 0013](../decisions/0013-per-slot-composition-markers.md)): `authoring.slots` names individual slots as hybrid-composable regions without making the whole node structural. A marker only grants composability — it never revokes what the node-level policy permits — and its optional `allowedBlocks` bounds that slot ahead of the node-level list.
+
 ## Publication
 
 Publishing a Blueprint MUST:
