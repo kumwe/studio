@@ -8,6 +8,30 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Conformance profiles and the host assertion corpus (M3-03, M2-04, M1-03)
+
+- Conformance profiles are named, versioned, and executable. `studio.profile/host-baseline` is declared
+  first and ships its assertion set as a new canonical vector kind: `host-vector.schema.json`, published
+  as `vectors/host/` through `@kumwe/studio-testkit`. Each vector fixes reproducible host state, the
+  request envelope and argument, and the required outcome — an accepted result with its revision
+  behaviour, or one category of the closed error taxonomy with its retry classification and
+  non-disclosure obligations. Every precondition is a condition a real host reproduces rather than a
+  test double, so an adapter in any language replays the corpus without executing Studio code
+  (ADR 0014).
+- The baseline profile asserts persistence and optimistic concurrency (an accepted mutation advances the
+  revision; a stale one conflicts and returns the safe current revision so a client resolves without a
+  second read), the request-envelope guards for wire version, session generation and structural
+  validity, bounded queries that refuse rather than clamp, absence that resolves empty where the
+  contract says empty and refuses without disclosure where it says refuse, authority explained rather
+  than silently granted, and primitive-only telemetry attributes. The reference host claims the profile
+  by replaying the corpus, and the profile records the obligations it does not yet assert instead of
+  implying them.
+- Release channels now bind to profiles: `beta` means feature-complete against a declared, executable
+  profile claimed with reproduced evidence, and `rc` requires every advertised profile claimed at the
+  exact candidate commit. The release policy also records what is actually true today — the `alpha`
+  channel publishes from the release train with provenance, while `beta`, `rc` and stable stay closed
+  until the evidence system is accepted.
+
 ### The declaration surface a host freezes against (M3-05, M4-03, M3-01, M2-01)
 
 - The plugin manifest accepts `design-vocabulary` and `migration` contributions, each backed by a
