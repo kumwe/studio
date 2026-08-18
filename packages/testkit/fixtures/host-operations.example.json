@@ -1,0 +1,196 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "host-operations",
+  "operations": [
+    {
+      "capability": "studio.operation/artifact.dependencies",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "dependencies",
+      "port": "artifact",
+      "portCapability": "studio.port/artifact",
+      "required": true,
+      "route": "artifact/dependencies"
+    },
+    {
+      "capability": "studio.operation/artifact.load",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "load",
+      "port": "artifact",
+      "portCapability": "studio.port/artifact",
+      "required": true,
+      "route": "artifact/load"
+    },
+    {
+      "capability": "studio.operation/artifact.publish",
+      "expectsRevision": true,
+      "mutating": true,
+      "operation": "publish",
+      "port": "artifact",
+      "portCapability": "studio.port/artifact",
+      "required": true,
+      "route": "artifact/publish"
+    },
+    {
+      "capability": "studio.operation/artifact.save",
+      "expectsRevision": true,
+      "mutating": true,
+      "operation": "save",
+      "port": "artifact",
+      "portCapability": "studio.port/artifact",
+      "required": true,
+      "route": "artifact/save"
+    },
+    {
+      "capability": "studio.operation/artifact.unpublish",
+      "expectsRevision": true,
+      "mutating": true,
+      "operation": "unpublish",
+      "port": "artifact",
+      "portCapability": "studio.port/artifact",
+      "required": true,
+      "route": "artifact/unpublish"
+    },
+    {
+      "capability": "studio.operation/localization.messages",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "messages",
+      "port": "localization",
+      "portCapability": "studio.port/localization",
+      "required": false,
+      "route": "localization/messages"
+    },
+    {
+      "capability": "studio.operation/media.get",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "get",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/get"
+    },
+    {
+      "capability": "studio.operation/media.list",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "list",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/list"
+    },
+    {
+      "capability": "studio.operation/model.get",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "get",
+      "port": "model",
+      "portCapability": "studio.port/model",
+      "required": false,
+      "route": "model/get"
+    },
+    {
+      "capability": "studio.operation/model.list",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "list",
+      "port": "model",
+      "portCapability": "studio.port/model",
+      "required": false,
+      "route": "model/list"
+    },
+    {
+      "capability": "studio.operation/permission.explain",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "explain",
+      "port": "permission",
+      "portCapability": "studio.port/permission",
+      "required": false,
+      "route": "permission/explain"
+    },
+    {
+      "capability": "studio.operation/permission.refresh",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "refresh",
+      "port": "permission",
+      "portCapability": "studio.port/permission",
+      "required": false,
+      "route": "permission/refresh"
+    },
+    {
+      "capability": "studio.operation/preview.cancel",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "cancel",
+      "port": "preview",
+      "portCapability": "studio.port/preview",
+      "required": false,
+      "route": "preview/cancel"
+    },
+    {
+      "capability": "studio.operation/preview.render",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "render",
+      "port": "preview",
+      "portCapability": "studio.port/preview",
+      "required": false,
+      "route": "preview/render"
+    },
+    {
+      "capability": "studio.operation/recovery.discard",
+      "expectsRevision": false,
+      "mutating": true,
+      "operation": "discard",
+      "port": "recovery",
+      "portCapability": "studio.port/recovery",
+      "required": false,
+      "route": "recovery/discard"
+    },
+    {
+      "capability": "studio.operation/recovery.load",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "load",
+      "port": "recovery",
+      "portCapability": "studio.port/recovery",
+      "required": false,
+      "route": "recovery/load"
+    },
+    {
+      "capability": "studio.operation/recovery.store",
+      "expectsRevision": false,
+      "mutating": true,
+      "operation": "store",
+      "port": "recovery",
+      "portCapability": "studio.port/recovery",
+      "required": false,
+      "route": "recovery/store"
+    },
+    {
+      "capability": "studio.operation/resource.search",
+      "expectsRevision": false,
+      "mutating": false,
+      "operation": "search",
+      "port": "resource",
+      "portCapability": "studio.port/resource",
+      "required": false,
+      "route": "resource/search"
+    },
+    {
+      "capability": "studio.operation/telemetry.emit",
+      "expectsRevision": false,
+      "mutating": true,
+      "operation": "emit",
+      "port": "telemetry",
+      "portCapability": "studio.port/telemetry",
+      "required": false,
+      "route": "telemetry/emit"
+    }
+  ]
+}

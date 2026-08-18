@@ -143,6 +143,7 @@ const schemaByExample = new Map([
   ['entry.product.example.json', 'entry.schema.json'],
   ['host-capabilities.example.json', 'host-capabilities.schema.json'],
   ['host-error.conflict.example.json', 'host-error.schema.json'],
+  ['host-operations.example.json', 'host-operations.schema.json'],
   ['media-asset.example.json', 'media-asset.schema.json'],
   ['media-asset.processing.example.json', 'media-asset.schema.json'],
   ['media-reference.example.json', 'media-reference.schema.json'],

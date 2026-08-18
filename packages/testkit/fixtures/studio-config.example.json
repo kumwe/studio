@@ -98,7 +98,7 @@
       {
         "id": "studio.port/artifact",
         "version": "1.0.0",
-        "operations": ["studio.operation/load", "studio.operation/save"]
+        "operations": ["studio.operation/artifact.load", "studio.operation/artifact.save"]
       }
     ],
     "capabilities": []
