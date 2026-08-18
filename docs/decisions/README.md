@@ -17,5 +17,6 @@ These records capture foundational decisions whose reversal would materially aff
 | [0011](0011-editing-modes.md)                      | Deterministic editing-mode permission boundaries               | Proposed |
 | [0012](0012-composition-declaration-kinds.md)      | Canonical design-vocabulary and migration declaration kinds    | Proposed |
 | [0013](0013-per-slot-composition-markers.md)       | Per-slot composition markers for hybrid regions                | Proposed |
+| [0014](0014-conformance-profiles.md)               | Named conformance profiles with executable assertion sets      | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

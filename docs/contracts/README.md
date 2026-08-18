@@ -21,6 +21,7 @@ This directory contains the normative contracts between Studio core, user interf
 - [Versioning and migrations](versioning-and-migrations.md)
 - [Extension lifecycle](extension-lifecycle.md)
 - [Compatibility](compatibility.md)
+- [Conformance profiles](conformance-profiles.md)
 - [Security](security.md)
 - [Threat enforcement registry](security-threats.md)
 - [Accessibility](accessibility.md)

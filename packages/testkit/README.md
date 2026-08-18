@@ -33,7 +33,21 @@ the `sessionGeneration` getter, and the recorded `telemetryEvents` support asser
 `createHostRequestContextFixture` builds conforming request envelopes. The testbed uses no clocks,
 randomness, or timers, so runs are fully reproducible.
 
+## Host conformance corpus
+
+`@kumwe/studio-testkit/vectors/host/<filename>` publishes the executable assertion set for
+`studio.profile/host-baseline`. Each vector is language-neutral JSON conforming to
+`host-vector.schema.json`: it fixes the host state to seed (`given`), the request envelope and
+argument to send (`context`, `argument`), and the required outcome (`expect`) — an accepted result
+with its revision behaviour, or one category of the closed error taxonomy with its retry
+classification and non-disclosure obligations. Every precondition is a condition a real host
+reproduces, never a test double, so an adapter written in any language replays the corpus in its own
+test suite without executing Studio code. The reference host's own claim against the profile is
+`test/host-vectors.test.ts`. The profile records the obligations it does not yet assert; consult
+`docs/contracts/conformance-profiles.md` before treating a green replay as complete coverage.
+
 Gate A requires valid and invalid fixture corpora plus runner-neutral assertions for block, theme,
 plugin, host-port, command, preview, media, compatibility, migration, lifecycle, security,
-accessibility, localization, and TypeScript/Dart equivalence. Those remain target deliverables; this
-foundation alpha must not be cited as their evidence.
+accessibility, localization, and TypeScript/Dart equivalence. The host-port corpus above is the first
+of those to land; the remainder are target deliverables and this foundation alpha must not be cited as
+their evidence.

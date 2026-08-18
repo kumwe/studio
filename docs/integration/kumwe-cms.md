@@ -9,6 +9,13 @@ Doctrine DBAL, Twig server rendering, focused Lit enhancements, immutable versio
 trusted extensions, owner-aware contributions, immutable runtime generations, strict public/admin/portal
 boundaries, recovery isolation, revision/workflow/translation support, and bounded KIS customization.
 
+The adapter is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
+assertion set for [`studio.profile/host-baseline`](../contracts/conformance-profiles.md): language-neutral
+JSON that a PHPUnit suite replays against the Kumwe adapter to prove the persistence and
+optimistic-concurrency rules, the request-envelope guards, bounded queries, absence handling, authority
+explanation and telemetry discipline. A stale write returning the safe current revision, and an error
+that never discloses private resource existence, are corpus assertions rather than review opinions.
+
 ## Architectural covenant
 
 The integration must preserve Kumwe's existing rules:

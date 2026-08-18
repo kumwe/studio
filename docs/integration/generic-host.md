@@ -3,6 +3,13 @@
 This guide describes how an unrelated application embeds Studio without importing Kumwe-specific code. It is
 both an implementation sequence and the basis of the generic-host conformance profile.
 
+The adapter's obligations are executable: replay the canonical host conformance corpus published as
+`vectors/host/` in `@kumwe/studio-testkit` to claim
+[`studio.profile/host-baseline`](../contracts/conformance-profiles.md). The corpus is language-neutral
+JSON, so a host proves persistence, optimistic concurrency, envelope negotiation, bounded queries,
+absence handling, authority and telemetry discipline in its own test suite without executing Studio
+code. Build against the corpus rather than against this prose alone.
+
 ## 1. Establish host ownership
 
 Before wiring UI, record where the host authoritatively stores and enforces:
