@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Plugins extend Studio through explicit, namespaced contribution points. A plugin may contribute block definitions, patterns, inspectors, commands, panels, field adapters, transforms, render capability metadata, locales, or test fixtures. A plugin never receives ambient host authority.
+Plugins extend Studio through explicit, namespaced contribution points. A plugin may contribute block definitions, patterns, design vocabulary, migrations, inspectors, commands, panels, field adapters, transforms, render capability metadata, locales, or test fixtures. A plugin never receives ambient host authority.
 
 Plugin manifests conform to [`plugin-manifest.schema.json`](../../schemas/plugin-manifest.schema.json).
 
@@ -19,6 +19,26 @@ Per-plugin requested resource limits and explicit lifecycle-compatibility declar
 A manifest does not make code trusted. The host separately verifies package provenance, signature or integrity, owner, allowlist policy, dependencies, and deployment generation.
 
 Entry modules and contribution resources use the same restricted package-relative path primitive as bundled block icon assets and require canonical integrity digests. They are resolved only inside the verified owning package; they are never author-controlled URLs or filesystem traversal instructions.
+
+## Declarative composition payloads
+
+Two contribution kinds carry a canonical, purely declarative payload the host validates at
+admission and at install without executing plugin code (ADR 0012):
+
+- a `design-vocabulary` contribution's resource conforms to
+  [`design-vocabulary.schema.json`](../../schemas/design-vocabulary.schema.json): design controls
+  and recipes an extension offers, byte-compatible with the theme document's own members so a
+  theme adopts or remaps them through its declared controls and aliases — including `size-role`
+  controls whose choices bound stored layout role names; and
+- a `migration` contribution's resource conforms to
+  [`migration.schema.json`](../../schemas/migration.schema.json): the portable descriptor of a
+  document migration — artifact kinds, source range, target version, loss classification — while
+  the transformation itself remains trusted package code per the
+  [versioning contract](versioning-and-migrations.md).
+
+Both kinds are inert declarations until a host implements the consuming surface. Their shapes
+are part of the surface a host freezes against; changing them after a downstream freeze is a
+breaking change to published extensions.
 
 ## Namespacing and ownership
 

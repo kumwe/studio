@@ -3,6 +3,8 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
   protocolSchemas,
   STUDIO_CONTRACT_VERSION,
+  type DesignVocabulary,
+  type MigrationDeclaration,
   type PluginManifest,
   type ThemeDocument,
 } from '../src/index.js';
@@ -101,5 +103,58 @@ describe('artifact type projections', () => {
     const validate = ajv.getSchema('https://schemas.kumwe.org/studio/v1/theme.schema.json');
     expect(validate).toBeDefined();
     expect(validate?.(theme), ajv.errorsText(validate?.errors)).toBe(true);
+  });
+
+  it('accepts a canonical design vocabulary at compile time and schema level', () => {
+    const vocabulary: DesignVocabulary = {
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      designControls: [
+        {
+          choices: [
+            { id: 'full', label: { defaultMessage: 'Full', key: 'org.example/width-full' } },
+            { id: 'half', label: { defaultMessage: 'Half', key: 'org.example/width-half' } },
+          ],
+          id: 'card-width',
+          kind: 'size-role',
+          label: { defaultMessage: 'Card width', key: 'org.example/card-width' },
+        },
+      ],
+      id: 'org.example.blocks/vocabulary',
+      kind: 'design-vocabulary',
+      label: { defaultMessage: 'Block vocabulary', key: 'org.example/vocabulary' },
+      owner: { id: 'org.example/starter', version: '1.0.0' },
+      recipes: [
+        {
+          blockType: 'org.example.blocks/hero',
+          designValues: { 'card-width': 'half' },
+          id: 'hero-half',
+          label: { defaultMessage: 'Half-width hero', key: 'org.example/hero-half' },
+        },
+      ],
+      version: '1.0.0',
+    };
+    const validate = ajv.getSchema(
+      'https://schemas.kumwe.org/studio/v1/design-vocabulary.schema.json',
+    );
+    expect(validate).toBeDefined();
+    expect(validate?.(vocabulary), ajv.errorsText(validate?.errors)).toBe(true);
+  });
+
+  it('accepts a canonical migration declaration at compile time and schema level', () => {
+    const migration: MigrationDeclaration = {
+      artifactKinds: ['blueprint', 'entry'],
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: 'org.example.blocks/hero-to-banner',
+      kind: 'migration',
+      label: { defaultMessage: 'Hero becomes banner', key: 'org.example/hero-to-banner' },
+      lossClassification: 'lossless',
+      owner: { id: 'org.example/starter', version: '1.1.0' },
+      sourceVersions: '>=1.0.0 <1.1.0',
+      targetVersion: '1.1.0',
+      version: '1.1.0',
+    };
+    const validate = ajv.getSchema('https://schemas.kumwe.org/studio/v1/migration.schema.json');
+    expect(validate).toBeDefined();
+    expect(validate?.(migration), ajv.errorsText(validate?.errors)).toBe(true);
   });
 });

@@ -124,6 +124,23 @@ describe('defineStudioPlugin', () => {
     }).toThrow(TypeError);
   });
 
+  it('accepts the frozen composition declaration kinds', () => {
+    const definition = defineStudioPlugin({
+      manifest: manifest({
+        contributions: [
+          declaration('design-vocabulary', 'org.example.kit/vocabulary'),
+          declaration('migration', 'org.example.kit/hero-to-banner'),
+          declaration('pattern', 'org.example.kit/landing'),
+        ],
+      }),
+    });
+    expect(definition.manifest.contributions.map((entry) => entry.kind)).toEqual([
+      'design-vocabulary',
+      'migration',
+      'pattern',
+    ]);
+  });
+
   it('accepts contribution ids in dotted sub-namespaces of the plugin namespace', () => {
     const definition = defineStudioPlugin({
       manifest: manifest({

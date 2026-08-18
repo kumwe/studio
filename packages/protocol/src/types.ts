@@ -402,9 +402,11 @@ export interface PluginEntryModule {
 export type PluginContributionKind =
   | 'block'
   | 'command'
+  | 'design-vocabulary'
   | 'field-adapter'
   | 'inspector'
   | 'locale'
+  | 'migration'
   | 'panel'
   | 'pattern'
   | 'renderer-capability'
@@ -528,6 +530,50 @@ export interface ThemeDocument {
   revision: Revision;
   version: SemanticVersion;
   viewports: ThemeViewport[];
+}
+
+/**
+ * The declarative payload behind a `design-vocabulary` plugin contribution:
+ * design controls and recipes an extension offers, which a theme may adopt or
+ * remap through its own declared controls and aliases. The vocabulary never
+ * carries CSS or executable values; a theme that ignores it loses nothing.
+ */
+export interface DesignVocabulary {
+  contractVersion: StudioContractVersion;
+  description?: MessageReference;
+  designControls: ThemeDesignControl[];
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: QualifiedName;
+  kind: 'design-vocabulary';
+  label: MessageReference;
+  owner: OwnerReference;
+  recipes: ThemeRecipe[];
+  version: SemanticVersion;
+}
+
+export type MigrationArtifactKind =
+  'block-definition' | 'blueprint' | 'content-model' | 'entry' | 'theme';
+
+/**
+ * The declarative payload behind a `migration` plugin contribution: the
+ * portable descriptor of a document migration, safe to validate at admission
+ * and install without executing plugin code. The transformation itself is
+ * trusted package code the host binds separately; artifacts never carry
+ * executable migration source.
+ */
+export interface MigrationDeclaration {
+  artifactKinds: MigrationArtifactKind[];
+  contractVersion: StudioContractVersion;
+  description?: MessageReference;
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: QualifiedName;
+  kind: 'migration';
+  label: MessageReference;
+  lossClassification: 'lossless' | 'lossy';
+  owner: OwnerReference;
+  sourceVersions: string;
+  targetVersion: SemanticVersion;
+  version: SemanticVersion;
 }
 
 export type HostErrorCategory =

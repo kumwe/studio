@@ -15,5 +15,6 @@ These records capture foundational decisions whose reversal would materially aff
 | [0009](0009-restore-and-inheritance-reset.md)      | First-class restoration and explicit inheritance reset         | Proposed |
 | [0010](0010-responsive-role-resize.md)             | Responsive size roles as first-class command vocabulary        | Proposed |
 | [0011](0011-editing-modes.md)                      | Deterministic editing-mode permission boundaries               | Proposed |
+| [0012](0012-composition-declaration-kinds.md)      | Canonical design-vocabulary and migration declaration kinds    | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.
