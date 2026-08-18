@@ -1,6 +1,6 @@
 # Programme status
 
-**Updated:** 2026-08-16
+**Updated:** 2026-08-18
 
 This file describes work still to be delivered. It does not claim that documented contracts or planned tests
 already exist in runtime code. Accepted work is recorded against immutable evidence and release history.
@@ -12,7 +12,7 @@ already exist in runtime code. Accepted work is recorded against immutable evide
 | Programme phase                   | Months 1–4 running concurrently: foundation completions, contract corpus, headless runtime, authoring shell                                                              |
 | Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                               |
 | Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                          |
-| Published Studio packages         | None                                                                                                                                                                     |
+| Published Studio packages         | Seven alpha prereleases on the npm `alpha` dist-tag; none supported, none accepted by evidence review                                                                    |
 | Supported production hosts        | None                                                                                                                                                                     |
 | Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                        |
 | Earliest durable host integration | After Gate A                                                                                                                                                             |
@@ -51,28 +51,28 @@ Repository-verified increments per work package, with the scope that still block
 the programme vocabulary; `evidence-review` here means the implementation is complete against its
 acceptance list and awaits an evidence bundle plus an independent reviewer.
 
-| Package | State           | Delivered (see changelog)                                             | Still blocking acceptance                                             |
-| ------- | --------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix       | Reviewer reproduction; CI artifact retention                          |
-| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate               | Reviewer reproduction; first alpha publish not yet exercised          |
-| `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane          | Reviewer reproduction                                                 |
-| `M2-01` | evidence-review | Full schema list: patterns, provenance, unresolved, profile meta      | Reviewer reproduction                                                 |
-| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete             | Reviewer reproduction                                                 |
-| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds          | Reviewer reproduction                                                 |
-| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof  | Reviewer reproduction                                                 |
-| `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors         | Reviewer reproduction                                                 |
-| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles      | Dart model generation and round-trip (`M3-06` not started)            |
-| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals     | Reviewer reproduction                                                 |
-| `M3-01` | active          | Session, selection, migrations runner, canonical serialization        | Broader property/fuzz coverage                                        |
-| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations          | Reviewer reproduction; lifecycle fixtures for non-block contributions |
-| `M3-03` | evidence-review | Testbed plus an HTTP adapter drilled against a real server            | Reviewer reproduction                                                 |
-| `M3-04` | evidence-review | Responder, handshake, reload/teardown, marker geometry channel        | Reviewer reproduction                                                 |
-| `M3-05` | active          | Contribution kinds and the authoring SDK a host declares against      | Kumwe's Gate A contribution contract; its host adapter at its Gate B  |
-| `M4-02` | active          | Size-role editing with textual inheritance provenance                 | Grid and column composition; two-theme four-to-two-to-one proof       |
-| `M4-03` | active          | Five editing modes enforced in the session with a total command table | Mode-boundary vectors; the per-slot composition marker                |
-| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag  | Reviewer reproduction                                                 |
-| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload       | Reviewer reproduction                                                 |
-| `M5-01` | active          | Upload orchestration over the canonical session state machine         | Media browser UI; paste/drop capture; real host adapter exercises     |
+| Package | State           | Delivered (see changelog)                                                | Still blocking acceptance                                             |
+| ------- | --------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix          | Reviewer reproduction; CI artifact retention                          |
+| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                  | Reviewer reproduction; first alpha publish not yet exercised          |
+| `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane             | Reviewer reproduction                                                 |
+| `M2-01` | evidence-review | Full schema list, plus the declaration-kind payload schemas              | Reviewer reproduction                                                 |
+| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                | Reviewer reproduction                                                 |
+| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds             | Reviewer reproduction                                                 |
+| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, lifecycle integration proof     | Reviewer reproduction                                                 |
+| `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors            | Reviewer reproduction                                                 |
+| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles         | Dart model generation and round-trip (`M3-06` not started)            |
+| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals        | Reviewer reproduction                                                 |
+| `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes         | Reviewer reproduction; Dart cross-runtime fixtures ride `M3-06`       |
+| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations             | Reviewer reproduction; lifecycle fixtures for non-block contributions |
+| `M3-03` | evidence-review | Testbed plus an HTTP adapter drilled against a real server               | Reviewer reproduction                                                 |
+| `M3-04` | evidence-review | Responder, handshake, reload/teardown, marker geometry channel           | Reviewer reproduction                                                 |
+| `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations | Kumwe's Gate A contribution contract; its host adapter at its Gate B  |
+| `M4-02` | active          | Size-role editing with textual inheritance provenance                    | Grid and column composition; two-theme four-to-two-to-one proof       |
+| `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers         | Reviewer reproduction                                                 |
+| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag     | Reviewer reproduction                                                 |
+| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload          | Reviewer reproduction                                                 |
+| `M5-01` | active          | Upload orchestration over the canonical session state machine            | Media browser UI; paste/drop capture; real host adapter exercises     |
 
 ## Downstream integration commitments
 
@@ -91,22 +91,20 @@ so a contract change here is measured against it.
 
 ## Next dependency-ordered actions
 
-The eighth wave serves the surface Kumwe freezes against at its Gate A, then the boundary coverage the
-active board rows still owe:
+The eighth wave delivered the surface Kumwe freezes against at its Gate A — the declaration-kind
+schemas, the portable mode-boundary corpus, the per-slot composition marker, and the generative
+core coverage. The next actions in dependency order:
 
-1. Publish canonical declaration shapes for the two contribution kinds the downstream freeze names but
-   the plugin manifest does not yet carry: design vocabulary and composition migrations (`M3-05`,
-   `M2-01`). Until they exist, a host cannot validate those declarations against a published schema.
-2. Make the editing-mode boundary portable: extend the command-vector schema with the session mode and
-   the `mode-forbidden` expectation ADR 0011 deferred, and replay a mode-boundary corpus through the
-   session so non-TypeScript hosts can prove the same boundary (`M4-03`).
-3. Declare the per-slot composition marker in the Blueprint authoring policy and enforce it in the
-   hybrid gate, completing `M4-03`'s outstanding scope.
-4. Close `M3-01`'s remaining scope with generative session/history, migration-runner, and
-   canonical-serialization lanes alongside the existing seeded command fuzzing.
-5. Then, in dependency order: grid and column composition with the two-theme four-to-two-to-one proof
-   (`M4-02`), the media browser surface with paste/drop capture (`M5-01`), and reviewer reproduction of
-   the packages already at evidence-review.
+1. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
+   scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
+   authoring path, and a second unrelated theme proven end to end.
+2. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`),
+   including the wire-port expansion the media contract records as a Gate A/B target.
+3. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
+   `studio.preview/dispose` — so the channel can claim canonical conformance for trusted marker
+   interaction and viewport control (`M3-04` follow-on).
+4. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles;
+   Dart model generation and round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
 
 ## Programme risks under active control
 
