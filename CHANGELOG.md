@@ -8,6 +8,26 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### The host transport boundary (M2-04, M3-03)
+
+- The wire boundary is published rather than implied. A closed operation registry
+  (`host-operations.schema.json`) binds every port operation's three names — the typed method
+  `artifact.load`, the route segment `artifact/load`, and the capability identifier
+  `studio.operation/artifact.load` — one to one, and records per operation whether it mutates host
+  state, whether it is concurrency-protected through `expectedRevision`, and whether its port is
+  required for an editable session. The capability document's port and operation vocabularies now
+  reference the registry, so a host can no longer advertise an operation that is not on the wire; the
+  canonical example had been advertising exactly such an operation and is corrected.
+- The request and result envelopes gain canonical schemas. `host-request.schema.json` fixes the
+  `{ arguments, context }` call body and the envelope members a host validates before dispatching;
+  `host-result.schema.json` fixes the success body, where `value` is always present and `revision`
+  accompanies every concurrency-protected operation so a client never re-reads to learn what it wrote.
+- The HTTP binding becomes normative documentation instead of a comment inside a test helper: the
+  `POST {baseUrl}/ports/{port}/{operation}` route scheme, the body shapes, the bidirectional
+  category-to-status table, the rule that a canonical error body always wins over a status code, and
+  the concurrency and idempotency obligations. A drift guard asserts the registry still covers exactly
+  the typed port surface, so the published names cannot rot away from the code.
+
 ### Conformance profiles and the host assertion corpus (M3-03, M2-04, M1-03)
 
 - Conformance profiles are named, versioned, and executable. `studio.profile/host-baseline` is declared
