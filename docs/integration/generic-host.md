@@ -8,7 +8,9 @@ The adapter's obligations are executable: replay the canonical host conformance 
 [`studio.profile/host-baseline`](../contracts/conformance-profiles.md). The corpus is language-neutral
 JSON, so a host proves persistence, optimistic concurrency, envelope negotiation, bounded queries,
 absence handling, authority and telemetry discipline in its own test suite without executing Studio
-code. Build against the corpus rather than against this prose alone.
+code. Build against the corpus rather than against this prose alone. The server side has a published wire
+shape too: routes, bodies and status mapping are normative in the
+[host transport binding](../contracts/host-transport.md).
 
 ## 1. Establish host ownership
 

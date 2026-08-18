@@ -76,6 +76,10 @@ A host mutation MUST be authenticated, authorized, schema- and domain-validated,
 
 Resource search, counts, facets, pagination, relations and projections enforce authorization inside the host query. Studio never post-filters unauthorized results. Opaque cursors are preferred over client-constructed offsets for mutable datasets.
 
+## Transport
+
+The ports above are behaviour, not a wire format. The normative HTTP binding — route scheme, request and result bodies, and the bidirectional category-to-status table — is the [host transport binding](host-transport.md), and the closed registry that maps each operation's typed method, route segment and capability identifier one to one is [`host-operations.schema.json`](../../schemas/host-operations.schema.json). A capability document may only advertise operations the registry defines, so a host cannot claim an operation that is not on the wire.
+
 ## Proving conformance
 
 A host adapter claims [`studio.profile/host-baseline`](conformance-profiles.md) by replaying the canonical host conformance corpus published as `vectors/host/` in `@kumwe/studio-testkit`. Each vector fixes reproducible host state, the request envelope and argument, and the required outcome, so an adapter in any language proves the persistence, concurrency, envelope, bounded-query, absence, authority, and telemetry obligations above without executing Studio code. The corpus records its own limitations; obligations it does not yet assert remain obligations.

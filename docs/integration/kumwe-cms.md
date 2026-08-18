@@ -15,6 +15,10 @@ JSON that a PHPUnit suite replays against the Kumwe adapter to prove the persist
 optimistic-concurrency rules, the request-envelope guards, bounded queries, absence handling, authority
 explanation and telemetry discipline. A stale write returning the safe current revision, and an error
 that never discloses private resource existence, are corpus assertions rather than review opinions.
+The controller layer has a published target as well: the
+[host transport binding](../contracts/host-transport.md) fixes the `POST {baseUrl}/ports/{port}/{operation}`
+route shape, the request and result bodies, and the status mapping in both directions, so the routes and
+OpenAPI document Kumwe writes now do not become a breaking change later.
 
 ## Architectural covenant
 
