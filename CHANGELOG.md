@@ -8,6 +8,35 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### The declaration surface a host freezes against (M3-05, M4-03, M3-01, M2-01)
+
+- The plugin manifest accepts `design-vocabulary` and `migration` contributions, each backed by a
+  canonical payload schema with wire types, a canonical example, and a negative fixture, so every
+  declaration kind the downstream Gate A freeze names is validated against a published schema
+  rather than a paraphrase. A design vocabulary offers controls and recipes in the shapes a theme
+  already owns — adoption stays a theme decision — and a migration declaration carries the portable
+  descriptor the deterministic runner validates, while the transformation stays trusted package
+  code. The unresolved-contribution vocabulary and the authoring SDK accept both kinds (ADR 0012).
+- The editing-mode boundary is portable conformance behavior: a command vector may declare the
+  session mode, the reference runner replays such vectors through a session fixed to that mode, and
+  sixteen mode vectors cover every mode's foreign-vocabulary refusal, the read-only guard, and the
+  hybrid bounds — allowed insertion and reordering around a locked sibling, and the designer-slot,
+  disallowed-type, locked-subtree, document-roots, atomic-batch, and property-editing rejections —
+  with `mode-forbidden` added to the vector schema's expected-code enumeration exactly as ADR 0011
+  deferred. The corpus stands at 60 command vectors and 29 negative fixtures.
+- The per-slot composition marker landed: a node's authoring policy may name individual slots as
+  hybrid-composable regions without making the whole node structural. The marker only ever grants —
+  a revoking form does not validate — its allowed-blocks list bounds its slot ahead of the
+  node-level list, and the hybrid gate now tracks the source slot of removals, moves, duplications,
+  and reorders so the rule holds for every affected collection (ADR 0013).
+- The deterministic core's generative coverage broadened to the session, history, and migration
+  surfaces: seeded lanes drive random command, undo, redo, and selection sequences proving
+  state-version monotonicity, byte-identical rollback on every rejection across the closed failure
+  union, selection pruning, and the history bound; generated migration descriptors and documents
+  prove deterministic planning, copy-on-migrate, lossy confirmation, and classification; and the
+  canonical serializer's round-trip lane widened to surrogate, control-character, edge-number, and
+  depth-limit inputs with byte-level UTF-8 agreement.
+
 ### Visual composition depth (M4-02, M4-03, M3-04, M3-03)
 
 - Layout size roles are editable: per axis, the base role and the active viewport's assignment come
