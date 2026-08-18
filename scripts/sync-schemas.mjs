@@ -10,6 +10,8 @@ const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const mediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const mediaVectorTargetDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
+const hostVectorDirectory = new URL('../schemas/vectors/host/', import.meta.url);
+const hostVectorTargetDirectory = new URL('../packages/testkit/vectors/host/', import.meta.url);
 const invalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const invalidTargetDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
 const conformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
@@ -28,6 +30,7 @@ await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
 });
 await mkdir(vectorTargetDirectory, { recursive: true });
 await mkdir(mediaVectorTargetDirectory, { recursive: true });
+await mkdir(hostVectorTargetDirectory, { recursive: true });
 await rm(invalidTargetDirectory, { force: true, recursive: true });
 await mkdir(invalidTargetDirectory, { recursive: true });
 await rm(new URL('../packages/testkit/conformance/', import.meta.url), {
@@ -59,6 +62,15 @@ for (const entry of await readdir(mediaVectorDirectory, { withFileTypes: true })
     await cp(
       new URL(entry.name, mediaVectorDirectory),
       new URL(entry.name, mediaVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(hostVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, hostVectorDirectory),
+      new URL(entry.name, hostVectorTargetDirectory),
     );
   }
 }
@@ -98,6 +110,13 @@ const mediaVectors = (await readdir(mediaVectorTargetDirectory)).filter((name) =
 );
 if (mediaVectors.length === 0) {
   throw new Error(`No media vectors were copied to ${join(mediaVectorTargetDirectory.pathname)}.`);
+}
+
+const hostVectors = (await readdir(hostVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (hostVectors.length === 0) {
+  throw new Error(`No host vectors were copied to ${join(hostVectorTargetDirectory.pathname)}.`);
 }
 
 const invalid = (await readdir(invalidTargetDirectory)).filter((name) => name.endsWith('.json'));

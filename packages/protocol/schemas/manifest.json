@@ -54,6 +54,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/host-error.schema.json"
     },
     {
+      "digest": "sha256-jr5zqrJfFjaIfFMhW6Hgrf/77/bWBIwJ3yxsvlETLNo=",
+      "file": "host-vector.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/host-vector.schema.json"
+    },
+    {
       "digest": "sha256-tOiXLsL+sv+gnL3sUeAjA/+oumRb5AGSjkeC/1GI+/8=",
       "file": "media-asset.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/media-asset.schema.json"
