@@ -10,6 +10,7 @@ export {
   entrySchema,
   hostCapabilitiesSchema,
   hostErrorSchema,
+  hostVectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
   mediaUploadSessionSchema,

@@ -8,6 +8,7 @@ import designVocabularySchemaDocument from '../schemas/design-vocabulary.schema.
 import entrySchemaDocument from '../schemas/entry.schema.json' with { type: 'json' };
 import hostCapabilitiesSchemaDocument from '../schemas/host-capabilities.schema.json' with { type: 'json' };
 import hostErrorSchemaDocument from '../schemas/host-error.schema.json' with { type: 'json' };
+import hostVectorSchemaDocument from '../schemas/host-vector.schema.json' with { type: 'json' };
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
 import mediaUploadSessionSchemaDocument from '../schemas/media-upload-session.schema.json' with { type: 'json' };
@@ -33,6 +34,7 @@ export const designVocabularySchema: JsonSchema = designVocabularySchemaDocument
 export const entrySchema: JsonSchema = entrySchemaDocument;
 export const hostCapabilitiesSchema: JsonSchema = hostCapabilitiesSchemaDocument;
 export const hostErrorSchema: JsonSchema = hostErrorSchemaDocument;
+export const hostVectorSchema: JsonSchema = hostVectorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
 export const mediaUploadSessionSchema: JsonSchema = mediaUploadSessionSchemaDocument;
@@ -58,6 +60,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   entrySchema,
   hostCapabilitiesSchema,
   hostErrorSchema,
+  hostVectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
   mediaUploadSessionSchema,

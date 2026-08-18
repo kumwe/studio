@@ -11,6 +11,8 @@ const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.u
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const rootMediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const packageMediaVectorDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
+const rootHostVectorDirectory = new URL('../schemas/vectors/host/', import.meta.url);
+const packageHostVectorDirectory = new URL('../packages/testkit/vectors/host/', import.meta.url);
 const rootInvalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const packageInvalidDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
 const rootConformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
@@ -58,6 +60,16 @@ const packageMediaVectorFiles = (await readdir(packageMediaVectorDirectory))
 
 assertSameNames('testkit media-vector copies', mediaVectorFiles, packageMediaVectorFiles);
 await assertCopies(rootMediaVectorDirectory, packageMediaVectorDirectory, mediaVectorFiles);
+
+const hostVectorFiles = (await readdir(rootHostVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageHostVectorFiles = (await readdir(packageHostVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames('testkit host-vector copies', hostVectorFiles, packageHostVectorFiles);
+await assertCopies(rootHostVectorDirectory, packageHostVectorDirectory, hostVectorFiles);
 
 const invalidFiles = (await readdir(rootInvalidDirectory))
   .filter((name) => name.endsWith('.json'))
@@ -566,9 +578,67 @@ assertRejected('empty published content model', validateContentModel, {
   status: 'published',
 });
 
+if (hostVectorFiles.length === 0) {
+  throw new Error('The canonical host conformance vector corpus is empty.');
+}
+const validateHostVector = getCanonicalValidator('host-vector.schema.json');
+const hostVectorIdentifiers = new Set();
+const hostVectorPorts = new Set();
+for (const hostVectorFile of hostVectorFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(hostVectorFile, rootHostVectorDirectory), 'utf8'),
+  );
+  if (!validateHostVector(vector)) {
+    throw new Error(
+      `${hostVectorFile} violates host-vector.schema.json: ${ajv.errorsText(validateHostVector.errors)}`,
+    );
+  }
+  if (hostVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Host vector identifier ${vector.id} is duplicated.`);
+  }
+  hostVectorIdentifiers.add(vector.id);
+  hostVectorPorts.add(vector.port);
+  // A conflict is only resolvable without a second read when it carries the
+  // safe current revision, so the corpus may never record one without it.
+  if (vector.expect.outcome === 'error' && vector.expect.category === 'conflict') {
+    if (vector.expect.revision === undefined) {
+      throw new Error(`${hostVectorFile} expects a conflict without the safe current revision.`);
+    }
+  }
+  // A vector that names an artifact it operates on must seed that artifact,
+  // otherwise the precondition is not reproducible by another implementation.
+  if (vector.expect.outcome === 'result' && vector.expect.revision !== undefined) {
+    const seeded = vector.given.artifacts.some(
+      (artifact) => artifact.revision === vector.expect.revision,
+    );
+    if (!seeded) {
+      throw new Error(
+        `${hostVectorFile} expects revision ${vector.expect.revision}, which its given state never seeds.`,
+      );
+    }
+  }
+  // Non-disclosure assertions must name a value the vector actually sends.
+  for (const forbidden of vector.expect.messageMustNotContain ?? []) {
+    const sent = JSON.stringify({ argument: vector.argument ?? null, context: vector.context });
+    if (!sent.includes(forbidden)) {
+      throw new Error(
+        `${hostVectorFile} forbids disclosing ${forbidden}, which the request never carries.`,
+      );
+    }
+  }
+}
+// The baseline profile is meaningless unless it reaches the ports a host must
+// implement before any editing session can open.
+for (const required of ['artifact', 'permission']) {
+  if (!hostVectorPorts.has(required)) {
+    throw new Error(`The host conformance corpus covers no ${required}-port exchange.`);
+  }
+}
+
 console.log(
   `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
     `${vectorFiles.length} command vectors, ${mediaVectorFiles.length} media policy vectors, ` +
+    `${hostVectorFiles.length} host conformance vectors, ` +
     `${invalidFiles.length} negative fixtures, and ` +
     `${conformanceFiles.length} renderer-conformance fixtures verified.`,
 );
