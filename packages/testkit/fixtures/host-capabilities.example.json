@@ -11,17 +11,23 @@
     {
       "id": "studio.port/artifact",
       "version": "1.0.0",
-      "operations": ["studio.operation/load", "studio.operation/save", "studio.operation/publish"]
+      "operations": [
+        "studio.operation/artifact.load",
+        "studio.operation/artifact.save",
+        "studio.operation/artifact.publish",
+        "studio.operation/artifact.unpublish",
+        "studio.operation/artifact.dependencies"
+      ]
     },
     {
       "id": "studio.port/preview",
       "version": "1.0.0",
-      "operations": ["studio.operation/render-preview", "studio.operation/cancel-preview"]
+      "operations": ["studio.operation/preview.render", "studio.operation/preview.cancel"]
     },
     {
       "id": "studio.port/media",
       "version": "1.0.0",
-      "operations": ["studio.operation/search-media", "studio.operation/upload-media"]
+      "operations": ["studio.operation/media.get", "studio.operation/media.list"]
     }
   ],
   "capabilities": [
