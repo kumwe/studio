@@ -17,9 +17,11 @@
           "enum": [
             "block",
             "command",
+            "design-vocabulary",
             "field-adapter",
             "inspector",
             "locale",
+            "migration",
             "panel",
             "pattern",
             "renderer-capability",

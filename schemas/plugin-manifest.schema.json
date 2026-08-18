@@ -53,15 +53,17 @@
           "kind": {
             "enum": [
               "block",
-              "pattern",
-              "panel",
-              "inspector",
               "command",
+              "design-vocabulary",
               "field-adapter",
-              "transform",
+              "inspector",
               "locale",
+              "migration",
+              "panel",
+              "pattern",
               "renderer-capability",
-              "test-fixture"
+              "test-fixture",
+              "transform"
             ]
           },
           "id": { "$ref": "common.schema.json#/$defs/qualifiedName" },

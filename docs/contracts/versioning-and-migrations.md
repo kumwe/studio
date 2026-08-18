@@ -71,6 +71,14 @@ A migration declares:
 
 Executable migrations are trusted package code. Artifacts never carry executable migration source.
 
+The portable half of that declaration is canonical: a plugin declares a migration as a
+`migration` manifest contribution whose resource conforms to
+[`migration.schema.json`](../../schemas/migration.schema.json) — owner, namespaced ID, affected
+artifact kinds, source version range, target version, and loss classification (ADR 0012). A host
+validates the declaration at admission and install without executing anything; the deterministic
+runner separately enforces the same fields at registration, including the rule that a target
+version never sits inside its own source range.
+
 ## Migration rules
 
 - Migration operates on a copy and validates the complete result before acceptance.

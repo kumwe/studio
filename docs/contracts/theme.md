@@ -30,6 +30,8 @@ Before Gate A can claim a complete theme integration contract, a later canonical
 
 These groups are target requirements, not fields accepted by `theme.schema.json` in `0.1-draft`. A host or plugin may experiment through a namespaced extension schema, but cannot claim canonical theme conformance for those values.
 
+Extension-offered design vocabulary and declared migrations have canonical homes outside the theme document: a plugin declares them as `design-vocabulary` and `migration` contributions whose payloads conform to [`design-vocabulary.schema.json`](../../schemas/design-vocabulary.schema.json) and [`migration.schema.json`](../../schemas/migration.schema.json) (ADR 0012). A theme adopts or remaps contributed vocabulary through its own declared controls and aliases; the contribution never obliges a theme, and `theme.schema.json` is unchanged.
+
 ## Semantic design values
 
 Blueprints reference semantic names such as `color.surface.accent`, `spacing.section.large`, or `text.price.prominent`. A theme MUST NOT require a Blueprint to store raw CSS property names, class names, selectors, declaration strings, script, or template source.
