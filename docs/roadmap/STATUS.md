@@ -91,14 +91,22 @@ so a contract change here is measured against it.
 
 ## Next dependency-ordered actions
 
-1. Accept the product vocabulary, first-release profiles, and artifact ownership in `M1-01`.
-2. Derive the architecture/package boundaries (`M1-02`) and interaction/accessibility specification
-   (`M1-06`) from that product boundary.
-3. Establish public API governance (`M1-03`) before publishing any package or schema as stable.
-4. Make evidence (`M1-04`) and development/release controls (`M1-05`) executable before contract work can
-   claim completion.
-5. Start Month 2 protocol packages only when their Month 1 dependencies carry reproducible acceptance
-   evidence.
+The eighth wave serves the surface Kumwe freezes against at its Gate A, then the boundary coverage the
+active board rows still owe:
+
+1. Publish canonical declaration shapes for the two contribution kinds the downstream freeze names but
+   the plugin manifest does not yet carry: design vocabulary and composition migrations (`M3-05`,
+   `M2-01`). Until they exist, a host cannot validate those declarations against a published schema.
+2. Make the editing-mode boundary portable: extend the command-vector schema with the session mode and
+   the `mode-forbidden` expectation ADR 0011 deferred, and replay a mode-boundary corpus through the
+   session so non-TypeScript hosts can prove the same boundary (`M4-03`).
+3. Declare the per-slot composition marker in the Blueprint authoring policy and enforce it in the
+   hybrid gate, completing `M4-03`'s outstanding scope.
+4. Close `M3-01`'s remaining scope with generative session/history, migration-runner, and
+   canonical-serialization lanes alongside the existing seeded command fuzzing.
+5. Then, in dependency order: grid and column composition with the two-theme four-to-two-to-one proof
+   (`M4-02`), the media browser surface with paste/drop capture (`M5-01`), and reviewer reproduction of
+   the packages already at evidence-review.
 
 ## Programme risks under active control
 
