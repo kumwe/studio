@@ -1,5 +1,19 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-alpha.4
+
+### Minor Changes
+
+- [#20](https://github.com/kumwe/studio/pull/20) [`b9fade8`](https://github.com/kumwe/studio/commit/b9fade8dcd35670773f696d9c9a93e9c499b480d) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The declaration surface a host freezes against is now complete and portable. The plugin manifest
+  accepts `design-vocabulary` and `migration` contribution kinds, each backed by a canonical schema
+  (`design-vocabulary.schema.json`, `migration.schema.json`) with wire types, examples, and negative
+  fixtures, so a host validates every composition declaration kind against a published schema instead
+  of a paraphrase. The command-vector schema carries an optional session `mode` with the
+  `mode-forbidden` expectation, and a mode-boundary corpus replays the editing-mode permission matrix
+  and the hybrid composition bounds through the session. The Blueprint authoring policy gains the
+  per-slot composition marker: a named slot may be declared composable on its own, bounded by
+  slot-level allowed blocks, and the hybrid gate enforces it.
+
 ## 0.1.0-alpha.3
 
 ### Minor Changes
