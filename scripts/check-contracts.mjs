@@ -11,6 +11,11 @@ const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.u
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const rootMediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const packageMediaVectorDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
+const rootCanonicalVectorDirectory = new URL('../schemas/vectors/canonical/', import.meta.url);
+const packageCanonicalVectorDirectory = new URL(
+  '../packages/testkit/vectors/canonical/',
+  import.meta.url,
+);
 const rootHostVectorDirectory = new URL('../schemas/vectors/host/', import.meta.url);
 const packageHostVectorDirectory = new URL('../packages/testkit/vectors/host/', import.meta.url);
 const rootInvalidDirectory = new URL('../schemas/invalid/', import.meta.url);
@@ -70,6 +75,24 @@ const packageHostVectorFiles = (await readdir(packageHostVectorDirectory))
 
 assertSameNames('testkit host-vector copies', hostVectorFiles, packageHostVectorFiles);
 await assertCopies(rootHostVectorDirectory, packageHostVectorDirectory, hostVectorFiles);
+
+const canonicalVectorFiles = (await readdir(rootCanonicalVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageCanonicalVectorFiles = (await readdir(packageCanonicalVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames(
+  'testkit canonical-vector copies',
+  canonicalVectorFiles,
+  packageCanonicalVectorFiles,
+);
+await assertCopies(
+  rootCanonicalVectorDirectory,
+  packageCanonicalVectorDirectory,
+  canonicalVectorFiles,
+);
 
 const invalidFiles = (await readdir(rootInvalidDirectory))
   .filter((name) => name.endsWith('.json'))
@@ -582,6 +605,26 @@ assertRejected('empty published content model', validateContentModel, {
   status: 'published',
 });
 
+if (canonicalVectorFiles.length === 0) {
+  throw new Error('The canonical serialization vector corpus is empty.');
+}
+const validateCanonicalVector = getCanonicalValidator('canonical-vector.schema.json');
+const canonicalVectorIdentifiers = new Set();
+for (const canonicalVectorFile of canonicalVectorFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(canonicalVectorFile, rootCanonicalVectorDirectory), 'utf8'),
+  );
+  if (!validateCanonicalVector(vector)) {
+    throw new Error(
+      `${canonicalVectorFile} violates canonical-vector.schema.json: ${ajv.errorsText(validateCanonicalVector.errors)}`,
+    );
+  }
+  if (canonicalVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Canonical vector identifier ${vector.id} is duplicated.`);
+  }
+  canonicalVectorIdentifiers.add(vector.id);
+}
+
 if (hostVectorFiles.length === 0) {
   throw new Error('The canonical host conformance vector corpus is empty.');
 }
@@ -643,6 +686,7 @@ console.log(
   `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
     `${vectorFiles.length} command vectors, ${mediaVectorFiles.length} media policy vectors, ` +
     `${hostVectorFiles.length} host conformance vectors, ` +
+    `${canonicalVectorFiles.length} canonical serialization vectors, ` +
     `${invalidFiles.length} negative fixtures, and ` +
     `${conformanceFiles.length} renderer-conformance fixtures verified.`,
 );

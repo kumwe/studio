@@ -46,6 +46,12 @@ test suite without executing Studio code. The reference host's own claim against
 `test/host-vectors.test.ts`. The profile records the obligations it does not yet assert; consult
 `docs/contracts/conformance-profiles.md` before treating a green replay as complete coverage.
 
+`@kumwe/studio-testkit/vectors/canonical/<filename>` publishes the canonical serialization corpus:
+each vector carries a bounded value and either the exact canonical string with the SRI-style digest of
+its UTF-8 bytes, or the stable reason the canonical form refuses it. Its expectations were produced by
+an independent canonicalizer rather than recorded from the reference implementation, so replaying it
+is a cross-implementation check.
+
 Gate A requires valid and invalid fixture corpora plus runner-neutral assertions for block, theme,
 plugin, host-port, command, preview, media, compatibility, migration, lifecycle, security,
 accessibility, localization, and TypeScript/Dart equivalence. The host-port corpus above is the first

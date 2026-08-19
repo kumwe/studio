@@ -10,6 +10,11 @@ const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const mediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const mediaVectorTargetDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
+const canonicalVectorDirectory = new URL('../schemas/vectors/canonical/', import.meta.url);
+const canonicalVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/canonical/',
+  import.meta.url,
+);
 const hostVectorDirectory = new URL('../schemas/vectors/host/', import.meta.url);
 const hostVectorTargetDirectory = new URL('../packages/testkit/vectors/host/', import.meta.url);
 const invalidDirectory = new URL('../schemas/invalid/', import.meta.url);
@@ -31,6 +36,7 @@ await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
 await mkdir(vectorTargetDirectory, { recursive: true });
 await mkdir(mediaVectorTargetDirectory, { recursive: true });
 await mkdir(hostVectorTargetDirectory, { recursive: true });
+await mkdir(canonicalVectorTargetDirectory, { recursive: true });
 await rm(invalidTargetDirectory, { force: true, recursive: true });
 await mkdir(invalidTargetDirectory, { recursive: true });
 await rm(new URL('../packages/testkit/conformance/', import.meta.url), {
@@ -71,6 +77,15 @@ for (const entry of await readdir(hostVectorDirectory, { withFileTypes: true }))
     await cp(
       new URL(entry.name, hostVectorDirectory),
       new URL(entry.name, hostVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(canonicalVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, canonicalVectorDirectory),
+      new URL(entry.name, canonicalVectorTargetDirectory),
     );
   }
 }
@@ -117,6 +132,15 @@ const hostVectors = (await readdir(hostVectorTargetDirectory)).filter((name) =>
 );
 if (hostVectors.length === 0) {
   throw new Error(`No host vectors were copied to ${join(hostVectorTargetDirectory.pathname)}.`);
+}
+
+const canonicalVectors = (await readdir(canonicalVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (canonicalVectors.length === 0) {
+  throw new Error(
+    `No canonical vectors were copied to ${join(canonicalVectorTargetDirectory.pathname)}.`,
+  );
 }
 
 const invalid = (await readdir(invalidTargetDirectory)).filter((name) => name.endsWith('.json'));

@@ -28,7 +28,8 @@ semantics and canonical fixtures outrank generated types and runtime-specific co
 Cross-language documents and messages follow one canonical profile:
 
 - UTF-8 JSON with Unicode text preserved and no executable values;
-- object properties interpreted by name, with canonical serialization ordering defined for checksums;
+- object properties interpreted by name, with canonical serialization ordering defined for checksums
+  and fixed as an executable corpus in [`schemas/vectors/canonical/`](../../schemas/vectors/canonical/);
 - arrays retain semantic order;
 - identifiers are opaque strings and never parsed for database or route meaning;
 - exact decimal, money and quantity values use canonical strings, not binary floating point;
