@@ -87,9 +87,65 @@ export function isPreviewMessage(value: unknown): value is PreviewMessage {
     case 'studio.preview/reload':
     case 'studio.preview/teardown':
       return isReasonPayload(value.payload);
+    case 'studio.preview/activated':
+      return isActivatedPayload(value.payload);
+    case 'studio.preview/viewport':
+      return isViewportPayload(value.payload);
+    case 'studio.preview/dispose':
+      return isDisposePayload(value.payload);
     default:
       return false;
   }
+}
+
+function isActivatedPayload(value: Record<string, unknown>): boolean {
+  return (
+    hasExactKeys(value, ['interaction', 'marker']) &&
+    isStableId(value.marker) &&
+    (value.interaction === 'activate' ||
+      value.interaction === 'context-menu' ||
+      value.interaction === 'focus')
+  );
+}
+
+/** A semantic role and explicit dimensions are alternatives, never a merge. */
+function isViewportPayload(value: Record<string, unknown>): boolean {
+  const keys = Object.keys(value);
+  if (keys.length === 0 || keys.some((key) => !['height', 'viewport', 'width'].includes(key))) {
+    return false;
+  }
+  const hasRole = value.viewport !== undefined;
+  const hasDimensions = value.width !== undefined || value.height !== undefined;
+  if (hasRole === hasDimensions) {
+    return false;
+  }
+  if (hasRole) {
+    return typeof value.viewport === 'string' && value.viewport.length > 0;
+  }
+  return (
+    (value.width === undefined || isBoundedDimension(value.width)) &&
+    (value.height === undefined || isBoundedDimension(value.height))
+  );
+}
+
+function isBoundedDimension(value: unknown): boolean {
+  return (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 120 && value <= 10_000
+  );
+}
+
+function isDisposePayload(value: Record<string, unknown>): boolean {
+  if (!isQualifiedName(value.reason)) {
+    return false;
+  }
+  const keys = Object.keys(value);
+  if (keys.some((key) => key !== 'draftDigest' && key !== 'reason')) {
+    return false;
+  }
+  return (
+    value.draftDigest === undefined ||
+    (typeof value.draftDigest === 'string' && /^[a-f0-9]{64}$/u.test(value.draftDigest))
+  );
 }
 
 function isReasonPayload(value: Record<string, unknown>): boolean {

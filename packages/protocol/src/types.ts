@@ -1312,6 +1312,52 @@ export type PreviewReloadMessage = PreviewMessageBase<
   PreviewReloadPayload
 >;
 
+/**
+ * The renderer reports a trusted interaction with a marked region. It reports
+ * intent, never raw input events, and the marker carries nothing beyond the
+ * node identity the render already published.
+ */
+export interface PreviewActivatedPayload {
+  interaction: 'activate' | 'context-menu' | 'focus';
+  marker: StableId;
+}
+
+export type PreviewActivatedMessage = PreviewMessageBase<
+  'studio.preview/activated',
+  PreviewActivatedPayload
+>;
+
+/**
+ * The client drives the preview surface to a semantic viewport role or to
+ * bounded explicit dimensions. A role and explicit dimensions are
+ * alternatives, not a merge.
+ */
+export interface PreviewViewportPayload {
+  height?: number;
+  viewport?: LocalName;
+  width?: number;
+}
+
+export type PreviewViewportMessage = PreviewMessageBase<
+  'studio.preview/viewport',
+  PreviewViewportPayload
+>;
+
+/**
+ * The client instructs the renderer to revoke the resources it holds for a
+ * draft while the channel stays open. This is not teardown: teardown ends the
+ * session, dispose frees a superseded render's resources within it.
+ */
+export interface PreviewDisposePayload {
+  draftDigest?: string;
+  reason: QualifiedName;
+}
+
+export type PreviewDisposeMessage = PreviewMessageBase<
+  'studio.preview/dispose',
+  PreviewDisposePayload
+>;
+
 export interface PreviewTeardownPayload {
   reason: QualifiedName;
 }
@@ -1322,6 +1368,8 @@ export type PreviewTeardownMessage = PreviewMessageBase<
 >;
 
 export type PreviewMessage =
+  | PreviewActivatedMessage
+  | PreviewDisposeMessage
   | PreviewErrorMessage
   | PreviewMeasureMessage
   | PreviewMeasurementsMessage
@@ -1330,7 +1378,8 @@ export type PreviewMessage =
   | PreviewRenderMessage
   | PreviewRenderedMessage
   | PreviewSelectMessage
-  | PreviewTeardownMessage;
+  | PreviewTeardownMessage
+  | PreviewViewportMessage;
 
 export interface MediaRendition {
   height: number;

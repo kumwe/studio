@@ -7,7 +7,10 @@ import {
   type PreviewReadyPayload,
   type PreviewRenderedPayload,
   type PreviewRenderPayload,
+  type PreviewActivatedPayload,
+  type PreviewDisposePayload,
   type PreviewSelectPayload,
+  type PreviewViewportPayload,
   type PreviewTeardownPayload,
 } from '@kumwe/studio-protocol';
 
@@ -81,7 +84,10 @@ interface PendingMeasure {
   timeout: ReturnType<typeof setTimeout>;
 }
 
+export type PreviewActivationListener = (payload: PreviewActivatedPayload) => void;
+
 export class PreviewClient {
+  readonly #activationListeners = new Set<PreviewActivationListener>();
   readonly #channelId: string;
   readonly #listener: PreviewMessageListener;
   readonly #listeners = new Set<PreviewProtocolListener>();
@@ -333,6 +339,57 @@ export class PreviewClient {
     });
   }
 
+  /**
+   * Drive the preview surface to a semantic viewport role or to bounded
+   * explicit dimensions. The two are alternatives, so a payload carrying both
+   * is refused before it reaches the channel.
+   */
+  public setViewport(payload: PreviewViewportPayload): void {
+    this.#assertActive();
+    const hasRole = payload.viewport !== undefined;
+    const hasDimensions = payload.width !== undefined || payload.height !== undefined;
+    if (hasRole === hasDimensions) {
+      throw new RangeError(
+        'A viewport message carries either a semantic role or explicit dimensions, never both.',
+      );
+    }
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload,
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/viewport',
+    });
+  }
+
+  /**
+   * Instruct the renderer to revoke the resources it holds for a superseded
+   * draft while the channel stays open. This is not teardown: teardown ends
+   * the session, dispose frees a render's resources within it.
+   */
+  public disposeDraft(payload: PreviewDisposePayload): void {
+    this.#assertActive();
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload,
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/dispose',
+    });
+  }
+
+  /** Observe trusted marker interactions the renderer reports. */
+  public onActivated(listener: PreviewActivationListener): () => void {
+    this.#activationListeners.add(listener);
+    return (): void => {
+      this.#activationListeners.delete(listener);
+    };
+  }
+
   public select(payload: PreviewSelectPayload): void {
     this.#assertActive();
     this.#post({
@@ -368,6 +425,13 @@ export class PreviewClient {
       return;
     }
     this.#lastInboundSequence = event.data.sequence;
+
+    if (event.data.type === 'studio.preview/activated') {
+      for (const listener of this.#activationListeners) {
+        listener(event.data.payload);
+      }
+      return;
+    }
 
     if (event.data.type === 'studio.preview/rendered') {
       if (event.data.payload.draftDigest !== this.#latestRenderDigest) {
