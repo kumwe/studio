@@ -114,7 +114,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/plugin-manifest.schema.json"
     },
     {
-      "digest": "sha256-k4h+dRatXPF43BWB2quTouTCbOioU5xkV/m31Rp1AJs=",
+      "digest": "sha256-wg6mVwubXmfpzfOZzlSamDJtyhdpD9/7vtqjb22SYB8=",
       "file": "preview-message.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/preview-message.schema.json"
     },

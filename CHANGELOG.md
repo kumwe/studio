@@ -8,6 +8,25 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### The Gate A preview vocabulary (M3-04, M4-06)
+
+- The preview channel's three Gate A messages are canonical and implemented, so a host building an
+  authenticated preview endpoint has the whole vocabulary rather than seven families and a list of
+  intentions. `studio.preview/activated` lets a renderer report a trusted interaction with a marked
+  region — `activate`, `context-menu` or `focus`, intent rather than raw input events, with the marker
+  carrying nothing beyond the node identity the render already published.
+- `studio.preview/viewport` drives the surface to a theme-declared semantic role **or** to bounded
+  explicit dimensions, as alternatives rather than a merge: each schema branch is closed, so a payload
+  naming both matches neither, and the client refuses the combination before it reaches the channel.
+- `studio.preview/dispose` revokes the resources a renderer holds for a superseded draft while the
+  channel stays open, and the contract now states the distinction it had left implicit: teardown ends
+  the session, dispose frees a superseded render within one that continues. Naming a digest revokes
+  that render; omitting it revokes every draft resource held.
+- The client gains `onActivated`, `setViewport` and `disposeDraft`; the host gains
+  `announceActivation`, `onViewport` and `onDispose`. The canonical guard and schema refuse an
+  invented interaction, an out-of-bounds dimension, a role-and-dimensions merge, and a malformed
+  digest, with negative fixtures for the two that a schema alone can catch.
+
 ### The media upload lifecycle on the wire (M5-01, M2-05, M2-04)
 
 - The media port gains `authorize-upload`, `complete-upload`, `abort-upload`, `upload-status` and

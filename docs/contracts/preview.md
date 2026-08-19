@@ -26,11 +26,22 @@ The `0.1-draft` canonical schema defines these message payloads:
 - `studio.preview/measurements`: volatile marker rectangles and viewport metrics for overlay positioning, bound to a render digest.
 - `studio.preview/error`: structured rendering or protocol failure.
 
-Gate A must add canonical payloads and conformance behavior for this target vocabulary:
+The Gate A vocabulary is canonical and implemented:
 
-- `studio.preview/activated`: preview reports a trusted node marker interaction.
-- `studio.preview/viewport`: set semantic role or bounded dimensions.
-- `studio.preview/dispose`: terminate channel and revoke resources.
+- `studio.preview/activated`: the renderer reports a trusted interaction with a marked region.
+  It reports intent — `activate`, `context-menu`, or `focus` — never raw input events, and the marker
+  carries nothing beyond the node identity the render already published.
+- `studio.preview/viewport`: the client drives the surface to a theme-declared semantic viewport role
+  **or** to bounded explicit dimensions. The two are alternatives, never a merge; a payload carrying
+  both is refused before it reaches the channel.
+- `studio.preview/dispose`: the client instructs the renderer to revoke the resources it holds for a
+  superseded draft **while the channel stays open**. Naming a `draftDigest` revokes that render's
+  resources; omitting it revokes every draft resource the renderer holds.
+
+`dispose` and `teardown` are distinct and must not be conflated. `teardown` ends the session: the
+channel closes and no further message is honoured. `dispose` frees a superseded render's resources
+within a session that continues — after switching artifacts or viewports, Studio tells the renderer to
+drop what it no longer needs without renegotiating the channel.
 
 Until those target messages are added, an implementation may use a namespaced negotiated extension with its own registered schema, but cannot claim canonical preview conformance for that behavior. The generic envelope does not make an unregistered payload safe.
 

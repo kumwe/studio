@@ -68,7 +68,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes         | Reviewer reproduction; Dart cross-runtime fixtures ride `M3-06`       |
 | `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations             | Reviewer reproduction; lifecycle fixtures for non-block contributions |
 | `M3-03` | evidence-review | Testbed, HTTP adapter, and the published host conformance corpus         | Reviewer reproduction                                                 |
-| `M3-04` | evidence-review | Responder, handshake, reload/teardown, marker geometry channel           | Reviewer reproduction                                                 |
+| `M3-04` | evidence-review | Responder, handshake, geometry, and the complete Gate A vocabulary       | Reviewer reproduction                                                 |
 | `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations | Kumwe's Gate A contribution contract; its host adapter at its Gate B  |
 | `M4-02` | active          | Size-role editing with textual inheritance provenance                    | Grid and column composition; two-theme four-to-two-to-one proof       |
 | `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers         | Reviewer reproduction                                                 |
@@ -100,9 +100,8 @@ core coverage. The next actions in dependency order:
 1. Close the `host-baseline` recorded limitations so the host profile asserts every obligation a
    production host carries: artifact-level authorization refusals, idempotent replay of a retried
    mutation, and reproducible preconditions for rate limiting and cancellation.
-2. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
-   `studio.preview/dispose` — plus the draft-digest preimage and marker grammar, so the consuming
-   programme can build the authenticated preview endpoint its integration needs.
+2. The draft-digest preimage and the marker grammar, the last preview details a host must reproduce
+   byte for byte to answer the channel.
 3. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.

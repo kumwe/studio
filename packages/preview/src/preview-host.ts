@@ -8,7 +8,10 @@ import {
   type PreviewMessage,
   type PreviewRenderedPayload,
   type PreviewRenderPayload,
+  type PreviewActivatedPayload,
+  type PreviewDisposePayload,
   type PreviewSelectPayload,
+  type PreviewViewportPayload,
   type PreviewViewportMetrics,
   type QualifiedName,
   type StableId,
@@ -40,6 +43,10 @@ export type PreviewMeasureCallback = (markers: StableId[]) => Promise<PreviewMea
 
 export type PreviewSelectListener = (payload: PreviewSelectPayload) => void;
 
+export type PreviewViewportListener = (payload: PreviewViewportPayload) => void;
+
+export type PreviewDisposeListener = (payload: PreviewDisposePayload) => void;
+
 export interface PreviewHostOptions {
   channelId: string;
   /** Renderer-supplied marker measurer; without one, measure requests are answered as unavailable. */
@@ -66,6 +73,8 @@ export class PreviewHost {
   readonly #measureCallback: PreviewMeasureCallback | undefined;
   readonly #renderCallback: PreviewRenderCallback;
   readonly #renderer: QualifiedName;
+  readonly #viewportListeners = new Set<PreviewViewportListener>();
+  readonly #disposeListeners = new Set<PreviewDisposeListener>();
   readonly #selectListeners = new Set<PreviewSelectListener>();
   readonly #sessionGeneration: string;
   readonly #source: PreviewMessageSource;
@@ -124,9 +133,44 @@ export class PreviewHost {
     this.#disposed = true;
     this.#source.removeEventListener('message', this.#listener);
     this.#selectListeners.clear();
+    this.#viewportListeners.clear();
+    this.#disposeListeners.clear();
     this.#latestMeasureRequestId = undefined;
     this.#latestRenderDigest = undefined;
     this.#measuredRenderDigest = undefined;
+  }
+
+  /**
+   * Report a trusted interaction with a marked region. The renderer reports
+   * intent, never raw input events, and the marker carries nothing beyond the
+   * node identity the render already published.
+   */
+  public announceActivation(payload: PreviewActivatedPayload): void {
+    this.#post({
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload,
+      sequence: this.#sequence++,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/activated',
+    });
+  }
+
+  /** Observe viewport instructions the client drives the surface with. */
+  public onViewport(listener: PreviewViewportListener): () => void {
+    this.#viewportListeners.add(listener);
+    return (): void => {
+      this.#viewportListeners.delete(listener);
+    };
+  }
+
+  /** Observe requests to revoke the resources held for a superseded draft. */
+  public onDispose(listener: PreviewDisposeListener): () => void {
+    this.#disposeListeners.add(listener);
+    return (): void => {
+      this.#disposeListeners.delete(listener);
+    };
   }
 
   public onSelect(listener: PreviewSelectListener): () => void {
@@ -259,6 +303,15 @@ export class PreviewHost {
       this.#handleMeasure(event.data.payload);
     } else if (event.data.type === 'studio.preview/select') {
       for (const listener of this.#selectListeners) {
+        listener(event.data.payload);
+      }
+    } else if (event.data.type === 'studio.preview/viewport') {
+      for (const listener of this.#viewportListeners) {
+        listener(event.data.payload);
+      }
+    } else if (event.data.type === 'studio.preview/dispose') {
+      // Resource revocation for a superseded draft; the channel stays open.
+      for (const listener of this.#disposeListeners) {
         listener(event.data.payload);
       }
     } else if (event.data.type === 'studio.preview/teardown') {
