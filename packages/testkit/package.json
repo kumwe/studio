@@ -13,11 +13,12 @@
   "sideEffects": false,
   "files": [
     "LICENSE",
+    "README.md",
     "conformance",
+    "corpus-manifest.json",
     "dist",
     "fixtures",
     "invalid",
-    "README.md",
     "vectors"
   ],
   "exports": {
@@ -26,6 +27,7 @@
       "import": "./dist/index.js"
     },
     "./conformance/*": "./conformance/*",
+    "./corpus-manifest.json": "./corpus-manifest.json",
     "./fixtures/*": "./fixtures/*",
     "./invalid/*": "./invalid/*",
     "./vectors/*": "./vectors/*"

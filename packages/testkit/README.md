@@ -52,6 +52,12 @@ its UTF-8 bytes, or the stable reason the canonical form refuses it. Its expecta
 an independent canonicalizer rather than recorded from the reference implementation, so replaying it
 is a cross-implementation check.
 
+`@kumwe/studio-testkit/corpus-manifest.json` carries the sha256 digest of every file in the published
+corpus, grouped by the directory it ships in. A host that vendors the corpus verifies its copy against
+this manifest, so a stale or altered fixture is detected before it silently changes what a conformance
+claim means. The schema manifest in `@kumwe/studio-protocol` covers the schemas; this covers everything
+replayed against them.
+
 Gate A requires valid and invalid fixture corpora plus runner-neutral assertions for block, theme,
 plugin, host-port, command, preview, media, compatibility, migration, lifecycle, security,
 accessibility, localization, and TypeScript/Dart equivalence. The host-port corpus above is the first

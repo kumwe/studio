@@ -97,6 +97,10 @@ round-trip comparison meaningful across languages rather than per-runtime.
 
 ## Claiming a profile
 
+A claim is made against a verified corpus. `corpus-manifest.json` in `@kumwe/studio-testkit` carries
+the digest of every published fixture and vector, so an implementation confirms it replayed the
+contract rather than a stale or altered fork of it before making any claim.
+
 An implementation claims a profile by replaying its assertion set and publishing the result as evidence
 under the [evidence model](../roadmap/evidence.md). A claim names the profile, the exact corpus version
 replayed, and the commit it was replayed at. A green run of a subset is not a claim.

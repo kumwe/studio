@@ -18,7 +18,9 @@ that never discloses private resource existence, are corpus assertions rather th
 The controller layer has a published target as well: the
 [host transport binding](../contracts/host-transport.md) fixes the `POST {baseUrl}/ports/{port}/{operation}`
 route shape, the request and result bodies, and the status mapping in both directions, so the routes and
-OpenAPI document Kumwe writes now do not become a breaking change later.
+OpenAPI document Kumwe writes now do not become a breaking change later. A vendored copy of the corpus
+is verifiable rather than assumed: `corpus-manifest.json` carries the digest of every published fixture
+and vector, so a stale or altered copy is detected before it changes what a conformance claim means.
 
 ## Architectural covenant
 
