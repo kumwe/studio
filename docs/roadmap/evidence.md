@@ -96,6 +96,11 @@ This model is instantiated in the repository:
   `contracts:check`).
 
 The validator rejects any bundle whose recorded commit, working-tree state, or checksums do not match the
-checked-out source. Bundle directories prefixed `SAMPLE-` are excluded from those authenticity requirements
+checked-out source. The recorded commit must be the checked-out commit **or an ancestor of it**: evidence
+is produced at the commit under review and is then committed itself, which advances `HEAD`, so requiring
+equality would make a bundle unrecordable — its manifest would have to name the hash of the commit that
+contains it. Reachability is the weaker of the two guarantees and the checksum verification is the
+stronger one: every recorded fixture and artifact is rehashed against the working tree, so a bundle whose
+inputs or outputs have moved on fails regardless of how its commit relates to `HEAD`. Bundle directories prefixed `SAMPLE-` are excluded from those authenticity requirements
 but must fail them; a sample bundle that passes fails the lane. This keeps the acceptance proof executable:
 missing or stale evidence cannot pass a gate.

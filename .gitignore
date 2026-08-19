@@ -9,3 +9,4 @@ coverage/
 .env.*
 !.env.example
 .release-evidence/
+.evidence-tests.json

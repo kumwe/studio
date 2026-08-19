@@ -136,9 +136,16 @@ console.log(
 
 async function collectAuthenticityFailures(manifest) {
   const failures = [];
-  if (manifest.source.commit !== checkedOutCommit) {
+  // Evidence is produced at the commit under review and is then committed
+  // itself, which necessarily advances HEAD. Requiring equality would make a
+  // bundle unrecordable: the manifest would have to name the hash of the
+  // commit that contains it. The reviewed source must therefore be HEAD or an
+  // ancestor of it, and the checksum verification below is what actually
+  // proves the recorded inputs and artifacts still match the working tree.
+  if (!isAncestorOfHead(manifest.source.commit)) {
     failures.push(
-      `source.commit ${manifest.source.commit} is not the checked-out commit ${checkedOutCommit}`,
+      `source.commit ${manifest.source.commit} is neither the checked-out commit ` +
+        `${checkedOutCommit} nor an ancestor of it`,
     );
   }
   if (manifest.source.workingTreeState !== 'clean') {
@@ -182,6 +189,29 @@ async function collectAuthenticityFailures(manifest) {
     }
   }
   return failures;
+}
+
+/**
+ * True when the recorded commit is reachable from HEAD. An unknown commit -
+ * one this clone has never seen, including the zeroed sample - is not an
+ * ancestor, so stale and fabricated evidence still fails.
+ */
+function isAncestorOfHead(commit) {
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    return false;
+  }
+  if (commit === checkedOutCommit) {
+    return true;
+  }
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', commit, 'HEAD'], {
+      cwd: repositoryRoot,
+      stdio: 'ignore',
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getValidator(schemaFile) {
