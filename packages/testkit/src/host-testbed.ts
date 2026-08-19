@@ -112,6 +112,14 @@ export function createHostRequestContextFixture(
   };
 }
 
+/**
+ * The permissions this reference host gates artifact mutations behind. A host
+ * chooses its own names; what the contract fixes is that a mutation is
+ * authorized and that a withheld permission is refused as `forbidden`.
+ */
+const SAVE_PERMISSION: QualifiedName = 'studio.permission/save';
+const PUBLISH_PERMISSION: QualifiedName = 'studio.permission/publish';
+
 /** Deterministic bounds the reference host authorizes uploads within. */
 const UPLOAD_CHUNK_BYTES = 5_242_880;
 const UPLOAD_MAXIMUM_BYTES = 52_428_800;
@@ -227,6 +235,18 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     }
   }
 
+  /**
+   * The authorization gate a production host applies to every mutation. Reads
+   * are authorized by the resolved request context; mutations additionally
+   * require the host-declared permission for the operation, and a withheld
+   * permission is refused without disclosing whether the artifact exists.
+   */
+  function requireArtifactPermission(permission: QualifiedName): void {
+    if (!permissions.includes(permission)) {
+      fail('forbidden', 'The session does not hold the permission this operation requires.');
+    }
+  }
+
   function requireStored(id: StableId): StoredArtifact {
     const stored = artifactStore.get(id);
     if (stored === undefined) {
@@ -255,6 +275,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     context: HostRequestContext,
     status: 'draft' | 'published',
   ): HostPortResult<null> {
+    requireArtifactPermission(PUBLISH_PERMISSION);
     const stored = requireStored(id);
     ensureExpectedRevision(stored, context);
     stored.document.status = status;
@@ -296,6 +317,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       },
       save(document, context) {
         return run('artifact', 'save', context, () => {
+          requireArtifactPermission(SAVE_PERMISSION);
           const stored = requireStored(document.id);
           ensureExpectedRevision(stored, context);
           stored.document = cloneValue(document);

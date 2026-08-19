@@ -44,7 +44,10 @@ function insertCommand(
 describe('session lifecycle against the host testbed', () => {
   it('loads, edits, saves, loses a race, and recovers through the recovery port', async () => {
     const blueprint = createBlueprintFixture({ id: 'lifecycle.blueprint' });
-    const { host, controls } = createTestbedHost({ documents: [blueprint] });
+    const { host, controls } = createTestbedHost({
+      documents: [blueprint],
+      permissions: ['studio.permission/publish', 'studio.permission/save'],
+    });
     const generation = controls.sessionGeneration;
     const context = (
       expectedRevision?: string,
@@ -116,7 +119,10 @@ describe('session lifecycle against the host testbed', () => {
 
   it('invalidates the whole session when permissions change mid-flight', async () => {
     const blueprint = createBlueprintFixture({ id: 'permissions.blueprint' });
-    const { host, controls } = createTestbedHost({ documents: [blueprint] });
+    const { host, controls } = createTestbedHost({
+      documents: [blueprint],
+      permissions: ['studio.permission/publish', 'studio.permission/save'],
+    });
     const staleGeneration = controls.sessionGeneration;
     const staleContext = createHostRequestContextFixture({ sessionGeneration: staleGeneration });
 

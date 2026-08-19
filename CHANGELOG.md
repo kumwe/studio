@@ -8,6 +8,18 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Authorized mutations in the reference host (M3-03, M2-07)
+
+- The reference host authorizes artifact mutations, closing the largest recorded limitation of the
+  host baseline profile. A save or a publication the acting identity does not hold the permission for
+  is refused as `forbidden` before the artifact is touched, and the refusal does not disclose whether
+  it exists; save authority and publication authority are distinct, so holding one never grants the
+  other. Two conformance vectors fix the behaviour, so a host proves its authorization gate from the
+  published corpus rather than being trusted to have one.
+- The profile's remaining limitations are narrowed to what is actually true: idempotent replay, rate
+  limiting and cancellation are not expressible as a single exchange, so closing them needs a
+  sequence-carrying vector kind rather than more vectors of the current shape.
+
 ### The Gate A preview vocabulary (M3-04, M4-06)
 
 - The preview channel's three Gate A messages are canonical and implemented, so a host building an

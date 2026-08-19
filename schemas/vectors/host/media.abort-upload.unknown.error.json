@@ -14,7 +14,7 @@
         "revision": "vector.blueprint-r1"
       }
     ],
-    "permissions": ["studio.permission/compose"],
+    "permissions": ["studio.permission/publish", "studio.permission/save"],
     "sessionGeneration": "session-r1"
   },
   "context": {

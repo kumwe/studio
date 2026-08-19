@@ -83,7 +83,10 @@ function definedPort<T>(port: T | undefined): T {
 }
 
 async function startTestbedServer(options: TestbedHostOptions = {}): Promise<TestbedServer> {
-  const { controls, host } = createTestbedHost(options);
+  const { controls, host } = createTestbedHost({
+    permissions: ['studio.permission/publish', 'studio.permission/save'],
+    ...options,
+  });
   const localization = definedPort(host.localization);
   const media = definedPort(host.media);
   const permission = definedPort(host.permission);
