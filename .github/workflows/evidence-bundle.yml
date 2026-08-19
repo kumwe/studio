@@ -1,0 +1,54 @@
+name: Evidence bundle
+
+# Produces one evidence bundle for a work package on an independent runner and
+# uploads it as an artifact. This is deliberately not an acceptance step: the
+# evidence model requires a human to reproduce the run and record the review
+# block, and states that reading a CI badge is not reproduction. What this lane
+# gives a reviewer is a bundle produced somewhere other than their own machine,
+# to compare against the one they produce themselves.
+
+on:
+  workflow_dispatch:
+    inputs:
+      work_package:
+        description: The work package the bundle is evidence for (for example M2-01).
+        required: true
+        type: string
+      bundle_id:
+        description: Optional explicit bundle identifier. Defaults to <package>-<short commit>.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    name: Produce evidence bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Produce the bundle
+        run: |
+          node scripts/create-evidence-bundle.mjs \
+            --package '${{ inputs.work_package }}' \
+            ${{ inputs.bundle_id && format('--id ''{0}''', inputs.bundle_id) || '' }} \
+            --runner 'github-actions/${{ github.run_id }}'
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-${{ inputs.work_package }}-${{ github.sha }}
+          path: evidence/bundles/
+          if-no-files-found: error
+          retention-days: 90

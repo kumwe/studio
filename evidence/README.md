@@ -45,11 +45,28 @@ status entry.
 
 `node scripts/check-evidence.mjs` runs in the repository check lane (`npm run check` via
 `contracts:check`). It meta-validates both schemas, validates every bundle manifest and gate record, and
-applies strict authenticity checks to every non-`SAMPLE-` bundle: the recorded commit must equal the
-checked-out `HEAD`, the working tree state must be `clean`, every recorded fixture and artifact path must
-exist with a matching sha256 checksum, and a recorded freshness expiry must not precede the checked-out
-commit time. A `SAMPLE-` bundle must fail at least one of those checks; a sample that passes fails the
+applies strict authenticity checks to every non-`SAMPLE-` bundle: the recorded commit must be the
+checked-out `HEAD` or an ancestor of it, the working tree state must be `clean`, every recorded fixture
+and artifact path must exist with a matching sha256 checksum, and a recorded freshness expiry must not
+precede the checked-out commit time. A commit this clone has never seen — including the zeroed sample —
+is not an ancestor, so fabricated evidence still fails. A `SAMPLE-` bundle must fail at least one of those checks; a sample that passes fails the
 lane.
+
+## Producing a bundle
+
+`node scripts/create-evidence-bundle.mjs --package <M2-01>` captures everything mechanical: the reviewed
+commit, the environment, each lane command with its exit status and timings, and the sha256 checksum of
+every recorded input and produced artifact. It refuses to run against a dirty tree and refuses to record
+a failing lane.
+
+It deliberately leaves `criteria` empty and writes no `review` block. Criterion outcomes are the
+reviewer's judgement and `reproduced` is the reviewer's attestation; a generator that filled them in
+would be self-certifying evidence, which this model forbids. The bundle is left uncommitted so a
+reviewer inspects it, reproduces the run, records their outcomes and identity, and commits it.
+
+The `Evidence bundle` workflow runs the same script on an independent runner and uploads the result as
+an artifact, so a reviewer can compare a bundle produced elsewhere against the one they produced
+themselves. Downloading that artifact is not itself reproduction.
 
 ## Gate review procedure
 
