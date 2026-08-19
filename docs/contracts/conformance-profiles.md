@@ -24,7 +24,7 @@ implementation that claimed a profile keeps claiming it for the version it passe
 | Profile                        | Claimed by            | Executable assertion set                                     | State                |
 | ------------------------------ | --------------------- | ------------------------------------------------------------ | -------------------- |
 | `studio.profile/host-baseline` | A host adapter        | `vectors/host/` replayed through the adapter                 | Declared, executable |
-| `studio.profile/engine-core`   | A protocol engine     | `vectors/command/` and the canonical serialization rules     | Declared, executable |
+| `studio.profile/engine-core`   | A protocol engine     | `vectors/command/` and `vectors/canonical/`                  | Declared, executable |
 | `studio.profile/media-policy`  | A host media pipeline | `vectors/media/`                                             | Declared, executable |
 | `studio.profile/renderer-web`  | A trusted renderer    | `conformance/rich-text/` and the preview channel obligations | Target               |
 | `studio.profile/authoring-web` | An authoring client   | The interaction requirement registry and accessibility lanes | Target               |
@@ -80,6 +80,20 @@ recorded rather than implied, and a host must still satisfy them:
 - **Rate limiting and cancellation.** `rate-limited` and `cancelled` are declared categories with no
   reproducible precondition a single exchange can state — a rate limit needs a request count and a
   cancellation needs an in-flight request to cancel.
+
+## `studio.profile/engine-core`
+
+The assertions a protocol engine must satisfy: the command corpus in `vectors/command/` replayed
+through the reducer and, for a mode-carrying vector, through a session; and the canonical
+serialization corpus in `vectors/canonical/`, which fixes member ordering by code unit, minimal
+escaping, the number grammar including negative-zero canonicalization, UTF-8 emission of non-ASCII
+and astral text, the depth bound, and the forbidden member names — each with the exact canonical
+string and the SRI-style digest of its bytes.
+
+The canonical corpus matters beyond the engine: every checksum in the contract is computed over
+exactly these bytes, so an implementation that reproduces the corpus computes the same digests as
+every other. That is what makes a host's vendored-corpus integrity check and a stored document's
+round-trip comparison meaningful across languages rather than per-runtime.
 
 ## Claiming a profile
 

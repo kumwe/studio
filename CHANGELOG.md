@@ -8,6 +8,21 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Canonical serialization as an executable corpus (M2-06, M3-01)
+
+- Twelve canonical serialization vectors publish what was previously only prose and reference code:
+  member ordering by code unit, minimal escaping with the short forms where they exist, the number
+  grammar including negative-zero canonicalization, UTF-8 emission of non-ASCII and astral text, the
+  depth bound, and the forbidden member names — each carrying the exact canonical string and the
+  SRI-style digest of its bytes.
+- Every checksum in the contract is computed over exactly those bytes, so an implementation that
+  reproduces the corpus computes the same digests as every other. That is what makes a host's
+  vendored-corpus integrity check and a stored document's round-trip comparison meaningful across
+  languages rather than per-runtime.
+- The expectations were produced by an independent canonicalizer rather than recorded from the
+  reference implementation, so the reference replaying them is a genuine cross-implementation check
+  rather than a restatement of its own output.
+
 ### Every declaration kind schema-backed (M3-05, M2-01, M2-03)
 
 - The last two contribution kinds a downstream Gate A freeze names gain canonical payload schemas.

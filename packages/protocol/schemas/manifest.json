@@ -14,6 +14,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/blueprint.schema.json"
     },
     {
+      "digest": "sha256-WrqnuGMzdcSi5geh9LXT5uhL1AsimMgw1jhizsAKyBA=",
+      "file": "canonical-vector.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/canonical-vector.schema.json"
+    },
+    {
       "digest": "sha256-GEoWp72qtRDvyf9V7pyQzshlqDecOjtUxIYCY7TJ8SA=",
       "file": "command-vector.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/command-vector.schema.json"

@@ -63,7 +63,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds             | Reviewer reproduction                                                 |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding     | Reviewer reproduction                                                 |
 | `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors            | Reviewer reproduction                                                 |
-| `M2-06` | active          | Canonical serialization, schema digest manifest, scalar profiles         | Dart model generation and round-trip (`M3-06` not started)            |
+| `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest        | Dart model generation and round-trip (`M3-06` not started)            |
 | `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals        | Reviewer reproduction                                                 |
 | `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes         | Reviewer reproduction; Dart cross-runtime fixtures ride `M3-06`       |
 | `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations             | Reviewer reproduction; lifecycle fixtures for non-block contributions |
