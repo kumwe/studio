@@ -1,6 +1,6 @@
 # Programme status
 
-**Updated:** 2026-08-18
+**Updated:** 2026-08-19
 
 This file describes work still to be delivered. It does not claim that documented contracts or planned tests
 already exist in runtime code. Accepted work is recorded against immutable evidence and release history.
@@ -62,7 +62,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                | Reviewer reproduction                                                 |
 | `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds             | Reviewer reproduction                                                 |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding     | Reviewer reproduction                                                 |
-| `M2-05` | evidence-review | Grammar, upload lifecycle, conformance corpus, policy vectors            | Reviewer reproduction                                                 |
+| `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors       | Reviewer reproduction                                                 |
 | `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest        | Dart model generation and round-trip (`M3-06` not started)            |
 | `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals        | Reviewer reproduction                                                 |
 | `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes         | Reviewer reproduction; Dart cross-runtime fixtures ride `M3-06`       |
@@ -93,20 +93,26 @@ so a contract change here is measured against it.
 
 ## Next dependency-ordered actions
 
-The eighth wave delivered the surface Kumwe freezes against at its Gate A — the declaration-kind
-schemas, the portable mode-boundary corpus, the per-slot composition marker, and the generative
-core coverage. The next actions in dependency order:
+The ninth wave made the integration boundary implementable and provable from published artifacts
+alone: named conformance profiles with the host assertion corpus, the transport binding and its
+operation registry, the media upload lifecycle, the Gate A preview vocabulary, authorized mutations,
+the remaining declaration payloads, canonical serialization as a corpus, and a digest-verified corpus
+manifest. The next actions in dependency order:
 
-1. A sequence-carrying vector kind, so the host profile can assert the obligations one exchange
+1. A portable schema-profile conformance corpus, so a host's own profile validator is provably in
+   agreement with the reference before an unbounded property schema reaches a frozen contribution
+   generation. The interpreting validator is proven against the reference validator in TypeScript
+   only; nothing yet lets another language prove the same.
+2. A sequence-carrying vector kind, so the host profile can assert the obligations one exchange
    cannot state: idempotent replay of a retried mutation, rate limiting, and cancellation of an
    in-flight request. Artifact-level authorization is now asserted.
-2. The draft-digest preimage and the marker grammar, the last preview details a host must reproduce
+3. The draft-digest preimage and the marker grammar, the last preview details a host must reproduce
    byte for byte to answer the channel.
-3. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
+4. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.
-4. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`).
-5. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
+5. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`).
+6. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
    the gate on every profile claim and therefore on the beta channel; Dart model generation and
    round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
 
