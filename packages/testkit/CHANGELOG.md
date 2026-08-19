@@ -1,5 +1,81 @@
 # @kumwe/studio-testkit
 
+## 0.1.0-alpha.7
+
+### Minor Changes
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`473338a`](https://github.com/kumwe/studio/commit/473338aa46fdf681ffeae44286d7ef7941e6897c) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The reference host now authorizes artifact mutations, closing the largest recorded limitation of
+  `studio.profile/host-baseline`. A save or a publication the acting identity does not hold the
+  permission for is refused as `forbidden` before the artifact is touched, and the refusal does not
+  disclose whether it exists; save authority and publication authority are distinct, so holding one never
+  grants the other. Two conformance vectors fix the behaviour, so a host adapter proves its authorization
+  gate from the published corpus rather than being trusted to have one. The reference host declares its
+  own permission names, as any host does — what the profile fixes is that a mutation is authorized and
+  that a withheld permission is `forbidden`.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`51e0423`](https://github.com/kumwe/studio/commit/51e0423c857840367e1d18f598665fd228a7a4b7) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Canonical serialization becomes an executable corpus. `canonical-vector.schema.json` and the twelve
+  vectors published as `vectors/canonical/` in `@kumwe/studio-testkit` fix member ordering by code unit,
+  minimal escaping, the number grammar including negative-zero canonicalization, UTF-8 emission of
+  non-ASCII and astral text, the depth bound, and the forbidden member names — each with the exact
+  canonical string and the SRI-style digest of its bytes. Every checksum in the contract is computed over
+  exactly those bytes, so an implementation reproducing the corpus computes the same digests as every
+  other, which is what makes a vendored-corpus integrity check and a stored-document round-trip
+  comparable across languages. The expectations were produced by an independent canonicalizer rather
+  than recorded from the reference, so the reference replaying them is a genuine cross-implementation
+  check.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`85bb979`](https://github.com/kumwe/studio/commit/85bb9795c49a75070e52169eb82a27c7613ffab1) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The published corpus becomes verifiable. `corpus-manifest.json` ships in `@kumwe/studio-testkit`
+  carrying the sha256 digest of all 178 files across the seven corpus groups — fixtures, command, media,
+  host and canonical vectors, negative fixtures and renderer conformance — with
+  `corpus-manifest.schema.json` fixing its shape. A host that vendors the corpus verifies its copy
+  against the manifest, so a stale or altered fixture is detected before it silently changes what a
+  conformance claim means. The contracts lane regenerates and verifies the manifest, so it cannot drift
+  from what actually ships.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`abe6baf`](https://github.com/kumwe/studio/commit/abe6baf6fcfb7ec5df7425b69d34136c4b51f157) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Conformance profiles become named, versioned, and executable. `studio.profile/host-baseline` is
+  declared first and ships its assertion set as a new canonical vector kind: `host-vector.schema.json`
+  with the corpus published as `vectors/host/` in `@kumwe/studio-testkit`. Each vector fixes reproducible
+  host state, the request envelope and argument, and the required outcome — an accepted result with its
+  revision behaviour, or one category of the closed error taxonomy with its retry classification and
+  non-disclosure obligations — so a host adapter in any language proves persistence, optimistic
+  concurrency, envelope negotiation, bounded queries, absence handling, authority and telemetry
+  discipline without executing Studio code. The reference host claims the profile by replaying the
+  corpus. Profiles bind to release channels: `beta` now means feature-complete against a declared,
+  executable profile, claimed with evidence.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`9f4f95e`](https://github.com/kumwe/studio/commit/9f4f95e208dceca97046af8d1f18c113ff95746e) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The host transport boundary is published rather than implied. A closed operation registry
+  (`host-operations.schema.json`) binds every port operation's three names — the typed method, the route
+  segment, and the capability identifier — one to one, and the capability document's port and operation
+  vocabularies now reference it, so a host can no longer advertise an operation that is not on the wire.
+  The request and result envelopes gain canonical schemas (`host-request.schema.json`,
+  `host-result.schema.json`), and the HTTP binding — route scheme, body shapes, and the bidirectional
+  category-to-status table — becomes the normative `docs/contracts/host-transport.md` instead of a comment
+  inside a test helper. A drift guard asserts the registry still covers exactly the typed port surface.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`3f89d04`](https://github.com/kumwe/studio/commit/3f89d0446cb8c02fb3cc15e0fe2fd3ae79351004) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The last two declaration kinds a host freezes against gain canonical payload schemas.
+  `inspector.schema.json` declares the block types a contributed panel applies to and whether it augments
+  or replaces the built-in inspector for them; `field-adapter.schema.json` declares the control
+  identifier a field's authoring metadata names, the field kinds it accepts, and the bounded option
+  schema an author configures it through. Both declare the capability their executable half requires, so
+  a declaration without one is inspectable but never executed. Every contribution kind a downstream Gate
+  A freeze names is now validated against a published schema rather than a paraphrase.
+
+- [#22](https://github.com/kumwe/studio/pull/22) [`87eb8bf`](https://github.com/kumwe/studio/commit/87eb8bf7a944ee1ca682cf5085456c2e89a967e2) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The media port gains its upload lifecycle. `authorize-upload`, `complete-upload`, `abort-upload`,
+  `upload-status` and `import-external` join `get` and `list`, so a host has operations to implement
+  where the contract previously described a lifecycle the wire could not express. Bytes never cross the
+  JSON port: `authorize-upload` applies host policy before any byte moves and returns a short-lived,
+  bounded grant naming an https destination the host controls, and the client transfers directly to it.
+  The host verifies what it received rather than trusting a declared media type, so an accepted asset may
+  still be processing or quarantined. Seven conformance vectors fix the authorization, completion,
+  abortion, status and external-import behaviour, including refusal of an oversized upload, a filename
+  carrying a path separator, and an external candidate resolving to a private address.
+
+### Patch Changes
+
+- Updated dependencies [[`51e0423`](https://github.com/kumwe/studio/commit/51e0423c857840367e1d18f598665fd228a7a4b7), [`85bb979`](https://github.com/kumwe/studio/commit/85bb9795c49a75070e52169eb82a27c7613ffab1), [`abe6baf`](https://github.com/kumwe/studio/commit/abe6baf6fcfb7ec5df7425b69d34136c4b51f157), [`9f4f95e`](https://github.com/kumwe/studio/commit/9f4f95e208dceca97046af8d1f18c113ff95746e), [`3f89d04`](https://github.com/kumwe/studio/commit/3f89d0446cb8c02fb3cc15e0fe2fd3ae79351004), [`87eb8bf`](https://github.com/kumwe/studio/commit/87eb8bf7a944ee1ca682cf5085456c2e89a967e2), [`7895dae`](https://github.com/kumwe/studio/commit/7895dae03b6ca4b44c8c10e64c1f17291ef5fd44)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.5
+  - @kumwe/studio-core@0.1.0-alpha.7
+
 ## 0.1.0-alpha.6
 
 ### Minor Changes
