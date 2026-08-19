@@ -22,21 +22,33 @@ Entry modules and contribution resources use the same restricted package-relativ
 
 ## Declarative composition payloads
 
-Two contribution kinds carry a canonical, purely declarative payload the host validates at
+Four contribution kinds carry a canonical, purely declarative payload the host validates at
 admission and at install without executing plugin code (ADR 0012):
 
 - a `design-vocabulary` contribution's resource conforms to
   [`design-vocabulary.schema.json`](../../schemas/design-vocabulary.schema.json): design controls
   and recipes an extension offers, byte-compatible with the theme document's own members so a
   theme adopts or remaps them through its declared controls and aliases — including `size-role`
-  controls whose choices bound stored layout role names; and
+  controls whose choices bound stored layout role names;
 - a `migration` contribution's resource conforms to
   [`migration.schema.json`](../../schemas/migration.schema.json): the portable descriptor of a
   document migration — artifact kinds, source range, target version, loss classification — while
   the transformation itself remains trusted package code per the
-  [versioning contract](versioning-and-migrations.md).
+  [versioning contract](versioning-and-migrations.md);
+- an `inspector` contribution's resource conforms to
+  [`inspector.schema.json`](../../schemas/inspector.schema.json): the block types the panel applies to
+  and whether it augments or replaces the built-in inspector for them, which never removes the host's
+  own policy and accessibility surfaces; and
+- a `field-adapter` contribution's resource conforms to
+  [`field-adapter.schema.json`](../../schemas/field-adapter.schema.json): the control identifier a
+  field's authoring metadata names, the field kinds it accepts, and the bounded option schema an
+  author configures it through.
 
-Both kinds are inert declarations until a host implements the consuming surface. Their shapes
+An inspector and a field adapter are executable surfaces, so each declares the capability its
+executable half requires; a declaration without one is inspectable but never executed, which is what
+lets an administrator review a plugin's contributions without running its code.
+
+All four kinds are inert declarations until a host implements the consuming surface. Their shapes
 are part of the surface a host freezes against; changing them after a downstream freeze is a
 breaking change to published extensions.
 

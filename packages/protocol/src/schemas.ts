@@ -6,12 +6,14 @@ import commonSchemaDocument from '../schemas/common.schema.json' with { type: 'j
 import contentModelSchemaDocument from '../schemas/content-model.schema.json' with { type: 'json' };
 import designVocabularySchemaDocument from '../schemas/design-vocabulary.schema.json' with { type: 'json' };
 import entrySchemaDocument from '../schemas/entry.schema.json' with { type: 'json' };
+import fieldAdapterSchemaDocument from '../schemas/field-adapter.schema.json' with { type: 'json' };
 import hostCapabilitiesSchemaDocument from '../schemas/host-capabilities.schema.json' with { type: 'json' };
 import hostErrorSchemaDocument from '../schemas/host-error.schema.json' with { type: 'json' };
 import hostOperationsSchemaDocument from '../schemas/host-operations.schema.json' with { type: 'json' };
 import hostRequestSchemaDocument from '../schemas/host-request.schema.json' with { type: 'json' };
 import hostResultSchemaDocument from '../schemas/host-result.schema.json' with { type: 'json' };
 import hostVectorSchemaDocument from '../schemas/host-vector.schema.json' with { type: 'json' };
+import inspectorSchemaDocument from '../schemas/inspector.schema.json' with { type: 'json' };
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
 import mediaUploadGrantSchemaDocument from '../schemas/media-upload-grant.schema.json' with { type: 'json' };
@@ -36,12 +38,14 @@ export const commonSchema: JsonSchema = commonSchemaDocument;
 export const contentModelSchema: JsonSchema = contentModelSchemaDocument;
 export const designVocabularySchema: JsonSchema = designVocabularySchemaDocument;
 export const entrySchema: JsonSchema = entrySchemaDocument;
+export const fieldAdapterSchema: JsonSchema = fieldAdapterSchemaDocument;
 export const hostCapabilitiesSchema: JsonSchema = hostCapabilitiesSchemaDocument;
 export const hostErrorSchema: JsonSchema = hostErrorSchemaDocument;
 export const hostOperationsSchema: JsonSchema = hostOperationsSchemaDocument;
 export const hostRequestSchema: JsonSchema = hostRequestSchemaDocument;
 export const hostResultSchema: JsonSchema = hostResultSchemaDocument;
 export const hostVectorSchema: JsonSchema = hostVectorSchemaDocument;
+export const inspectorSchema: JsonSchema = inspectorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
 export const mediaUploadGrantSchema: JsonSchema = mediaUploadGrantSchemaDocument;
@@ -66,12 +70,14 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   contentModelSchema,
   designVocabularySchema,
   entrySchema,
+  fieldAdapterSchema,
   hostOperationsSchema,
   hostCapabilitiesSchema,
   hostErrorSchema,
   hostRequestSchema,
   hostResultSchema,
   hostVectorSchema,
+  inspectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
   mediaUploadGrantSchema,

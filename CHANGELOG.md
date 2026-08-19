@@ -8,6 +8,19 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Every declaration kind schema-backed (M3-05, M2-01, M2-03)
+
+- The last two contribution kinds a downstream Gate A freeze names gain canonical payload schemas.
+  `inspector.schema.json` declares the block types a contributed panel applies to and whether it
+  augments or replaces the built-in inspector for them — replacement never removing the host's own
+  policy and accessibility surfaces. `field-adapter.schema.json` declares the control identifier a
+  field's authoring metadata names, the field kinds it accepts, and the bounded option schema an author
+  configures it through.
+- Both are executable surfaces, so each declares the capability its executable half requires: a
+  declaration without one is inspectable but never executed, which is what lets an administrator review
+  a plugin's contributions without running its code. Every kind a host freezes against is now validated
+  against a published schema rather than a paraphrase.
+
 ### Authorized mutations in the reference host (M3-03, M2-07)
 
 - The reference host authorizes artifact mutations, closing the largest recorded limitation of the
