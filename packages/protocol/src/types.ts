@@ -692,8 +692,41 @@ export interface PreviewPort {
 }
 
 export interface MediaHostPort {
+  /** Releases a grant the client will not use. Never deletes an accepted asset. */
+  abortUpload(uploadId: StableId, context: HostRequestContext): Promise<HostPortResult<null>>;
+  /**
+   * Authorizes one declared upload against host policy and returns the grant
+   * to transfer against. Policy rejection happens here, before any byte moves.
+   */
+  authorizeUpload(
+    request: MediaUploadRequestDescriptor,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<MediaUploadGrant>>;
+  /**
+   * Closes a transferred upload. The host verifies the bytes it received - it
+   * never trusts the client's declared media type or checksum - and mints the
+   * stable asset identity, which may still be processing or quarantined.
+   */
+  completeUpload(
+    uploadId: StableId,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<MediaUploadAcceptedAsset>>;
   get(assetId: StableId, context: HostRequestContext): Promise<HostPortResult<MediaAsset | null>>;
+  /**
+   * Fetches an external candidate under host runtime hardening. The lexical
+   * URL policy is necessary but not sufficient: redirect re-validation, DNS
+   * rebinding defence, response verification and size bounds are the host's.
+   */
+  importExternal(
+    url: string,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<MediaUploadAcceptedAsset>>;
   list(query: MediaQuery, context: HostRequestContext): Promise<HostPortResult<MediaPage>>;
+  /** Polls an accepted asset whose processing has not settled. */
+  uploadStatus(
+    assetId: StableId,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<MediaUploadAcceptedAsset>>;
 }
 
 export interface LocalizationPort {
@@ -1406,6 +1439,23 @@ export interface MediaUploadAcceptedAsset {
   id: StableId;
   revision: Revision;
   state: 'processing' | 'quarantined' | 'ready' | 'rejected';
+}
+
+/**
+ * The host's authorization to transfer one upload. Bytes never cross the JSON
+ * port: the host issues a short-lived, single-purpose destination it controls
+ * and the client transfers directly to it, so custody, quotas and storage
+ * placement stay host-owned and a large body never traverses the port
+ * transport. The grant is a capability, not a credential store - it is scoped
+ * to one declared upload and expires.
+ */
+export interface MediaUploadGrant {
+  expiresAt: string;
+  headers?: Record<string, string>;
+  method: 'POST' | 'PUT';
+  plan: MediaUploadPlan;
+  uploadId: StableId;
+  url: string;
 }
 
 export interface MediaUploadSession {

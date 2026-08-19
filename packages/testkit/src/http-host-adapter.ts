@@ -10,6 +10,9 @@ import {
   type JsonObject,
   type MediaAsset,
   type MediaPage,
+  type MediaUploadAcceptedAsset,
+  type MediaUploadGrant,
+  type MediaUploadRequestDescriptor,
   type MediaQuery,
   type PermissionExplanation,
   type PermissionSnapshot,
@@ -215,14 +218,41 @@ export function createHttpHostAdapter(
       },
     },
     media: {
+      abortUpload(uploadId: string, context: HostRequestContext): Promise<HostPortResult<null>> {
+        return call('media', 'abort-upload', { uploadId }, context);
+      },
+      authorizeUpload(
+        request: MediaUploadRequestDescriptor,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<MediaUploadGrant>> {
+        return call('media', 'authorize-upload', { request: asJson(request) }, context);
+      },
+      completeUpload(
+        uploadId: string,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
+        return call('media', 'complete-upload', { uploadId }, context);
+      },
       get(
         assetId: string,
         context: HostRequestContext,
       ): Promise<HostPortResult<MediaAsset | null>> {
         return call('media', 'get', { assetId }, context);
       },
+      importExternal(
+        url: string,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
+        return call('media', 'import-external', { url }, context);
+      },
       list(query: MediaQuery, context: HostRequestContext): Promise<HostPortResult<MediaPage>> {
         return call('media', 'list', { query: asJson(query) }, context);
+      },
+      uploadStatus(
+        assetId: string,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
+        return call('media', 'upload-status', { assetId }, context);
       },
     },
     permission: {

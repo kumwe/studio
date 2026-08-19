@@ -141,7 +141,9 @@
                 "permission-snapshot",
                 "recovery-envelope",
                 "rendered",
-                "search-page"
+                "search-page",
+                "upload-accepted",
+                "upload-grant"
               ]
             }
           }

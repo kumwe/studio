@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.kumwe.org/studio/v1/host-operations.schema.json",
   "title": "Studio host port operation registry",
-  "description": "The closed registry binding every host port operation to its three names: the typed method a client calls, the route segment a transport addresses, and the capability identifier a host advertises. A host cannot publish a truthful capability document without it, because the three vocabularies must map one to one. Adding an operation is an additive protocol change; renaming or removing one is breaking.",
+  "description": "The closed registry binding every host port operation to its names: the wire operation a transport addresses, the typed method a client calls, and the capability identifier a host advertises. A host cannot publish a truthful capability document without it, because the vocabularies must map one to one. Adding an operation is an additive protocol change; renaming or removing one is breaking.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contractVersion", "kind", "operations"],
@@ -23,6 +23,7 @@
         "required": [
           "capability",
           "expectsRevision",
+          "method",
           "mutating",
           "operation",
           "port",
@@ -37,6 +38,12 @@
           "expectsRevision": {
             "description": "The operation is concurrency-protected: the request envelope carries expectedRevision and a mismatch conflicts.",
             "type": "boolean"
+          },
+          "method": {
+            "description": "The typed method name a client port interface exposes, which differs from the wire name where the wire spelling is not a valid identifier.",
+            "type": "string",
+            "pattern": "^[a-z][A-Za-z0-9]*(?![\\s\\S])",
+            "maxLength": 100
           },
           "mutating": {
             "description": "The operation changes host state, so it is authorized, audited and idempotent when retried.",
@@ -75,8 +82,13 @@
         "studio.operation/artifact.save",
         "studio.operation/artifact.unpublish",
         "studio.operation/localization.messages",
+        "studio.operation/media.abort-upload",
+        "studio.operation/media.authorize-upload",
+        "studio.operation/media.complete-upload",
         "studio.operation/media.get",
+        "studio.operation/media.import-external",
         "studio.operation/media.list",
+        "studio.operation/media.upload-status",
         "studio.operation/model.get",
         "studio.operation/model.list",
         "studio.operation/permission.explain",
@@ -99,8 +111,13 @@
         "artifact/save",
         "artifact/unpublish",
         "localization/messages",
+        "media/abort-upload",
+        "media/authorize-upload",
+        "media/complete-upload",
         "media/get",
+        "media/import-external",
         "media/list",
+        "media/upload-status",
         "model/get",
         "model/list",
         "permission/explain",

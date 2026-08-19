@@ -14,6 +14,7 @@ import hostResultSchemaDocument from '../schemas/host-result.schema.json' with {
 import hostVectorSchemaDocument from '../schemas/host-vector.schema.json' with { type: 'json' };
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
+import mediaUploadGrantSchemaDocument from '../schemas/media-upload-grant.schema.json' with { type: 'json' };
 import mediaUploadSessionSchemaDocument from '../schemas/media-upload-session.schema.json' with { type: 'json' };
 import migrationSchemaDocument from '../schemas/migration.schema.json' with { type: 'json' };
 import patternSchemaDocument from '../schemas/pattern.schema.json' with { type: 'json' };
@@ -43,6 +44,7 @@ export const hostResultSchema: JsonSchema = hostResultSchemaDocument;
 export const hostVectorSchema: JsonSchema = hostVectorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
+export const mediaUploadGrantSchema: JsonSchema = mediaUploadGrantSchemaDocument;
 export const mediaUploadSessionSchema: JsonSchema = mediaUploadSessionSchemaDocument;
 export const migrationSchema: JsonSchema = migrationSchemaDocument;
 export const patternSchema: JsonSchema = patternSchemaDocument;
@@ -72,6 +74,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   hostVectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
+  mediaUploadGrantSchema,
   mediaUploadSessionSchema,
   migrationSchema,
   patternSchema,

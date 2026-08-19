@@ -5,6 +5,7 @@
     {
       "capability": "studio.operation/artifact.dependencies",
       "expectsRevision": false,
+      "method": "dependencies",
       "mutating": false,
       "operation": "dependencies",
       "port": "artifact",
@@ -15,6 +16,7 @@
     {
       "capability": "studio.operation/artifact.load",
       "expectsRevision": false,
+      "method": "load",
       "mutating": false,
       "operation": "load",
       "port": "artifact",
@@ -25,6 +27,7 @@
     {
       "capability": "studio.operation/artifact.publish",
       "expectsRevision": true,
+      "method": "publish",
       "mutating": true,
       "operation": "publish",
       "port": "artifact",
@@ -35,6 +38,7 @@
     {
       "capability": "studio.operation/artifact.save",
       "expectsRevision": true,
+      "method": "save",
       "mutating": true,
       "operation": "save",
       "port": "artifact",
@@ -45,6 +49,7 @@
     {
       "capability": "studio.operation/artifact.unpublish",
       "expectsRevision": true,
+      "method": "unpublish",
       "mutating": true,
       "operation": "unpublish",
       "port": "artifact",
@@ -55,6 +60,7 @@
     {
       "capability": "studio.operation/localization.messages",
       "expectsRevision": false,
+      "method": "messages",
       "mutating": false,
       "operation": "messages",
       "port": "localization",
@@ -63,8 +69,42 @@
       "route": "localization/messages"
     },
     {
+      "capability": "studio.operation/media.abort-upload",
+      "expectsRevision": false,
+      "method": "abortUpload",
+      "mutating": true,
+      "operation": "abort-upload",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/abort-upload"
+    },
+    {
+      "capability": "studio.operation/media.authorize-upload",
+      "expectsRevision": false,
+      "method": "authorizeUpload",
+      "mutating": true,
+      "operation": "authorize-upload",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/authorize-upload"
+    },
+    {
+      "capability": "studio.operation/media.complete-upload",
+      "expectsRevision": false,
+      "method": "completeUpload",
+      "mutating": true,
+      "operation": "complete-upload",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/complete-upload"
+    },
+    {
       "capability": "studio.operation/media.get",
       "expectsRevision": false,
+      "method": "get",
       "mutating": false,
       "operation": "get",
       "port": "media",
@@ -73,8 +113,20 @@
       "route": "media/get"
     },
     {
+      "capability": "studio.operation/media.import-external",
+      "expectsRevision": false,
+      "method": "importExternal",
+      "mutating": true,
+      "operation": "import-external",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/import-external"
+    },
+    {
       "capability": "studio.operation/media.list",
       "expectsRevision": false,
+      "method": "list",
       "mutating": false,
       "operation": "list",
       "port": "media",
@@ -83,8 +135,20 @@
       "route": "media/list"
     },
     {
+      "capability": "studio.operation/media.upload-status",
+      "expectsRevision": false,
+      "method": "uploadStatus",
+      "mutating": false,
+      "operation": "upload-status",
+      "port": "media",
+      "portCapability": "studio.port/media",
+      "required": false,
+      "route": "media/upload-status"
+    },
+    {
       "capability": "studio.operation/model.get",
       "expectsRevision": false,
+      "method": "get",
       "mutating": false,
       "operation": "get",
       "port": "model",
@@ -95,6 +159,7 @@
     {
       "capability": "studio.operation/model.list",
       "expectsRevision": false,
+      "method": "list",
       "mutating": false,
       "operation": "list",
       "port": "model",
@@ -105,6 +170,7 @@
     {
       "capability": "studio.operation/permission.explain",
       "expectsRevision": false,
+      "method": "explain",
       "mutating": false,
       "operation": "explain",
       "port": "permission",
@@ -115,6 +181,7 @@
     {
       "capability": "studio.operation/permission.refresh",
       "expectsRevision": false,
+      "method": "refresh",
       "mutating": false,
       "operation": "refresh",
       "port": "permission",
@@ -125,6 +192,7 @@
     {
       "capability": "studio.operation/preview.cancel",
       "expectsRevision": false,
+      "method": "cancel",
       "mutating": false,
       "operation": "cancel",
       "port": "preview",
@@ -135,6 +203,7 @@
     {
       "capability": "studio.operation/preview.render",
       "expectsRevision": false,
+      "method": "render",
       "mutating": false,
       "operation": "render",
       "port": "preview",
@@ -145,6 +214,7 @@
     {
       "capability": "studio.operation/recovery.discard",
       "expectsRevision": false,
+      "method": "discard",
       "mutating": true,
       "operation": "discard",
       "port": "recovery",
@@ -155,6 +225,7 @@
     {
       "capability": "studio.operation/recovery.load",
       "expectsRevision": false,
+      "method": "load",
       "mutating": false,
       "operation": "load",
       "port": "recovery",
@@ -165,6 +236,7 @@
     {
       "capability": "studio.operation/recovery.store",
       "expectsRevision": false,
+      "method": "store",
       "mutating": true,
       "operation": "store",
       "port": "recovery",
@@ -175,6 +247,7 @@
     {
       "capability": "studio.operation/resource.search",
       "expectsRevision": false,
+      "method": "search",
       "mutating": false,
       "operation": "search",
       "port": "resource",
@@ -185,6 +258,7 @@
     {
       "capability": "studio.operation/telemetry.emit",
       "expectsRevision": false,
+      "method": "emit",
       "mutating": true,
       "operation": "emit",
       "port": "telemetry",
