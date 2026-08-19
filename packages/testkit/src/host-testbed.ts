@@ -11,6 +11,8 @@ import {
   type JsonPrimitive,
   type MediaAsset,
   type MediaUploadAcceptedAsset,
+  type MediaUploadGrant,
+  type MediaUploadRequestDescriptor,
   type PermissionExplanation,
   type PreviewRenderPayload,
   type PreviewRenderedPayload,
@@ -110,6 +112,11 @@ export function createHostRequestContextFixture(
   };
 }
 
+/** Deterministic bounds the reference host authorizes uploads within. */
+const UPLOAD_CHUNK_BYTES = 5_242_880;
+const UPLOAD_MAXIMUM_BYTES = 52_428_800;
+const GRANT_EXPIRY = '2030-01-01T00:00:00Z';
+
 export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost {
   const artifactStore = new Map<StableId, StoredArtifact>();
   for (const seeded of options.documents ?? []) {
@@ -128,6 +135,13 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   const telemetryEvents: TelemetryEvent[] = [];
   const injectedFailures: InjectedFailure[] = [];
   const renderCallback = options.render ?? defaultRender;
+
+  const uploadGrants = new Map<
+    StableId,
+    { grant: MediaUploadGrant; request: MediaUploadRequestDescriptor }
+  >();
+  const acceptedUploads = new Map<StableId, MediaUploadAcceptedAsset>();
+  let uploadSerial = 0;
 
   let permissions = (options.permissions ?? []).slice();
   let generationSerial = 1;
@@ -318,6 +332,53 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       },
     },
     media: {
+      abortUpload(uploadId, context) {
+        return run('media', 'abort-upload', context, () => {
+          if (!uploadGrants.delete(uploadId)) {
+            fail('not-found', 'The requested upload is not available.');
+          }
+          return { value: null };
+        });
+      },
+      authorizeUpload(request, context) {
+        return run('media', 'authorize-upload', context, () => {
+          assertUploadRequest(request);
+          uploadSerial += 1;
+          const uploadId = `uploads/testbed-${String(uploadSerial)}`;
+          const grant: MediaUploadGrant = {
+            expiresAt: GRANT_EXPIRY,
+            headers: { 'X-Upload-Session': uploadId },
+            method: 'PUT',
+            plan: {
+              chunkBytes: UPLOAD_CHUNK_BYTES,
+              maximumBytes: UPLOAD_MAXIMUM_BYTES,
+              resumable: true,
+            },
+            uploadId,
+            url: `https://uploads.testbed.invalid/${uploadId}`,
+          };
+          uploadGrants.set(uploadId, { grant, request: cloneValue(request) });
+          return { value: cloneValue(grant) };
+        });
+      },
+      completeUpload(uploadId, context) {
+        return run('media', 'complete-upload', context, () => {
+          const pending = uploadGrants.get(uploadId);
+          if (pending === undefined) {
+            fail('not-found', 'The requested upload is not available.');
+          }
+          uploadGrants.delete(uploadId);
+          // The host verifies what it received; a declared media type is
+          // never trusted, so acceptance lands in `processing`.
+          const accepted: MediaUploadAcceptedAsset = {
+            id: `assets/${uploadId.replace('uploads/', '')}`,
+            revision: `${uploadId}-r1`,
+            state: 'processing',
+          };
+          acceptedUploads.set(accepted.id, accepted);
+          return { revision: accepted.revision, value: cloneValue(accepted) };
+        });
+      },
       get(assetId, context) {
         return run('media', 'get', context, () => {
           const asset = mediaAssets.find((entry) => entry.id === assetId);
@@ -346,6 +407,35 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
               ...(nextIndex < filtered.length ? { nextCursor: encodeCursor(nextIndex) } : {}),
             },
           };
+        });
+      },
+      importExternal(url, context) {
+        return run('media', 'import-external', context, () => {
+          const verdict = validateExternalUrl(url);
+          if (!verdict.ok) {
+            // The stable reason is disclosed; the candidate never is.
+            fail(
+              'validation-failed',
+              `The external media candidate was refused: ${verdict.reason}.`,
+            );
+          }
+          importSerial += 1;
+          const accepted: MediaUploadAcceptedAsset = {
+            id: `assets/imported-${String(importSerial)}`,
+            revision: `imports/testbed-${String(importSerial)}-r1`,
+            state: 'processing',
+          };
+          acceptedUploads.set(accepted.id, accepted);
+          return { revision: accepted.revision, value: cloneValue(accepted) };
+        });
+      },
+      uploadStatus(assetId, context) {
+        return run('media', 'upload-status', context, () => {
+          const accepted = acceptedUploads.get(assetId);
+          if (accepted === undefined) {
+            fail('not-found', 'The requested asset is not available.');
+          }
+          return { revision: accepted.revision, value: cloneValue(accepted) };
         });
       },
     },
@@ -580,4 +670,36 @@ function decodeCursor(cursor: string): number | undefined {
 
 function cloneValue<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+/**
+ * The policy gate that runs before any byte moves: a declared upload larger
+ * than the host's bound, or one carrying a filename the canonical shape
+ * refuses, is rejected at authorization rather than after a transfer.
+ */
+function assertUploadRequest(request: MediaUploadRequestDescriptor): void {
+  if (request.byteSize > UPLOAD_MAXIMUM_BYTES) {
+    throw new TestbedHostError({
+      category: 'limit-exceeded',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'host-error',
+      message: {
+        defaultMessage: 'The declared upload exceeds the accepted size.',
+        key: 'studio.testbed/limit-exceeded',
+      },
+      retryable: false,
+    });
+  }
+  if (request.filename.includes('/') || request.filename.includes('\\')) {
+    throw new TestbedHostError({
+      category: 'validation-failed',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'host-error',
+      message: {
+        defaultMessage: 'The declared filename is not a canonical display name.',
+        key: 'studio.testbed/validation-failed',
+      },
+      retryable: false,
+    });
+  }
 }

@@ -100,17 +100,14 @@ core coverage. The next actions in dependency order:
 1. Close the `host-baseline` recorded limitations so the host profile asserts every obligation a
    production host carries: artifact-level authorization refusals, idempotent replay of a retried
    mutation, and reproducible preconditions for rate limiting and cancellation.
-2. Give the media port its upload lifecycle on the wire. `S-E` has no operation to implement today:
-   the port carries `get` and `list` while the media contract describes upload initiation, chunking,
-   completion, processing status, replacement and external import.
+2. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
+   `studio.preview/dispose` — plus the draft-digest preimage and marker grammar, so the consuming
+   programme can build the authenticated preview endpoint its integration needs.
 3. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.
 4. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`).
-5. The Gate A target preview vocabulary — `studio.preview/activated`, `studio.preview/viewport`,
-   `studio.preview/dispose` — so the channel can claim canonical conformance for trusted marker
-   interaction and viewport control (`M3-04` follow-on).
-6. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
+5. Reviewer reproduction of the packages at evidence-review, and the first real evidence bundles —
    the gate on every profile claim and therefore on the beta channel; Dart model generation and
    round-trip to unblock `M2-06` and the `M3-01` cross-runtime fixtures.
 

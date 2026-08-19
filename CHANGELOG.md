@@ -8,6 +8,23 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### The media upload lifecycle on the wire (M5-01, M2-05, M2-04)
+
+- The media port gains `authorize-upload`, `complete-upload`, `abort-upload`, `upload-status` and
+  `import-external` beside `get` and `list`. The contract described a full upload lifecycle while the
+  wire carried only reads, so a host had nothing to implement and Studio's upload orchestration had no
+  published shape to bind to; it now has one.
+- Bytes never cross the JSON port. `authorize-upload` applies host policy before any byte moves and
+  returns a bounded, expiring grant naming an https destination the host controls, with the chunk plan
+  and any headers the client sends verbatim; the client transfers directly there, so custody, quotas
+  and storage placement stay host-owned and a large body never traverses the port transport. A grant is
+  a capability scoped to one declared upload, never a reusable credential (ADR 0015).
+- The host verifies what it received rather than trusting a declared media type or checksum, so an
+  accepted identity may still be processing or quarantined and `upload-status` polls it. Seven
+  conformance vectors fix the behaviour, including refusal of an oversized upload, a filename carrying
+  a path separator, and an external candidate resolving to a private address — each refused without
+  echoing the offending value.
+
 ### The host transport boundary (M2-04, M3-03)
 
 - The wire boundary is published rather than implied. A closed operation registry

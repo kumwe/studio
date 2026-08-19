@@ -147,6 +147,7 @@ const schemaByExample = new Map([
   ['media-asset.example.json', 'media-asset.schema.json'],
   ['media-asset.processing.example.json', 'media-asset.schema.json'],
   ['media-reference.example.json', 'media-reference.schema.json'],
+  ['media-upload-grant.example.json', 'media-upload-grant.schema.json'],
   ['media-upload-session.transferring.example.json', 'media-upload-session.schema.json'],
   ['migration.example.json', 'migration.schema.json'],
   ['pattern.example.json', 'pattern.schema.json'],

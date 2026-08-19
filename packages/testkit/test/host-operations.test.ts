@@ -20,6 +20,7 @@ import { createTestbedHost } from '../src/index.js';
 
 interface RegistryEntry {
   capability: string;
+  method: string;
   expectsRevision: boolean;
   mutating: boolean;
   operation: string;
@@ -78,7 +79,7 @@ describe('host operation registry', () => {
     // The reference host implements every port except `model`, so the registry
     // is compared against the surface it does expose plus that known absence.
     const implemented = typedSurface(host);
-    const declared = registry.operations.map((entry) => `${entry.port}.${entry.operation}`).sort();
+    const declared = registry.operations.map((entry) => `${entry.port}.${entry.method}`).sort();
     for (const method of implemented) {
       expect(declared, `${method} is implemented but not declared in the registry`).toContain(
         method,
@@ -93,6 +94,11 @@ describe('host operation registry', () => {
     for (const entry of registry.operations) {
       expect(entry.route).toBe(`${entry.port}/${entry.operation}`);
       expect(entry.capability).toBe(`studio.operation/${entry.port}.${entry.operation}`);
+      // The typed method is the wire name with separators removed, so the two
+      // spellings can never drift into unrelated names.
+      expect(entry.method).toBe(
+        entry.operation.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase()),
+      );
       expect(entry.portCapability).toBe(`studio.port/${entry.port}`);
     }
     const routes = registry.operations.map((entry) => entry.route);
@@ -153,7 +159,7 @@ describe('host operation registry', () => {
       ports: [
         {
           id: 'studio.port/media',
-          operations: ['studio.operation/media.upload'],
+          operations: ['studio.operation/media.upload-everything'],
           version: '1.0.0',
         },
       ],

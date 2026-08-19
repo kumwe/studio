@@ -47,6 +47,27 @@ Failed or abandoned upload sessions do not create an accepted asset identity. A 
 
 Upload policy behaviour carries canonical vectors in [`schemas/vectors/media/`](../../schemas/vectors/media/), published verbatim through `@kumwe/studio-testkit` under `vectors/media/`. A vector fixes one host-declared upload policy, one upload request, and either the deterministic policy-derived upload plan or a stable failure code from the closed media failure vocabulary; vectors additionally fix cancellation legality per session state and retry-under-a-fresh-session legality. Rejection vectors may pin raw request values — byte counts, declared media types, filenames — that the user-facing failure message MUST NOT echo; oversize byte counts travel only as machine-readable diagnostic parameters. The TypeScript reference replays the whole corpus (`packages/media/test/media-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same outcomes.
 
+## Upload operations on the wire
+
+The upload lifecycle is addressable, not merely described. The media port carries
+`authorize-upload`, `complete-upload`, `abort-upload`, `upload-status` and `import-external` alongside
+`get` and `list`, each bound to its route and capability identifier by the
+[operation registry](../../schemas/host-operations.schema.json).
+
+Bytes never cross the JSON port. `authorize-upload` applies host policy **before any byte moves** and
+returns a [media upload grant](../../schemas/media-upload-grant.schema.json): a short-lived, bounded,
+single-purpose https destination the host controls, with the chunk plan and any headers the client must
+send verbatim. The client transfers directly to that destination, so custody, quotas and storage
+placement stay host-owned and a large body never traverses the port transport (ADR 0015).
+
+`complete-upload` closes the transfer. The host verifies what it actually received — a client-declared
+media type or checksum is never trusted — and mints the stable asset identity, which may still be
+`processing` or `quarantined`. `upload-status` polls an accepted asset whose processing has not
+settled, `abort-upload` releases a grant the client will not use without deleting an accepted asset,
+and `import-external` fetches a candidate under the host runtime hardening its threat obligations
+require: the lexical URL policy is necessary but not sufficient, so redirect re-validation, DNS
+rebinding defence, response verification and size bounds remain the host's.
+
 ## Author assistance
 
 For informative images, Studio requires an accessible text alternative or a binding to a field that will provide one. Decorative media requires an explicit decorative choice. Automated suggestions are labeled suggestions and require human confirmation where content meaning is involved.

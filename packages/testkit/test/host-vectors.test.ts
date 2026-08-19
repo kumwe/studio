@@ -9,6 +9,7 @@ import {
   type HostRequestContext,
   type JsonObject,
   type MediaQuery,
+  type MediaUploadRequestDescriptor,
   type QualifiedName,
   type Revision,
   type StableId,
@@ -107,6 +108,19 @@ async function dispatch(vector: HostVector, testbed: TestbedHost): Promise<unkno
         argument.namespaces as QualifiedName[],
         context,
       );
+    case 'media.abort-upload':
+      return host.media?.abortUpload(argument.uploadId as StableId, context);
+    case 'media.authorize-upload':
+      return host.media?.authorizeUpload(
+        argument as unknown as MediaUploadRequestDescriptor,
+        context,
+      );
+    case 'media.complete-upload':
+      return host.media?.completeUpload(argument.uploadId as StableId, context);
+    case 'media.import-external':
+      return host.media?.importExternal(argument.url as string, context);
+    case 'media.upload-status':
+      return host.media?.uploadStatus(argument.assetId as StableId, context);
     case 'media.get':
       return host.media?.get(argument.assetId as StableId, context);
     case 'media.list':
