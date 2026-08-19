@@ -8,6 +8,17 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### A verifiable corpus (M1-04, M2-06)
+
+- The published corpus becomes verifiable rather than assumed. `corpus-manifest.json` ships in
+  `@kumwe/studio-testkit` carrying the sha256 digest of all 178 files across the seven corpus groups —
+  fixtures, command, media, host and canonical vectors, negative fixtures and renderer conformance —
+  with `corpus-manifest.schema.json` fixing its shape. A host that vendors the corpus verifies its copy
+  against the manifest, so a stale or altered fixture is detected before it silently changes what a
+  conformance claim means, and a claim is made against a corpus the claimant confirmed.
+- The contracts lane regenerates the manifest and verifies every digest against what actually ships,
+  so it cannot drift from the corpus it describes.
+
 ### Canonical serialization as an executable corpus (M2-06, M3-01)
 
 - Twelve canonical serialization vectors publish what was previously only prose and reference code:

@@ -39,6 +39,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/content-model.schema.json"
     },
     {
+      "digest": "sha256-DuM7fZghcN9YsMdEHf5Eap7jijiPBLl4B68OFMFIJZo=",
+      "file": "corpus-manifest.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/corpus-manifest.schema.json"
+    },
+    {
       "digest": "sha256-KoGp/qlqlsqabqtELbd/bdRHyM1wU8sRxyyLvOg/OFg=",
       "file": "design-vocabulary.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/design-vocabulary.schema.json"

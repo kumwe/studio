@@ -140,6 +140,50 @@ for (const entry of manifest.schemas) {
   }
 }
 
+// The corpus manifest must describe the corpus as it actually ships, or a
+// host verifying its vendored copy would verify against a fiction.
+const corpusManifest = JSON.parse(
+  await readFile(new URL('../packages/testkit/corpus-manifest.json', import.meta.url), 'utf8'),
+);
+if (corpusManifest.kind !== 'corpus-manifest' || !Array.isArray(corpusManifest.groups)) {
+  throw new Error('The published corpus manifest is malformed.');
+}
+const corpusDirectories = new Map([
+  ['canonical-vectors', packageCanonicalVectorDirectory],
+  ['command-vectors', packageVectorDirectory],
+  ['fixtures', packageFixtureDirectory],
+  ['host-vectors', packageHostVectorDirectory],
+  ['invalid-fixtures', packageInvalidDirectory],
+  ['media-vectors', packageMediaVectorDirectory],
+  ['rich-text-conformance', packageConformanceDirectory],
+]);
+assertSameNames(
+  'corpus manifest groups',
+  [...corpusDirectories.keys()].sort(),
+  corpusManifest.groups.map((group) => group.group).sort(),
+);
+for (const group of corpusManifest.groups) {
+  const directory = corpusDirectories.get(group.group);
+  if (directory === undefined) {
+    throw new Error(`The corpus manifest names an unknown group ${group.group}.`);
+  }
+  const present = (await readdir(directory)).filter((name) => name.endsWith('.json')).sort();
+  assertSameNames(
+    `corpus manifest entries for ${group.group}`,
+    present,
+    group.files.map((entry) => entry.file),
+  );
+  for (const entry of group.files) {
+    const bytes = await readFile(new URL(entry.file, directory));
+    const digest = `sha256-${createHash('sha256').update(bytes).digest('base64')}`;
+    if (entry.digest !== digest) {
+      throw new Error(
+        `Corpus manifest digest for ${group.path}/${entry.file} is stale; run contracts:sync.`,
+      );
+    }
+  }
+}
+
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
     JSON.parse(await readFile(new URL(name, rootSchemaDirectory), 'utf8')),

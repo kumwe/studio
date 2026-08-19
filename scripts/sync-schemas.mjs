@@ -177,3 +177,49 @@ await writeFile(
   new URL('manifest.json', targetDirectory),
   `${JSON.stringify(manifest, null, 2)}\n`,
 );
+
+// The corpus manifest lets a host verify a vendored copy of the whole corpus,
+// not only the schemas: a digest that differs by one byte is the difference
+// between replaying the contract and replaying a stale fork of it.
+const corpusGroups = [
+  { directory: fixtureDirectory, name: 'fixtures', path: 'fixtures' },
+  { directory: vectorTargetDirectory, name: 'command-vectors', path: 'vectors/command' },
+  { directory: mediaVectorTargetDirectory, name: 'media-vectors', path: 'vectors/media' },
+  { directory: hostVectorTargetDirectory, name: 'host-vectors', path: 'vectors/host' },
+  {
+    directory: canonicalVectorTargetDirectory,
+    name: 'canonical-vectors',
+    path: 'vectors/canonical',
+  },
+  { directory: invalidTargetDirectory, name: 'invalid-fixtures', path: 'invalid' },
+  {
+    directory: conformanceTargetDirectory,
+    name: 'rich-text-conformance',
+    path: 'conformance/rich-text',
+  },
+];
+const corpusEntries = [];
+for (const group of corpusGroups) {
+  const names = (await readdir(group.directory)).filter((name) => name.endsWith('.json')).sort();
+  const files = [];
+  for (const name of names) {
+    const bytes = await readFile(new URL(name, group.directory));
+    files.push({
+      digest: `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
+      file: name,
+    });
+  }
+  corpusEntries.push({ files, group: group.name, path: group.path });
+}
+await writeFile(
+  new URL('corpus-manifest.json', new URL('../packages/testkit/', import.meta.url)),
+  `${JSON.stringify(
+    {
+      contractVersion: '0.1-draft',
+      groups: corpusEntries,
+      kind: 'corpus-manifest',
+    },
+    null,
+    2,
+  )}\n`,
+);
