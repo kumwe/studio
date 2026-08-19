@@ -97,9 +97,9 @@ The eighth wave delivered the surface Kumwe freezes against at its Gate A — th
 schemas, the portable mode-boundary corpus, the per-slot composition marker, and the generative
 core coverage. The next actions in dependency order:
 
-1. Close the `host-baseline` recorded limitations so the host profile asserts every obligation a
-   production host carries: artifact-level authorization refusals, idempotent replay of a retried
-   mutation, and reproducible preconditions for rate limiting and cancellation.
+1. A sequence-carrying vector kind, so the host profile can assert the obligations one exchange
+   cannot state: idempotent replay of a retried mutation, rate limiting, and cancellation of an
+   in-flight request. Artifact-level authorization is now asserted.
 2. The draft-digest preimage and the marker grammar, the last preview details a host must reproduce
    byte for byte to answer the channel.
 3. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`

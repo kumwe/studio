@@ -57,8 +57,12 @@ The profile currently asserts:
   refused rather than silently clamped or treated as an offset.
 - **Absence versus failure.** An unknown media asset and an unstored recovery envelope resolve empty;
   an unknown artifact and an uncarried locale are refused as `not-found` without disclosing existence.
-- **Authority.** A withheld operation is explained as disallowed rather than silently succeeding, and
-  refreshing authority answers with the held permissions and the live session generation.
+- **Authority.** Every mutation is authorized: a save or a publication the acting identity does not
+  hold the permission for is refused as `forbidden` before the artifact is touched, and the refusal
+  does not disclose whether it exists. Save authority and publication authority are distinct, so
+  holding one never grants the other. A withheld operation is also explained as disallowed rather than
+  silently succeeding, and refreshing authority answers with the held permissions and the live session
+  generation.
 - **Telemetry discipline.** Primitive-only attributes are accepted; a non-primitive attribute is
   refused, keeping the cardinality discipline enforceable.
 
@@ -70,14 +74,12 @@ The TypeScript reference host in `@kumwe/studio-testkit` claims this profile, pr
 These are obligations the host contract states that the baseline corpus does not yet assert. They are
 recorded rather than implied, and a host must still satisfy them:
 
-- **Artifact-level authorization.** The contract requires every mutation to be authenticated and
-  authorized. The reference host models authority through the permission port rather than rejecting
-  unauthorized artifact writes, so no vector yet fixes `forbidden` or `unauthenticated` on the artifact
-  port. A production host rejects them; the corpus does not yet prove it.
 - **Idempotent replay.** The envelope carries an idempotency key and the contract requires retryable
-  mutations to be idempotent. No vector yet replays the same key twice against a mutation.
+  mutations to be idempotent. A vector states one exchange, so replaying a key twice is not
+  expressible in the current vector shape; closing this needs a sequence-carrying vector kind.
 - **Rate limiting and cancellation.** `rate-limited` and `cancelled` are declared categories with no
-  reproducible precondition in the corpus.
+  reproducible precondition a single exchange can state — a rate limit needs a request count and a
+  cancellation needs an in-flight request to cancel.
 
 ## Claiming a profile
 

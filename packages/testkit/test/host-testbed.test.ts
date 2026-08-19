@@ -84,7 +84,7 @@ function createTestbed(overrides: TestbedHostOptions = {}): TestbedHost {
         'studio.test/title': 'Studio',
       },
     },
-    permissions: ['studio.action/publish', 'studio.action/save'],
+    permissions: ['studio.permission/publish', 'studio.permission/save'],
     resources: [
       ...[0, 1, 2, 3, 4, 5, 6].map(createResourceFixture),
       {
@@ -254,10 +254,10 @@ describe('Testbed host', () => {
     const ports = requirePorts(testbed);
     const stale = contextFor(testbed);
 
-    const before = await ports.permission.explain('studio.action/publish', contextFor(testbed));
+    const before = await ports.permission.explain('studio.permission/publish', contextFor(testbed));
     expect(before.value).toEqual({ allowed: true });
 
-    testbed.controls.setPermissions(['studio.action/save']);
+    testbed.controls.setPermissions(['studio.permission/save']);
     expect(testbed.controls.sessionGeneration).not.toBe(stale.sessionGeneration);
 
     const staleOperations: (() => Promise<unknown>)[] = [
@@ -276,14 +276,17 @@ describe('Testbed host', () => {
       expect(error.retryable).toBe(false);
     }
 
-    const explained = await ports.permission.explain('studio.action/publish', contextFor(testbed));
+    const explained = await ports.permission.explain(
+      'studio.permission/publish',
+      contextFor(testbed),
+    );
     expect(explained.value.allowed).toBe(false);
     expect(explained.value.reason?.defaultMessage).toBe(
       'The session does not hold this permission.',
     );
 
     const refreshed = await ports.permission.refresh(contextFor(testbed));
-    expect(refreshed.value.permissions).toEqual(['studio.action/save']);
+    expect(refreshed.value.permissions).toEqual(['studio.permission/save']);
     expect(refreshed.value.sessionGeneration).toBe(testbed.controls.sessionGeneration);
   });
 

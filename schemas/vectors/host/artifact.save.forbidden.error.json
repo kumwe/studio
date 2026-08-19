@@ -1,11 +1,11 @@
 {
   "contractVersion": "0.1-draft",
   "kind": "host-vector",
-  "id": "vector.host-vector.envelope.stale-generation",
-  "description": "A request carrying a superseded session generation is refused; a permission or context change mints a new generation.",
+  "id": "vector.host-vector.artifact.save.forbidden",
+  "description": "A save the acting identity is not authorized for is refused before the artifact is touched, and the refusal does not disclose whether it exists.",
   "profile": "studio.profile/host-baseline",
   "port": "artifact",
-  "operation": "load",
+  "operation": "save",
   "given": {
     "artifacts": [
       {
@@ -14,23 +14,25 @@
         "revision": "vector.blueprint-r1"
       }
     ],
-    "permissions": ["studio.permission/publish", "studio.permission/save"],
+    "permissions": ["studio.permission/publish"],
     "sessionGeneration": "session-r1"
   },
   "context": {
-    "operationId": "studio.host/operation",
+    "operationId": "studio.operation/artifact.save",
     "protocolVersion": "0.1.0-draft.1",
     "requestId": "requests/vector-1",
     "resourceContextKey": "contexts/vector",
-    "sessionGeneration": "session-r0"
+    "sessionGeneration": "session-r1",
+    "expectedRevision": "vector.blueprint-r1"
   },
   "argument": {
     "id": "vector.blueprint",
-    "version": "1.0.0"
+    "kind": "blueprint"
   },
   "expect": {
     "outcome": "error",
-    "category": "invalid-request",
-    "retryable": false
+    "category": "forbidden",
+    "retryable": false,
+    "messageMustNotContain": ["vector.blueprint"]
   }
 }
