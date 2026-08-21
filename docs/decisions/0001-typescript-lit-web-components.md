@@ -5,7 +5,7 @@
 
 ## Context
 
-Studio needs a rich browser authoring surface while remaining embeddable outside one application framework. Kumwe already uses TypeScript, Vite and Lit. React-specific foundations would add a second application runtime and constrain reuse.
+Studio needs a rich browser authoring surface while remaining embeddable outside one application framework. Kumwe App already uses TypeScript, Vite and Lit. React-specific foundations would add a second application runtime and constrain reuse.
 
 ## Decision
 
@@ -17,4 +17,4 @@ Use mature focused dependencies for solved concerns such as rich-text editing, i
 
 Web standards improve embedding and allow non-Lit hosts to consume elements. The team owns accessibility and integration quality of custom elements. Framework-specific wrappers may be published separately but are not core dependencies.
 
-Node.js is a build/test/release tool, not a required Kumwe production runtime.
+Node.js is a build/test/release tool, not a required Kumwe App production runtime.

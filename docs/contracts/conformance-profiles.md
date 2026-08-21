@@ -21,13 +21,16 @@ implementation that claimed a profile keeps claiming it for the version it passe
 
 ## Declared profiles
 
-| Profile                        | Claimed by            | Executable assertion set                                     | State                |
-| ------------------------------ | --------------------- | ------------------------------------------------------------ | -------------------- |
-| `studio.profile/host-baseline` | A host adapter        | `vectors/host/` replayed through the adapter                 | Declared, executable |
-| `studio.profile/engine-core`   | A protocol engine     | `vectors/command/` and `vectors/canonical/`                  | Declared, executable |
-| `studio.profile/media-policy`  | A host media pipeline | `vectors/media/`                                             | Declared, executable |
-| `studio.profile/renderer-web`  | A trusted renderer    | `conformance/rich-text/` and the preview channel obligations | Target               |
-| `studio.profile/authoring-web` | An authoring client   | The interaction requirement registry and accessibility lanes | Target               |
+| Profile                              | Claimed by                  | Executable assertion set                                     | State                |
+| ------------------------------------ | --------------------------- | ------------------------------------------------------------ | -------------------- |
+| `studio.profile/host-baseline`       | A host adapter              | `vectors/host/` replayed through the adapter                 | Declared, executable |
+| `studio.profile/host-baseline-v2`    | A host adapter              | `host-baseline` plus `vectors/host-sequence/`                | Declared, executable |
+| `studio.profile/engine-core`         | A protocol engine           | `vectors/command/` and `vectors/canonical/`                  | Declared, executable |
+| `studio.profile/media-policy`        | A host media pipeline       | `vectors/media/`                                             | Declared, executable |
+| `studio.profile/preview-identity-v1` | A preview client/host       | `vectors/preview/`                                           | Declared, executable |
+| `studio.profile/schema-property`     | A property-schema validator | `vectors/schema-profile/`                                    | Declared, executable |
+| `studio.profile/renderer-web`        | A trusted renderer          | `conformance/rich-text/` and the preview channel obligations | Target               |
+| `studio.profile/authoring-web`       | An authoring client         | The interaction requirement registry and accessibility lanes | Target               |
 
 A profile marked **Target** is named so that consumers can see the intended boundary. It is not
 claimable: its assertion set is not yet executable, and no implementation may advertise it.
@@ -76,10 +79,55 @@ recorded rather than implied, and a host must still satisfy them:
 
 - **Idempotent replay.** The envelope carries an idempotency key and the contract requires retryable
   mutations to be idempotent. A vector states one exchange, so replaying a key twice is not
-  expressible in the current vector shape; closing this needs a sequence-carrying vector kind.
+  expressible in this vector shape; the additive profile below uses a sequence-carrying vector kind.
 - **Rate limiting and cancellation.** `rate-limited` and `cancelled` are declared categories with no
   reproducible precondition a single exchange can state — a rate limit needs a request count and a
   cancellation needs an in-flight request to cancel.
+
+Those limitations remain part of `host-baseline`. Integrations that depend on their executable
+assertions claim the additive profile below rather than retroactively widening this one.
+
+## `studio.profile/host-baseline-v2`
+
+The complete `host-baseline` assertion set plus the language-neutral sequence corpus in
+`vectors/host-sequence/*.json`, conforming to
+[`host-sequence-vector.schema.json`](../../schemas/host-sequence-vector.schema.json). Its nine vectors
+carry exact artifact kind/revision/status and session-generation seeds, ordered invocations and
+settlements, explicit logical-clock advances, explicit renderer completions, and observable final
+state. Control steps are reproducible harness preconditions, not host operations or HTTP behavior.
+
+The schema makes the idempotency rule machine-readable. The record scope is the key, operation
+capability, resource-context key, and session generation. Intent is canonical JSON over the operation
+argument plus `expectedRevision`, `locale`, and `protocolVersion`; absent optional fields are omitted,
+negative zero uses canonical JSON's zero form, and `requestId` plus `traceContext` are excluded.
+
+The executable sequence assertions are:
+
+- **Replay and refusal.** A pending accepted publication coalesces with a matching retry, a completed
+  retry returns the same result without another revision or rate-limit unit, a changed argument or
+  semantic context is `invalid-request`, negative zero and zero are one canonical intent, and a failed
+  rate-limited attempt does not poison its later retry.
+- **Scope and identity.** The same key and intent are independently accepted in two resource contexts.
+  A registered capability that does not match the invoked port operation is refused as
+  `invalid-request`; every other invocation carries the exact closed-registry capability.
+- **Deterministic rate limiting.** A declared fixed-window bound returns `rate-limited` with the exact
+  retry delay and no side effect; an explicit logical-clock advance resets the window and permits the
+  exact failed intent.
+- **Preview cancellation.** A matching cancel settles an in-flight render as non-retryable
+  `cancelled`; an explicitly released late renderer result is discarded. A cancel in another resource
+  context does not affect the render, which completes and is delivered once. Each explicit completion
+  repeats the originating draft.2 render attempt's exact `requestId` and draft digest.
+
+The corpus directly exercises resource-context separation. Operation and session-generation
+separation are normative scope fields and are covered by the TypeScript reference unit suite, but this
+first portable sequence set does not yet carry host-owned session-rotation or cross-operation control
+steps. A v2 replay must not be cited as portable proof of those two collision drills. Likewise, the
+profile does not claim production rate-policy choice, authentication implementation, transport
+security, renderer fidelity, or an accepted evidence result.
+
+The TypeScript reference replay is
+`packages/testkit/test/host-sequence-vectors.test.ts`. A profile claim still requires an immutable,
+independently reproduced evidence bundle; a green repository run is implementation proof only.
 
 ## `studio.profile/engine-core`
 
@@ -94,6 +142,54 @@ The canonical corpus matters beyond the engine: every checksum in the contract i
 exactly these bytes, so an implementation that reproduces the corpus computes the same digests as
 every other. That is what makes a host's vendored-corpus integrity check and a stored document's
 round-trip comparison meaningful across languages rather than per-runtime.
+
+## `studio.profile/preview-identity-v1`
+
+The portable identity assertions a preview client, host, and renderer share under wire protocol
+`0.1.0-draft.2`. The corpus ships as `vectors/preview/*.json`, conforms to
+[`preview-vector.schema.json`](../../schemas/preview-vector.schema.json), and contains complete
+schema-valid Blueprint drafts. Each vector fixes the lowercase SHA-256 digest of the canonical UTF-8
+artifact bytes, the exact artifact/revision/digest render tuple with a session-unique attempt ID, and
+the deterministic marker preorder plus one-to-one marker map.
+
+The profile asserts the draft-digest preimage, UTF-8 handling, root order, node-before-descendant order,
+UTF-16 slot-name order, child array order, empty-draft inventory, marker grammar, embedded digest,
+contiguous zero-based ordinals, exact map parity, and request-level correlation shape. The TypeScript reference claim is replayed by
+`packages/testkit/test/preview-vectors.test.ts`; the protocol and preview suites additionally reject
+malformed, cross-draft, reordered, duplicate, incomplete, invented, and revoked inventories, plus
+stale same-digest callback and measurement generations.
+
+This narrow profile does not claim renderer visual fidelity, CSP deployment, accessibility output, or
+the complete preview lifecycle; those remain part of the target `renderer-web` assertion set. It makes
+the portable identity boundary executable without overstating the wider renderer.
+
+## `studio.profile/schema-property`
+
+The assertions a validator must satisfy before it admits a contributed block's property schema. The
+profile is intentionally narrow for the alpha boundary: a closed object root, the published keyword
+and operand grammar, bounded canonical UTF-8 size and structural complexity, same-document JSON
+Pointer references, no recursion, no `format`, and no code-generating or implementation-specific
+keywords.
+
+The language-neutral corpus ships as `vectors/schema-profile/*.json` in
+`@kumwe/studio-testkit` and conforms to
+[`schema-profile-vector.schema.json`](../../schemas/schema-profile-vector.schema.json). An accepted
+vector fixes instance verdicts and the first keyword/instance-pointer diagnostic; a rejected vector
+fixes one stable admission code and schema pointer. A runtime replays the JSON directly. The public
+TypeScript reference runner, `runSchemaProfileVector`, is a convenience and is not required by the
+profile.
+
+Every key in the profile meta-schema's `$defs/limits` object has exactly two corpus entries. Their
+machine-readable `boundary` members identify the exact limit and exact-plus-one values, and the
+contract checker refuses missing, duplicate, mislabeled, or outcome-inverted pairs. The corpus also
+includes repeated acyclic-reference fan-out and simultaneous maximum schema/JSON depth so a claim
+cannot hide an exponential evaluator or a smaller implementation-only depth ceiling.
+
+The corpus is distinct from the recursive profile meta-schema. The meta-schema proves portable shape
+where JSON Schema can express it; the vectors additionally prove resolution, recursion refusal,
+canonical byte limits, and stable diagnostics. A profile claim must replay both accepted and rejected
+vectors from a digest-verified corpus. The reference tests establish an implementation result but are
+not independent acceptance evidence.
 
 ## Claiming a profile
 

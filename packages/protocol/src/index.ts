@@ -1,4 +1,9 @@
-export { isHostPortError, isPreviewMessage } from './guards.js';
+export {
+  isHostPortError,
+  isPreviewMarker,
+  isPreviewMessage,
+  isPreviewRenderedPayload,
+} from './guards.js';
 export {
   blockDefinitionSchema,
   blueprintSchema,
@@ -15,6 +20,7 @@ export {
   hostRequestSchema,
   hostResultSchema,
   hostVectorSchema,
+  hostSequenceVectorSchema,
   inspectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
@@ -24,10 +30,12 @@ export {
   patternSchema,
   pluginManifestSchema,
   previewMessageSchema,
+  previewVectorSchema,
   protocolSchemas,
   provenanceSchema,
   richTextSchema,
   schemaProfileSchema,
+  schemaProfileVectorSchema,
   studioConfigurationSchema,
   themeSchema,
   unresolvedContributionSchema,

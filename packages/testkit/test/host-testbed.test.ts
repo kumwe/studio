@@ -72,9 +72,10 @@ function createResourceFixture(index: number): ResourceSearchHit {
 
 function createTestbed(overrides: TestbedHostOptions = {}): TestbedHost {
   return createTestbedHost({
+    allowTestOperationId: true,
     documents: [
-      createBlueprintFixture({ id: 'docs/alpha' }),
-      createBlueprintFixture({ id: 'docs/beta' }),
+      createBlueprintFixture({ id: 'docs/alpha', revision: 'docs/alpha-r1' }),
+      createBlueprintFixture({ id: 'docs/beta', revision: 'docs/beta-r1' }),
     ],
     mediaAssets: [0, 1, 2, 3, 4].map(createMediaAssetFixture),
     messages: {
@@ -136,6 +137,41 @@ function requirePorts(testbed: TestbedHost): RequiredPorts {
 }
 
 describe('Testbed host', () => {
+  it('preserves authoritative seeded revisions and generations before deterministic advance', async () => {
+    const testbed = createTestbedHost({
+      documents: [createBlueprintFixture({ id: 'docs/upstream', revision: 'vendor-revision-77' })],
+      permissions: ['studio.permission/publish'],
+      sessionGeneration: 'vendor-session-12',
+    });
+    expect(testbed.controls.revisionOf('docs/upstream')).toBe('vendor-revision-77');
+    expect(testbed.controls.sessionGeneration).toBe('vendor-session-12');
+
+    const loaded = await testbed.host.artifact.load(
+      { id: 'docs/upstream', version: '1.0.0' },
+      createHostRequestContextFixture({
+        operationId: 'studio.operation/artifact.load',
+        sessionGeneration: 'vendor-session-12',
+      }),
+    );
+    expect(loaded).toMatchObject({
+      revision: 'vendor-revision-77',
+      value: { revision: 'vendor-revision-77' },
+    });
+
+    const published = await testbed.host.artifact.publish(
+      { id: 'docs/upstream', version: '1.0.0' },
+      createHostRequestContextFixture({
+        expectedRevision: 'vendor-revision-77',
+        operationId: 'studio.operation/artifact.publish',
+        sessionGeneration: 'vendor-session-12',
+      }),
+    );
+    expect(published.revision).toBe('docs/upstream-r1');
+
+    testbed.controls.setPermissions([]);
+    expect(testbed.controls.sessionGeneration).toBe('session-r1');
+  });
+
   it('loads and saves with deterministic revision advance', async () => {
     const testbed = createTestbed();
     const { artifact } = testbed.host;
@@ -581,22 +617,225 @@ describe('Testbed host', () => {
     expect(incompatible.retryable).toBe(false);
   });
 
+  it('enforces the closed operation capability by default', async () => {
+    const strict = createTestbedHost({
+      documents: [createBlueprintFixture({ id: 'docs/strict', revision: 'docs/strict-r1' })],
+    });
+    const reference = { id: 'docs/strict', version: '1.0.0' };
+
+    const mismatch = await expectHostError(
+      strict.host.artifact.load(
+        reference,
+        createHostRequestContextFixture({
+          operationId: 'studio.operation/artifact.save',
+          sessionGeneration: strict.controls.sessionGeneration,
+        }),
+      ),
+      'invalid-request',
+    );
+    expect(mismatch.message.defaultMessage).toBe(
+      'The request operation identifier does not match the invoked port.',
+    );
+
+    const loaded = await strict.host.artifact.load(
+      reference,
+      createHostRequestContextFixture({
+        operationId: 'studio.operation/artifact.load',
+        sessionGeneration: strict.controls.sessionGeneration,
+      }),
+    );
+    expect(loaded.revision).toBe('docs/strict-r1');
+  });
+
+  it('bounds deterministic rate policies and logical clock advances', () => {
+    expect(() =>
+      createTestbedHost({
+        rateLimits: [
+          {
+            maximumRequests: 1001,
+            operationId: 'studio.operation/recovery.store',
+            windowMilliseconds: 60_000,
+          },
+        ],
+      }),
+    ).toThrow(RangeError);
+    expect(() =>
+      createTestbedHost({
+        rateLimits: [
+          {
+            maximumRequests: 1,
+            operationId: 'studio.operation/recovery.store',
+            windowMilliseconds: 86_400_001,
+          },
+        ],
+      }),
+    ).toThrow(RangeError);
+
+    const testbed = createTestbedHost();
+    expect(() => testbed.controls.advanceClock(-1)).toThrow(RangeError);
+    testbed.controls.advanceClock(Number.MAX_SAFE_INTEGER);
+    expect(() => testbed.controls.advanceClock(1)).toThrow(RangeError);
+  });
+
+  it('isolates the retained idempotent outcome from caller mutation', async () => {
+    const testbed = createTestbedHost();
+    const media = requirePorts(testbed).media;
+    const request = {
+      byteSize: 1_048_576,
+      filename: 'photo.jpg',
+      mediaType: 'image/jpeg',
+      purpose: 'studio.media/content' as const,
+    };
+    const context = (requestId: string, idempotencyKey: string): HostRequestContext =>
+      createHostRequestContextFixture({
+        idempotencyKey,
+        operationId: 'studio.operation/media.authorize-upload',
+        requestId,
+        sessionGeneration: testbed.controls.sessionGeneration,
+      });
+
+    const first = await media.authorizeUpload(
+      request,
+      context('requests/upload-first', 'idempotency/upload-one'),
+    );
+    const firstHeaders = first.value.headers;
+    expect(firstHeaders).toBeDefined();
+    if (firstHeaders === undefined) {
+      throw new Error('The deterministic upload grant must carry its session header.');
+    }
+    firstHeaders['X-Upload-Session'] = 'caller-mutated';
+
+    const replay = await media.authorizeUpload(
+      request,
+      context('requests/upload-replay', 'idempotency/upload-one'),
+    );
+    const replayHeaders = replay.value.headers;
+    expect(replayHeaders).toBeDefined();
+    if (replayHeaders === undefined) {
+      throw new Error('The replayed upload grant must carry its session header.');
+    }
+    expect(replay.value.uploadId).toBe('uploads/testbed-1');
+    expect(replayHeaders['X-Upload-Session']).toBe('uploads/testbed-1');
+
+    const next = await media.authorizeUpload(
+      request,
+      context('requests/upload-next', 'idempotency/upload-two'),
+    );
+    expect(next.value.uploadId).toBe('uploads/testbed-2');
+  });
+
+  it('separates idempotency records by operation, resource context, and session generation', async () => {
+    const testbed = createTestbedHost();
+    const recovery = requirePorts(testbed).recovery;
+    const context = (
+      operationId: HostRequestContext['operationId'],
+      requestId: string,
+      resourceContextKey: string,
+    ): HostRequestContext =>
+      createHostRequestContextFixture({
+        idempotencyKey: 'idempotency/shared-across-scopes',
+        operationId,
+        requestId,
+        resourceContextKey,
+        sessionGeneration: testbed.controls.sessionGeneration,
+      });
+
+    await recovery.store(
+      { value: 'resource-a' },
+      context('studio.operation/recovery.store', 'requests/scope-resource-a', 'contexts/a'),
+    );
+    await recovery.store(
+      { value: 'resource-b' },
+      context('studio.operation/recovery.store', 'requests/scope-resource-b', 'contexts/b'),
+    );
+    expect(testbed.controls.recoveryEnvelope('contexts/a')).toEqual({ value: 'resource-a' });
+    expect(testbed.controls.recoveryEnvelope('contexts/b')).toEqual({ value: 'resource-b' });
+
+    await recovery.discard(
+      context('studio.operation/recovery.discard', 'requests/scope-operation', 'contexts/b'),
+    );
+    expect(testbed.controls.recoveryEnvelope('contexts/b')).toBeUndefined();
+
+    await recovery.store(
+      { value: 'session-before' },
+      context(
+        'studio.operation/recovery.store',
+        'requests/scope-session-before',
+        'contexts/session',
+      ),
+    );
+    testbed.controls.setPermissions([]);
+    await recovery.store(
+      { value: 'session-after' },
+      context(
+        'studio.operation/recovery.store',
+        'requests/scope-session-after',
+        'contexts/session',
+      ),
+    );
+    expect(testbed.controls.recoveryEnvelope('contexts/session')).toEqual({
+      value: 'session-after',
+    });
+  });
+
+  it('does not retain a failed idempotent mutation as an accepted intent', async () => {
+    const testbed = createTestbedHost({
+      documents: [createBlueprintFixture({ id: 'docs/retry', revision: 'docs/retry-r1' })],
+      permissions: ['studio.permission/publish'],
+    });
+    const reference = { id: 'docs/retry', version: '1.0.0' };
+    const context = (requestId: string, expectedRevision: string): HostRequestContext =>
+      createHostRequestContextFixture({
+        expectedRevision,
+        idempotencyKey: 'idempotency/retry-after-conflict',
+        operationId: 'studio.operation/artifact.publish',
+        requestId,
+        sessionGeneration: testbed.controls.sessionGeneration,
+      });
+
+    await expectHostError(
+      testbed.host.artifact.publish(
+        reference,
+        context('requests/publish-conflict', 'docs/retry-r0'),
+      ),
+      'conflict',
+    );
+    const accepted = await testbed.host.artifact.publish(
+      reference,
+      context('requests/publish-retry', 'docs/retry-r1'),
+    );
+    expect(accepted.revision).toBe('docs/retry-r2');
+    expect(testbed.controls.artifactStatus('docs/retry')).toBe('published');
+  });
+
   it('renders previews through the injected callback and cancels to null', async () => {
-    const payload = { artifactId: 'docs/alpha', draftDigest: 'digest-1', viewport: 'desktop' };
+    const draftDigest = 'a'.repeat(64);
+    const marker = `studio.preview/node/${draftDigest}/0`;
+    const payload = {
+      artifactId: 'docs/alpha',
+      draftDigest,
+      draftRevision: 'alpha-r1',
+      requestId: 'renders/1',
+      viewport: 'desktop',
+    };
 
     const custom = createTestbed({
       render: (input) => ({
         diagnostics: [],
         draftDigest: input.draftDigest,
-        markers: ['markers/custom'],
+        markerMap: { [marker]: 'node-custom' },
+        markers: [marker],
+        requestId: input.requestId,
       }),
     });
     const customPorts = requirePorts(custom);
     const rendered = await customPorts.preview.render(payload, contextFor(custom));
     expect(rendered.value).toEqual({
       diagnostics: [],
-      draftDigest: 'digest-1',
-      markers: ['markers/custom'],
+      draftDigest,
+      markerMap: { [marker]: 'node-custom' },
+      markers: [marker],
+      requestId: 'renders/1',
     });
 
     const fallback = createTestbed();
@@ -604,12 +843,45 @@ describe('Testbed host', () => {
     const defaultRendered = await fallbackPorts.preview.render(payload, contextFor(fallback));
     expect(defaultRendered.value).toEqual({
       diagnostics: [],
-      draftDigest: 'digest-1',
+      draftDigest,
+      markerMap: {},
       markers: [],
+      requestId: 'renders/1',
     });
 
     const cancelled = await fallbackPorts.preview.cancel('digest-1', contextFor(fallback));
     expect(cancelled.value).toBeNull();
+  });
+
+  it.each([
+    ['request identifier', { requestId: 'renders/wrong' }],
+    ['draft digest', { draftDigest: 'b'.repeat(64) }],
+  ])('rejects a renderer result with a mismatched %s', async (_label, mismatch) => {
+    const draftDigest = 'a'.repeat(64);
+    const payload = {
+      artifactId: 'docs/alpha',
+      draftDigest,
+      draftRevision: 'alpha-r1',
+      requestId: 'renders/expected',
+      viewport: 'desktop',
+    };
+    const testbed = createTestbed({
+      render: (input) => ({
+        diagnostics: [],
+        draftDigest: input.draftDigest,
+        markerMap: {},
+        markers: [],
+        requestId: input.requestId,
+        ...mismatch,
+      }),
+    });
+    const { preview } = requirePorts(testbed);
+
+    const error = await expectHostError(preview.render(payload, contextFor(testbed)), 'internal');
+
+    expect(error.retryable).toBe(false);
+    expect(testbed.controls.pendingPreviewRenders).toBe(0);
+    expect(testbed.controls.previewDeliveries).toEqual([]);
   });
 
   it('exposes a guard-conforming error document on TestbedHostError', async () => {

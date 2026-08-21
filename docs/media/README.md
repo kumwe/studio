@@ -2,7 +2,7 @@
 
 This document specifies the complete target media authoring experience and its Gate A/Gate B obligations; it
 does not claim that the current alpha package implements every surface. Studio does not become the authoritative
-media service. This division lets Kumwe solve its current clunky authoring workflow while allowing Studio to work
+media service. This division lets Kumwe App solve its current clunky authoring workflow while allowing Studio to work
 with another CMS, DAM, object store, desktop application, or native Flutter host.
 
 ## Ownership decision
@@ -22,8 +22,8 @@ with another CMS, DAM, object store, desktop application, or native Flutter host
 The table assigns target ownership. In the current alpha, `@kumwe/studio-media` contains only the host-neutral
 provider interface, cancellation-safe browse/search/pagination state, and deterministic rendition selection.
 The complete UI and port behaviour remain Gate A/B work. The authoritative media
-application/domain/infrastructure remains in `kumwe/cms` and is exposed by the Kumwe Studio adapter. A separate
-media repository is unnecessary unless Kumwe later decides to extract its entire media service for reasons
+application/domain/infrastructure remains in [`kumwe/app`](https://github.com/kumwe/app) and is exposed by the
+Kumwe App adapter for Studio. A separate media repository is unnecessary unless Kumwe App later decides to extract its entire media service for reasons
 independent of Studio.
 
 ## Portable media reference
@@ -211,7 +211,7 @@ same accepted reference and processing-state semantics.
 4. Stable identity, version/replacement, permission and reference-impact semantics are declared.
 5. Security/privacy threat fixtures and accessibility requirements are executable.
 6. TypeScript and Dart models round-trip the same corpus.
-7. Generic-host and Kumwe adapters map every port without leaking storage/runtime internals.
+7. Generic-host and Kumwe App adapters map every port without leaking storage/runtime internals.
 
 ## Media Gate B criteria
 

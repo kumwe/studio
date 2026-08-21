@@ -22,6 +22,7 @@ import {
  */
 
 const digest = 'a'.repeat(64);
+const marker = `studio.preview/node/${digest}/0`;
 
 class FakeWindow {
   public inboundOrigin = '';
@@ -70,7 +71,9 @@ function pair(): { client: PreviewClient; clientWindow: FakeWindow; host: Previe
       Promise.resolve({
         diagnostics: [],
         draftDigest: payload.draftDigest,
-        markers: ['node-1'],
+        markerMap: { [`studio.preview/node/${payload.draftDigest}/0`]: 'node-1' },
+        markers: [`studio.preview/node/${payload.draftDigest}/0`],
+        requestId: payload.requestId,
       }),
     renderer: 'kumwe/fixture-renderer',
     sessionGeneration: 'session-r1',
@@ -82,13 +85,51 @@ function pair(): { client: PreviewClient; clientWindow: FakeWindow; host: Previe
   return { client, clientWindow, host };
 }
 
+function renderRequest(requestId = 'renders/1'): PreviewRenderPayload {
+  return {
+    artifactId: 'blueprint-1',
+    draftDigest: digest,
+    draftRevision: 'blueprint-r1',
+    requestId,
+    viewport: 'expanded',
+  };
+}
+
 describe('preview activation', () => {
-  it('delivers a trusted marker interaction to the client', () => {
+  it('delivers a current trusted marker interaction to the client', async () => {
     const { client, host } = pair();
     const seen: PreviewActivatedPayload[] = [];
     client.onActivated((payload) => seen.push(payload));
-    host.announceActivation({ interaction: 'activate', marker: 'node-1' });
-    expect(seen).toEqual([{ interaction: 'activate', marker: 'node-1' }]);
+    await client.render(renderRequest());
+    host.announceActivation({ interaction: 'activate', marker });
+    expect(seen).toEqual([{ interaction: 'activate', marker }]);
+  });
+
+  it('refuses an invented marker at the host and independently drops it at the client', async () => {
+    const { client, clientWindow, host } = pair();
+    const seen: PreviewActivatedPayload[] = [];
+    const inventedMarker = `studio.preview/node/${digest}/1`;
+    client.onActivated((payload) => seen.push(payload));
+    await client.render(renderRequest());
+
+    expect(() =>
+      host.announceActivation({ interaction: 'activate', marker: inventedMarker }),
+    ).toThrow(RangeError);
+    clientWindow.emit({
+      data: {
+        channelId: 'preview-channel-1',
+        contractVersion: STUDIO_CONTRACT_VERSION,
+        kind: 'preview-message',
+        payload: { interaction: 'activate', marker: inventedMarker },
+        sequence: 1,
+        sessionGeneration: 'session-r1',
+        type: 'studio.preview/activated',
+      },
+      origin: clientWindow.inboundOrigin,
+      source: clientWindow.inboundSource,
+    });
+
+    expect(seen).toEqual([]);
   });
 
   it('is a canonical message the guard accepts, and rejects an invented interaction', () => {
@@ -96,15 +137,15 @@ describe('preview activation', () => {
       channelId: 'preview-channel-1',
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
-      payload: { interaction: 'activate', marker: 'node-1' },
+      payload: { interaction: 'activate', marker },
       sequence: 1,
       sessionGeneration: 'session-r1',
       type: 'studio.preview/activated',
     };
     expect(isPreviewMessage(envelope)).toBe(true);
-    expect(
-      isPreviewMessage({ ...envelope, payload: { interaction: 'hover', marker: 'node-1' } }),
-    ).toBe(false);
+    expect(isPreviewMessage({ ...envelope, payload: { interaction: 'hover', marker } })).toBe(
+      false,
+    );
   });
 });
 
@@ -136,21 +177,34 @@ describe('preview viewport', () => {
     };
     expect(isPreviewMessage(envelope)).toBe(false);
     expect(isPreviewMessage({ ...envelope, payload: { width: 1280 } })).toBe(true);
+    expect(isPreviewMessage({ ...envelope, payload: { height: 239 } })).toBe(false);
+    expect(isPreviewMessage({ ...envelope, payload: { height: 240 } })).toBe(true);
+    expect(isPreviewMessage({ ...envelope, payload: { width: 10_001 } })).toBe(false);
+    expect(isPreviewMessage({ ...envelope, payload: { viewport: 'constructor' } })).toBe(false);
+    expect(isPreviewMessage({ ...envelope, payload: { viewport: 'Expanded' } })).toBe(false);
+    expect(isPreviewMessage({ ...envelope, payload: { viewport: undefined, width: 1280 } })).toBe(
+      false,
+    );
+    expect(isPreviewMessage({ ...envelope, payload: { width: undefined } })).toBe(false);
   });
 });
 
 describe('preview dispose', () => {
-  it('revokes a superseded draft without ending the channel', () => {
+  it('revokes a superseded draft inventory without ending the channel', async () => {
     const { client, host } = pair();
     const seen: PreviewDisposePayload[] = [];
     host.onDispose((payload) => seen.push(payload));
+    await client.render(renderRequest());
     client.disposeDraft({ draftDigest: digest, reason: 'studio.preview/superseded' });
     expect(seen).toEqual([{ draftDigest: digest, reason: 'studio.preview/superseded' }]);
 
-    // The channel is still live, so the host still answers.
+    expect(() => host.announceActivation({ interaction: 'focus', marker })).toThrow(RangeError);
+
+    // The channel is still live, so a fresh render creates a fresh inventory.
+    await client.render(renderRequest('renders/2'));
     const activated: PreviewActivatedPayload[] = [];
     client.onActivated((payload) => activated.push(payload));
-    host.announceActivation({ interaction: 'focus', marker: 'node-1' });
+    host.announceActivation({ interaction: 'focus', marker });
     expect(activated).toHaveLength(1);
   });
 

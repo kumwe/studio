@@ -22,6 +22,9 @@ The implemented surface covers:
   stable diagnostics;
 - `canonicalStringify` / `canonicalUtf8Bytes` — the canonical cross-language serialization form
   used for checksums.
+- `compileStudioPropertySchema` / `assertStudioPropertySchema` — eval-free admission and validation
+  for the closed, local-only `studio.profile/schema-property` surface, with stable
+  `StudioSchemaProfileError` codes and schema pointers.
 
 The package has no DOM dependency. Web Components, Flutter clients, command-line tools, and server
 adapters can therefore share the same command and validation semantics through the protocol.

@@ -4,7 +4,7 @@
 
 Kumwe Studio makes structured experience composition feel direct: define data, arrange a reusable blueprint, bind fields, select safe design intent, work with media, and populate content without writing presentation code. The result remains portable, governable, accessible, and renderable by the host's own technology.
 
-Kumwe CMS is the first and most demanding reference host—the hand for which the glove is made—but the glove has an explicit public protocol and may be worn by other systems.
+[Kumwe App](https://github.com/kumwe/app) is the first and most demanding reference host—the hand for which the glove is made—but the glove has an explicit public protocol and may be worn by other systems.
 
 ## Problem
 

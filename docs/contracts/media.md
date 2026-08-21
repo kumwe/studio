@@ -90,4 +90,4 @@ The policy is deliberately lexical and performs no DNS resolution. DNS-rebinding
 
 In the current alpha, `@kumwe/studio-media` exposes a small `MediaProvider` interface for `get`, `list`, and `upload`, cancellation-safe `MediaLibrary` browse/search/pagination state, and deterministic rendition selection. Canonical MediaAsset and MediaReference schemas are owned and packaged by `@kumwe/studio-protocol`, not the media package. The complete media browser/upload UI, full lifecycle ports, diagnostics, and conformance surface are Gate A/B targets and are not claimed as implemented.
 
-Kumwe CMS will implement the authoritative media operations with its media application services. A separate media repository is unnecessary unless a future independent media service develops a lifecycle and audience beyond Studio.
+Kumwe App will implement the authoritative media operations with its media application services. A separate media repository is unnecessary unless a future independent media service develops a lifecycle and audience beyond Studio.

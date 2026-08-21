@@ -10,7 +10,7 @@ The authoring runtime is a browser application composed of the DOM-free core, Li
 
 ### Host runtime
 
-The host runtime authenticates the actor, authorizes operations, owns storage and workflows, validates artifacts, resolves resources, processes media, renders previews, and publishes revisions. The reference Kumwe host uses PHP application services and Twig, but the public host contract is transport-neutral.
+The host runtime authenticates the actor, authorizes operations, owns storage and workflows, validates artifacts, resolves resources, processes media, renders previews, and publishes revisions. The reference Kumwe App host uses PHP application services and Twig, but the public host contract is transport-neutral.
 
 ### Delivery runtime
 
@@ -26,7 +26,9 @@ The host's accepted revision is the persistence source of truth. Local state bec
 
 A renderer consumes validated artifacts and resolved values. It does not receive arbitrary callbacks from the document. Renderer selection is controlled by trusted block and theme registrations.
 
-Each rendered node should expose an opaque preview marker in authoring preview mode. The marker maps a DOM region to a blueprint node but does not expose private model values. Production output need not contain preview markers.
+Each rendered node exposes the canonical draft-scoped preview marker in authoring preview mode. Its digest and
+preorder ordinal map a DOM region through the exact response inventory without exposing private model values.
+Production output need not contain preview markers.
 
 ## Network boundary
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-Kumwe's programme freezes the contract an extension declares composition contributions through
+Kumwe App's programme freezes the contract an extension declares composition contributions through
 at its own Gate A. Its criterion names six declaration kinds — composition blocks, patterns,
 inspectors or field controls, design vocabulary including size roles, and composition
 migrations — each "validated at admission and at install against the published composition

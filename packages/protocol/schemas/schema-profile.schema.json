@@ -2,7 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.kumwe.org/studio/v1/schema-profile.schema.json",
   "title": "Studio Schema Profile meta-schema",
-  "$ref": "#/$defs/schema",
+  "allOf": [
+    { "$ref": "#/$defs/schema" },
+    {
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "required": ["type", "additionalProperties"],
+      "properties": {
+        "type": { "const": "object" },
+        "additionalProperties": { "const": false }
+      }
+    }
+  ],
   "$defs": {
     "schema": {
       "type": "object",
@@ -53,14 +64,14 @@
         "$ref": {
           "type": "string",
           "maxLength": 500,
-          "pattern": "^#(?:/[^\\u0000-\\u001F\\u007F]*)?(?![\\s\\S])"
+          "pattern": "^#(?:/(?:[A-Za-z0-9._!$&'()*+,;=:@-]|~[01])*)*(?![\\s\\S])"
         },
         "$schema": { "const": "https://json-schema.org/draft/2020-12/schema" },
         "additionalProperties": { "$ref": "#/$defs/subschema" },
         "allOf": { "$ref": "#/$defs/schemaArray" },
         "anyOf": { "$ref": "#/$defs/schemaArray" },
-        "const": { "$ref": "common.schema.json#/$defs/jsonValue" },
-        "default": { "$ref": "common.schema.json#/$defs/jsonValue" },
+        "const": { "$ref": "#/$defs/jsonValue" },
+        "default": { "$ref": "#/$defs/jsonValue" },
         "dependentRequired": {
           "type": "object",
           "maxProperties": 512,
@@ -68,6 +79,7 @@
           "additionalProperties": {
             "type": "array",
             "maxItems": 512,
+            "uniqueItems": true,
             "items": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" }
           }
         },
@@ -75,13 +87,15 @@
         "else": { "$ref": "#/$defs/subschema" },
         "enum": {
           "type": "array",
+          "minItems": 1,
           "maxItems": 1024,
-          "items": { "$ref": "common.schema.json#/$defs/jsonValue" }
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/jsonValue" }
         },
         "examples": {
           "type": "array",
           "maxItems": 100,
-          "items": { "$ref": "common.schema.json#/$defs/jsonValue" }
+          "items": { "$ref": "#/$defs/jsonValue" }
         },
         "exclusiveMaximum": { "type": "number" },
         "exclusiveMinimum": { "type": "number" },
@@ -105,6 +119,7 @@
         "required": {
           "type": "array",
           "maxItems": 512,
+          "uniqueItems": true,
           "items": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" }
         },
         "then": { "$ref": "#/$defs/subschema" },
@@ -127,6 +142,7 @@
     },
     "schemaArray": {
       "type": "array",
+      "minItems": 1,
       "maxItems": 64,
       "items": { "$ref": "#/$defs/subschema" }
     },
@@ -135,6 +151,25 @@
       "maxProperties": 512,
       "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
       "additionalProperties": { "$ref": "#/$defs/schema" }
+    },
+    "jsonValue": {
+      "oneOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "maxItems": 10000,
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        {
+          "type": "object",
+          "maxProperties": 1000,
+          "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+          "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+        }
+      ]
     },
     "subschema": {
       "oneOf": [{ "type": "boolean" }, { "$ref": "#/$defs/schema" }]
@@ -145,16 +180,21 @@
     "limits": {
       "const": {
         "maxAlternatives": 64,
+        "maxDescriptionLength": 10000,
         "maxEnumMembers": 1024,
+        "maxExamples": 100,
         "maxJsonDepth": 64,
         "maxJsonItems": 10000,
         "maxJsonProperties": 1000,
         "maxObjectKeyLength": 200,
+        "maxPropertyNames": 512,
+        "maxReferenceLength": 500,
         "maxReferences": 128,
         "maxSchemaBytes": 262144,
         "maxSchemaDepth": 32,
         "maxSchemaMapProperties": 512,
-        "maxSchemaNodes": 1024
+        "maxSchemaNodes": 1024,
+        "maxTitleLength": 1000
       }
     }
   }

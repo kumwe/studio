@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   isHostPortError,
+  isPreviewMarker,
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
 } from '../src/index.js';
+
+const previewDigest = 'a'.repeat(64);
+const previewMarker = (ordinal: number, digest = previewDigest): string =>
+  `studio.preview/node/${digest}/${ordinal}`;
 
 function readyMessage(): Record<string, unknown> {
   return {
@@ -25,6 +30,16 @@ function readyMessage(): Record<string, unknown> {
 describe('isPreviewMessage', () => {
   it('accepts a bounded canonical payload', () => {
     expect(isPreviewMessage(readyMessage())).toBe(true);
+  });
+
+  it('keeps the draft.2 message vocabulary closed', () => {
+    expect(
+      isPreviewMessage({
+        ...readyMessage(),
+        payload: {},
+        type: 'org.example.preview/custom',
+      }),
+    ).toBe(false);
   });
 
   it('rejects arrays that exceed the canonical payload bounds', () => {
@@ -50,8 +65,10 @@ describe('isPreviewMessage', () => {
           message: { key: 'studio.test/problem' },
           severity: 'error',
         })),
-        draftDigest: 'a'.repeat(64),
+        draftDigest: previewDigest,
+        markerMap: {},
         markers: [],
+        requestId: 'renders/1',
       },
       sequence: 0,
       sessionGeneration: 'session-r1',
@@ -87,8 +104,10 @@ describe('isPreviewMessage', () => {
             severity: 'error',
           },
         ],
-        draftDigest: 'a'.repeat(64),
+        draftDigest: previewDigest,
+        markerMap: {},
         markers: [],
+        requestId: 'renders/1',
       },
       sequence: 0,
       sessionGeneration: 'session-r1',
@@ -191,15 +210,18 @@ describe('reload and teardown messages', () => {
 
 describe('rendered marker maps', () => {
   function renderedMessage(): Record<string, unknown> {
+    const marker0 = previewMarker(0);
+    const marker1 = previewMarker(1);
     return {
       channelId: 'preview-channel-1',
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
       payload: {
         diagnostics: [],
-        draftDigest: 'a'.repeat(64),
-        markerMap: { 'marker-1': 'node-1', 'marker-2': 'node-2' },
-        markers: ['marker-1', 'marker-2'],
+        draftDigest: previewDigest,
+        markerMap: { [marker0]: 'node-1', [marker1]: 'node-2' },
+        markers: [marker0, marker1],
+        requestId: 'renders/1',
       },
       sequence: 4,
       sessionGeneration: 'session-r1',
@@ -207,33 +229,127 @@ describe('rendered marker maps', () => {
     };
   }
 
-  it('accepts an optional marker-to-node map', () => {
+  it('accepts an exact marker-to-node map and requires it for an empty inventory', () => {
     expect(isPreviewMessage(renderedMessage())).toBe(true);
     const withoutMap = renderedMessage();
     withoutMap.payload = {
       diagnostics: [],
-      draftDigest: 'a'.repeat(64),
-      markers: ['marker-1'],
+      draftDigest: previewDigest,
+      markers: [],
     };
-    expect(isPreviewMessage(withoutMap)).toBe(true);
+    const empty = renderedMessage();
+    empty.payload = {
+      diagnostics: [],
+      draftDigest: previewDigest,
+      markerMap: {},
+      markers: [],
+      requestId: 'renders/1',
+    };
+    expect(isPreviewMessage(withoutMap)).toBe(false);
+    expect(isPreviewMessage(empty)).toBe(true);
   });
 
   it('rejects unsafe marker map member names and values', () => {
     const polluted = renderedMessage();
     polluted.payload = {
       diagnostics: [],
-      draftDigest: 'a'.repeat(64),
+      draftDigest: previewDigest,
       markerMap: JSON.parse('{"__proto__": "node-1"}') as Record<string, string>,
-      markers: ['marker-1'],
+      markers: [previewMarker(0)],
     };
     const badValue = renderedMessage();
     badValue.payload = {
       diagnostics: [],
-      draftDigest: 'a'.repeat(64),
-      markerMap: { 'marker-1': '' },
-      markers: ['marker-1'],
+      draftDigest: previewDigest,
+      markerMap: { [previewMarker(0)]: '' },
+      markers: [previewMarker(0)],
     };
     expect(isPreviewMessage(polluted)).toBe(false);
     expect(isPreviewMessage(badValue)).toBe(false);
+  });
+
+  it('rejects missing, extra, reordered, cross-draft, and many-to-one marker mappings', () => {
+    const marker0 = previewMarker(0);
+    const marker1 = previewMarker(1);
+    const base = {
+      diagnostics: [],
+      draftDigest: previewDigest,
+      markerMap: { [marker0]: 'node-1', [marker1]: 'node-2' },
+      markers: [marker0, marker1],
+    };
+    const message = renderedMessage();
+
+    expect(
+      isPreviewMessage({ ...message, payload: { ...base, markerMap: { [marker0]: 'node-1' } } }),
+    ).toBe(false);
+    expect(
+      isPreviewMessage({
+        ...message,
+        payload: { ...base, markerMap: { ...base.markerMap, [previewMarker(2)]: 'node-3' } },
+      }),
+    ).toBe(false);
+    expect(
+      isPreviewMessage({ ...message, payload: { ...base, markers: [marker1, marker0] } }),
+    ).toBe(false);
+    expect(
+      isPreviewMessage({
+        ...message,
+        payload: {
+          ...base,
+          markerMap: { [previewMarker(0, 'b'.repeat(64))]: 'node-1' },
+          markers: [previewMarker(0, 'b'.repeat(64))],
+        },
+      }),
+    ).toBe(false);
+    expect(
+      isPreviewMessage({
+        ...message,
+        payload: { ...base, markerMap: { [marker0]: 'node-1', [marker1]: 'node-1' } },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('preview marker grammar and measurements', () => {
+  const message = (type: string, payload: Record<string, unknown>): Record<string, unknown> => ({
+    channelId: 'preview-channel-1',
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    kind: 'preview-message',
+    payload,
+    sequence: 5,
+    sessionGeneration: 'session-r1',
+    type,
+  });
+
+  it('accepts only canonical lowercase digest and zero-based ordinal forms', () => {
+    expect(isPreviewMarker(previewMarker(0))).toBe(true);
+    expect(isPreviewMarker(previewMarker(99_999), previewDigest)).toBe(true);
+    expect(isPreviewMarker(previewMarker(0), 'b'.repeat(64))).toBe(false);
+    expect(isPreviewMarker(`studio.preview/node/${previewDigest}/00`)).toBe(false);
+    expect(isPreviewMarker(`studio.preview/node/${previewDigest.toUpperCase()}/0`)).toBe(false);
+    expect(isPreviewMarker(`studio.preview/node/${previewDigest}/100000`)).toBe(false);
+  });
+
+  it('rejects duplicate measurement requests and overlapping response inventories', () => {
+    const marker = previewMarker(0);
+    expect(
+      isPreviewMessage(
+        message('studio.preview/measure', { markers: [marker, marker], requestId: 'measure-1' }),
+      ),
+    ).toBe(false);
+
+    expect(
+      isPreviewMessage(
+        message('studio.preview/measurements', {
+          draftDigest: previewDigest,
+          measurements: {
+            [marker]: [{ height: 10, width: 10, x: 0, y: 0 }],
+          },
+          requestId: 'measure-1',
+          unknown: [marker],
+          viewport: { devicePixelRatio: 1, height: 600, scrollX: 0, scrollY: 0, width: 800 },
+        }),
+      ),
+    ).toBe(false);
   });
 });

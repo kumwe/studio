@@ -3,10 +3,13 @@ import {
   STUDIO_WIRE_PROTOCOL_VERSION,
   type HostPortError,
   type PreviewMessage,
+  type PreviewRenderedPayload,
 } from './types.js';
 
 const qualifiedName = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
 const localName = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/u;
+const previewDigest = /^[a-f0-9]{64}$/u;
+const previewMarker = /^studio\.preview\/node\/([a-f0-9]{64})\/(0|[1-9][0-9]{0,4})$/u;
 
 const hostErrorCategories = new Set([
   'cancelled',
@@ -75,7 +78,7 @@ export function isPreviewMessage(value: unknown): value is PreviewMessage {
     case 'studio.preview/render':
       return isRenderPayload(value.payload);
     case 'studio.preview/rendered':
-      return isRenderedPayload(value.payload);
+      return isPreviewRenderedPayload(value.payload);
     case 'studio.preview/select':
       return isSelectPayload(value.payload);
     case 'studio.preview/measure':
@@ -101,7 +104,7 @@ export function isPreviewMessage(value: unknown): value is PreviewMessage {
 function isActivatedPayload(value: Record<string, unknown>): boolean {
   return (
     hasExactKeys(value, ['interaction', 'marker']) &&
-    isStableId(value.marker) &&
+    isPreviewMarker(value.marker) &&
     (value.interaction === 'activate' ||
       value.interaction === 'context-menu' ||
       value.interaction === 'focus')
@@ -114,23 +117,25 @@ function isViewportPayload(value: Record<string, unknown>): boolean {
   if (keys.length === 0 || keys.some((key) => !['height', 'viewport', 'width'].includes(key))) {
     return false;
   }
-  const hasRole = value.viewport !== undefined;
-  const hasDimensions = value.width !== undefined || value.height !== undefined;
+  const hasRole = Object.hasOwn(value, 'viewport');
+  const hasWidth = Object.hasOwn(value, 'width');
+  const hasHeight = Object.hasOwn(value, 'height');
+  const hasDimensions = hasWidth || hasHeight;
   if (hasRole === hasDimensions) {
     return false;
   }
   if (hasRole) {
-    return typeof value.viewport === 'string' && value.viewport.length > 0;
+    return isLocalName(value.viewport);
   }
   return (
-    (value.width === undefined || isBoundedDimension(value.width)) &&
-    (value.height === undefined || isBoundedDimension(value.height))
+    (!hasWidth || isBoundedDimension(value.width)) &&
+    (!hasHeight || isBoundedDimension(value.height))
   );
 }
 
 function isBoundedDimension(value: unknown): boolean {
   return (
-    typeof value === 'number' && Number.isSafeInteger(value) && value >= 120 && value <= 10_000
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 240 && value <= 10_000
   );
 }
 
@@ -144,7 +149,7 @@ function isDisposePayload(value: Record<string, unknown>): boolean {
   }
   return (
     value.draftDigest === undefined ||
-    (typeof value.draftDigest === 'string' && /^[a-f0-9]{64}$/u.test(value.draftDigest))
+    (typeof value.draftDigest === 'string' && previewDigest.test(value.draftDigest))
   );
 }
 
@@ -163,34 +168,60 @@ function isReadyPayload(value: Record<string, unknown>): boolean {
 
 function isRenderPayload(value: Record<string, unknown>): boolean {
   return (
-    hasExactKeys(value, ['artifactId', 'draftDigest', 'viewport'], ['draftRevision']) &&
+    hasExactKeys(value, ['artifactId', 'draftDigest', 'draftRevision', 'requestId', 'viewport']) &&
     isStableId(value.artifactId) &&
     typeof value.draftDigest === 'string' &&
-    /^[a-f0-9]{64}$/u.test(value.draftDigest) &&
-    isLocalName(value.viewport) &&
-    (value.draftRevision === undefined || isRevision(value.draftRevision))
+    previewDigest.test(value.draftDigest) &&
+    isRevision(value.draftRevision) &&
+    isStableId(value.requestId) &&
+    isLocalName(value.viewport)
   );
 }
 
-function isRenderedPayload(value: Record<string, unknown>): boolean {
-  return (
-    hasExactKeys(value, ['draftDigest', 'markers', 'diagnostics'], ['markerMap']) &&
-    typeof value.draftDigest === 'string' &&
-    /^[a-f0-9]{64}$/u.test(value.draftDigest) &&
-    isStringArray(value.markers, isStableId, 100_000) &&
-    isArrayOf(value.diagnostics, isDiagnostic, 10_000) &&
-    (value.markerMap === undefined || isMarkerMap(value.markerMap))
-  );
+export function isPreviewRenderedPayload(value: unknown): value is PreviewRenderedPayload {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ['requestId', 'draftDigest', 'markers', 'markerMap', 'diagnostics']) ||
+    !isStableId(value.requestId) ||
+    typeof value.draftDigest !== 'string' ||
+    !previewDigest.test(value.draftDigest) ||
+    !isStringArray(value.markers, isPreviewMarker, 100_000) ||
+    new Set(value.markers).size !== value.markers.length ||
+    !isArrayOf(value.diagnostics, isDiagnostic, 10_000) ||
+    !isMarkerMap(value.markerMap)
+  ) {
+    return false;
+  }
+
+  const markerMap = value.markerMap;
+  const markerKeys = Object.keys(markerMap);
+  if (markerKeys.length !== value.markers.length) {
+    return false;
+  }
+  const nodeIds = Object.values(markerMap);
+  if (new Set(nodeIds).size !== nodeIds.length) {
+    return false;
+  }
+
+  return value.markers.every((marker, ordinal) => {
+    const match = previewMarker.exec(marker);
+    return (
+      match !== null &&
+      match[1] === value.draftDigest &&
+      Number(match[2]) === ordinal &&
+      Object.hasOwn(markerMap, marker)
+    );
+  });
 }
 
-function isMarkerMap(value: unknown): boolean {
+function isMarkerMap(value: unknown): value is Record<string, string> {
   if (!isRecord(value)) {
     return false;
   }
   const entries = Object.entries(value);
   return (
     entries.length <= 100_000 &&
-    entries.every(([marker, nodeId]) => isStableId(marker) && isStableId(nodeId))
+    entries.every(([marker, nodeId]) => isPreviewMarker(marker) && isStableId(nodeId))
   );
 }
 
@@ -198,23 +229,34 @@ function isMeasurePayload(value: Record<string, unknown>): boolean {
   return (
     hasExactKeys(value, ['requestId', 'markers']) &&
     isStableId(value.requestId) &&
-    isStringArray(value.markers, isStableId, 1_000)
+    isStringArray(value.markers, isPreviewMarker, 1_000) &&
+    value.markers.length >= 1 &&
+    new Set(value.markers).size === value.markers.length
   );
 }
 
 function isMeasurementsPayload(value: Record<string, unknown>): boolean {
+  if (
+    !hasExactKeys(value, ['requestId', 'draftDigest', 'measurements', 'unknown', 'viewport']) ||
+    !isStableId(value.requestId) ||
+    typeof value.draftDigest !== 'string' ||
+    !previewDigest.test(value.draftDigest) ||
+    !isMeasurementMap(value.measurements) ||
+    !isStringArray(value.unknown, isPreviewMarker, 1_000) ||
+    new Set(value.unknown).size !== value.unknown.length ||
+    !isViewportMetrics(value.viewport)
+  ) {
+    return false;
+  }
+
+  const markers = [...Object.keys(value.measurements), ...value.unknown];
   return (
-    hasExactKeys(value, ['requestId', 'draftDigest', 'measurements', 'unknown', 'viewport']) &&
-    isStableId(value.requestId) &&
-    typeof value.draftDigest === 'string' &&
-    /^[a-f0-9]{64}$/u.test(value.draftDigest) &&
-    isMeasurementMap(value.measurements) &&
-    isStringArray(value.unknown, isStableId, 1_000) &&
-    isViewportMetrics(value.viewport)
+    new Set(markers).size === markers.length &&
+    markers.every((marker) => previewMarker.exec(marker)?.[1] === value.draftDigest)
   );
 }
 
-function isMeasurementMap(value: unknown): boolean {
+function isMeasurementMap(value: unknown): value is Record<string, unknown[]> {
   if (!isRecord(value)) {
     return false;
   }
@@ -223,7 +265,7 @@ function isMeasurementMap(value: unknown): boolean {
     entries.length <= 1_000 &&
     entries.every(
       ([marker, rects]) =>
-        isStableId(marker) && isArrayOf(rects, isMarkerRect, 1_000) && rects.length >= 1,
+        isPreviewMarker(marker) && isArrayOf(rects, isMarkerRect, 1_000) && rects.length >= 1,
     )
   );
 }
@@ -394,6 +436,15 @@ function isStableId(value: unknown): value is string {
     !isForbiddenObjectMemberName(value) &&
     /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u.test(value)
   );
+}
+
+/** Whether a value has the canonical preview marker grammar, optionally for one draft. */
+export function isPreviewMarker(value: unknown, draftDigest?: string): value is string {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const match = previewMarker.exec(value);
+  return match !== null && (draftDigest === undefined || match[1] === draftDigest);
 }
 
 function isRevision(value: unknown): value is string {

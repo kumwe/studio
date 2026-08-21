@@ -34,7 +34,9 @@ import type { JsonSchema } from '@kumwe/studio-protocol';
  *
  * The interpreter is pure and deterministic: no DOM, no Node APIs, no
  * `Function` constructor, no shared mutable state beyond the per-validator
- * error buffer that mirrors the previous compiled-validator shape.
+ * error buffer that mirrors the previous compiled-validator shape. Public
+ * diagnostics are the ordered set of distinct failures; exact duplicates
+ * are collapsed so repeated reference fan-out cannot amplify output size.
  */
 
 const DRAFT_2020_12 = 'https://json-schema.org/draft/2020-12/schema';
@@ -128,11 +130,18 @@ interface CompiledProgram {
   root: SchemaNode;
 }
 
+interface MemoizedEvaluation {
+  diagnostics: readonly SchemaValidationError[];
+  valid: boolean;
+}
+
+type EvaluationMemo = WeakMap<SchemaNode, Map<string, Map<unknown, MemoizedEvaluation>>>;
+
 /**
  * A compiled (pre-walked, pre-resolved) profile schema. `validate` mirrors
  * the verdict-plus-`errors` shape of the code-generating validator it
- * replaces: `errors` is `null` after a passing run and carries the failures
- * of the most recent failing run otherwise.
+ * replaces: `errors` is `null` after a passing run and carries the ordered,
+ * distinct failures of the most recent failing run otherwise.
  */
 export class CompiledSchemaValidator {
   public errors: SchemaValidationError[] | null = null;
@@ -144,9 +153,21 @@ export class CompiledSchemaValidator {
 
   public validate(instance: unknown): boolean {
     const errors: SchemaValidationError[] = [];
-    validateSubschema(this.#program.root, instance, '', errors, this.#program, new Set());
-    this.errors = errors.length > 0 ? errors : null;
-    return errors.length === 0;
+    const valid = validateSubschema(
+      this.#program.root,
+      instance,
+      '',
+      errors,
+      this.#program,
+      new Set(),
+      new WeakMap(),
+    );
+    const diagnostics = uniqueDiagnostics(errors);
+    if (valid === diagnostics.length > 0) {
+      throw new TypeError('Schema validation verdict and diagnostics disagree.');
+    }
+    this.errors = diagnostics.length > 0 ? diagnostics : null;
+    return valid;
   }
 }
 
@@ -229,7 +250,7 @@ function walkDocument(
     seen.add(value);
     document.schemaPointers.add(pointer);
 
-    for (const [keyword, operand] of Object.entries(value)) {
+    for (const [keyword, operand] of sortedEntries(value)) {
       const keywordLocation = describeLocation(document, appendPointer(pointer, keyword));
       if (!SUPPORTED_KEYWORDS.has(keyword)) {
         throw new TypeError(
@@ -248,7 +269,7 @@ function walkDocument(
           }
           break;
         case '$ref':
-          if (typeof operand !== 'string' || operand.length > MAX_REFERENCE_LENGTH) {
+          if (typeof operand !== 'string' || codePointLength(operand) > MAX_REFERENCE_LENGTH) {
             throw new TypeError(
               `${keywordLocation} must be a string of at most ${MAX_REFERENCE_LENGTH} characters.`,
             );
@@ -278,6 +299,15 @@ function walkDocument(
           assertTypeOperand(operand, keywordLocation);
           break;
         case 'enum':
+          if (!isDenseArray(operand) || operand.length === 0) {
+            throw new TypeError(`${keywordLocation} must be a dense, non-empty JSON array.`);
+          }
+          for (let index = 0; index < operand.length; index += 1) {
+            if (operand.slice(0, index).some((member) => deepEqual(member, operand[index]))) {
+              throw new TypeError(`${keywordLocation} must contain unique JSON values.`);
+            }
+          }
+          break;
         case 'examples':
           if (!isDenseArray(operand)) {
             throw new TypeError(`${keywordLocation} must be a dense JSON array.`);
@@ -293,7 +323,7 @@ function walkDocument(
           if (!isSchemaNode(operand)) {
             throw new TypeError(`${keywordLocation} must be an object of property-name arrays.`);
           }
-          for (const [name, dependents] of Object.entries(operand)) {
+          for (const [name, dependents] of sortedEntries(operand)) {
             assertNameArray(dependents, `${keywordLocation}.${name}`);
           }
           break;
@@ -354,7 +384,7 @@ function walkDocument(
     if (!isSchemaNode(value)) {
       throw new TypeError(`${describeLocation(document, pointer)} must be an object of schemas.`);
     }
-    for (const [name, member] of Object.entries(value)) {
+    for (const [name, member] of sortedEntries(value)) {
       walkSubschema(member, appendPointer(pointer, name));
     }
   };
@@ -374,7 +404,7 @@ function walkDocument(
 }
 
 function compilePattern(operand: unknown, location: string): RegExp {
-  if (typeof operand !== 'string' || operand.length > MAX_PATTERN_SOURCE_LENGTH) {
+  if (typeof operand !== 'string' || codePointLength(operand) > MAX_PATTERN_SOURCE_LENGTH) {
     throw new TypeError(
       `${location} must be a lexical pattern of at most ${MAX_PATTERN_SOURCE_LENGTH} characters.`,
     );
@@ -503,12 +533,20 @@ function validateSubschema(
   errors: SchemaValidationError[],
   program: CompiledProgram,
   active: Set<SchemaNode>,
+  memo: EvaluationMemo,
 ): boolean {
   if (typeof schema === 'boolean') {
     if (!schema) {
       errors.push({ instancePath: path, keyword: 'false', message: 'boolean schema is false' });
     }
     return schema;
+  }
+  const cached = memoizedVerdict(memo, schema, path, instance);
+  if (cached !== undefined) {
+    for (const diagnostic of cached.diagnostics) {
+      errors.push({ ...diagnostic });
+    }
+    return cached.valid;
   }
   if (active.has(schema)) {
     // Unreachable for admitted schemas: contributed schemas are checked to be
@@ -519,8 +557,18 @@ function validateSubschema(
     throw new RangeError('Schema evaluation cycled without consuming instance input.');
   }
   active.add(schema);
-  const valid = validateSchemaNode(schema, instance, path, errors, program, active);
-  active.delete(schema);
+  const firstNewError = errors.length;
+  let valid: boolean;
+  try {
+    valid = validateSchemaNode(schema, instance, path, errors, program, active, memo);
+  } finally {
+    active.delete(schema);
+  }
+  const diagnostics = uniqueDiagnostics(errors.slice(firstNewError));
+  if (valid === diagnostics.length > 0) {
+    throw new TypeError('Subschema validation verdict and diagnostics disagree.');
+  }
+  memoizeVerdict(memo, schema, path, instance, { diagnostics, valid });
   return valid;
 }
 
@@ -531,6 +579,7 @@ function validateSchemaNode(
   errors: SchemaValidationError[],
   program: CompiledProgram,
   active: Set<SchemaNode>,
+  memo: EvaluationMemo,
 ): boolean {
   let valid = true;
   const fail = (keyword: string, message: string, at: string = path): void => {
@@ -543,7 +592,7 @@ function validateSchemaNode(
     if (target === undefined) {
       throw new TypeError('Schema reference was not resolved at compile time.');
     }
-    if (!validateSubschema(target, instance, path, errors, program, active)) {
+    if (!validateSubschema(target, instance, path, errors, program, active, memo)) {
       valid = false;
     }
   }
@@ -568,18 +617,18 @@ function validateSchemaNode(
     fail('const', 'must be equal to constant');
   }
 
-  validateCombinators(schema, instance, path, errors, program, active, fail);
+  validateCombinators(schema, instance, path, errors, program, active, memo, fail);
 
   if (typeof instance === 'string') {
     validateStringKeywords(schema, instance, fail, program);
   } else if (typeof instance === 'number' && Number.isFinite(instance)) {
     validateNumberKeywords(schema, instance, fail);
   } else if (Array.isArray(instance)) {
-    if (!validateArrayKeywords(schema, instance, path, errors, program, fail)) {
+    if (!validateArrayKeywords(schema, instance, path, errors, program, memo, fail)) {
       valid = false;
     }
   } else if (isObjectInstance(instance)) {
-    if (!validateObjectKeywords(schema, instance, path, errors, program, fail)) {
+    if (!validateObjectKeywords(schema, instance, path, errors, program, memo, fail)) {
       valid = false;
     }
   }
@@ -596,16 +645,17 @@ function validateCombinators(
   errors: SchemaValidationError[],
   program: CompiledProgram,
   active: Set<SchemaNode>,
+  memo: EvaluationMemo,
   fail: FailReporter,
 ): void {
   const speculate = (subschema: Subschema): boolean => {
     const scratch: SchemaValidationError[] = [];
-    return validateSubschema(subschema, instance, path, scratch, program, active);
+    return validateSubschema(subschema, instance, path, scratch, program, active, memo);
   };
 
   if (Array.isArray(schema.allOf)) {
     for (const member of schema.allOf) {
-      if (!validateSubschema(member as Subschema, instance, path, errors, program, active)) {
+      if (!validateSubschema(member as Subschema, instance, path, errors, program, active, memo)) {
         fail('allOf', 'must match all schemas in allOf');
       }
     }
@@ -633,7 +683,7 @@ function validateCombinators(
     const branch = speculate(schema.if as Subschema) ? schema.then : schema.else;
     if (
       branch !== undefined &&
-      !validateSubschema(branch as Subschema, instance, path, errors, program, active)
+      !validateSubschema(branch as Subschema, instance, path, errors, program, active, memo)
     ) {
       fail('if', 'must match the conditional schema');
     }
@@ -682,13 +732,45 @@ function validateNumberKeywords(schema: SchemaNode, instance: number, fail: Fail
     fail('exclusiveMaximum', `must be < ${schema.exclusiveMaximum}`);
   }
   if (typeof schema.multipleOf === 'number') {
-    // Mirrors the reference validator's division semantics exactly, including
-    // its precision behavior, so verdicts agree on every representable input.
-    const quotient = instance / schema.multipleOf;
-    if (quotient !== Number.parseInt(String(quotient), 10)) {
+    // Studio compares the canonical base-10 coefficients exactly. Binary
+    // division and epsilon tolerances are both runtime-dependent at decimal
+    // boundaries (for example 4.02 / 0.01), so neither is a portable rule.
+    if (!isCanonicalDecimalMultiple(instance, schema.multipleOf)) {
       fail('multipleOf', `must be multiple of ${schema.multipleOf}`);
     }
   }
+}
+
+interface CanonicalDecimal {
+  coefficient: bigint;
+  exponent: number;
+}
+
+function isCanonicalDecimalMultiple(instance: number, divisor: number): boolean {
+  const value = canonicalDecimal(instance);
+  const multiple = canonicalDecimal(divisor);
+  const exponentDifference = value.exponent - multiple.exponent;
+  if (exponentDifference >= 0) {
+    return (value.coefficient * 10n ** BigInt(exponentDifference)) % multiple.coefficient === 0n;
+  }
+  return value.coefficient % (multiple.coefficient * 10n ** BigInt(-exponentDifference)) === 0n;
+}
+
+function canonicalDecimal(value: number): CanonicalDecimal {
+  const source = JSON.stringify(Object.is(value, -0) ? 0 : value);
+  const match = /^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/u.exec(source);
+  if (match === null) {
+    throw new TypeError('Canonical decimal conversion requires a finite number.');
+  }
+
+  const fraction = match[3] ?? '';
+  let coefficient = BigInt(`${match[1] ?? ''}${match[2]}${fraction}`);
+  let exponent = Number(match[4] ?? 0) - fraction.length;
+  while (coefficient !== 0n && coefficient % 10n === 0n) {
+    coefficient /= 10n;
+    exponent += 1;
+  }
+  return { coefficient, exponent };
 }
 
 function validateArrayKeywords(
@@ -697,12 +779,21 @@ function validateArrayKeywords(
   path: string,
   errors: SchemaValidationError[],
   program: CompiledProgram,
+  memo: EvaluationMemo,
   fail: FailReporter,
 ): boolean {
   let valid = true;
   const child = (subschema: Subschema, index: number): void => {
     if (
-      !validateSubschema(subschema, instance[index], `${path}/${index}`, errors, program, new Set())
+      !validateSubschema(
+        subschema,
+        instance[index],
+        `${path}/${index}`,
+        errors,
+        program,
+        new Set(),
+        memo,
+      )
     ) {
       valid = false;
     }
@@ -750,18 +841,21 @@ function validateObjectKeywords(
   path: string,
   errors: SchemaValidationError[],
   program: CompiledProgram,
+  memo: EvaluationMemo,
   fail: FailReporter,
 ): boolean {
   let valid = true;
   // A member whose value is `undefined` is not JSON and is treated as absent,
   // matching how the previous validator saw JSON-decoded instances.
-  const memberNames = Object.keys(instance).filter((name) => instance[name] !== undefined);
+  const memberNames = Object.keys(instance)
+    .filter((name) => instance[name] !== undefined)
+    .sort(compareCodeUnits);
   const present = (name: string): boolean =>
     Object.hasOwn(instance, name) && instance[name] !== undefined;
 
   const properties = isSchemaNode(schema.properties) ? schema.properties : undefined;
   if (properties !== undefined) {
-    for (const [name, subschema] of Object.entries(properties)) {
+    for (const [name, subschema] of sortedEntries(properties)) {
       if (
         present(name) &&
         !validateSubschema(
@@ -771,6 +865,7 @@ function validateObjectKeywords(
           errors,
           program,
           new Set(),
+          memo,
         )
       ) {
         valid = false;
@@ -779,8 +874,8 @@ function validateObjectKeywords(
   }
 
   if (Array.isArray(schema.required)) {
-    for (const name of schema.required) {
-      if (typeof name === 'string' && !present(name)) {
+    for (const name of sortedStrings(schema.required)) {
+      if (!present(name)) {
         fail('required', `must have required property '${name}'`);
       }
     }
@@ -803,6 +898,7 @@ function validateObjectKeywords(
           errors,
           program,
           new Set(),
+          memo,
         )
       ) {
         valid = false;
@@ -814,7 +910,17 @@ function validateObjectKeywords(
   if (propertyNames !== undefined) {
     for (const name of memberNames) {
       const scratch: SchemaValidationError[] = [];
-      if (!validateSubschema(propertyNames as Subschema, name, path, scratch, program, new Set())) {
+      if (
+        !validateSubschema(
+          propertyNames as Subschema,
+          name,
+          path,
+          scratch,
+          program,
+          new Set(),
+          memo,
+        )
+      ) {
         fail('propertyNames', `property name '${name}' is invalid`);
       }
     }
@@ -822,12 +928,12 @@ function validateObjectKeywords(
 
   const dependentRequired = schema.dependentRequired;
   if (isSchemaNode(dependentRequired)) {
-    for (const [trigger, dependents] of Object.entries(dependentRequired)) {
+    for (const [trigger, dependents] of sortedEntries(dependentRequired)) {
       if (!present(trigger) || !Array.isArray(dependents)) {
         continue;
       }
-      for (const dependent of dependents) {
-        if (typeof dependent === 'string' && !present(dependent)) {
+      for (const dependent of sortedStrings(dependents)) {
+        if (!present(dependent)) {
           fail(
             'dependentRequired',
             `must have property ${dependent} when property ${trigger} is present`,
@@ -850,6 +956,50 @@ function validateObjectKeywords(
 // ---------------------------------------------------------------------------
 // Shared helpers.
 // ---------------------------------------------------------------------------
+
+function memoizedVerdict(
+  memo: EvaluationMemo,
+  schema: SchemaNode,
+  path: string,
+  instance: unknown,
+): MemoizedEvaluation | undefined {
+  const instances = memo.get(schema)?.get(path);
+  return instances?.get(instance);
+}
+
+function memoizeVerdict(
+  memo: EvaluationMemo,
+  schema: SchemaNode,
+  path: string,
+  instance: unknown,
+  result: MemoizedEvaluation,
+): void {
+  let locations = memo.get(schema);
+  if (locations === undefined) {
+    locations = new Map();
+    memo.set(schema, locations);
+  }
+  let instances = locations.get(path);
+  if (instances === undefined) {
+    instances = new Map();
+    locations.set(path, instances);
+  }
+  instances.set(instance, result);
+}
+
+function uniqueDiagnostics(errors: readonly SchemaValidationError[]): SchemaValidationError[] {
+  const keys = new Set<string>();
+  const diagnostics: SchemaValidationError[] = [];
+  for (const error of errors) {
+    const key = JSON.stringify([error.instancePath, error.keyword, error.message]);
+    if (keys.has(key)) {
+      continue;
+    }
+    keys.add(key);
+    diagnostics.push({ ...error });
+  }
+  return diagnostics;
+}
 
 function matchesType(name: string, instance: unknown): boolean {
   switch (name) {
@@ -952,6 +1102,24 @@ function isDenseArray(value: unknown): value is unknown[] {
   }
   const keys = Object.keys(value);
   return keys.length === value.length && keys.every((key, index) => key === String(index));
+}
+
+function sortedEntries(value: Record<string, unknown>): [string, unknown][] {
+  return Object.entries(value).sort(([left], [right]) => compareCodeUnits(left, right));
+}
+
+function sortedStrings(values: readonly unknown[]): string[] {
+  const strings: string[] = [];
+  for (const value of values) {
+    if (typeof value === 'string') {
+      strings.push(value);
+    }
+  }
+  return strings.sort(compareCodeUnits);
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function appendPointer(pointer: string, token: string): string {

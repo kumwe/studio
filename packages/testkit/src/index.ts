@@ -1,4 +1,10 @@
-import { BlockRegistry, validateBlueprint } from '@kumwe/studio-core';
+import {
+  BlockRegistry,
+  compileStudioPropertySchema,
+  StudioSchemaProfileError,
+  validateBlueprint,
+  type StudioSchemaProfileErrorCode,
+} from '@kumwe/studio-core';
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -22,6 +28,7 @@ export {
   type TestbedHost,
   type TestbedHostOptions,
   type TestbedPortName,
+  type TestbedRateLimitPolicy,
 } from './host-testbed.js';
 
 export {
@@ -52,6 +59,69 @@ export interface StudioConfigurationFixtureOptions {
   composite?: 'hybrid' | 'single';
   mode?: 'blueprint' | 'content' | 'model';
   sessionState?: 'editable' | 'read-only';
+}
+
+export interface SchemaProfileVectorInstance {
+  value: unknown;
+  valid: boolean;
+}
+
+export interface SchemaProfileVectorInput {
+  expect: { outcome: 'accepted' | 'rejected' };
+  schema: unknown;
+}
+
+export interface SchemaProfileVectorInstanceResult {
+  diagnostic?: { instancePath: string; keyword: string };
+  value: unknown;
+  valid: boolean;
+}
+
+export type SchemaProfileVectorRunResult =
+  | {
+      instances: SchemaProfileVectorInstanceResult[];
+      outcome: 'accepted';
+    }
+  | {
+      code: StudioSchemaProfileErrorCode;
+      outcome: 'rejected';
+      schemaPath: string;
+    };
+
+/**
+ * Replay a portable `studio.profile/schema-property` vector against the
+ * reference implementation. Only each case's input `value` is read from the
+ * accepted expectation; expected verdicts and diagnostics are not consulted.
+ * Callers compare this independently produced outcome with the published
+ * `expect` member.
+ */
+export function runSchemaProfileVector(
+  vector: SchemaProfileVectorInput & { expect: { instances?: SchemaProfileVectorInstance[] } },
+): SchemaProfileVectorRunResult {
+  try {
+    const validator = compileStudioPropertySchema(vector.schema);
+    const instances = (vector.expect.instances ?? []).map((entry) => {
+      const valid = validator.validate(entry.value);
+      const first = validator.errors?.[0];
+      return {
+        ...(first === undefined
+          ? {}
+          : { diagnostic: { instancePath: first.instancePath, keyword: first.keyword } }),
+        valid,
+        value: entry.value,
+      };
+    });
+    return { instances, outcome: 'accepted' };
+  } catch (error) {
+    if (error instanceof StudioSchemaProfileError) {
+      return {
+        code: error.code,
+        outcome: 'rejected',
+        schemaPath: error.schemaPath,
+      };
+    }
+    throw error;
+  }
 }
 
 export function createBlueprintFixture(options: BlueprintFixtureOptions = {}): BlueprintDocument {
@@ -90,7 +160,9 @@ export function defineTestBlock(options: TestBlockOptions): BlockDefinition {
     label: { defaultMessage: label, key: 'studio.test/block-label' },
     owner: { id: 'studio.test/testkit', version: '0.1.0-alpha.0' },
     ports: [],
-    propertySchema: cloneValue(options.propertySchema ?? { type: 'object' }),
+    propertySchema: cloneValue(
+      options.propertySchema ?? { additionalProperties: false, type: 'object' },
+    ),
     rendererRequirements: [
       { capability: 'studio.renderer/test', surface: 'preview', versions: '^0.1.0' },
     ],

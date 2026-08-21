@@ -18,8 +18,8 @@
     "sessionGeneration": "session-r1"
   },
   "context": {
-    "operationId": "studio.host/operation",
-    "protocolVersion": "0.1.0-draft.1",
+    "operationId": "studio.operation/permission.refresh",
+    "protocolVersion": "0.1.0-draft.2",
     "requestId": "requests/vector-1",
     "resourceContextKey": "contexts/vector",
     "sessionGeneration": "session-r1"

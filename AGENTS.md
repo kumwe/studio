@@ -21,7 +21,7 @@ Shape and semantics overlap deliberately and must agree. When code, prose, schem
 - Make every drag action possible with keyboard and explicit structural controls.
 - Preserve deterministic command, migration, serialization, and validation behaviour.
 - Add capability negotiation instead of assuming that every host implements every optional feature.
-- Keep Kumwe CMS integration in adapters and documentation, not in the generic packages.
+- Keep Kumwe App integration in adapters and documentation, not in the generic packages.
 - Never mark a programme gate complete without linked, reproducible evidence.
 
 ## Change workflow

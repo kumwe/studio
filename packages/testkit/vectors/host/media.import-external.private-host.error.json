@@ -19,7 +19,7 @@
   },
   "context": {
     "operationId": "studio.operation/media.import-external",
-    "protocolVersion": "0.1.0-draft.1",
+    "protocolVersion": "0.1.0-draft.2",
     "requestId": "requests/vector-1",
     "resourceContextKey": "contexts/vector",
     "sessionGeneration": "session-r1"

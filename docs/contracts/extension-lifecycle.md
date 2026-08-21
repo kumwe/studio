@@ -58,6 +58,6 @@ Operators can inspect extension ID, owner, package and contract versions, integr
 
 Lifecycle conformance fixtures in `@kumwe/studio-core` exercise this contract beyond block contributions: field-adapter, pattern, transform, renderer-capability, and inspector contributions are covered for activation into a sealed immutable generation, owner disable, trust revocation, rejected incompatible-owner and duplicate-ID activations that leave the active generation untouched, atomic upgrade to new declared versions, and per-kind unresolved-reason reporting (`not-installed`, `incompatible`, `owner-disabled`, `owner-revoked`) while documents stay diagnosable.
 
-## Kumwe mapping
+## Kumwe App mapping
 
-Kumwe should compile Studio contributions through its existing trusted, owner-aware immutable runtime generation. Studio must not introduce a parallel extension authority. The adapter translates Kumwe contribution lifecycle into this portable state vocabulary.
+Kumwe App should compile Studio contributions through its existing trusted, owner-aware immutable runtime generation. Studio must not introduce a parallel extension authority. The adapter translates Kumwe App contribution lifecycle into this portable state vocabulary.

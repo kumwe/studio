@@ -59,7 +59,7 @@ resolve an untested combination are not used in deployable first-party builds.
 6. Build packages/examples/docs twice in isolated environments and compare expected deterministic outputs.
 7. Generate SBOM and provenance; scan source, history, dependencies, artifacts and fixtures for secrets and
    vulnerabilities.
-8. Pack npm/Dart artifacts and install them into clean generic, Kumwe, TypeScript and Dart consumers without
+8. Pack npm/Dart artifacts and install them into clean generic, Kumwe App, TypeScript and Dart consumers without
    workspace links.
 9. Create the release manifest and content-addressed evidence bundle.
 10. Sign/attest the candidate and enter evidence review. The candidate bits do not change during review.

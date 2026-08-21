@@ -5,7 +5,7 @@
     "contractVersion": "0.1-draft",
     "kind": "host-capabilities",
     "host": {
-      "id": "org.kumwe/cms",
+      "id": "org.kumwe/app",
       "version": "3.0.0-alpha.1",
       "generation": "runtime-generation-42"
     },

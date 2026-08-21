@@ -67,7 +67,10 @@ capability.
 - Test public ports with real transports/persistence boundaries, not only in-memory doubles.
 - Exercise expected-revision conflict, idempotent retry, timeout, cancellation, permission reduction, expired
   session, stale contribution generation and partial capability.
-- Pin preview origin/session/protocol/revision; reject malformed, oversized, replayed and unsolicited messages.
+- Pin preview origin/session/protocol/revision; reproduce canonical draft digests and marker preorder; reject
+  malformed, oversized, cross-draft, incomplete, replayed, revoked and unsolicited messages.
+- Exercise same-digest retries across viewports, request-ID reuse, callback abort/generation races, matching
+  disposal, and foreign measurement markers; no late callback may republish inventory or geometry.
 - Prove extension/theme collision, trust failure, optional/required failure, disable, revoke, reactivate,
   upgrade, fallback and unresolved-node behaviour.
 - Prove authoritative host validation can reject a locally valid command without corrupting local accepted
@@ -101,7 +104,7 @@ capability.
 - Each language applies supported command and migration vectors to the same result or stable error.
 - Unknown optional/required capabilities and extension data test lossless preservation/read-only negotiation.
 - npm and Dart packages install in clean projects without workspace paths or undeclared tools.
-- Generic/Kumwe and server/native renderer profiles prove no route/class/Twig/Flutter implementation leaks
+- Generic/Kumwe App and server/native renderer profiles prove no route/class/Twig/Flutter implementation leaks
   into portable artifacts.
 
 ## Accessibility and authoring quality
@@ -136,8 +139,8 @@ Exact versions are recorded in each release manifest. Gate B covers at least:
 - supported Android/iOS versions for Flutter mobile claims;
 - current supported stable Dart/Flutter line plus the preceding line when the SDK's language constraints permit;
 - clean npm consumers on the repository-declared Node/npm versions;
-- generic reference host and Kumwe profile; and
-- Kumwe's supported PHP and MariaDB/MySQL/PostgreSQL matrix for its adapter.
+- generic reference host and Kumwe App profile; and
+- Kumwe App's supported PHP and MariaDB/MySQL/PostgreSQL matrix for its adapter.
 
 An environment is removed only through compatibility/release policy and published migration/support dates.
 
@@ -163,13 +166,13 @@ requires evidence and release-note classification, not a quiet test edit.
 
 ## Execution lanes
 
-| Lane              | Trigger                | Required scope                                                                                                                                                                           |
-| ----------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local             | Before handoff         | Formatting, lint, type, schemas/contracts, affected unit/property tests, build                                                                                                           |
-| Pull request      | Every change           | Clean install, local lane, architecture/public-API checks, affected integration, package pack/install, secret scan                                                                       |
-| Main              | Every merge            | Pull-request lane plus reference-host, browser smoke and generated-source verification                                                                                                   |
-| Nightly           | Scheduled/current main | Full browsers, Dart/Flutter, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, benchmarks                 |
-| Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers |
+| Lane              | Trigger                | Required scope                                                                                                                                                                               |
+| ----------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local             | Before handoff         | Formatting, lint, type, schemas/contracts, affected unit/property tests, build                                                                                                               |
+| Pull request      | Every change           | Clean install, local lane, architecture/public-API checks, affected integration, package pack/install, secret scan                                                                           |
+| Main              | Every merge            | Pull-request lane plus reference-host, browser smoke and generated-source verification                                                                                                       |
+| Nightly           | Scheduled/current main | Full browsers, Dart/Flutter, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, benchmarks                     |
+| Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe App lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers |
 
 The pull-request lane's secret scan is implemented by `scripts/check-secrets.mjs`, which executes in
 the repository check lane through `npm run contracts:check`.
@@ -224,7 +227,7 @@ Gate A quality proves the declared integration boundary is complete, internally 
 portable to generated TypeScript/Dart models, threat-reviewed and executable as conformance fixtures.
 
 Gate B quality proves those contracts are implemented and supportable in published artifacts. It includes real
-generic/Kumwe hosts, web/Flutter interfaces, extension/theme/media lifecycles, accessibility/security/performance
+generic/Kumwe App hosts, web/Flutter interfaces, extension/theme/media lifecycles, accessibility/security/performance
 matrices, migration/rollback/recovery, reproducible releases and clean-registry consumers.
 
 The exact evidence schema and reviewer rules are in [`../roadmap/evidence.md`](../roadmap/evidence.md); release

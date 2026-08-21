@@ -5,6 +5,7 @@ import {
   type PreviewErrorMessage,
   type PreviewReadyMessage,
   type PreviewRenderedMessage,
+  type PreviewRenderPayload,
 } from '@kumwe/studio-protocol';
 import {
   PreviewClient,
@@ -38,12 +39,37 @@ class Endpoint {
   }
 }
 
-function response(draftDigest = digest, sequence = 1): PreviewRenderedMessage {
+function request(
+  draftDigest = digest,
+  requestId = 'renders/1',
+  viewport = 'expanded',
+): PreviewRenderPayload {
+  return {
+    artifactId: 'blueprint-1',
+    draftDigest,
+    draftRevision: 'blueprint-r1',
+    requestId,
+    viewport,
+  };
+}
+
+function response(
+  draftDigest = digest,
+  sequence = 1,
+  requestId = 'renders/1',
+): PreviewRenderedMessage {
+  const marker = `studio.preview/node/${draftDigest}/0`;
   return {
     channelId: 'preview-channel-1',
     contractVersion: STUDIO_CONTRACT_VERSION,
     kind: 'preview-message',
-    payload: { diagnostics: [], draftDigest, markers: ['node-1'] },
+    payload: {
+      diagnostics: [],
+      draftDigest,
+      markerMap: { [marker]: 'node-1' },
+      markers: [marker],
+      requestId,
+    },
     sequence,
     sessionGeneration: 'session-r1',
     type: 'studio.preview/rendered',
@@ -112,11 +138,7 @@ describe('PreviewClient', () => {
   it('matches a canonical rendered message from the configured source and origin', async () => {
     const endpoint = new Endpoint();
     const preview = client(endpoint);
-    const result = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const result = preview.render(request());
     endpoint.emit({ data: response(), origin: 'https://example.test', source: endpoint });
 
     await expect(result).resolves.toEqual(response().payload);
@@ -126,11 +148,7 @@ describe('PreviewClient', () => {
   it('ignores a same-origin response from another source', async () => {
     const endpoint = new Endpoint();
     const preview = client(endpoint, 10);
-    const result = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const result = preview.render(request());
     endpoint.emit({ data: response(), origin: 'https://example.test', source: {} });
 
     await expect(result).rejects.toThrow(/timed out/u);
@@ -144,11 +162,7 @@ describe('PreviewClient', () => {
     preview.onMessage(() => {
       accepted += 1;
     });
-    const render = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const render = preview.render(request());
     endpoint.emit({ data: response(), origin: 'https://example.test', source: endpoint });
     endpoint.emit({ data: response(), origin: 'https://example.test', source: endpoint });
     endpoint.emit({
@@ -177,38 +191,99 @@ describe('PreviewClient', () => {
     preview.onMessage(() => {
       accepted += 1;
     });
-    const older = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
-    const newer = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: newerDigest,
-      viewport: 'expanded',
-    });
+    const older = preview.render(request(digest, 'renders/1'));
+    const newer = preview.render(request(newerDigest, 'renders/2'));
 
-    endpoint.emit({ data: response(digest, 1), origin: 'https://example.test', source: endpoint });
     endpoint.emit({
-      data: response(newerDigest, 2),
+      data: response(digest, 1, 'renders/1'),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+    endpoint.emit({
+      data: response(newerDigest, 2, 'renders/2'),
       origin: 'https://example.test',
       source: endpoint,
     });
 
     await expect(older).rejects.toThrow(/superseded/u);
-    await expect(newer).resolves.toEqual(response(newerDigest, 2).payload);
+    await expect(newer).resolves.toEqual(response(newerDigest, 2, 'renders/2').payload);
     expect(accepted).toBe(1);
+    preview.dispose();
+  });
+
+  it('correlates same-digest viewport retries by unique render request id', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint);
+    const controller = new AbortController();
+    const compact = preview.render(request(digest, 'renders/compact-1', 'compact'), {
+      signal: controller.signal,
+    });
+    controller.abort();
+    await expect(compact).rejects.toThrow(/aborted/u);
+
+    const expanded = preview.render(request(digest, 'renders/expanded-2', 'expanded'));
+    endpoint.emit({
+      data: response(digest, 1, 'renders/compact-1'),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+    endpoint.emit({
+      data: response(digest, 2, 'renders/expanded-2'),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+
+    await expect(expanded).resolves.toEqual(response(digest, 2, 'renders/expanded-2').payload);
+    preview.dispose();
+  });
+
+  it('rejects malformed outbound render and viewport payloads before posting', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint);
+
+    await expect(preview.render({ ...request(), viewport: 'constructor' })).rejects.toMatchObject({
+      code: 'studio.preview/invalid-outbound-message',
+    });
+    expect(() => preview.setViewport({ height: 239 })).toThrow(
+      expect.objectContaining({ code: 'studio.preview/invalid-outbound-message' }),
+    );
+    expect(() => preview.setViewport({ viewport: 'constructor' })).toThrow(
+      expect.objectContaining({ code: 'studio.preview/invalid-outbound-message' }),
+    );
+    expect(endpoint.posted).toBeUndefined();
+    preview.dispose();
+  });
+
+  it('rejects an in-flight measurement before posting a viewport change', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint, 10);
+    const render = preview.render(request());
+    endpoint.emit({
+      data: response(),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+    await render;
+
+    const marker = `studio.preview/node/${digest}/0`;
+    const measure = preview.measure({ markers: [marker], requestId: 'measure-1' });
+    preview.setViewport({ width: 1280 });
+
+    await expect(measure).rejects.toMatchObject({
+      code: 'studio.preview/measure-viewport-changed',
+      retryable: true,
+    });
+    expect(endpoint.posted).toMatchObject({
+      payload: { width: 1280 },
+      type: 'studio.preview/viewport',
+    });
     preview.dispose();
   });
 
   it('applies a correlated error only to the matching render', async () => {
     const endpoint = new Endpoint();
     const preview = client(endpoint, 10);
-    const render = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const render = preview.render(request());
 
     endpoint.emit({
       data: errorResponse('unrelated-render', 1),
@@ -216,12 +291,51 @@ describe('PreviewClient', () => {
       source: endpoint,
     });
     endpoint.emit({
-      data: errorResponse(digest, 2),
+      data: errorResponse('renders/1', 2),
       origin: 'https://example.test',
       source: endpoint,
     });
 
     await expect(render).rejects.toThrow('Render failed.');
+    preview.dispose();
+  });
+
+  it('fails a request-id match carrying a different draft digest without timing out', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint, 10);
+    const render = preview.render(request());
+
+    endpoint.emit({
+      data: response(newerDigest, 1, 'renders/1'),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+
+    await expect(render).rejects.toMatchObject({
+      code: 'studio.preview/render-correlation-mismatch',
+    });
+    preview.dispose();
+  });
+
+  it('snapshots render correlation before the caller can mutate its payload', async () => {
+    const endpoint = new Endpoint();
+    const preview = client(endpoint, 10);
+    const mutableRequest = request();
+    const render = preview.render(mutableRequest);
+
+    mutableRequest.requestId = 'renders/mutated';
+    mutableRequest.draftDigest = newerDigest;
+
+    expect(endpoint.posted).toMatchObject({
+      payload: { draftDigest: digest, requestId: 'renders/1' },
+    });
+    endpoint.emit({
+      data: response(digest, 1, 'renders/1'),
+      origin: 'https://example.test',
+      source: endpoint,
+    });
+
+    await expect(render).resolves.toMatchObject({ draftDigest: digest, requestId: 'renders/1' });
     preview.dispose();
   });
 

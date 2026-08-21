@@ -14,7 +14,7 @@ semantics and canonical fixtures outrank generated types and runtime-specific co
 
 ## Runtime boundaries
 
-- `@kumwe/studio-protocol` and the headless core do not import DOM, Lit, HTTP, storage, Node-only APIs, Kumwe,
+- `@kumwe/studio-protocol` and the headless core do not import DOM, Lit, HTTP, storage, Node-only APIs, Kumwe App,
   Twig, Flutter, or a host framework.
 - Browser packages use standards-based ES modules and Web Components. Node is a build/test/release tool, not
   a required production server.
@@ -92,7 +92,7 @@ Gate B additionally requires:
 2. Migration and error outcomes match on valid, invalid, old-version and malicious fixtures.
 3. npm and pub.dev packages install into clean, unrelated consumers.
 4. Web and native Flutter authoring shells preserve unknown data and negotiate capabilities correctly.
-5. A non-Kumwe host integrates from public packages and documentation alone.
+5. A host unrelated to Kumwe App integrates from public packages and documentation alone.
 6. A non-Twig renderer proves artifact/renderer independence for its declared block/theme profile.
 7. Package/version manifests identify the exact tested cross-runtime set.
 

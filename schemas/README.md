@@ -19,21 +19,25 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 
 ## Schemas
 
-| File                                                             | Contract                                                 |
-| ---------------------------------------------------------------- | -------------------------------------------------------- |
-| [`common.schema.json`](common.schema.json)                       | Shared identifiers, references, messages and diagnostics |
-| [`studio-config.schema.json`](studio-config.schema.json)         | Resolved serializable session configuration              |
-| [`content-model.schema.json`](content-model.schema.json)         | Portable content-model definition                        |
-| [`entry.schema.json`](entry.schema.json)                         | Typed-model entry envelope and values                    |
-| [`blueprint.schema.json`](blueprint.schema.json)                 | Composition tree, bindings and dependency locks          |
-| [`theme.schema.json`](theme.schema.json)                         | Theme design profile and renderer compatibility          |
-| [`block-definition.schema.json`](block-definition.schema.json)   | Block properties, slots, ports and authoring metadata    |
-| [`plugin-manifest.schema.json`](plugin-manifest.schema.json)     | Declarative plugin inventory and requirements            |
-| [`host-capabilities.schema.json`](host-capabilities.schema.json) | Host port and limit negotiation                          |
-| [`command.schema.json`](command.schema.json)                     | Persistent authoring command envelopes                   |
-| [`preview-message.schema.json`](preview-message.schema.json)     | Isolated preview channel messages                        |
-| [`media-asset.schema.json`](media-asset.schema.json)             | Host-owned media catalogue projection                    |
-| [`media-reference.schema.json`](media-reference.schema.json)     | Small usage-specific media value persisted in artifacts  |
+| File                                                                     | Contract                                                 |
+| ------------------------------------------------------------------------ | -------------------------------------------------------- |
+| [`common.schema.json`](common.schema.json)                               | Shared identifiers, references, messages and diagnostics |
+| [`studio-config.schema.json`](studio-config.schema.json)                 | Resolved serializable session configuration              |
+| [`content-model.schema.json`](content-model.schema.json)                 | Portable content-model definition                        |
+| [`entry.schema.json`](entry.schema.json)                                 | Typed-model entry envelope and values                    |
+| [`blueprint.schema.json`](blueprint.schema.json)                         | Composition tree, bindings and dependency locks          |
+| [`theme.schema.json`](theme.schema.json)                                 | Theme design profile and renderer compatibility          |
+| [`block-definition.schema.json`](block-definition.schema.json)           | Block properties, slots, ports and authoring metadata    |
+| [`plugin-manifest.schema.json`](plugin-manifest.schema.json)             | Declarative plugin inventory and requirements            |
+| [`schema-profile.schema.json`](schema-profile.schema.json)               | Admitted property-schema meta-schema                     |
+| [`schema-profile-vector.schema.json`](schema-profile-vector.schema.json) | Portable property-schema conformance vectors             |
+| [`host-capabilities.schema.json`](host-capabilities.schema.json)         | Host port and limit negotiation                          |
+| [`host-sequence-vector.schema.json`](host-sequence-vector.schema.json)   | Ordered stateful host conformance exchanges              |
+| [`command.schema.json`](command.schema.json)                             | Persistent authoring command envelopes                   |
+| [`preview-message.schema.json`](preview-message.schema.json)             | Isolated preview channel messages                        |
+| [`preview-vector.schema.json`](preview-vector.schema.json)               | Portable render, draft-digest and marker assertions      |
+| [`media-asset.schema.json`](media-asset.schema.json)                     | Host-owned media catalogue projection                    |
+| [`media-reference.schema.json`](media-reference.schema.json)             | Small usage-specific media value persisted in artifacts  |
 
 ## Validation scope
 
@@ -47,6 +51,6 @@ Three independent version axes apply to the canonical files:
 | -------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- |
 | Schema epoch URI           | `$id` under `https://schemas.kumwe.org/studio/v1/`            | Intended major schema family and reference base                       |
 | Document contract revision | `contractVersion: "0.1-draft"`                                | Exact shape and normative semantics of a document or message envelope |
-| Wire protocol version      | `protocolVersion: "0.1.0-draft.1"` in a resolved StudioConfig | Negotiated host-port and preview-channel behavior                     |
+| Wire protocol version      | `protocolVersion: "0.1.0-draft.2"` in a resolved StudioConfig | Negotiated host-port and preview-channel behavior                     |
 
 The axes MUST NOT be compared, substituted, or inferred from one another. The `v1` URI is a development target until Gate A ratifies the epoch. Prior to ratification, releases remain prerelease and consumers pin exact versions. Gate A freezes the ratified schema bytes, replaces the draft document discriminator through an explicit ratification release, and declares the supported wire-version range. The URI must not be silently reused for a breaking post-ratification change.

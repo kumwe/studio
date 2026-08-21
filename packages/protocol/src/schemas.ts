@@ -13,6 +13,7 @@ import hostOperationsSchemaDocument from '../schemas/host-operations.schema.json
 import hostRequestSchemaDocument from '../schemas/host-request.schema.json' with { type: 'json' };
 import hostResultSchemaDocument from '../schemas/host-result.schema.json' with { type: 'json' };
 import hostVectorSchemaDocument from '../schemas/host-vector.schema.json' with { type: 'json' };
+import hostSequenceVectorSchemaDocument from '../schemas/host-sequence-vector.schema.json' with { type: 'json' };
 import inspectorSchemaDocument from '../schemas/inspector.schema.json' with { type: 'json' };
 import mediaAssetSchemaDocument from '../schemas/media-asset.schema.json' with { type: 'json' };
 import mediaReferenceSchemaDocument from '../schemas/media-reference.schema.json' with { type: 'json' };
@@ -22,9 +23,11 @@ import migrationSchemaDocument from '../schemas/migration.schema.json' with { ty
 import patternSchemaDocument from '../schemas/pattern.schema.json' with { type: 'json' };
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
 import previewMessageSchemaDocument from '../schemas/preview-message.schema.json' with { type: 'json' };
+import previewVectorSchemaDocument from '../schemas/preview-vector.schema.json' with { type: 'json' };
 import provenanceSchemaDocument from '../schemas/provenance.schema.json' with { type: 'json' };
 import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
 import schemaProfileSchemaDocument from '../schemas/schema-profile.schema.json' with { type: 'json' };
+import schemaProfileVectorSchemaDocument from '../schemas/schema-profile-vector.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
 import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'json' };
 import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribution.schema.json' with { type: 'json' };
@@ -45,6 +48,7 @@ export const hostOperationsSchema: JsonSchema = hostOperationsSchemaDocument;
 export const hostRequestSchema: JsonSchema = hostRequestSchemaDocument;
 export const hostResultSchema: JsonSchema = hostResultSchemaDocument;
 export const hostVectorSchema: JsonSchema = hostVectorSchemaDocument;
+export const hostSequenceVectorSchema: JsonSchema = hostSequenceVectorSchemaDocument;
 export const inspectorSchema: JsonSchema = inspectorSchemaDocument;
 export const mediaAssetSchema: JsonSchema = mediaAssetSchemaDocument;
 export const mediaReferenceSchema: JsonSchema = mediaReferenceSchemaDocument;
@@ -54,9 +58,11 @@ export const migrationSchema: JsonSchema = migrationSchemaDocument;
 export const patternSchema: JsonSchema = patternSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
 export const previewMessageSchema: JsonSchema = previewMessageSchemaDocument;
+export const previewVectorSchema: JsonSchema = previewVectorSchemaDocument;
 export const provenanceSchema: JsonSchema = provenanceSchemaDocument;
 export const richTextSchema: JsonSchema = richTextSchemaDocument;
 export const schemaProfileSchema: JsonSchema = schemaProfileSchemaDocument;
+export const schemaProfileVectorSchema: JsonSchema = schemaProfileVectorSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
 export const themeSchema: JsonSchema = themeSchemaDocument;
 export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSchemaDocument;
@@ -77,6 +83,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   hostRequestSchema,
   hostResultSchema,
   hostVectorSchema,
+  hostSequenceVectorSchema,
   inspectorSchema,
   mediaAssetSchema,
   mediaReferenceSchema,
@@ -86,9 +93,11 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   patternSchema,
   pluginManifestSchema,
   previewMessageSchema,
+  previewVectorSchema,
   provenanceSchema,
   richTextSchema,
   schemaProfileSchema,
+  schemaProfileVectorSchema,
   studioConfigurationSchema,
   themeSchema,
   unresolvedContributionSchema,

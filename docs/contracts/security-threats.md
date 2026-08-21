@@ -35,7 +35,9 @@ breaking change to recorded evidence.
 - TH-005 is additionally covered by the rich-text hard limits, canonical serialization depth
   bounds, and the schema-profile complexity limits.
 - TH-007 is additionally covered by the preview client suite (replayed sequences, wrong origin,
-  wrong channel) and the reload/teardown semantics.
+  wrong channel), canonical digest/marker vectors, exact inventory parity, invented and revoked
+  activation rejection, foreign measurement rejection, session-unique attempt IDs, and
+  generation-checked abort/dispose/reload/teardown semantics.
 - TH-008 is enforced by the canonical lexical external-URL policy in
   `packages/core/src/url-policy.ts` and additionally covered by the testbed external-import
   drill in `packages/testkit/test/media-import-policy.test.ts`; DNS-rebinding defence and

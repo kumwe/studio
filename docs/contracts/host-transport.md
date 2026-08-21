@@ -49,7 +49,7 @@ The body conforms to `host-request.schema.json`:
   "arguments": { "id": "blueprints/landing", "version": "1.0.0" },
   "context": {
     "operationId": "studio.operation/artifact.load",
-    "protocolVersion": "0.1.0-draft.1",
+    "protocolVersion": "0.1.0-draft.2",
     "requestId": "requests/9f2c",
     "resourceContextKey": "contexts/site-4",
     "sessionGeneration": "session-r7"

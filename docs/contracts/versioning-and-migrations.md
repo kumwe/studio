@@ -6,20 +6,20 @@ Studio distinguishes:
 
 - **Schema epoch URI:** the major compatibility family in a canonical schema `$id`, currently the unratified `/studio/v1/` target.
 - **Document contract revision:** the exact discriminator carried as `contractVersion`, currently the non-SemVer draft value `0.1-draft`.
-- **Wire protocol version:** the SemVer version negotiated for cross-process host and preview messages, currently `0.1.0-draft.1`.
+- **Wire protocol version:** the SemVer version negotiated for cross-process host and preview messages, currently `0.1.0-draft.2`.
 - **Artifact semantic version:** owner-declared meaning and compatibility of a model, Blueprint, theme, block, or plugin.
 - **Artifact revision:** immutable exact persisted state.
 - **Package version:** npm distribution version.
 - **Plugin API version:** a Gate A target axis for compatibility with the public registration/runtime API; it is not yet carried by the `0.1-draft` plugin manifest.
 - **Session generation:** immutable resolved inventory of permissions, limits, plugins and capabilities.
 
-These identifiers are independent and MUST NOT be compared or substituted. In particular, `/v1/` does not mean that the project has released version 1, `0.1-draft` is not a negotiated protocol SemVer, and `0.1.0-draft.1` does not select an artifact schema.
+These identifiers are independent and MUST NOT be compared or substituted. In particular, `/v1/` does not mean that the project has released version 1, `0.1-draft` is not a negotiated protocol SemVer, and `0.1.0-draft.2` does not select an artifact schema.
 
 | Axis                       | Current draft value                         | Used for                                                                     |
 | -------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------- |
 | Schema epoch URI           | `https://schemas.kumwe.org/studio/v1/...`   | Names the intended major schema family and reference base                    |
 | Document contract revision | `0.1-draft`                                 | Selects the exact JSON shape and semantics of each document/message envelope |
-| Wire protocol version      | `0.1.0-draft.1`                             | Negotiates request/response and preview-channel behavior                     |
+| Wire protocol version      | `0.1.0-draft.2`                             | Negotiates request/response and preview-channel behavior                     |
 | npm package version        | `0.1.0-alpha.0` for the foundation packages | Resolves implementation artifacts; never appears as a document discriminator |
 
 The current plugin manifest intentionally has no general `studioVersions` range. Before Gate A, hosts pin an exact tested release set. Gate A must ratify a separately identified plugin API version before the manifest can declare a range; document and wire compatibility remain their own axes.
@@ -35,7 +35,7 @@ A resolved StudioConfig carries both `contractVersion` and `protocolVersion`:
 - every host-port exchange and preview handshake for that session uses the selected wire version; and
 - a session fails before write mode when there is no common wire version or a document contract revision is unsupported.
 
-Session generation changes do not change either version axis. A host may advertise newer wire versions in its capabilities, but the current alpha implementation supports only `0.1.0-draft.1`.
+Session generation changes do not change either version axis. A host may advertise newer wire versions in its capabilities, but the current alpha implementation supports only `0.1.0-draft.2`.
 
 ## Semantic compatibility
 

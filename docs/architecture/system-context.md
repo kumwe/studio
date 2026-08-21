@@ -54,8 +54,8 @@ Studio crosses five explicit trust boundaries:
 3. A trusted renderer maps typed nodes and semantic design choices to output.
 4. Optional progressive enhancement loads independently of Studio.
 
-## Kumwe as reference host
+## Kumwe App as reference host
 
-Kumwe CMS should implement the host and renderer contracts while preserving its own inward dependency direction. Studio packages must not import Kumwe PHP, Twig, route, database, or extension types. Kumwe should adapt its content definitions, business definitions, contribution registry, media service, authorization, workflows, revisions, and Twig presentation into the public Studio contracts.
+Kumwe App should implement the host and renderer contracts while preserving its own inward dependency direction. Studio packages must not import Kumwe App PHP, Twig, route, database, or extension types. Kumwe App should adapt its content definitions, business definitions, contribution registry, media service, authorization, workflows, revisions, and Twig presentation into the public Studio contracts.
 
 For business records, a blueprint binds to typed fields and authorized query or action references. The blueprint is presentation metadata; it is not the authoritative business record store.

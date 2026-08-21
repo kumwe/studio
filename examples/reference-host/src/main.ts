@@ -1,4 +1,5 @@
 import { defineKumweStudio, type KumweStudioElement } from '@kumwe/studio';
+import { BlockRegistry } from '@kumwe/studio-core';
 import { PreviewClient } from '@kumwe/studio-preview';
 import {
   STUDIO_CONTRACT_VERSION,
@@ -8,8 +9,8 @@ import {
   type BlueprintNode,
   type ExperimentalShellConfiguration,
 } from '@kumwe/studio-protocol';
-import { computeDraftDigest } from './draft-digest.js';
 import { createPreviewChannel } from './preview-channel.js';
+import { ReferenceDraftStore } from './reference-draft-store.js';
 import { connectReferenceRenderer } from './reference-renderer.js';
 import { referenceTheme } from './reference-theme.js';
 import './style.css';
@@ -29,6 +30,7 @@ const blocks: BlockDefinition[] = [
   ]),
   defineBlock('studio.core/text', 'Text'),
 ];
+const blockRegistry = new BlockRegistry(blocks);
 
 const configuration: ExperimentalShellConfiguration = {
   blockDefinitions: blocks,
@@ -181,17 +183,16 @@ studio.viewports = referenceTheme.viewports;
 const pageOrigin = window.location.origin;
 const previewChannelId = crypto.randomUUID();
 const sessionGeneration = configuration.session.sessionGeneration;
-// Digest-keyed draft store: the render request carries only the digest (the
-// contract's bounded draft payload reference); the renderer resolves the
-// composition back through this host-owned seam.
-const draftStore = new Map<string, BlueprintDocument>();
+// The host-owned store binds the complete artifact/revision/digest tuple and
+// validates every staged and resolved snapshot with Studio's public validator.
+const draftStore = new ReferenceDraftStore(blockRegistry);
 const channel = createPreviewChannel(pageOrigin);
 
 const rendererHost = connectReferenceRenderer({
   channelId: previewChannelId,
   endpoint: channel.rendererEndpoint,
   origin: pageOrigin,
-  resolveDraft: (draftDigest) => draftStore.get(draftDigest),
+  resolveDraft: (payload) => draftStore.resolve(payload),
   sessionGeneration,
   surface: previewSurface,
   theme: referenceTheme,
@@ -213,6 +214,7 @@ previewClient.onMessage((message) => {
 let latestMarkerMap: Record<string, string> = {};
 let selectedNodeId: string | undefined;
 let measureSerial = 0;
+let renderSerial = 0;
 let renderChain: Promise<void> = Promise.resolve();
 
 rendererHost.announce();
@@ -262,16 +264,17 @@ async function performRender(): Promise<void> {
   if (draft === undefined || viewport === undefined) {
     return;
   }
-  const draftDigest = await computeDraftDigest(JSON.stringify(draft));
-  storeDraft(draftDigest, draft);
   try {
+    const staged = await draftStore.stage(draft);
+    renderSerial += 1;
     const rendered = await previewClient.render({
-      artifactId: draft.id,
-      draftDigest,
-      draftRevision: draft.revision,
+      artifactId: staged.artifactId,
+      draftDigest: staged.draftDigest,
+      draftRevision: staged.draftRevision,
+      requestId: `renders/reference-${renderSerial}`,
       viewport,
     });
-    latestMarkerMap = rendered.markerMap ?? {};
+    latestMarkerMap = rendered.markerMap;
     previewStatus.textContent =
       `Preview: studio.renderer/reference rendered ${rendered.markers.length} ` +
       `region(s) at the ${viewport} viewport.`;
@@ -282,17 +285,6 @@ async function performRender(): Promise<void> {
     }
     // Degraded mode: authoring continues; the preview is marked, not hidden.
     previewStatus.textContent = 'Preview is unavailable.';
-  }
-}
-
-function storeDraft(draftDigest: string, draft: BlueprintDocument): void {
-  draftStore.set(draftDigest, draft);
-  while (draftStore.size > 4) {
-    const oldest = draftStore.keys().next().value;
-    if (oldest === undefined) {
-      break;
-    }
-    draftStore.delete(oldest);
   }
 }
 
@@ -385,7 +377,15 @@ function defineBlock(
     label: { defaultMessage: label, key: 'studio.reference/block-label' },
     owner: { id: 'studio.reference/blocks', version: '0.1.0' },
     ports: [],
-    propertySchema: { type: 'object' },
+    propertySchema:
+      type === 'studio.core/text'
+        ? {
+            additionalProperties: false,
+            properties: { text: { maxLength: 10_000, type: 'string' } },
+            required: ['text'],
+            type: 'object',
+          }
+        : { additionalProperties: false, type: 'object' },
     rendererRequirements: [
       { capability: 'studio.renderer/reference', surface: 'preview', versions: '^0.1.0' },
     ],

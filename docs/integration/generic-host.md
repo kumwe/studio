@@ -1,6 +1,6 @@
 # Generic host integration guide
 
-This guide describes how an unrelated application embeds Studio without importing Kumwe-specific code. It is
+This guide describes how an unrelated application embeds Studio without importing Kumwe App-specific code. It is
 both an implementation sequence and the basis of the generic-host conformance profile.
 
 The adapter's obligations are executable: replay the canonical host conformance corpus published as
@@ -96,7 +96,7 @@ The host maps validated block/theme contracts to trusted renderers. Rendering ob
 2. Revalidate the artifact and pin exact dependency versions.
 3. Resolve only authorized values and references.
 4. Produce escaped, accessible output with bounded enhancement assets.
-5. Add opaque node markers only in authoring preview.
+5. Add canonical draft-scoped node markers only in authoring preview, in Blueprint preorder with an exact map.
 6. Never evaluate code, templates, selectors, SQL, or remote origins from an artifact.
 7. Return structured render diagnostics without exposing secrets or hidden values.
 
@@ -111,9 +111,10 @@ A browser preview bridge must:
 - use an authenticated, short-lived preview grant scoped to actor, resource and revision;
 - reject wildcard origins, unsolicited messages, stale generations and replayed grants;
 - validate every message shape and size;
+- resolve, validate and canonically hash the complete staged draft before rendering;
 - acknowledge updates with the rendered revision/checksum;
 - isolate navigation, forms, downloads, pop-ups and external network access according to host policy;
-- expose only opaque node markers and approved geometry/events; and
+- expose only the canonical current marker inventory and approved geometry/events, rejecting stale activation; and
 - time out into a visible stale-preview state while outline/inspector editing remains available.
 
 Cross-origin preview is deny-by-default and requires an explicit capability plus an equivalent security proof.

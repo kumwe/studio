@@ -7,7 +7,7 @@ Start with:
 
 - [`generic-host.md`](generic-host.md) for the implementation-neutral integration sequence and conformance
   obligations;
-- [`kumwe-cms.md`](kumwe-cms.md) for the first-party Kumwe CMS profile;
+- [`kumwe-app.md`](kumwe-app.md) for the first-party Kumwe App profile;
 - [`../portability/README.md`](../portability/README.md) for language/runtime rules; and
 - [`../media/README.md`](../media/README.md) for the media ownership boundary.
 
@@ -61,7 +61,7 @@ authority.
 | `extensions`              | Owner-aware contribution generation with lifecycle and unresolved-node handling                  |
 | `native-dart`             | Generated Dart models and equivalent applicable commands/fixtures                                |
 | `flutter-authoring`       | Native Flutter shell using the portable protocol and host ports, not a hidden browser dependency |
-| `kumwe-cms`               | Kumwe-specific security, Twig, KIS, extension, revision, translation and recovery rules          |
+| `kumwe-app`               | Kumwe App-specific security, Twig, KIS, extension, revision, translation and recovery rules      |
 
 A host publishes the profiles and capability versions it supports. Marketing language must not imply a profile
 that has not passed its conformance suite.

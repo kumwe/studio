@@ -273,7 +273,11 @@ describe('Studio core', () => {
         new BlockRegistry([
           {
             ...textBlock,
-            propertySchema: { pattern: '(a+)+$', type: 'string' },
+            propertySchema: {
+              additionalProperties: false,
+              pattern: '(a+)+$',
+              type: 'object',
+            },
           },
         ]),
     ).toThrow(/pattern.*not allowed/u);
@@ -282,21 +286,32 @@ describe('Studio core', () => {
         new BlockRegistry([
           {
             ...textBlock,
-            propertySchema: { $ref: 'https://untrusted.example/schema.json' },
+            propertySchema: {
+              $ref: 'https://untrusted.example/schema.json',
+              additionalProperties: false,
+              type: 'object',
+            },
           },
         ]),
     ).toThrow(/local JSON Pointer reference/u);
   });
 
   it.each<unknown>([
-    JSON.parse('{"type":"object","properties":{"__proto__":{"type":"string"}}}') as unknown,
     JSON.parse(
-      '{"type":"object","default":{"safe":{"constructor":{"prototype":true}}}}',
+      '{"additionalProperties":false,"type":"object","properties":{"__proto__":{"type":"string"}}}',
     ) as unknown,
-    JSON.parse('{"type":"object","examples":[{"safe":{"__proto__":true}}]}') as unknown,
-    { default: { 'control\u0000character': true }, type: 'object' },
-    { default: { ['x'.repeat(241)]: true }, type: 'object' },
-    { properties: { '': { type: 'string' } }, type: 'object' },
+    JSON.parse(
+      '{"additionalProperties":false,"type":"object","default":{"safe":{"constructor":{"prototype":true}}}}',
+    ) as unknown,
+    JSON.parse(
+      '{"additionalProperties":false,"type":"object","examples":[{"safe":{"__proto__":true}}]}',
+    ) as unknown,
+    {
+      additionalProperties: false,
+      default: { 'control\u0000character': true },
+      type: 'object',
+    },
+    { additionalProperties: false, properties: { '': { type: 'string' } }, type: 'object' },
   ])('rejects unsafe member names anywhere in a contributed schema', (propertySchema) => {
     expect(
       () =>
@@ -307,6 +322,22 @@ describe('Studio core', () => {
           },
         ]),
     ).toThrow(/forbidden object member name/u);
+  });
+
+  it('classifies an over-length contributed member name as a limit failure', () => {
+    expect(
+      () =>
+        new BlockRegistry([
+          {
+            ...textBlock,
+            propertySchema: {
+              additionalProperties: false,
+              default: { ['x'.repeat(201)]: true },
+              type: 'object',
+            },
+          },
+        ]),
+    ).toThrow(/member name longer than 200 characters/u);
   });
 
   it('rejects recursive contributed property schemas before compilation', () => {

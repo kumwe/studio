@@ -2,7 +2,7 @@
 
 This directory defines the architecture of Studio, a host-neutral visual composition system built with strict TypeScript and Lit. Studio lets a person model data, compose reusable blueprints, bind fields, author entries in context, and preview the result without storing executable HTML, CSS, JavaScript, template source, or host-specific class names in portable artifacts.
 
-The architecture deliberately separates the reusable authoring product from any particular CMS, renderer, database, or application framework. Kumwe CMS is the reference host and the first integration target, but every host reaches Studio through the same public contracts.
+The architecture deliberately separates the reusable authoring product from any particular CMS, renderer, database, or application framework. Kumwe App is the reference host and the first integration target, but every host reaches Studio through the same public contracts.
 
 ## Reading order
 
