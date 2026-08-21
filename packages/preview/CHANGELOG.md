@@ -1,5 +1,22 @@
 # @kumwe/studio-preview
 
+## 0.1.0-alpha.6
+
+### Minor Changes
+
+- [#24](https://github.com/kumwe/studio/pull/24) [`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Define portable preview draft identity and marker semantics for wire protocol `0.1.0-draft.2`:
+  canonical artifact SHA-256 helpers, deterministic draft-scoped marker preorder, exact marker-map parity,
+  inventory-safe activation and measurement, session-unique render correlation, generation-checked abort
+  and disposal handling, viewport-safe geometry invalidation, a closed message vocabulary, exact
+  viewport guards, validated artifact/revision/digest staging, and a published cross-runtime preview
+  identity corpus.
+
+### Patch Changes
+
+- Updated dependencies [[`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0), [`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0), [`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.6
+  - @kumwe/studio-core@0.1.0-alpha.8
+
 ## 0.1.0-alpha.5
 
 ### Minor Changes

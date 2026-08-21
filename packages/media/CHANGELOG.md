@@ -1,5 +1,12 @@
 # @kumwe/studio-media
 
+## 0.1.0-alpha.7
+
+### Patch Changes
+
+- Updated dependencies [[`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0), [`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0), [`ee13122`](https://github.com/kumwe/studio/commit/ee13122787e11c56924173790b6742231eddd3a0)]:
+  - @kumwe/studio-protocol@0.1.0-alpha.6
+
 ## 0.1.0-alpha.6
 
 ### Patch Changes
