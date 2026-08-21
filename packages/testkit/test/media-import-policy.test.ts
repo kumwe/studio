@@ -87,7 +87,7 @@ const ssrfCases: SsrfCase[] = [
 
 describe('Testbed external media import policy', () => {
   it('rejects one SSRF-shaped source per rejection reason with the canonical error', async () => {
-    const testbed = createTestbedHost();
+    const testbed = createTestbedHost({ allowTestOperationId: true });
     const media = requireMediaPort(testbed);
 
     for (const ssrfCase of ssrfCases) {
@@ -105,7 +105,7 @@ describe('Testbed external media import policy', () => {
   });
 
   it('accepts allowed https sources and mints deterministic processing assets', async () => {
-    const testbed = createTestbedHost();
+    const testbed = createTestbedHost({ allowTestOperationId: true });
     const media = requireMediaPort(testbed);
 
     const first = await testbed.controls.importExternalMedia(
@@ -136,7 +136,7 @@ describe('Testbed external media import policy', () => {
   });
 
   it('runs the drill under the same request guards as the wire ports', async () => {
-    const testbed = createTestbedHost();
+    const testbed = createTestbedHost({ allowTestOperationId: true });
     const allowed = 'https://cdn.example.com/hero-image.png';
 
     testbed.controls.failNext('media', 'import-external', 'forbidden');
@@ -161,7 +161,7 @@ describe('Testbed external media import policy', () => {
   });
 
   it('produces failures the host error guard accepts for every taxonomy reason', async () => {
-    const testbed = createTestbedHost();
+    const testbed = createTestbedHost({ allowTestOperationId: true });
 
     for (const ssrfCase of ssrfCases) {
       let caught: unknown;

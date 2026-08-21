@@ -1,7 +1,23 @@
 # Studio reference host
 
-A deliberately small Vite development harness for the experimental Lit shell. It exercises the
-current configuration projection and DOM events, but does not yet prove the canonical host-adapter
-boundary or claim host conformance. It is not a production CMS adapter.
+This deliberately small, standalone Vite host exercises the current Lit authoring shell,
+deterministic command path, viewport and theme projections, and the origin-pinned canonical preview
+channel against a real reference renderer. It needs no external service and stores no user data.
+Its bounded in-memory preview store validates complete drafts with `validateBlueprint` before hashing,
+storing, and resolving them; keys include artifact ID, revision, and digest. The renderer recomputes
+identity, verifies its node map against canonical preorder, and cooperates with render cancellation.
 
-Run `npm run dev --workspace @kumwe/studio-reference-host` from the repository root.
+From the repository root:
+
+```bash
+npm ci
+npm run dev
+```
+
+Open the URL Vite prints, normally `http://localhost:5173`. To smoke-test the generated bundle under
+the pinned Content Security Policy, run `npm start` instead.
+
+The harness proves that the packages compose into a runnable local product slice. It does not claim a
+production host profile: authentication, authorization, durable persistence, audit, media custody,
+publication, and operational recovery belong to a real host such as Kumwe App and remain outside this
+browser-only example.

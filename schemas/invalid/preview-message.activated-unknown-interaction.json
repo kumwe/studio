@@ -10,7 +10,7 @@
     "type": "studio.preview/activated",
     "payload": {
       "interaction": "hover",
-      "marker": "node-1"
+      "marker": "studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0"
     }
   }
 }

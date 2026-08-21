@@ -7,5 +7,5 @@
     "tsBuildInfoFile": "../../.cache/tsbuildinfo/preview.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../protocol" }]
+  "references": [{ "path": "../protocol" }, { "path": "../core" }]
 }

@@ -8,14 +8,87 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Stateful host conformance (M3-03, M2-04)
+
+- `studio.profile/host-baseline-v2` adds nine portable sequence vectors without widening the original
+  baseline. They execute in-flight and completed idempotent replay, changed argument/context refusal,
+  canonical numeric intent, resource-scope separation, wrong-operation refusal, fixed-window reset and
+  failed-attempt retry, plus matching and cross-context preview cancellation with an explicit late
+  renderer completion.
+- The sequence schema now carries the exact idempotency scope and intent preimage, explicit logical
+  clock and renderer controls, and assertion tags. Contract semantic guards reject duplicate seeds or
+  rate policies, invalid/double settlements, unclosed pending work, wrong renderer releases, and bad
+  final revision references; embedded negative drills keep those checks live.
+- The deterministic reference host preserves supplied artifact revisions, kinds, statuses, and session
+  generation, then advances new revisions predictably. Its runtime, public replay tests, generated
+  schemas/corpora, integrity manifest, ADR, evidence guidance, and release changeset move together.
+  Gate counts remain unchanged until independent evidence is reproduced.
+
+### Portable preview draft identity and lifecycle (M3-04, M2-06, M2-07)
+
+- The negotiated preview wire advances to `0.1.0-draft.2`: a draft digest is SHA-256 over the
+  canonical UTF-8 artifact bytes, and the portable preview corpus fixes that digest plus the
+  deterministic, digest-scoped marker preorder. Every rendered result carries an exact one-to-one
+  marker map; activation and measurement accept only the latest live inventory.
+- Render attempts carry session-unique request IDs as well as private generations. Supersession,
+  matching disposal, reload, teardown, local cancellation, and viewport changes abort the callback
+  and invalidate its generation, so a late or same-digest settlement cannot satisfy a newer attempt or
+  publish stale geometry. The responder remains DOM-free and exposes cancellation through
+  `AbortSignal` without trusting callback cooperation.
+- The closed draft.2 schemas, guards, reference host, ADR, contract, fixtures, and release changeset
+  move together. The reference host stages only a semantically valid artifact whose ID, revision, and
+  canonical digest agree with the request; this implementation and corpus do not by themselves
+  advance the programme gate.
+
+### Portable property-schema profile (M2-01, M2-03, M2-06, M2-07)
+
+- `studio.profile/schema-property` defines the language-neutral admission and instance boundary for a
+  contributed block's canonical `propertySchema`. It fixes a closed object root, local non-recursive
+  JSON Pointer references, exact decimal `multipleOf`, deterministic diagnostic precedence, canonical
+  UTF-8 size accounting, bounded schema and embedded-JSON depth and size, and the supported keyword
+  vocabulary.
+- Core exposes an eval-free compiler with stable codes and schema pointers. Admission measures
+  canonical bytes iteratively before sorting attacker-controlled maps, bounds the admitted graph, and
+  memoizes reference-DAG evaluation, so shared or adversarial references cannot amplify validation
+  without limit while distinct diagnostics remain deterministic.
+- The published profile schema, exact-limit and one-over corpus pairs, hostile fan-out/combined-depth
+  cases, runner, ADR, documentation, tests, and changeset are versioned together. Cross-runtime replay
+  and independent evidence are still required before a conformance or gate claim is accepted.
+
+### One-command standalone reference host (M4-01, M3-04)
+
+- A clean checkout now has standard root entry points for the runnable product slice: `npm run dev`
+  starts the live Vite reference host, while `npm start` builds the complete workspace and serves the
+  generated bundle under the pinned Content Security Policy. The setup documentation uses the
+  lockfile-reproducible `npm ci` path and distinguishes this local development harness from the
+  authoritative services an integrating host must supply.
+
+### Kumwe App reference-host identity (M3-05)
+
+- Studio now names its first-party reference host **Kumwe App** and links to its canonical
+  [`kumwe/app`](https://github.com/kumwe/app) repository throughout the current architecture,
+  governance, media, roadmap, and integration guidance. The integration profile is `kumwe-app`, and
+  its playbook is `docs/integration/kumwe-app.md`; no current Studio contract or guide retains the
+  superseded product or repository name.
+- Canonical example capabilities and session configuration use the matching owner-scoped host
+  identifier `org.kumwe/app`. This is an example/corpus identity correction only: Studio remains
+  host-neutral and no generic package imports Kumwe App implementation types.
+- The Kumwe App playbook records the downstream contract mismatch found in the renamed core: frozen
+  manifest 5 / SPI 3 paraphrases all six contribution families through host-native declarations, not
+  canonical Studio resources. Kumwe App must preserve that legacy generation and add manifest 6 /
+  SPI 4 carrying canonical `block-definition`, `pattern`, `field-adapter`, `inspector`,
+  `design-vocabulary`, and `migration` documents, with host bindings kept separate, exact schema and
+  corpus validation, and only deterministic lossless legacy adaptation.
+
 ### A verifiable corpus (M1-04, M2-06)
 
 - The published corpus becomes verifiable rather than assumed. `corpus-manifest.json` ships in
-  `@kumwe/studio-testkit` carrying the sha256 digest of all 178 files across the seven corpus groups —
-  fixtures, command, media, host and canonical vectors, negative fixtures and renderer conformance —
-  with `corpus-manifest.schema.json` fixing its shape. A host that vendors the corpus verifies its copy
-  against the manifest, so a stale or altered fixture is detected before it silently changes what a
-  conformance claim means, and a claim is made against a corpus the claimant confirmed.
+  `@kumwe/studio-testkit` carrying the SHA-256 digest of all 260 files across 10 groups: 26 fixtures,
+  60 command vectors, 11 media vectors, 29 host vectors, 9 host-sequence vectors, 2 preview vectors,
+  62 schema-profile vectors, 12 canonical vectors, 42 invalid fixtures, and 7 rich-text-conformance
+  fixtures. `corpus-manifest.schema.json` fixes the manifest shape. A host that vendors the corpus
+  verifies its copy against the manifest, so a stale or altered fixture is detected before it silently
+  changes what a conformance claim means, and a claim is made against a corpus the claimant confirmed.
 - The contracts lane regenerates the manifest and verifies every digest against what actually ships,
   so it cannot drift from the corpus it describes.
 
@@ -55,9 +128,9 @@ work-package acceptance and gate outcomes remain governed by
   it exists; save authority and publication authority are distinct, so holding one never grants the
   other. Two conformance vectors fix the behaviour, so a host proves its authorization gate from the
   published corpus rather than being trusted to have one.
-- The profile's remaining limitations are narrowed to what is actually true: idempotent replay, rate
-  limiting and cancellation are not expressible as a single exchange, so closing them needs a
-  sequence-carrying vector kind rather than more vectors of the current shape.
+- That increment narrowed the original baseline's remaining limits to state that needed more than one
+  exchange: idempotent replay, rate limiting, and cancellation. The additive stateful profile above
+  now executes those obligations without changing the original baseline assertion set.
 
 ### The Gate A preview vocabulary (M3-04, M4-06)
 

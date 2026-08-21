@@ -17,6 +17,21 @@ const canonicalVectorTargetDirectory = new URL(
 );
 const hostVectorDirectory = new URL('../schemas/vectors/host/', import.meta.url);
 const hostVectorTargetDirectory = new URL('../packages/testkit/vectors/host/', import.meta.url);
+const hostSequenceVectorDirectory = new URL('../schemas/vectors/host-sequence/', import.meta.url);
+const hostSequenceVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/host-sequence/',
+  import.meta.url,
+);
+const previewVectorDirectory = new URL('../schemas/vectors/preview/', import.meta.url);
+const previewVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/preview/',
+  import.meta.url,
+);
+const schemaProfileVectorDirectory = new URL('../schemas/vectors/schema-profile/', import.meta.url);
+const schemaProfileVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/schema-profile/',
+  import.meta.url,
+);
 const invalidDirectory = new URL('../schemas/invalid/', import.meta.url);
 const invalidTargetDirectory = new URL('../packages/testkit/invalid/', import.meta.url);
 const conformanceDirectory = new URL('../schemas/conformance/rich-text/', import.meta.url);
@@ -36,6 +51,9 @@ await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
 await mkdir(vectorTargetDirectory, { recursive: true });
 await mkdir(mediaVectorTargetDirectory, { recursive: true });
 await mkdir(hostVectorTargetDirectory, { recursive: true });
+await mkdir(hostSequenceVectorTargetDirectory, { recursive: true });
+await mkdir(previewVectorTargetDirectory, { recursive: true });
+await mkdir(schemaProfileVectorTargetDirectory, { recursive: true });
 await mkdir(canonicalVectorTargetDirectory, { recursive: true });
 await rm(invalidTargetDirectory, { force: true, recursive: true });
 await mkdir(invalidTargetDirectory, { recursive: true });
@@ -77,6 +95,33 @@ for (const entry of await readdir(hostVectorDirectory, { withFileTypes: true }))
     await cp(
       new URL(entry.name, hostVectorDirectory),
       new URL(entry.name, hostVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(hostSequenceVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, hostSequenceVectorDirectory),
+      new URL(entry.name, hostSequenceVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(previewVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, previewVectorDirectory),
+      new URL(entry.name, previewVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(schemaProfileVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, schemaProfileVectorDirectory),
+      new URL(entry.name, schemaProfileVectorTargetDirectory),
     );
   }
 }
@@ -134,6 +179,33 @@ if (hostVectors.length === 0) {
   throw new Error(`No host vectors were copied to ${join(hostVectorTargetDirectory.pathname)}.`);
 }
 
+const hostSequenceVectors = (await readdir(hostSequenceVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (hostSequenceVectors.length === 0) {
+  throw new Error(
+    `No host sequence vectors were copied to ${join(hostSequenceVectorTargetDirectory.pathname)}.`,
+  );
+}
+
+const previewVectors = (await readdir(previewVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (previewVectors.length === 0) {
+  throw new Error(
+    `No preview identity vectors were copied to ${join(previewVectorTargetDirectory.pathname)}.`,
+  );
+}
+
+const schemaProfileVectors = (await readdir(schemaProfileVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (schemaProfileVectors.length === 0) {
+  throw new Error(
+    `No schema-profile vectors were copied to ${join(schemaProfileVectorTargetDirectory.pathname)}.`,
+  );
+}
+
 const canonicalVectors = (await readdir(canonicalVectorTargetDirectory)).filter((name) =>
   name.endsWith('.json'),
 );
@@ -186,6 +258,21 @@ const corpusGroups = [
   { directory: vectorTargetDirectory, name: 'command-vectors', path: 'vectors/command' },
   { directory: mediaVectorTargetDirectory, name: 'media-vectors', path: 'vectors/media' },
   { directory: hostVectorTargetDirectory, name: 'host-vectors', path: 'vectors/host' },
+  {
+    directory: hostSequenceVectorTargetDirectory,
+    name: 'host-sequence-vectors',
+    path: 'vectors/host-sequence',
+  },
+  {
+    directory: previewVectorTargetDirectory,
+    name: 'preview-vectors',
+    path: 'vectors/preview',
+  },
+  {
+    directory: schemaProfileVectorTargetDirectory,
+    name: 'schema-profile-vectors',
+    path: 'vectors/schema-profile',
+  },
   {
     directory: canonicalVectorTargetDirectory,
     name: 'canonical-vectors',

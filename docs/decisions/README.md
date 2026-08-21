@@ -19,5 +19,8 @@ These records capture foundational decisions whose reversal would materially aff
 | [0013](0013-per-slot-composition-markers.md)       | Per-slot composition markers for hybrid regions                | Proposed |
 | [0014](0014-conformance-profiles.md)               | Named conformance profiles with executable assertion sets      | Proposed |
 | [0015](0015-media-upload-grants.md)                | Host-issued upload grants keep bytes off the JSON port         | Proposed |
+| [0016](0016-portable-property-schema-profile.md)   | Portable property-schema profile and stable diagnostics        | Proposed |
+| [0017](0017-host-sequence-conformance.md)          | Stateful host obligations use deterministic sequence vectors   | Proposed |
+| [0018](0018-preview-draft-identity-and-markers.md) | Canonical preview digest and deterministic marker preorder     | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

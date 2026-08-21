@@ -11,7 +11,7 @@ host-owned policy, theme-owned design choices, deterministic rendering, and a po
 
 The programme is deliberately larger than an MVP. Gate B represents a useful, supportable first product:
 headless core, Lit authoring shell, generic host adapters, extension and theme integration, media and rich
-text, TypeScript and Dart portability, conformance tooling, and a qualified Kumwe integration profile.
+text, TypeScript and Dart portability, conformance tooling, and a qualified Kumwe App integration profile.
 
 ## Programme invariants
 
@@ -30,7 +30,7 @@ Every work package and gate preserves these rules:
 6. Dragging is an enhancement, not the only operation. Every composition command is available through
    keyboard, outline, inspector, and programmatic APIs.
 7. Public rendering never depends on the Studio authoring runtime. A host may choose client rendering, but
-   the reference Kumwe profile renders through PHP/Twig with focused Lit enhancement.
+   the reference Kumwe App profile renders through PHP/Twig with focused Lit enhancement.
 8. Extensions and themes contribute through owner-aware, namespaced, versioned declarations. Disabling a
    provider removes its executable contribution without destroying stored documents.
 9. Gate claims require reproducible evidence. Documentation, interfaces, mocks, or a green unit-test lane
@@ -50,7 +50,7 @@ After Gate A:
 
 - a host may begin durable integration against the frozen release-candidate contract;
 - incompatible changes require the published deprecation and migration process;
-- Kumwe CMS may add integration seams, database migrations, API endpoints, and contribution declarations;
+- Kumwe App may add integration seams, database migrations, API endpoints, and contribution declarations;
 - generated TypeScript and Dart models may be consumed by downstream repositories; and
 - integration work must use the conformance kit rather than copy Studio internals.
 
@@ -87,8 +87,8 @@ listed dependency is accepted.
 | Package                                             | Depends on       | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                   |
 | --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `M1-01 Product boundary`                            | —                | Product vocabulary, artifact ownership, authoring modes, non-goals, threat boundary, and supported first-release profiles are normative and internally consistent. Blueprint, entry, schema, binding, design profile, pattern, block, slot, command, and host port each have one unambiguous meaning. |
-| `M1-02 Architecture and package boundaries`         | `M1-01`          | Dependency direction, package graph, DOM boundary, host boundary, error boundary, and runtime lifecycle are documented and protected by an architecture-test design. No package needs a Kumwe import to compile.                                                                                      |
-| `M1-03 Governance and compatibility`                | `M1-01`          | Decision process, public API classification, semantic-version rules, deprecation windows, security disclosure, release authority, and support policy are adopted. License and third-party dependency policy permit Kumwe and generic host consumption.                                                |
+| `M1-02 Architecture and package boundaries`         | `M1-01`          | Dependency direction, package graph, DOM boundary, host boundary, error boundary, and runtime lifecycle are documented and protected by an architecture-test design. No package needs a Kumwe App import to compile.                                                                                  |
+| `M1-03 Governance and compatibility`                | `M1-01`          | Decision process, public API classification, semantic-version rules, deprecation windows, security disclosure, release authority, and support policy are adopted. License and third-party dependency policy permit Kumwe App and generic host consumption.                                            |
 | `M1-04 Evidence system`                             | `M1-02`, `M1-03` | Machine-readable evidence manifest design, test taxonomy, environment matrix, artifact retention, and gate review procedure are fixed. A sample failing evidence bundle proves missing or stale evidence cannot pass a gate.                                                                          |
 | `M1-05 Development and release baseline`            | `M1-02`, `M1-03` | Reproducible workspace install, strict TypeScript, lint/type/test/build lanes, package boundaries, changeset/release automation, provenance and secret scanning execute on a clean clone.                                                                                                             |
 | `M1-06 Interaction and accessibility specification` | `M1-01`          | Canvas, outline, inspector, palette, viewport, command palette, focus, live-region, error recovery, touch, keyboard, reduced-motion, zoom, and no-drag alternatives have testable interaction contracts meeting WCAG 2.2 AA and the adopted authoring-tool requirements.                              |
@@ -104,18 +104,18 @@ listed dependency is accepted.
 | `M2-05 Media and rich-text contract`     | `M2-01`, `M2-04` | Asset references, upload sessions, progress, cancellation, selection, renditions, focal point, alternative text, decorative state, processing/failure states, and bounded rich-text JSON are specified. Storage and processing remain host responsibilities.                                                      |
 | `M2-06 Portability contract`             | `M2-01`–`M2-05`  | Canonical JSON, numeric/date rules, IDs, ordering, unknown-field handling, feature negotiation, generated-model policy, and TypeScript/Dart profile mappings are fixed. TypeScript and Dart compile and round-trip the same fixture corpus.                                                                       |
 | `M2-07 Security and privacy contract`    | `M2-03`–`M2-05`  | Threat model and negative fixtures cover stored and reflected injection, unsafe renderers, cross-origin preview, confused-deputy host calls, data leakage, denial-of-service bounds, untrusted packages, media attacks, secrets, and telemetry minimization.                                                      |
-| `M2-08 Gate A review`                    | `M2-01`–`M2-07`  | Every Gate A criterion below has current evidence, two independent reviews, no unresolved critical/high security issue, and a published contract release candidate. Generic-host and Kumwe integration playbooks validate against the same contract.                                                              |
+| `M2-08 Gate A review`                    | `M2-01`–`M2-07`  | Every Gate A criterion below has current evidence, two independent reviews, no unresolved critical/high security issue, and a published contract release candidate. Generic-host and Kumwe App integration playbooks validate against the same contract.                                                          |
 
 ### Month 3 — headless implementation and host harnesses
 
-| Package                         | Depends on      | Deliverable and acceptance criteria                                                                                                                                                                                                                                               |
-| ------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M3-01 Deterministic core`      | Gate A          | DOM-free registry, document store, command dispatcher, transactions, selection, history, validation, migrations, canonical serialization, and diagnostics pass unit, property, fuzz, and cross-runtime fixtures.                                                                  |
-| `M3-02 Contribution runtime`    | Gate A, `M3-01` | Contributions activate into an immutable registry generation; duplicates and incompatible owners fail closed; disable/reactivate preserves documents; unresolved nodes remain inspectable; stale generations cannot execute.                                                      |
-| `M3-03 Generic host testbed`    | Gate A, `M3-01` | A framework-neutral reference host supplies identity, policy, persistence, media, preview, localization, and telemetry ports. Disconnect, conflict, permission change, expired session, and partial capability cases are exercised.                                               |
-| `M3-04 Preview bridge`          | Gate A, `M3-01` | Authenticated preview handshake, origin pinning, protocol-version negotiation, render-marker mapping, update acknowledgements, error isolation, reload, and teardown work against server-rendered and client-rendered reference hosts.                                            |
-| `M3-05 Kumwe integration seams` | Gate A          | Kumwe implements additive draft host ports and API/schema surfaces without replacing current editors. The integration preserves contribution ownership, immutable runtime generations, workflow, revisions, translation, policy, audit, Twig rendering, recovery, and strict CSP. |
-| `M3-06 Dart headless SDK`       | Gate A, `M3-01` | Generated Dart models plus native command, validation, migration, serialization, and host-port APIs pass the portable profile. Unsupported web-only capabilities are negotiated rather than silently ignored.                                                                     |
+| Package                             | Depends on      | Deliverable and acceptance criteria                                                                                                                                                                                                                                                        |
+| ----------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `M3-01 Deterministic core`          | Gate A          | DOM-free registry, document store, command dispatcher, transactions, selection, history, validation, migrations, canonical serialization, and diagnostics pass unit, property, fuzz, and cross-runtime fixtures.                                                                           |
+| `M3-02 Contribution runtime`        | Gate A, `M3-01` | Contributions activate into an immutable registry generation; duplicates and incompatible owners fail closed; disable/reactivate preserves documents; unresolved nodes remain inspectable; stale generations cannot execute.                                                               |
+| `M3-03 Generic host testbed`        | Gate A, `M3-01` | A framework-neutral reference host supplies identity, policy, persistence, media, preview, localization, and telemetry ports. Disconnect, conflict, permission change, expired session, and partial capability cases are exercised.                                                        |
+| `M3-04 Preview bridge`              | Gate A, `M3-01` | Authenticated preview handshake, origin pinning, protocol-version negotiation, canonical draft identity and marker preorder, exact render-marker mapping, update acknowledgements, error isolation, reload, and teardown work against server-rendered and client-rendered reference hosts. |
+| `M3-05 Kumwe App integration seams` | Gate A          | Kumwe App implements additive draft host ports and API/schema surfaces without replacing current editors. The integration preserves contribution ownership, immutable runtime generations, workflow, revisions, translation, policy, audit, Twig rendering, recovery, and strict CSP.      |
+| `M3-06 Dart headless SDK`           | Gate A, `M3-01` | Generated Dart models plus native command, validation, migration, serialization, and host-port APIs pass the portable profile. Unsupported web-only capabilities are negotiated rather than silently ignored.                                                                              |
 
 ### Month 4 — complete authoring experience
 
@@ -130,14 +130,14 @@ listed dependency is accepted.
 
 ### Month 5 — content depth, ecosystem, and host integration
 
-| Package                                | Depends on                        | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                           |
-| -------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M5-01 Media experience`               | `M2-05`, `M4-01`                  | Browse, search, upload, paste/drop, progress, cancel/retry, replace, metadata, alternative text, decorative state, focal point, rendition preview, orphan handling, and policy failures work through the media port. Security and lifecycle tests use real host adapters.                                     |
-| `M5-02 Rich text`                      | `M2-05`, `M4-01`                  | Bounded structured rich text supports the declared mark/node profile, schema-aware embeds, paste normalization, links, keyboard access, serialization, migration, server rendering, sanitization, and no-JavaScript output without leaking editor HTML.                                                       |
-| `M5-03 Block and pattern suite`        | `M4-02`–`M4-04`, `M5-01`, `M5-02` | Production blocks cover section, grid, stack, heading, rich text, image, gallery, video, CTA, cards, accordion, tabs, callout, content reference/collection, and typed money. Each has schema, renderer fixture, accessibility contract, fallback, migration, and design-profile examples.                    |
-| `M5-04 Extension and theme SDK`        | `M3-02`, `M4-04`                  | Scaffolding, typed helpers, schema-driven inspectors, test harnesses, examples, package compatibility checks, lifecycle tests, and deterministic build/signing guidance let an unrelated developer ship a block and theme profile without importing private APIs.                                             |
-| `M5-05 Generic-host integration proof` | `M3-03`, `M3-04`, `M5-03`         | A second, non-Kumwe host integrates Studio from published packages using only public contracts. Load, edit, preview, save, publish, upgrade, permission reduction, extension disable, rollback, and recovery pass the host conformance profile.                                                               |
-| `M5-06 Kumwe vertical slice`           | `M3-05`, `M5-03`                  | Kumwe proves a landing-page blueprint and a reusable product/service blueprint with typed field and media bindings, four-to-two-to-one layout, two theme profiles, extension block lifecycle, Twig public rendering, translation, revisions, workflow, audit, REST consumption, and no public Studio runtime. |
+| Package                                | Depends on                        | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                               |
+| -------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `M5-01 Media experience`               | `M2-05`, `M4-01`                  | Browse, search, upload, paste/drop, progress, cancel/retry, replace, metadata, alternative text, decorative state, focal point, rendition preview, orphan handling, and policy failures work through the media port. Security and lifecycle tests use real host adapters.                                         |
+| `M5-02 Rich text`                      | `M2-05`, `M4-01`                  | Bounded structured rich text supports the declared mark/node profile, schema-aware embeds, paste normalization, links, keyboard access, serialization, migration, server rendering, sanitization, and no-JavaScript output without leaking editor HTML.                                                           |
+| `M5-03 Block and pattern suite`        | `M4-02`–`M4-04`, `M5-01`, `M5-02` | Production blocks cover section, grid, stack, heading, rich text, image, gallery, video, CTA, cards, accordion, tabs, callout, content reference/collection, and typed money. Each has schema, renderer fixture, accessibility contract, fallback, migration, and design-profile examples.                        |
+| `M5-04 Extension and theme SDK`        | `M3-02`, `M4-04`                  | Scaffolding, typed helpers, schema-driven inspectors, test harnesses, examples, package compatibility checks, lifecycle tests, and deterministic build/signing guidance let an unrelated developer ship a block and theme profile without importing private APIs.                                                 |
+| `M5-05 Generic-host integration proof` | `M3-03`, `M3-04`, `M5-03`         | A second host unrelated to Kumwe App integrates Studio from published packages using only public contracts. Load, edit, preview, save, publish, upgrade, permission reduction, extension disable, rollback, and recovery pass the host conformance profile.                                                       |
+| `M5-06 Kumwe App vertical slice`       | `M3-05`, `M5-03`                  | Kumwe App proves a landing-page blueprint and a reusable product/service blueprint with typed field and media bindings, four-to-two-to-one layout, two theme profiles, extension block lifecycle, Twig public rendering, translation, revisions, workflow, audit, REST consumption, and no public Studio runtime. |
 
 ### Month 6 — hardening, qualification, and Gate B
 
@@ -148,7 +148,7 @@ listed dependency is accepted.
 | `M6-03 Accessibility and UX qualification`        | `M4-05`, `M4-06`, `M5-03` | Web and Flutter supported matrices pass automated and manual keyboard, touch, screen-reader, zoom/reflow, contrast, reduced-motion, localization, error prevention, and authoring assistance checks. Representative workflows are usability-tested and blocking failures are corrected. |
 | `M6-04 Performance qualification`                 | `M5-03`–`M5-06`           | Published budgets are met for package size, startup, interaction latency, preview update, large documents, memory, media workflows, and Flutter/web parity on the supported device matrix. Measurements are reproducible and regressions fail CI.                                       |
 | `M6-05 Release and operations proof`              | `M6-01`–`M6-04`           | Clean builds are byte-verifiable, packages carry provenance/SBOM/signatures, npm and Dart artifacts install in clean consumers, examples deploy, documentation links resolve, observability is actionable, and rollback/recovery drills succeed.                                        |
-| `M6-06 Gate B review`                             | All preceding packages    | All Gate B criteria below carry current evidence and independent approval. The release candidate is installed and upgraded in generic, Kumwe, web, and Flutter reference profiles; public release notes and support boundaries agree with the artifacts.                                |
+| `M6-06 Gate B review`                             | All preceding packages    | All Gate B criteria below carry current evidence and independent approval. The release candidate is installed and upgraded in generic, Kumwe App, web, and Flutter reference profiles; public release notes and support boundaries agree with the artifacts.                            |
 
 ## Gate A acceptance criteria
 
@@ -164,7 +164,7 @@ Gate A passes only when all criteria are met:
 7. Security/privacy threat model and negative fixtures cover every trust boundary.
 8. Errors and diagnostics are stable, localizable, and free of sensitive values.
 9. TypeScript and Dart models compile and round-trip the same canonical corpus.
-10. The generic-host and Kumwe playbooks can map every required host responsibility to a public port.
+10. The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
 11. Compatibility, deprecation, migration, and release policies are accepted.
 12. Accessibility and non-drag interaction requirements are executable as conformance assertions.
 13. Gate evidence is reproducible from a clean checkout and independently reviewed.
@@ -179,7 +179,7 @@ Gate B passes only when all criteria are met:
 2. Published TypeScript packages and Dart packages install from their registries into clean consumers.
 3. The DOM-free core and Dart SDK pass the same applicable command, migration, and serialization fixtures.
 4. Lit and Flutter shells expose the complete semantic authoring operation set for their supported profile.
-5. Generic and Kumwe hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
+5. Generic and Kumwe App hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
    recovery, and upgrade conformance.
 6. Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.
 7. Extension and theme examples install, activate, disable, reactivate, upgrade, and recover without data
@@ -193,7 +193,7 @@ Gate B passes only when all criteria are met:
     verified source of nondeterminism.
 13. SBOM, provenance, signatures, checksums, release notes, support matrix, and recovery guide are published.
 14. A clean-room external-host integration succeeds using documentation and public packages alone.
-15. The Kumwe vertical slice proves content, business-field, template, extension, media, translation,
+15. The Kumwe App vertical slice proves content, business-field, template, extension, media, translation,
     workflow, revision, authorization, audit, API, and Twig-rendering integration.
 16. Rollback and interrupted-upgrade drills preserve authoritative host data and expose actionable recovery.
 17. All required evidence is attached to the exact release-candidate commit and remains within freshness

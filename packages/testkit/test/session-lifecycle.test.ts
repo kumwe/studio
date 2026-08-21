@@ -45,6 +45,7 @@ describe('session lifecycle against the host testbed', () => {
   it('loads, edits, saves, loses a race, and recovers through the recovery port', async () => {
     const blueprint = createBlueprintFixture({ id: 'lifecycle.blueprint' });
     const { host, controls } = createTestbedHost({
+      allowTestOperationId: true,
       documents: [blueprint],
       permissions: ['studio.permission/publish', 'studio.permission/save'],
     });
@@ -120,6 +121,7 @@ describe('session lifecycle against the host testbed', () => {
   it('invalidates the whole session when permissions change mid-flight', async () => {
     const blueprint = createBlueprintFixture({ id: 'permissions.blueprint' });
     const { host, controls } = createTestbedHost({
+      allowTestOperationId: true,
       documents: [blueprint],
       permissions: ['studio.permission/publish', 'studio.permission/save'],
     });

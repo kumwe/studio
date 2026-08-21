@@ -40,6 +40,25 @@ silently replace prior evidence.
 | `release`         | Shipped bits derive from reviewed source                            | Reproducible build result, SBOM, provenance, signatures, registry install proof         |
 | `manual-decision` | A human judgement has been applied where automation is insufficient | Criterion, procedure, observations, reviewer, captured artifact, explicit outcome       |
 
+## Host profile replay evidence
+
+A `studio.profile/host-baseline-v2` claim records both corpus groups: every single-exchange vector in
+`vectors/host/` and every ordered vector in `vectors/host-sequence/`. The input checksums MUST match the
+published corpus manifest. Raw results retain each step's request-independent identifier, outcome,
+revision comparison, retry classification and delay, plus the asserted final artifact, recovery, and
+preview state. The bundle also retains the vector's machine-readable idempotency scope/preimage and
+every explicit `advance-clock` or `release-preview-render` control. Cancellation evidence records that
+render was in flight before cancel, the renderer completion was released at the declared later step,
+render settled as `cancelled`, no work remained pending, and no late result was delivered. The
+cross-context case records the inverse: the unrelated cancel did not settle the render, whose explicit
+completion was delivered once. Wall-clock sleeps, hidden callbacks, fault injection, or an
+implementation-specific shortcut do not reproduce the portable sequence precondition.
+
+A local green replay is unit and contract evidence, not a profile claim. The immutable bundle still
+names the exact package/corpus versions and commit, is reproduced independently, and records the host
+adapter under test. Any sequence schema, vector, operation registry, or runtime-semantic change expires
+that claim.
+
 ## Criterion outcomes
 
 A criterion has exactly one gate outcome:

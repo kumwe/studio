@@ -1,4 +1,4 @@
-import { validateExternalUrl } from '@kumwe/studio-core';
+import { canonicalStringify, validateExternalUrl } from '@kumwe/studio-core';
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -9,6 +9,7 @@ import {
   type HostRequestContext,
   type JsonObject,
   type JsonPrimitive,
+  type JsonValue,
   type MediaAsset,
   type MediaUploadAcceptedAsset,
   type MediaUploadGrant,
@@ -36,15 +37,35 @@ export type TestbedPortName =
   | 'telemetry';
 
 export interface TestbedHostOptions {
+  /**
+   * Permits the fixture-only `studio.test/operation` wildcard used by broad
+   * unit tests. Defaults to false and MUST remain false for conformance replay.
+   */
+  allowTestOperationId?: boolean;
   documents?: StudioArtifact[];
+  initialClockMilliseconds?: number;
   mediaAssets?: MediaAsset[];
   messages?: Record<string, Record<QualifiedName, string>>;
   permissions?: QualifiedName[];
-  render?: (payload: PreviewRenderPayload) => PreviewRenderedPayload;
+  rateLimits?: TestbedRateLimitPolicy[];
+  render?: (
+    payload: PreviewRenderPayload,
+  ) => PreviewRenderedPayload | Promise<PreviewRenderedPayload>;
   resources?: ResourceSearchHit[];
+  /** Exact live generation to seed before the first portable request. */
+  sessionGeneration?: Revision;
+}
+
+/** A deterministic fixed-window policy used by portable sequence replays. */
+export interface TestbedRateLimitPolicy {
+  maximumRequests: number;
+  operationId: QualifiedName;
+  windowMilliseconds: number;
 }
 
 export interface TestbedControls {
+  advanceClock(milliseconds: number): void;
+  artifactStatus(id: StableId): StudioArtifact['status'] | undefined;
   disconnect(): void;
   failNext(portName: TestbedPortName, operation: string, category: HostErrorCategory): void;
   /**
@@ -63,7 +84,10 @@ export interface TestbedControls {
     context: HostRequestContext,
   ): Promise<HostPortResult<MediaUploadAcceptedAsset>>;
   reconnect(): void;
+  recoveryEnvelope(resourceContextKey: StableId): JsonObject | undefined;
   revisionOf(id: StableId): Revision | undefined;
+  readonly pendingPreviewRenders: number;
+  readonly previewDeliveries: readonly string[];
   readonly sessionGeneration: Revision;
   setPermissions(permissions: QualifiedName[]): void;
   readonly telemetryEvents: readonly TelemetryEvent[];
@@ -124,14 +148,22 @@ const PUBLISH_PERMISSION: QualifiedName = 'studio.permission/publish';
 const UPLOAD_CHUNK_BYTES = 5_242_880;
 const UPLOAD_MAXIMUM_BYTES = 52_428_800;
 const GRANT_EXPIRY = '2030-01-01T00:00:00Z';
+const MAXIMUM_RATE_LIMIT_REQUESTS = 1000;
+const MAXIMUM_RATE_LIMIT_WINDOW_MILLISECONDS = 86_400_000;
 
 export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost {
   const artifactStore = new Map<StableId, StoredArtifact>();
   for (const seeded of options.documents ?? []) {
     const document = cloneValue(seeded);
-    const revision: Revision = `${document.id}-r1`;
-    document.revision = revision;
-    artifactStore.set(document.id, { document, revision, serial: 1 });
+    if (artifactStore.has(document.id)) {
+      throw new TypeError(`Testbed artifact ${document.id} is duplicated.`);
+    }
+    const revision = document.revision;
+    artifactStore.set(document.id, {
+      document,
+      revision,
+      serial: seededRevisionSerial(document.id, revision),
+    });
   }
 
   const mediaAssets = cloneValue(options.mediaAssets ?? []);
@@ -143,6 +175,27 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   const telemetryEvents: TelemetryEvent[] = [];
   const injectedFailures: InjectedFailure[] = [];
   const renderCallback = options.render ?? defaultRender;
+  const idempotencyRecords = new Map<string, IdempotencyRecord>();
+  const pendingPreviewRenders = new Map<string, PendingPreviewRender>();
+  const previewDeliveries: string[] = [];
+  const rateLimitPolicies = new Map<QualifiedName, TestbedRateLimitPolicy>();
+  const rateLimitWindows = new Map<QualifiedName, RateLimitWindow>();
+  for (const policy of options.rateLimits ?? []) {
+    if (
+      !Number.isSafeInteger(policy.maximumRequests) ||
+      policy.maximumRequests < 1 ||
+      policy.maximumRequests > MAXIMUM_RATE_LIMIT_REQUESTS ||
+      !Number.isSafeInteger(policy.windowMilliseconds) ||
+      policy.windowMilliseconds < 1 ||
+      policy.windowMilliseconds > MAXIMUM_RATE_LIMIT_WINDOW_MILLISECONDS
+    ) {
+      throw new RangeError('Testbed rate limits require positive safe-integer bounds.');
+    }
+    if (rateLimitPolicies.has(policy.operationId)) {
+      throw new TypeError(`Testbed rate limit ${policy.operationId} is duplicated.`);
+    }
+    rateLimitPolicies.set(policy.operationId, { ...policy });
+  }
 
   const uploadGrants = new Map<
     StableId,
@@ -152,19 +205,31 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   let uploadSerial = 0;
 
   let permissions = (options.permissions ?? []).slice();
-  let generationSerial = 1;
+  let liveGeneration = options.sessionGeneration ?? 'session-r1';
+  if (!isNonEmptyString(liveGeneration) || liveGeneration.length > 200) {
+    throw new TypeError('The testbed session generation must be a non-empty bounded revision.');
+  }
+  let generationSerial = seededRevisionSerial('session', liveGeneration);
   let connected = true;
   let correlationSerial = 0;
   let importSerial = 0;
+  let clockMilliseconds = options.initialClockMilliseconds ?? 0;
+  if (!Number.isSafeInteger(clockMilliseconds) || clockMilliseconds < 0) {
+    throw new RangeError('The testbed logical clock must be a non-negative safe integer.');
+  }
 
   function currentGeneration(): Revision {
-    return `session-r${generationSerial}`;
+    return liveGeneration;
   }
 
   function createError(
     category: HostErrorCategory,
     defaultMessage: string,
-    extras: { retryable?: boolean; revision?: Revision } = {},
+    extras: {
+      retryAfterMilliseconds?: number;
+      retryable?: boolean;
+      revision?: Revision;
+    } = {},
   ): HostPortError {
     correlationSerial += 1;
     return {
@@ -174,6 +239,9 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       kind: 'host-error',
       message: { defaultMessage, key: `studio.testbed/${category}` },
       retryable: extras.retryable ?? (category === 'rate-limited' || category === 'unavailable'),
+      ...(extras.retryAfterMilliseconds === undefined
+        ? {}
+        : { retryAfterMilliseconds: extras.retryAfterMilliseconds }),
       ...(extras.revision === undefined ? {} : { revision: extras.revision }),
     };
   }
@@ -181,24 +249,22 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   function fail(
     category: HostErrorCategory,
     defaultMessage: string,
-    extras: { retryable?: boolean; revision?: Revision } = {},
+    extras: {
+      retryAfterMilliseconds?: number;
+      retryable?: boolean;
+      revision?: Revision;
+    } = {},
   ): never {
     throw new TestbedHostError(createError(category, defaultMessage, extras));
   }
 
-  function guard(portName: TestbedPortName, operation: string, context: HostRequestContext): void {
+  function guardEnvelope(
+    portName: TestbedPortName,
+    operation: string,
+    context: HostRequestContext,
+  ): void {
     if (!connected) {
       fail('unavailable', 'The testbed host is disconnected.');
-    }
-    const index = injectedFailures.findIndex(
-      (entry) => entry.portName === portName && entry.operation === operation,
-    );
-    if (index >= 0) {
-      const injected = injectedFailures[index];
-      injectedFailures.splice(index, 1);
-      if (injected !== undefined) {
-        fail(injected.category, 'The testbed injected this failure.');
-      }
     }
     if (
       !isNonEmptyString(context.requestId) ||
@@ -214,24 +280,138 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     if (context.sessionGeneration !== currentGeneration()) {
       fail('invalid-request', 'The session generation is no longer valid.');
     }
+    const expectedOperationId: QualifiedName = `studio.operation/${portName}.${operation}`;
+    if (
+      context.operationId !== expectedOperationId &&
+      !(options.allowTestOperationId === true && context.operationId === 'studio.test/operation')
+    ) {
+      fail('invalid-request', 'The request operation identifier does not match the invoked port.');
+    }
+  }
+
+  function applyOperationalGuards(
+    portName: TestbedPortName,
+    operation: string,
+    context: HostRequestContext,
+  ): void {
+    const index = injectedFailures.findIndex(
+      (entry) => entry.portName === portName && entry.operation === operation,
+    );
+    if (index >= 0) {
+      const injected = injectedFailures[index];
+      injectedFailures.splice(index, 1);
+      if (injected !== undefined) {
+        fail(injected.category, 'The testbed injected this failure.');
+      }
+    }
+    const policy = rateLimitPolicies.get(context.operationId);
+    if (policy === undefined) {
+      return;
+    }
+    let rateWindow = rateLimitWindows.get(context.operationId);
+    if (
+      rateWindow === undefined ||
+      clockMilliseconds >= rateWindow.startedAtMilliseconds + policy.windowMilliseconds
+    ) {
+      rateWindow = { requestCount: 0, startedAtMilliseconds: clockMilliseconds };
+      rateLimitWindows.set(context.operationId, rateWindow);
+    }
+    if (rateWindow.requestCount >= policy.maximumRequests) {
+      fail('rate-limited', 'The operation has reached its deterministic request bound.', {
+        retryAfterMilliseconds:
+          rateWindow.startedAtMilliseconds + policy.windowMilliseconds - clockMilliseconds,
+      });
+    }
+    rateWindow.requestCount += 1;
+  }
+
+  async function executeBody<TValue>(
+    body: () => HostPortResult<TValue> | Promise<HostPortResult<TValue>>,
+  ): Promise<HostPortResult<TValue>> {
+    try {
+      return await body();
+    } catch (error) {
+      if (error instanceof TestbedHostError) {
+        throw error;
+      }
+      throw new TestbedHostError(
+        createError('internal', 'The testbed operation failed unexpectedly.'),
+      );
+    }
   }
 
   function run<TValue>(
     portName: TestbedPortName,
     operation: string,
     context: HostRequestContext,
-    body: () => HostPortResult<TValue>,
+    body: () => HostPortResult<TValue> | Promise<HostPortResult<TValue>>,
   ): Promise<HostPortResult<TValue>> {
     try {
-      guard(portName, operation, context);
-      return Promise.resolve(body());
+      guardEnvelope(portName, operation, context);
+      applyOperationalGuards(portName, operation, context);
+      return executeBody(body);
     } catch (error) {
-      if (error instanceof TestbedHostError) {
-        return Promise.reject(error);
+      return executeBody(() => {
+        throw error;
+      });
+    }
+  }
+
+  function runMutation<TValue>(
+    portName: TestbedPortName,
+    operation: string,
+    argument: JsonValue,
+    context: HostRequestContext,
+    body: () => HostPortResult<TValue> | Promise<HostPortResult<TValue>>,
+  ): Promise<HostPortResult<TValue>> {
+    try {
+      guardEnvelope(portName, operation, context);
+      const idempotencyKey = context.idempotencyKey;
+      if (idempotencyKey === undefined) {
+        applyOperationalGuards(portName, operation, context);
+        return executeBody(body);
       }
-      return Promise.reject(
-        new TestbedHostError(createError('internal', 'The testbed operation failed unexpectedly.')),
-      );
+
+      const scope = canonicalStringify({
+        idempotencyKey,
+        operationId: context.operationId,
+        resourceContextKey: context.resourceContextKey,
+        sessionGeneration: context.sessionGeneration,
+      });
+      const fingerprint = canonicalStringify({
+        argument,
+        context: {
+          ...(context.expectedRevision === undefined
+            ? {}
+            : { expectedRevision: context.expectedRevision }),
+          ...(context.locale === undefined ? {} : { locale: context.locale }),
+          protocolVersion: context.protocolVersion,
+        },
+      });
+      const prior = idempotencyRecords.get(scope);
+      if (prior !== undefined) {
+        if (prior.fingerprint !== fingerprint) {
+          fail('invalid-request', 'The idempotency key was already accepted for another intent.');
+        }
+        return prior.promise.then((result) => cloneValue(result) as HostPortResult<TValue>);
+      }
+
+      applyOperationalGuards(portName, operation, context);
+      const accepted = executeBody(body).then((result) => cloneValue(result));
+      idempotencyRecords.set(scope, {
+        fingerprint,
+        promise: accepted,
+      });
+      void accepted.catch(() => {
+        if (idempotencyRecords.get(scope)?.promise === accepted) {
+          idempotencyRecords.delete(scope);
+        }
+      });
+      return accepted.then((result) => cloneValue(result));
+    } catch (error) {
+      return executeBody(() => {
+        throw error;
+      });
     }
   }
 
@@ -311,12 +491,12 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
       publish(reference, context) {
-        return run('artifact', 'publish', context, () =>
+        return runMutation('artifact', 'publish', reference as unknown as JsonValue, context, () =>
           setStatus(reference.id, context, 'published'),
         );
       },
       save(document, context) {
-        return run('artifact', 'save', context, () => {
+        return runMutation('artifact', 'save', document as unknown as JsonValue, context, () => {
           requireArtifactPermission(SAVE_PERMISSION);
           const stored = requireStored(document.id);
           ensureExpectedRevision(stored, context);
@@ -325,8 +505,12 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
       unpublish(reference, context) {
-        return run('artifact', 'unpublish', context, () =>
-          setStatus(reference.id, context, 'draft'),
+        return runMutation(
+          'artifact',
+          'unpublish',
+          reference as unknown as JsonValue,
+          context,
+          () => setStatus(reference.id, context, 'draft'),
         );
       },
     },
@@ -355,7 +539,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     },
     media: {
       abortUpload(uploadId, context) {
-        return run('media', 'abort-upload', context, () => {
+        return runMutation('media', 'abort-upload', uploadId, context, () => {
           if (!uploadGrants.delete(uploadId)) {
             fail('not-found', 'The requested upload is not available.');
           }
@@ -363,28 +547,34 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
       authorizeUpload(request, context) {
-        return run('media', 'authorize-upload', context, () => {
-          assertUploadRequest(request);
-          uploadSerial += 1;
-          const uploadId = `uploads/testbed-${String(uploadSerial)}`;
-          const grant: MediaUploadGrant = {
-            expiresAt: GRANT_EXPIRY,
-            headers: { 'X-Upload-Session': uploadId },
-            method: 'PUT',
-            plan: {
-              chunkBytes: UPLOAD_CHUNK_BYTES,
-              maximumBytes: UPLOAD_MAXIMUM_BYTES,
-              resumable: true,
-            },
-            uploadId,
-            url: `https://uploads.testbed.invalid/${uploadId}`,
-          };
-          uploadGrants.set(uploadId, { grant, request: cloneValue(request) });
-          return { value: cloneValue(grant) };
-        });
+        return runMutation(
+          'media',
+          'authorize-upload',
+          request as unknown as JsonValue,
+          context,
+          () => {
+            assertUploadRequest(request);
+            uploadSerial += 1;
+            const uploadId = `uploads/testbed-${String(uploadSerial)}`;
+            const grant: MediaUploadGrant = {
+              expiresAt: GRANT_EXPIRY,
+              headers: { 'X-Upload-Session': uploadId },
+              method: 'PUT',
+              plan: {
+                chunkBytes: UPLOAD_CHUNK_BYTES,
+                maximumBytes: UPLOAD_MAXIMUM_BYTES,
+                resumable: true,
+              },
+              uploadId,
+              url: `https://uploads.testbed.invalid/${uploadId}`,
+            };
+            uploadGrants.set(uploadId, { grant, request: cloneValue(request) });
+            return { value: cloneValue(grant) };
+          },
+        );
       },
       completeUpload(uploadId, context) {
-        return run('media', 'complete-upload', context, () => {
+        return runMutation('media', 'complete-upload', uploadId, context, () => {
           const pending = uploadGrants.get(uploadId);
           if (pending === undefined) {
             fail('not-found', 'The requested upload is not available.');
@@ -432,7 +622,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
       importExternal(url, context) {
-        return run('media', 'import-external', context, () => {
+        return runMutation('media', 'import-external', url, context, () => {
           const verdict = validateExternalUrl(url);
           if (!verdict.ok) {
             // The stable reason is disclosed; the candidate never is.
@@ -484,17 +674,56 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     },
     preview: {
       cancel(draftDigest, context) {
-        return run('preview', 'cancel', context, () => ({ value: null }));
+        return run('preview', 'cancel', context, () => {
+          const pending = pendingPreviewRenders.get(previewRenderKey(draftDigest, context));
+          pending?.cancel();
+          return { value: null };
+        });
       },
       render(payload, context) {
-        return run('preview', 'render', context, () => ({
-          value: cloneValue(renderCallback(cloneValue(payload))),
-        }));
+        return run('preview', 'render', context, async () => {
+          const key = previewRenderKey(payload.draftDigest, context);
+          if (pendingPreviewRenders.has(key)) {
+            fail('invalid-request', 'A render for this draft is already in flight.');
+          }
+          let cancel: () => void = () => undefined;
+          const cancellation = new Promise<never>((_resolve, reject) => {
+            cancel = () => {
+              reject(
+                new TestbedHostError(
+                  createError('cancelled', 'The in-flight preview render was cancelled.', {
+                    retryable: false,
+                  }),
+                ),
+              );
+            };
+          });
+          pendingPreviewRenders.set(key, { cancel });
+          try {
+            const rendered = await Promise.race([
+              Promise.resolve(renderCallback(cloneValue(payload))),
+              cancellation,
+            ]);
+            if (
+              rendered.draftDigest !== payload.draftDigest ||
+              rendered.requestId !== payload.requestId
+            ) {
+              fail(
+                'internal',
+                'The preview renderer returned a result for a different render attempt.',
+              );
+            }
+            previewDeliveries.push(payload.draftDigest);
+            return { value: cloneValue(rendered) };
+          } finally {
+            pendingPreviewRenders.delete(key);
+          }
+        });
       },
     },
     recovery: {
       discard(context) {
-        return run('recovery', 'discard', context, () => {
+        return runMutation('recovery', 'discard', null, context, () => {
           recoveryStore.delete(context.resourceContextKey);
           return { value: null };
         });
@@ -508,7 +737,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
       store(envelope, context) {
-        return run('recovery', 'store', context, () => {
+        return runMutation('recovery', 'store', envelope, context, () => {
           recoveryStore.set(context.resourceContextKey, cloneValue(envelope));
           return { value: null };
         });
@@ -541,7 +770,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     },
     telemetry: {
       emit(event, context) {
-        return run('telemetry', 'emit', context, () => {
+        return runMutation('telemetry', 'emit', event as unknown as JsonValue, context, () => {
           if (event.attributes !== undefined) {
             for (const attribute of Object.values(event.attributes)) {
               if (!isJsonPrimitiveValue(attribute)) {
@@ -557,6 +786,19 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
   };
 
   const controls: TestbedControls = {
+    advanceClock(milliseconds: number): void {
+      if (!Number.isSafeInteger(milliseconds) || milliseconds < 0) {
+        throw new RangeError('Testbed clock advances must be non-negative safe integers.');
+      }
+      const next = clockMilliseconds + milliseconds;
+      if (!Number.isSafeInteger(next)) {
+        throw new RangeError('The testbed logical clock cannot exceed the safe-integer bound.');
+      }
+      clockMilliseconds = next;
+    },
+    artifactStatus(id: StableId): StudioArtifact['status'] | undefined {
+      return artifactStore.get(id)?.document.status;
+    },
     disconnect(): void {
       connected = false;
     },
@@ -596,8 +838,18 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     reconnect(): void {
       connected = true;
     },
+    recoveryEnvelope(resourceContextKey: StableId): JsonObject | undefined {
+      const envelope = recoveryStore.get(resourceContextKey);
+      return envelope === undefined ? undefined : cloneValue(envelope);
+    },
     revisionOf(id: StableId): Revision | undefined {
       return artifactStore.get(id)?.revision;
+    },
+    get pendingPreviewRenders(): number {
+      return pendingPreviewRenders.size;
+    },
+    get previewDeliveries(): readonly string[] {
+      return previewDeliveries.slice();
     },
     get sessionGeneration(): Revision {
       return currentGeneration();
@@ -605,6 +857,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     setPermissions(next: QualifiedName[]): void {
       permissions = next.slice();
       generationSerial += 1;
+      liveGeneration = `session-r${generationSerial}`;
     },
     get telemetryEvents(): readonly TelemetryEvent[] {
       return cloneValue(telemetryEvents);
@@ -626,8 +879,42 @@ interface InjectedFailure {
   portName: TestbedPortName;
 }
 
+interface IdempotencyRecord {
+  fingerprint: string;
+  promise: Promise<HostPortResult<unknown>>;
+}
+
+interface PendingPreviewRender {
+  cancel(): void;
+}
+
+interface RateLimitWindow {
+  requestCount: number;
+  startedAtMilliseconds: number;
+}
+
 function defaultRender(payload: PreviewRenderPayload): PreviewRenderedPayload {
-  return { diagnostics: [], draftDigest: payload.draftDigest, markers: [] };
+  return {
+    diagnostics: [],
+    draftDigest: payload.draftDigest,
+    markerMap: {},
+    markers: [],
+    requestId: payload.requestId,
+  };
+}
+
+function previewRenderKey(draftDigest: string, context: HostRequestContext): string {
+  return `${context.sessionGeneration}\u0000${context.resourceContextKey}\u0000${draftDigest}`;
+}
+
+function seededRevisionSerial(id: StableId, revision: Revision): number {
+  const prefix = `${id}-r`;
+  if (!revision.startsWith(prefix)) {
+    return 0;
+  }
+  const suffix = revision.slice(prefix.length);
+  const parsed = Number(suffix);
+  return Number.isSafeInteger(parsed) && parsed >= 0 && String(parsed) === suffix ? parsed : 0;
 }
 
 function isNonEmptyString(value: unknown): value is string {

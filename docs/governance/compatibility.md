@@ -137,7 +137,7 @@ insufficient.
 1. Approve an ADR/proposal describing necessity and rejected compatible alternatives.
 2. Define the new schema epoch and/or wire major, supported bridge period, and exact old/new profiles.
 3. Publish schemas, fixtures, diagnostics, migration/adapter tooling and generated SDK candidates.
-4. Exercise real generic, Kumwe, web and Flutter integrations.
+4. Exercise real generic, Kumwe App, web and Flutter integrations.
 5. Complete the deprecation window unless a documented security emergency applies.
 6. Qualify upgrade, rollback and preserved-old-data paths.
 7. Publish the tested release set, support dates and recovery instructions.

@@ -1,34 +1,38 @@
-# Kumwe CMS integration playbook
+# Kumwe App integration playbook
 
-Kumwe CMS is Studio's first reference host and the hand for which the glove is made. The integration is still
-an adapter: public Studio packages contain no Kumwe PHP classes, database schema, routes, Twig names, KIS
+[Kumwe App](https://github.com/kumwe/app) is Studio's first reference host and the hand for which the glove is made. The integration is still
+an adapter: public Studio packages contain no Kumwe App PHP classes, database schema, routes, Twig names, KIS
 internals, extension manifests, or authorization rules.
 
-This playbook reflects the current Kumwe direction: Joomla Framework DI/events, Laminas/Mezzio delivery,
+This playbook reflects the current Kumwe App direction: Joomla Framework DI/events, Laminas/Mezzio delivery,
 Doctrine DBAL, Twig server rendering, focused Lit enhancements, immutable versioned definitions, signed and
 trusted extensions, owner-aware contributions, immutable runtime generations, strict public/admin/portal
 boundaries, recovery isolation, revision/workflow/translation support, and bounded KIS customization.
 
 The adapter is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
 assertion set for [`studio.profile/host-baseline`](../contracts/conformance-profiles.md): language-neutral
-JSON that a PHPUnit suite replays against the Kumwe adapter to prove the persistence and
+JSON that a PHPUnit suite replays against the Kumwe App adapter to prove the persistence and
 optimistic-concurrency rules, the request-envelope guards, bounded queries, absence handling, authority
 explanation and telemetry discipline. A stale write returning the safe current revision, and an error
 that never discloses private resource existence, are corpus assertions rather than review opinions.
+Kumwe App integrations that rely on retry, rate-limit, and preview-cancellation guarantees replay the
+additive `studio.profile/host-baseline-v2` sequence corpus as well. Its clock advances and renderer
+completions are explicit JSON harness controls, so a PHPUnit implementation can reproduce them without
+running the TypeScript testbed or inventing a transport route.
 The controller layer has a published target as well: the
 [host transport binding](../contracts/host-transport.md) fixes the `POST {baseUrl}/ports/{port}/{operation}`
 route shape, the request and result bodies, and the status mapping in both directions, so the routes and
-OpenAPI document Kumwe writes now do not become a breaking change later. A vendored copy of the corpus
+OpenAPI document Kumwe App writes now do not become a breaking change later. A vendored copy of the corpus
 is verifiable rather than assumed: `corpus-manifest.json` carries the digest of every published fixture
 and vector, so a stale or altered copy is detected before it changes what a conformance claim means.
 
 ## Architectural covenant
 
-The integration must preserve Kumwe's existing rules:
+The integration must preserve Kumwe App's existing rules:
 
 1. `ContainerFactory` remains the only composition root; Studio adapters receive dependencies by constructor.
 2. Domain depends on nothing; application depends on domain; infrastructure and delivery depend inward.
-3. CMS content and business records remain separate. Studio may present both but cannot turn relational
+3. Managed content and business records remain separate. Studio may present both but cannot turn relational
    business aggregates into EAV or untyped universal JSON.
 4. Authorization is applied before fields, relations, counts, queries, previews and exports become visible.
 5. Every mutation is authenticated, authorized, audited, transactional, concurrency-safe, and idempotent when
@@ -44,10 +48,10 @@ The integration must preserve Kumwe's existing rules:
 
 ## Target authoring model
 
-Kumwe adds a versioned `ContentAuthoringDefinition` beside, not inside, the validation schema. Its supported
+Kumwe App adds a versioned `ContentAuthoringDefinition` beside, not inside, the validation schema. Its supported
 modes map to Studio as follows:
 
-| Kumwe choice            | Studio session configuration                | Use                                                                                     |
+| Kumwe App choice        | Studio session configuration                | Use                                                                                     |
 | ----------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
 | Existing generated form | No Studio session                           | Current behaviour and recovery-safe fallback                                            |
 | Model design            | `mode: model`                               | Authorized draft of a new immutable content-definition version                          |
@@ -62,30 +66,30 @@ Studio never silently edits a published JSON Schema because a block was dragged 
 
 For business records, the Studio entry is an authorized projection over the application service. Price,
 quantity, tax, status, workflow, approvals and relationships remain in typed relational storage. A Blueprint
-binding stores a stable field reference; save commands invoke Kumwe use cases and invariants.
+binding stores a stable field reference; save commands invoke Kumwe App use cases and invariants.
 
-## Port-to-Kumwe mapping
+## Studio-to-Kumwe App port mapping
 
-| Studio host area   | Kumwe implementation responsibility                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation      |
-| Models             | Existing immutable content types plus the business-definition runtime; adapters project only protocol-approved field metadata                       |
-| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                 |
-| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                 |
-| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                        |
-| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                           |
-| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers               |
-| Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                  |
-| Contributions      | New Studio block/pattern/theme-profile contribution kinds extend the existing typed owner-aware SPI and immutable generation                        |
-| Media              | Kumwe media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client |
-| Localization       | Kumwe catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                    |
-| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                  |
-| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                             |
-| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                   |
+| Studio host area   | Kumwe App implementation responsibility                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation          |
+| Models             | Existing immutable content types plus the business-definition runtime; adapters project only protocol-approved field metadata                           |
+| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                     |
+| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                     |
+| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                            |
+| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                               |
+| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                   |
+| Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                      |
+| Contributions      | Manifest 6 / SPI 4 admits the six canonical Studio resource families plus separate host bindings into the existing owner-aware immutable generation     |
+| Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client |
+| Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                    |
+| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                      |
+| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                 |
+| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                       |
 
 ## Template and design-profile integration
 
-Kumwe templates contribute a versioned Studio design profile that extends the KIS/template contract with:
+Kumwe App templates contribute a versioned Studio design profile that extends the KIS/template contract with:
 
 - semantic viewport roles and inheritance;
 - permitted grid spans and layout behaviours;
@@ -107,11 +111,11 @@ The active template, KIS and extension renderer retain their separate ownership:
 - KIS supplies public component and interaction contracts;
 - extension supplies owned block schema, presenter/renderer and optional focused enhancement;
 - Studio supplies visual authoring and typed intent; and
-- Kumwe application services supply authorized data.
+- Kumwe App application services supply authorized data.
 
 ## Live preview and CSP
 
-Kumwe currently denies framing globally and permits same-origin scripts/styles under a strict CSP. Studio must
+Kumwe App currently denies framing globally and permits same-origin scripts/styles under a strict CSP. Studio must
 not weaken that policy for the whole application.
 
 Add a dedicated authoring-preview response with all of these properties:
@@ -127,11 +131,11 @@ Add a dedicated authoring-preview response with all of these properties:
 - automatic invalidation after permission, trust, theme, contribution or runtime-generation change.
 
 Normal administrator, portal, public and recovery responses retain the stronger framing policy. Cross-origin
-preview is not part of the Kumwe Gate B profile.
+preview is not part of the Kumwe App Gate B profile.
 
 ## Extension contribution shape
 
-Studio contributions extend Kumwe's one contribution family. A block declaration includes:
+Studio contributions extend Kumwe App's typed, owner-aware contribution system. A block declaration includes:
 
 - namespaced stable ID, owner and contract/semantic version;
 - localized label/help/category keys and icon reference;
@@ -152,10 +156,35 @@ stored Blueprint and entry data remains. The administrator shows an unresolved b
 diagnostic. Public rendering uses only an explicitly declared safe fallback; otherwise it suppresses the block
 and emits an operator diagnostic without leaking content or crashing the page.
 
+### Current Kumwe App contract reconciliation
+
+Kumwe App's frozen manifest schema 5 / contribution SPI 3 paraphrases all six Studio contribution families
+through host-native declarations: blocks, patterns, field controls, inspectors, design vocabularies, and
+composition migrations. The block declaration's property map (`maximum_length`, per-property `required`,
+`choice`, and host `reference` kinds) is one concrete mismatch, but it is not the only boundary to reconcile.
+Those six legacy shapes are bounded Kumwe App contracts; they are not the canonical Studio
+`block-definition`, `pattern`, `field-adapter`, `inspector`, `design-vocabulary`, and `migration` documents and
+must not be described or consumed as though the formats were identical.
+
+The correction is additive because Kumwe App's frozen generations are compatibility promises:
+
+| Boundary               | Required treatment                                                                                                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App manifest 5 / SPI 3 | Freeze the accepted manifest bytes, registrar API, runtime-generation behavior, and all six legacy declaration shapes unchanged.                                                                                                                                  |
+| App manifest 6 / SPI 4 | Add a new generation carrying canonical Studio `block-definition`, `pattern`, `field-adapter`, `inspector`, `design-vocabulary`, and `migration` resource documents; a block carries the complete canonical `propertySchema` rather than the legacy property map. |
+| Host bindings          | Keep owner/trust, PHP presenter and Twig renderer bindings, application-service references, and content/media/business reference policy in separate Kumwe App-owned binding metadata; do not invent Studio or JSON Schema keywords for them.                      |
+| Exact validation       | Validate every resource against its matching published Studio schema, verify the vendored `corpus-manifest.json`, and replay every applicable corpus group, including `vectors/schema-profile/`, before claiming conformance.                                     |
+| Legacy adapter         | Translate a manifest 5 / SPI 3 declaration only when the complete mapping is deterministic and lossless. Fail closed and require an explicit manifest 6 / SPI 4 declaration when any canonical meaning would be inferred, defaulted, widened, or discarded.       |
+| Generation admission   | Admit all canonical resources and host bindings atomically into one immutable owner-aware generation; disagreement rejects the owning contribution rather than publishing a partial translation.                                                                  |
+
+Until manifest 6 / SPI 4, exact schema validation, and corpus replay exist in Kumwe App, its composition
+contribution Gate A item is an integration blocker rather than evidence that the Studio profile is implemented.
+Studio does not weaken its portable schema contract to make the older host-specific declaration equivalent.
+
 ## Media integration
 
-The complete media user experience belongs in Studio, while authoritative media operations belong in Kumwe.
-Kumwe supplies a first-class media port supporting browse/search, upload session, streaming/progress,
+The complete media user experience belongs in Studio, while authoritative media operations belong in Kumwe App.
+Kumwe App supplies a first-class media port supporting browse/search, upload session, streaming/progress,
 cancel/retry, processing status, stable asset references, metadata, alternative/decorative text, captions,
 focal points, renditions, replacement/versioning, permissions, lifecycle and audit.
 
@@ -165,7 +194,7 @@ metadata. Details and the ownership split are in [`../media/README.md`](../media
 
 ## Existing code transition
 
-Kumwe keeps the current generated content form, rich-text component and media picker operational until the new
+Kumwe App keeps the current generated content form, rich-text component and media picker operational until the new
 path passes Gate B and content migration/rollback evidence. Integration proceeds additively:
 
 1. add protocol and host ports without changing existing content-type behaviour;
@@ -173,7 +202,7 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 3. add authenticated preview and public Twig block rendering;
 4. expose Studio only for explicitly opted-in authoring definitions;
 5. prove save/revision/workflow/translation/permission/media/extension lifecycle;
-6. migrate the reusable rich-text/media authoring UI into Studio packages while Kumwe adapters continue to
+6. migrate the reusable rich-text/media authoring UI into Studio packages while Kumwe App adapters continue to
    own routes, security and persistence;
 7. qualify old and new paths together; and
 8. retire a legacy editor only after every stored form/content shape has a tested fallback or migration.
@@ -184,7 +213,7 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 - generic schema-to-control mapping, command/history/selection, preview bridge, protocol validation;
 - host-neutral accessibility behaviours, design-token chooser and contribution authoring test kit.
 
-### Code that remains in Kumwe
+### Code that remains in Kumwe App
 
 - content/business domain definitions, validation policy, repositories and workflows;
 - authentication, authorization, step-up, CSRF, audit, transactions, ETags and idempotency;
@@ -194,25 +223,25 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 - REST/OpenAPI, CLI, MCP and Flutter-facing application use cases; and
 - database migrations, backup/restore and operational diagnostics.
 
-## Kumwe integration phases
+## Kumwe App integration phases
 
 Durable work starts after Studio Gate A.
 
-| Studio package  | Kumwe integration result                                                                                |
+| Studio package  | Kumwe App integration result                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
 | `M3-05`         | Additive host-port, persistence, preview, policy and API seams; existing editors remain default         |
 | `M5-06`         | Landing and product/service vertical slices using real extensions, themes, media, workflow and Twig     |
 | `M6-01`–`M6-05` | Migration, security, accessibility, performance, release, restart, backup/restore and rollback evidence |
-| Gate B          | Studio packages and the Kumwe profile are eligible for release/integration merge                        |
+| Gate B          | Studio packages and the Kumwe App profile are eligible for release/integration merge                    |
 
-## Kumwe Gate B proof
+## Kumwe App Gate B proof
 
 The integration is not complete until evidence proves:
 
 1. Existing form content remains readable/editable before, during and after opt-in.
 2. A four-to-two-to-one landing layout renders through two compatible template profiles.
 3. A reusable product/service Blueprint binds typed money, text, media and collection/reference fields without
-   duplicating the business record into CMS JSON.
+   duplicating the business record into untyped application JSON.
 4. An extension block installs disabled, activates, edits/renders, disables, becomes unresolved without data
    loss, reactivates, upgrades, and uninstalls with owned data preserved.
 5. Administrator, portal, REST/OpenAPI and future Dart client use the same application semantics where the

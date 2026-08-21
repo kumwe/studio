@@ -17,6 +17,7 @@ import {
   type TelemetryEvent,
 } from '@kumwe/studio-protocol';
 import { createBlueprintFixture, createTestbedHost, type TestbedHost } from '../src/index.js';
+import { materializeHostArtifactSeed, type HostArtifactSeed } from './host-artifact-seed.js';
 
 /**
  * The canonical host conformance corpus, replayed against the reference host.
@@ -27,7 +28,7 @@ import { createBlueprintFixture, createTestbedHost, type TestbedHost } from '../
  */
 
 interface HostVectorGiven {
-  artifacts: { id: StableId; kind: string; revision: Revision }[];
+  artifacts: HostArtifactSeed[];
   permissions: QualifiedName[];
   sessionGeneration?: Revision;
 }
@@ -80,10 +81,14 @@ const validateHostVector = ajv.getSchema(
 );
 
 function seedHost(given: HostVectorGiven): TestbedHost {
-  const documents: StudioArtifact[] = given.artifacts.map((artifact) =>
-    createBlueprintFixture({ id: artifact.id }),
-  );
-  return createTestbedHost({ documents, permissions: given.permissions });
+  const documents: StudioArtifact[] = given.artifacts.map(materializeHostArtifactSeed);
+  return createTestbedHost({
+    documents,
+    permissions: given.permissions,
+    ...(given.sessionGeneration === undefined
+      ? {}
+      : { sessionGeneration: given.sessionGeneration }),
+  });
 }
 
 /** Dispatches one vector onto the reference host's typed port surface. */

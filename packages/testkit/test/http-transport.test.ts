@@ -84,6 +84,7 @@ function definedPort<T>(port: T | undefined): T {
 
 async function startTestbedServer(options: TestbedHostOptions = {}): Promise<TestbedServer> {
   const { controls, host } = createTestbedHost({
+    allowTestOperationId: true,
     permissions: ['studio.permission/publish', 'studio.permission/save'],
     ...options,
   });
@@ -304,7 +305,10 @@ function insertCommand(
 
 describe('createHttpHostAdapter over a real node:http transport', () => {
   it('runs the session lifecycle drill: load, edit, save, conflict, recover', async () => {
-    const blueprint = createBlueprintFixture({ id: 'transport.blueprint' });
+    const blueprint = createBlueprintFixture({
+      id: 'transport.blueprint',
+      revision: 'transport.blueprint-r1',
+    });
     const testbed = await startTestbedServer({ documents: [blueprint] });
     try {
       const adapter = createAdapter(testbed.baseUrl);
@@ -369,7 +373,10 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
   });
 
   it('invalidates the previous generation when permissions change mid-session', async () => {
-    const blueprint = createBlueprintFixture({ id: 'permissions.blueprint' });
+    const blueprint = createBlueprintFixture({
+      id: 'permissions.blueprint',
+      revision: 'permissions.blueprint-r1',
+    });
     const testbed = await startTestbedServer({ documents: [blueprint] });
     try {
       const adapter = createAdapter(testbed.baseUrl);
@@ -415,8 +422,9 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
       render: (payload) => ({
         diagnostics: [],
         draftDigest: payload.draftDigest,
-        markerMap: { 'markers/m1': 'node-1' },
-        markers: ['markers/m1'],
+        markerMap: { [`studio.preview/node/${payload.draftDigest}/0`]: 'node-1' },
+        markers: [`studio.preview/node/${payload.draftDigest}/0`],
+        requestId: payload.requestId,
       }),
     });
     try {
@@ -437,12 +445,15 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
         {
           artifactId: 'verbatim.blueprint',
           draftDigest: 'a'.repeat(64),
+          draftRevision: 'verbatim-r1',
+          requestId: 'renders/1',
           viewport: 'expanded',
         },
         context,
       );
-      expect(rendered.value.markers).toEqual(['markers/m1']);
-      expect(rendered.value.markerMap).toEqual({ 'markers/m1': 'node-1' });
+      const marker = `studio.preview/node/${'a'.repeat(64)}/0`;
+      expect(rendered.value.markers).toEqual([marker]);
+      expect(rendered.value.markerMap).toEqual({ [marker]: 'node-1' });
     } finally {
       await testbed.close();
     }
@@ -466,7 +477,10 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
   });
 
   it('maps a mid-call disconnect onto the canonical unavailable error', async () => {
-    const blueprint = createBlueprintFixture({ id: 'disconnect.blueprint' });
+    const blueprint = createBlueprintFixture({
+      id: 'disconnect.blueprint',
+      revision: 'disconnect.blueprint-r1',
+    });
     const testbed = await startTestbedServer({ documents: [blueprint] });
     try {
       const adapter = createAdapter(testbed.baseUrl);

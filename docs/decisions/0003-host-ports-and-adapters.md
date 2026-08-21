@@ -5,7 +5,7 @@
 
 ## Context
 
-Studio must work with Kumwe and other systems without importing their databases, service containers, routes, identity models or framework internals.
+Studio must work with Kumwe App and other systems without importing their databases, service containers, routes, identity models or framework internals.
 
 ## Decision
 

@@ -5,7 +5,7 @@
 
 ## Context
 
-Kumwe intends to support a fully native Flutter client. Coupling canonical Studio behavior to browser DOM or Lit would prevent native reuse, while duplicating unconstrained behavior would cause divergent artifacts.
+Kumwe App intends to support a fully native Flutter client. Coupling canonical Studio behavior to browser DOM or Lit would prevent native reuse, while duplicating unconstrained behavior would cause divergent artifacts.
 
 ## Decision
 
@@ -15,4 +15,4 @@ Native renderers negotiate an explicit block/theme subset and never claim silent
 
 ## Consequences
 
-Kumwe can ship browser parity before a full native editor while preserving a credible native path. The project must publish stable schemas, fixtures and digests independently of npm types. WebView security and native-bridge policy become qualification requirements.
+Kumwe App can ship browser parity before a full native editor while preserving a credible native path. The project must publish stable schemas, fixtures and digests independently of npm types. WebView security and native-bridge policy become qualification requirements.

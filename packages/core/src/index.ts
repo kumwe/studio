@@ -62,7 +62,15 @@ export {
   type BlockRegistrationOptions,
   type ResolvedBlockRegistration,
 } from './registry.js';
-export { assertStudioPropertySchema, STUDIO_SCHEMA_PROFILE_LIMITS } from './schema-profile.js';
+export {
+  assertStudioPropertySchema,
+  compileStudioPropertySchema,
+  STUDIO_SCHEMA_PROFILE_ERROR_CODES,
+  STUDIO_SCHEMA_PROFILE_LIMITS,
+  StudioSchemaProfileError,
+  type StudioPropertySchemaValidator,
+  type StudioSchemaProfileErrorCode,
+} from './schema-profile.js';
 export {
   STUDIO_DEFAULT_URL_POLICY,
   validateExternalUrl,

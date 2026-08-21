@@ -11,7 +11,7 @@ Image selection and upload are central to content authoring, but binary custody,
 
 Provide `@kumwe/studio-media` for accessible browse, upload, progress, metadata, focal point, rendition and alternative-text experiences. Access every operation through a host media port. Persist opaque stable asset references and semantic rendition intent.
 
-Do not create an independent media service repository as part of the initial architecture. A host, including Kumwe, implements the port using its own media application services.
+Do not create an independent media service repository as part of the initial architecture. A host, including Kumwe App, implements the port using its own media application services.
 
 ## Consequences
 

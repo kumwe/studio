@@ -1,6 +1,6 @@
 # Dart and Flutter plan
 
-Kumwe's future native Flutter client must be able to author the same Studio artifacts without making the web
+Kumwe App's future native Flutter client must be able to author the same Studio artifacts without making the web
 implementation the hidden source of truth. The Dart track therefore begins before Gate A and shares the
 contract, fixtures and release discipline from the first protocol candidate.
 
@@ -18,7 +18,7 @@ A host may embed the published web-authoring build for faster third-party adopti
 profile and must use a typed bridge with strict origin, navigation, file-access, clipboard, upload, external
 link, storage and token rules. No host credential appears in a URL or durable web storage.
 
-Kumwe does not use the WebView profile to claim its one-to-one native Flutter objective has been met.
+Kumwe App does not use the WebView profile to claim its one-to-one native Flutter objective has been met.
 
 ### Native delivery rendering
 
@@ -82,7 +82,7 @@ preview.
 
 ## Host transport
 
-The Dart SDK accepts a host adapter. A Kumwe client normally uses generated REST/OpenAPI transport, while an
+The Dart SDK accepts a host adapter. A Kumwe App client normally uses generated REST/OpenAPI transport, while an
 embedded desktop/mobile host may use an in-process bridge. Both preserve:
 
 - exact protocol/capability negotiation;
@@ -114,16 +114,16 @@ its required matrix passes.
 
 ## Six-month delivery sequence
 
-| Programme point | Dart/Flutter outcome                                                                                                             |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Month 1         | Generator evaluation, canonical JSON/number/date/ID decisions, package/API boundaries and Flutter interaction specification      |
-| Month 2         | Generated models compile; Dart and TypeScript round-trip Gate A corpus; capability and error mappings are frozen                 |
-| Gate A          | Downstream Flutter integration may begin against the contract release candidate                                                  |
-| Month 3         | Dart command/validation/migration/host core passes the portable headless profile                                                 |
-| Month 4         | Native Flutter reference shell completes the semantic command set, responsive layout and accessible non-drag routes              |
-| Month 5         | Native media, rich text, extension/theme capability handling, server/native preview and a Kumwe transport adapter are integrated |
-| Month 6         | Cross-runtime, supported-platform, accessibility, performance, upgrade/recovery and clean-registry-consumer evidence is produced |
-| Gate B          | Dart/Flutter packages ship as part of the tested Studio release set; unsupported capabilities remain explicit                    |
+| Programme point | Dart/Flutter outcome                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Month 1         | Generator evaluation, canonical JSON/number/date/ID decisions, package/API boundaries and Flutter interaction specification          |
+| Month 2         | Generated models compile; Dart and TypeScript round-trip Gate A corpus; capability and error mappings are frozen                     |
+| Gate A          | Downstream Flutter integration may begin against the contract release candidate                                                      |
+| Month 3         | Dart command/validation/migration/host core passes the portable headless profile                                                     |
+| Month 4         | Native Flutter reference shell completes the semantic command set, responsive layout and accessible non-drag routes                  |
+| Month 5         | Native media, rich text, extension/theme capability handling, server/native preview and a Kumwe App transport adapter are integrated |
+| Month 6         | Cross-runtime, supported-platform, accessibility, performance, upgrade/recovery and clean-registry-consumer evidence is produced     |
+| Gate B          | Dart/Flutter packages ship as part of the tested Studio release set; unsupported capabilities remain explicit                        |
 
 ## Gate evidence
 
@@ -132,5 +132,5 @@ canonical bytes, feature negotiation and a clean Dart consumer build.
 
 Gate B evidence includes command/migration parity, Flutter interaction and accessibility matrices, host
 transport failure/retry/conflict, media streaming, lifecycle/unknown-data preservation, clean pub.dev install,
-signed release provenance, and a Kumwe end-to-end workflow using the same application semantics as the web
+signed release provenance, and a Kumwe App end-to-end workflow using the same application semantics as the web
 surface.

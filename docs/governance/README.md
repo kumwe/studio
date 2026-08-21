@@ -1,8 +1,8 @@
 # Project governance
 
 Studio is a Kumwe-led open-source project whose public contracts are intended for unrelated hosts, clients,
-themes and extensions. Governance protects that reuse: Kumwe is the first reference host and product driver,
-but a Kumwe implementation shortcut cannot silently become a portable requirement.
+themes and extensions. Governance protects that reuse: Kumwe App is the first reference host and product driver,
+but a Kumwe App implementation shortcut cannot silently become a portable requirement.
 
 ## Sources of authority
 
@@ -98,7 +98,7 @@ that identify a contract contradiction remain unresolved until code, schema, fix
 ## Dependency and license governance
 
 Studio is MIT licensed. Every production dependency must be license-compatible with MIT distribution and the
-GPL-2.0-only Kumwe CMS consumer, actively maintained, justifiable against an internal implementation, and
+GPL-2.0-only Kumwe App consumer, actively maintained, justifiable against an internal implementation, and
 isolated behind a boundary when it could otherwise own Studio's public model.
 
 A consequential dependency proposal records:

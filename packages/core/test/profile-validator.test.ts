@@ -399,6 +399,7 @@ describe('profile corpus agreement with the reference validator', () => {
       type: 'object',
     },
     {
+      additionalProperties: false,
       properties: {
         count: { exclusiveMaximum: 100, exclusiveMinimum: 0, multipleOf: 0.5, type: 'number' },
         label: { maxLength: 12, minLength: 2, type: 'string' },
@@ -414,6 +415,7 @@ describe('profile corpus agreement with the reference validator', () => {
       type: 'object',
     },
     {
+      additionalProperties: false,
       description: 'union types with dependent members',
       properties: {
         size: { type: ['integer', 'string'] },
@@ -427,6 +429,7 @@ describe('profile corpus agreement with the reference validator', () => {
       type: 'object',
     },
     {
+      additionalProperties: false,
       else: { required: ['fallback'] },
       if: { properties: { kind: { const: 'image' } }, required: ['kind'] },
       properties: {
@@ -438,6 +441,7 @@ describe('profile corpus agreement with the reference validator', () => {
       type: 'object',
     },
     {
+      additionalProperties: false,
       allOf: [{ required: ['a'] }, { properties: { a: { minimum: 0, type: 'number' } } }],
       anyOf: [{ required: ['a'] }, { required: ['b'] }],
       not: { required: ['forbidden'] },
@@ -453,6 +457,7 @@ describe('profile corpus agreement with the reference validator', () => {
           type: 'object',
         },
       },
+      additionalProperties: false,
       properties: {
         first: { $ref: '#/$defs/entry' },
         rest: { items: { $ref: '#/$defs/entry' }, type: 'array' },
@@ -462,6 +467,7 @@ describe('profile corpus agreement with the reference validator', () => {
       writeOnly: false,
     },
     {
+      additionalProperties: false,
       default: { rows: [] },
       examples: [{ rows: [[1, 2]] }],
       properties: {
@@ -525,7 +531,6 @@ describe('profile corpus agreement with the reference validator', () => {
     const cases: { instances: unknown[]; schema: JsonSchema }[] = [
       // Integer-valued floats and non-finite numbers.
       { instances: [1, 1.0, 1.5, -0, 2 ** 53, 0.1 + 0.2], schema: { type: 'integer' } },
-      { instances: [0.3, 0.30000000000000004, 3, 0.6], schema: { multipleOf: 0.1 } },
       // Code-point string lengths (astral characters).
       {
         instances: ['\u{1f9ea}\u{1f9ea}', 'ab', 'abc', '\ud83e'],
@@ -586,6 +591,124 @@ describe('profile corpus agreement with the reference validator', () => {
         ).toBe(reference(instance));
       }
     }
+  });
+
+  it('evaluates decimal multipleOf with exact canonical base-10 arithmetic', () => {
+    const cents = compileProfileSchema({ multipleOf: 0.01, type: 'number' });
+    for (const value of [0, 4.02, -4.02, 1_000]) {
+      expect(cents.validate(value), String(value)).toBe(true);
+    }
+    for (const value of [4.021, -4.021]) {
+      expect(cents.validate(value), String(value)).toBe(false);
+      expect(cents.errors?.[0]).toMatchObject({ instancePath: '', keyword: 'multipleOf' });
+    }
+
+    const tenths = compileProfileSchema({ multipleOf: 0.1, type: 'number' });
+    expect(tenths.validate(0.3)).toBe(true);
+    expect(tenths.validate(0.30000000000000004)).toBe(false);
+  });
+
+  it('memoizes acyclic reference fan-out by schema, location, and instance', () => {
+    const definitions: Record<string, JsonSchema> = {
+      d63: { const: true },
+    };
+    for (let index = 62; index >= 0; index -= 1) {
+      const name = `d${String(index).padStart(2, '0')}`;
+      const next = `d${String(index + 1).padStart(2, '0')}`;
+      definitions[name] = {
+        allOf: [{ $ref: `#/$defs/${next}` }, { $ref: `#/$defs/${next}` }],
+      };
+    }
+    const validator = compileProfileSchema({
+      $defs: definitions,
+      $ref: '#/$defs/d00',
+    });
+
+    expect(validator.validate(true)).toBe(true);
+    expect(validator.errors).toBeNull();
+    expect(validator.validate(false)).toBe(false);
+    expect(validator.errors?.[0]).toMatchObject({ instancePath: '', keyword: 'const' });
+  });
+
+  it('does not reuse property-name verdicts for different values at one instance path', () => {
+    const validator = compileProfileSchema({
+      propertyNames: { enum: ['allowed'] },
+      type: 'object',
+    });
+
+    expect(validator.validate({ allowed: true, denied: true })).toBe(false);
+    expect(validator.errors?.[0]).toMatchObject({ instancePath: '', keyword: 'propertyNames' });
+  });
+
+  it('replays every diagnostic when a speculative failure is reused non-speculatively', () => {
+    const validator = compileProfileSchema({
+      $defs: { failing: { enum: ['accepted'], type: 'string' } },
+      anyOf: [{ $ref: '#/$defs/failing' }, true],
+      if: true,
+      then: { $ref: '#/$defs/failing' },
+    });
+
+    expect(validator.validate(42)).toBe(false);
+    expect(validator.errors).not.toBeNull();
+    expect(
+      validator.errors?.map(({ instancePath, keyword }) => ({ instancePath, keyword })),
+    ).toEqual([
+      { instancePath: '', keyword: 'type' },
+      { instancePath: '', keyword: 'enum' },
+      { instancePath: '', keyword: 'if' },
+    ]);
+  });
+
+  it('publishes the same distinct diagnostics for shared and inlined failures', () => {
+    const failing: JsonSchema = {
+      allOf: [
+        { enum: ['accepted'], type: 'string' },
+        { enum: ['accepted'], type: 'string' },
+      ],
+    };
+    const shared = compileProfileSchema({
+      $defs: { failing },
+      allOf: [{ $ref: '#/$defs/failing' }, { $ref: '#/$defs/failing' }],
+    });
+    const inlined = compileProfileSchema({
+      allOf: [structuredClone(failing), structuredClone(failing)],
+    });
+
+    expect(shared.validate(42)).toBe(false);
+    expect(inlined.validate(42)).toBe(false);
+    expect(shared.errors).toEqual(inlined.errors);
+    expect(shared.errors?.map(({ instancePath, keyword }) => ({ instancePath, keyword }))).toEqual([
+      { instancePath: '', keyword: 'type' },
+      { instancePath: '', keyword: 'enum' },
+      { instancePath: '', keyword: 'allOf' },
+    ]);
+  });
+
+  it('orders object instance diagnostics independently of member insertion order', () => {
+    const validator = compileProfileSchema({
+      additionalProperties: false,
+      properties: {
+        z: { type: 'string' },
+        a: { type: 'string' },
+      },
+      required: ['z', 'a'],
+      type: 'object',
+    });
+
+    expect(validator.validate({ z: 1, extra: true, a: 2 })).toBe(false);
+    expect(
+      validator.errors?.map(({ instancePath, keyword }) => ({ instancePath, keyword })),
+    ).toEqual([
+      { instancePath: '/a', keyword: 'type' },
+      { instancePath: '/z', keyword: 'type' },
+      { instancePath: '', keyword: 'additionalProperties' },
+    ]);
+
+    expect(validator.validate({})).toBe(false);
+    expect(validator.errors?.map(({ message }) => message)).toEqual([
+      "must have required property 'a'",
+      "must have required property 'z'",
+    ]);
   });
 
   it('reports diagnostics with Ajv-shaped instance paths and keywords', () => {

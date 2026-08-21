@@ -1,4 +1,5 @@
 import {
+  isPreviewMarker,
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
   type PreviewMeasurePayload,
@@ -12,7 +13,32 @@ import {
   type PreviewSelectPayload,
   type PreviewViewportPayload,
   type PreviewTeardownPayload,
+  type QualifiedName,
 } from '@kumwe/studio-protocol';
+
+/** Stable client-side and wire failure surfaced by the preview channel. */
+export class PreviewChannelError extends Error {
+  public readonly code: QualifiedName;
+  public readonly retryable: boolean;
+
+  public constructor(code: QualifiedName, message: string, retryable = false) {
+    super(message);
+    this.name = 'PreviewChannelError';
+    this.code = code;
+    this.retryable = retryable;
+  }
+}
+
+function snapshotOutboundPayload<Payload>(payload: Payload): Payload {
+  try {
+    return structuredClone(payload);
+  } catch {
+    throw new PreviewChannelError(
+      'studio.preview/invalid-outbound-message',
+      'Refused an invalid outbound preview message.',
+    );
+  }
+}
 
 export interface PreviewMessageEvent {
   data: unknown;
@@ -72,6 +98,7 @@ interface PendingReady {
 
 interface PendingRender {
   cleanup: () => void;
+  payload: PreviewRenderPayload;
   reject: (reason?: unknown) => void;
   resolve: (result: PreviewRenderedPayload) => void;
   timeout: ReturnType<typeof setTimeout>;
@@ -79,6 +106,7 @@ interface PendingRender {
 
 interface PendingMeasure {
   cleanup: () => void;
+  payload: PreviewMeasurePayload;
   reject: (reason?: unknown) => void;
   resolve: (outcome: PreviewMeasureOutcome) => void;
   timeout: ReturnType<typeof setTimeout>;
@@ -91,6 +119,7 @@ export class PreviewClient {
   readonly #channelId: string;
   readonly #listener: PreviewMessageListener;
   readonly #listeners = new Set<PreviewProtocolListener>();
+  readonly #markerInventory = new Set<string>();
   readonly #pending = new Map<string, PendingRender>();
   readonly #pendingMeasures = new Map<string, PendingMeasure>();
   readonly #pendingReady = new Set<PendingReady>();
@@ -99,9 +128,10 @@ export class PreviewClient {
   readonly #target: PreviewMessageTarget;
   readonly #targetOrigin: string;
   readonly #timeoutMilliseconds: number;
+  readonly #usedRequestIds = new Set<string>();
   #disposed = false;
   #lastInboundSequence = -1;
-  #latestRenderDigest: string | undefined;
+  #latestRenderRequestId: string | undefined;
   #latestRenderedDigest: string | undefined;
   #readyPayload: PreviewReadyPayload | undefined;
   #sequence = 0;
@@ -143,7 +173,11 @@ export class PreviewClient {
       pending.reject(new Error('Preview client was disposed.'));
     }
     this.#pendingReady.clear();
+    this.#activationListeners.clear();
     this.#listeners.clear();
+    this.#latestRenderRequestId = undefined;
+    this.#latestRenderedDigest = undefined;
+    this.#markerInventory.clear();
   }
 
   public onMessage(listener: PreviewProtocolListener): () => void {
@@ -211,59 +245,115 @@ export class PreviewClient {
         new Error('Preview render was aborted.', { cause: options.signal.reason }),
       );
     }
-    if (this.#pending.has(payload.draftDigest)) {
-      return Promise.reject(new Error(`Render ${payload.draftDigest} is already pending.`));
+    let request: PreviewRenderPayload;
+    try {
+      request = snapshotOutboundPayload(payload);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new PreviewChannelError(
+              'studio.preview/invalid-outbound-message',
+              'Refused an invalid outbound preview message.',
+            ),
+      );
     }
 
-    for (const [digest, pending] of this.#pending) {
+    const message: PreviewMessage = {
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: request,
+      sequence: this.#sequence,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/render',
+    };
+    try {
+      this.#assertOutbound(message);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new PreviewChannelError(
+              'studio.preview/invalid-outbound-message',
+              'Refused an invalid outbound preview message.',
+            ),
+      );
+    }
+    if (this.#usedRequestIds.has(request.requestId)) {
+      return Promise.reject(
+        new PreviewChannelError(
+          'studio.preview/request-id-reused',
+          `Preview request ${request.requestId} was already used in this session.`,
+        ),
+      );
+    }
+
+    for (const [requestId, pending] of this.#pending) {
       clearTimeout(pending.timeout);
       pending.cleanup();
       pending.reject(
-        new Error(`Preview render ${digest} was superseded by ${payload.draftDigest}.`),
+        new Error(`Preview render ${requestId} was superseded by ${request.requestId}.`),
       );
     }
     this.#pending.clear();
-    this.#latestRenderDigest = payload.draftDigest;
+    this.#rejectPendingMeasures(
+      new Error(`Preview measurements were superseded by render ${request.requestId}.`),
+    );
+    this.#usedRequestIds.add(request.requestId);
+    this.#latestRenderRequestId = request.requestId;
+    this.#latestRenderedDigest = undefined;
+    this.#markerInventory.clear();
 
     return new Promise<PreviewRenderedPayload>((resolve, reject) => {
       const abort = (): void => {
-        const pending = this.#pending.get(payload.draftDigest);
+        const pending = this.#pending.get(request.requestId);
         if (pending !== undefined) {
           clearTimeout(pending.timeout);
-          this.#pending.delete(payload.draftDigest);
+          this.#pending.delete(request.requestId);
           pending.cleanup();
-          if (this.#latestRenderDigest === payload.draftDigest) {
-            this.#latestRenderDigest = undefined;
+          if (this.#latestRenderRequestId === request.requestId) {
+            this.#latestRenderRequestId = undefined;
           }
           pending.reject(new Error('Preview render was aborted.'));
+          this.#revokeRemoteRender(request.draftDigest, 'studio.preview/client-aborted');
         }
       };
       const cleanup = (): void => {
         options.signal?.removeEventListener('abort', abort);
       };
       const timeout = setTimeout(() => {
-        const pending = this.#pending.get(payload.draftDigest);
+        const pending = this.#pending.get(request.requestId);
         if (pending !== undefined) {
-          this.#pending.delete(payload.draftDigest);
+          this.#pending.delete(request.requestId);
           pending.cleanup();
-          if (this.#latestRenderDigest === payload.draftDigest) {
-            this.#latestRenderDigest = undefined;
+          if (this.#latestRenderRequestId === request.requestId) {
+            this.#latestRenderRequestId = undefined;
           }
-          pending.reject(new Error(`Preview render ${payload.draftDigest} timed out.`));
+          pending.reject(new Error(`Preview render ${request.requestId} timed out.`));
+          this.#revokeRemoteRender(request.draftDigest, 'studio.preview/client-timeout');
         }
       }, this.#timeoutMilliseconds);
 
-      this.#pending.set(payload.draftDigest, { cleanup, reject, resolve, timeout });
-      options.signal?.addEventListener('abort', abort, { once: true });
-      this.#post({
-        channelId: this.#channelId,
-        contractVersion: STUDIO_CONTRACT_VERSION,
-        kind: 'preview-message',
-        payload,
-        sequence: this.#sequence++,
-        sessionGeneration: this.#sessionGeneration,
-        type: 'studio.preview/render',
+      this.#pending.set(request.requestId, {
+        cleanup,
+        payload: request,
+        reject,
+        resolve,
+        timeout,
       });
+      options.signal?.addEventListener('abort', abort, { once: true });
+      try {
+        this.#post(message);
+      } catch (error) {
+        clearTimeout(timeout);
+        cleanup();
+        this.#pending.delete(request.requestId);
+        if (this.#latestRenderRequestId === request.requestId) {
+          this.#latestRenderRequestId = undefined;
+        }
+        reject(error instanceof Error ? error : new Error('Preview transport failed.'));
+      }
     });
   }
 
@@ -287,28 +377,85 @@ export class PreviewClient {
         new Error('Preview measure was aborted.', { cause: options.signal.reason }),
       );
     }
+    let request: PreviewMeasurePayload;
+    try {
+      request = snapshotOutboundPayload(payload);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new PreviewChannelError(
+              'studio.preview/invalid-outbound-message',
+              'Refused an invalid outbound preview message.',
+            ),
+      );
+    }
     if (this.#latestRenderedDigest === undefined) {
       return Promise.reject(new Error('Preview measure requires a completed render.'));
     }
-    if (this.#pendingMeasures.has(payload.requestId)) {
-      return Promise.reject(new Error(`Measure ${payload.requestId} is already pending.`));
+
+    const message: PreviewMessage = {
+      channelId: this.#channelId,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'preview-message',
+      payload: request,
+      sequence: this.#sequence,
+      sessionGeneration: this.#sessionGeneration,
+      type: 'studio.preview/measure',
+    };
+    try {
+      this.#assertOutbound(message);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof Error
+          ? error
+          : new PreviewChannelError(
+              'studio.preview/invalid-outbound-message',
+              'Refused an invalid outbound preview message.',
+            ),
+      );
+    }
+    if (this.#usedRequestIds.has(request.requestId)) {
+      return Promise.reject(
+        new PreviewChannelError(
+          'studio.preview/request-id-reused',
+          `Preview request ${request.requestId} was already used in this session.`,
+        ),
+      );
+    }
+
+    if (
+      request.markers.some(
+        (marker) =>
+          !this.#markerInventory.has(marker) ||
+          !isPreviewMarker(marker, this.#latestRenderedDigest),
+      )
+    ) {
+      return Promise.reject(
+        new PreviewChannelError(
+          'studio.preview/measure-stale-marker',
+          'Preview measurement markers must belong to the current render inventory.',
+          true,
+        ),
+      );
     }
 
     for (const [requestId, pending] of this.#pendingMeasures) {
       clearTimeout(pending.timeout);
       pending.cleanup();
       pending.reject(
-        new Error(`Preview measure ${requestId} was superseded by ${payload.requestId}.`),
+        new Error(`Preview measure ${requestId} was superseded by ${request.requestId}.`),
       );
     }
     this.#pendingMeasures.clear();
+    this.#usedRequestIds.add(request.requestId);
 
     return new Promise<PreviewMeasureOutcome>((resolve, reject) => {
       const abort = (): void => {
-        const pending = this.#pendingMeasures.get(payload.requestId);
+        const pending = this.#pendingMeasures.get(request.requestId);
         if (pending !== undefined) {
           clearTimeout(pending.timeout);
-          this.#pendingMeasures.delete(payload.requestId);
+          this.#pendingMeasures.delete(request.requestId);
           pending.cleanup();
           pending.reject(new Error('Preview measure was aborted.'));
         }
@@ -317,25 +464,30 @@ export class PreviewClient {
         options.signal?.removeEventListener('abort', abort);
       };
       const timeout = setTimeout(() => {
-        const pending = this.#pendingMeasures.get(payload.requestId);
+        const pending = this.#pendingMeasures.get(request.requestId);
         if (pending !== undefined) {
-          this.#pendingMeasures.delete(payload.requestId);
+          this.#pendingMeasures.delete(request.requestId);
           pending.cleanup();
-          pending.reject(new Error(`Preview measure ${payload.requestId} timed out.`));
+          pending.reject(new Error(`Preview measure ${request.requestId} timed out.`));
         }
       }, this.#timeoutMilliseconds);
 
-      this.#pendingMeasures.set(payload.requestId, { cleanup, reject, resolve, timeout });
-      options.signal?.addEventListener('abort', abort, { once: true });
-      this.#post({
-        channelId: this.#channelId,
-        contractVersion: STUDIO_CONTRACT_VERSION,
-        kind: 'preview-message',
-        payload,
-        sequence: this.#sequence++,
-        sessionGeneration: this.#sessionGeneration,
-        type: 'studio.preview/measure',
+      this.#pendingMeasures.set(request.requestId, {
+        cleanup,
+        payload: request,
+        reject,
+        resolve,
+        timeout,
       });
+      options.signal?.addEventListener('abort', abort, { once: true });
+      try {
+        this.#post(message);
+      } catch (error) {
+        clearTimeout(timeout);
+        cleanup();
+        this.#pendingMeasures.delete(request.requestId);
+        reject(error instanceof Error ? error : new Error('Preview transport failed.'));
+      }
     });
   }
 
@@ -353,15 +505,24 @@ export class PreviewClient {
         'A viewport message carries either a semantic role or explicit dimensions, never both.',
       );
     }
-    this.#post({
+    const message: PreviewMessage = {
       channelId: this.#channelId,
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
       payload,
-      sequence: this.#sequence++,
+      sequence: this.#sequence,
       sessionGeneration: this.#sessionGeneration,
       type: 'studio.preview/viewport',
-    });
+    };
+    this.#assertOutbound(message);
+    this.#rejectPendingMeasures(
+      new PreviewChannelError(
+        'studio.preview/measure-viewport-changed',
+        'Preview measurement was invalidated by a viewport change.',
+        true,
+      ),
+    );
+    this.#post(message);
   }
 
   /**
@@ -371,15 +532,46 @@ export class PreviewClient {
    */
   public disposeDraft(payload: PreviewDisposePayload): void {
     this.#assertActive();
-    this.#post({
+    const message: PreviewMessage = {
       channelId: this.#channelId,
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
       payload,
-      sequence: this.#sequence++,
+      sequence: this.#sequence,
       sessionGeneration: this.#sessionGeneration,
       type: 'studio.preview/dispose',
-    });
+    };
+    this.#assertOutbound(message);
+    for (const [requestId, pending] of this.#pending) {
+      if (
+        payload.draftDigest === undefined ||
+        pending.payload.draftDigest === payload.draftDigest
+      ) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        pending.reject(
+          new PreviewChannelError(
+            'studio.preview/render-disposed',
+            `Preview render ${requestId} was disposed before completion.`,
+          ),
+        );
+        this.#pending.delete(requestId);
+        if (this.#latestRenderRequestId === requestId) {
+          this.#latestRenderRequestId = undefined;
+        }
+      }
+    }
+    if (payload.draftDigest === undefined || payload.draftDigest === this.#latestRenderedDigest) {
+      this.#latestRenderedDigest = undefined;
+      this.#markerInventory.clear();
+      this.#rejectPendingMeasures(
+        new PreviewChannelError(
+          'studio.preview/measure-disposed',
+          'Preview measurement was disposed with its render.',
+        ),
+      );
+    }
+    this.#post(message);
   }
 
   /** Observe trusted marker interactions the renderer reports. */
@@ -397,7 +589,7 @@ export class PreviewClient {
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
       payload,
-      sequence: this.#sequence++,
+      sequence: this.#sequence,
       sessionGeneration: this.#sessionGeneration,
       type: 'studio.preview/select',
     });
@@ -409,8 +601,48 @@ export class PreviewClient {
     }
   }
 
+  #assertOutbound(message: PreviewMessage): void {
+    if (!isPreviewMessage(message)) {
+      throw new PreviewChannelError(
+        'studio.preview/invalid-outbound-message',
+        'Refused an invalid outbound preview message.',
+      );
+    }
+  }
+
   #post(message: PreviewMessage): void {
+    this.#assertOutbound(message);
+    this.#sequence += 1;
     this.#target.postMessage(message, this.#targetOrigin);
+  }
+
+  #rejectPendingMeasures(reason: Error): void {
+    for (const pending of this.#pendingMeasures.values()) {
+      clearTimeout(pending.timeout);
+      pending.cleanup();
+      pending.reject(reason);
+    }
+    this.#pendingMeasures.clear();
+  }
+
+  #revokeRemoteRender(draftDigest: string, reason: PreviewDisposePayload['reason']): void {
+    if (this.#disposed) {
+      return;
+    }
+    try {
+      this.#post({
+        channelId: this.#channelId,
+        contractVersion: STUDIO_CONTRACT_VERSION,
+        kind: 'preview-message',
+        payload: { draftDigest, reason },
+        sequence: this.#sequence,
+        sessionGeneration: this.#sessionGeneration,
+        type: 'studio.preview/dispose',
+      });
+    } catch {
+      // Local cancellation is already complete. A transport exception cannot
+      // resurrect the request, and private transport details are not surfaced.
+    }
   }
 
   #receive(event: PreviewMessageEvent): void {
@@ -427,6 +659,12 @@ export class PreviewClient {
     this.#lastInboundSequence = event.data.sequence;
 
     if (event.data.type === 'studio.preview/activated') {
+      if (
+        !this.#markerInventory.has(event.data.payload.marker) ||
+        !isPreviewMarker(event.data.payload.marker, this.#latestRenderedDigest)
+      ) {
+        return;
+      }
       for (const listener of this.#activationListeners) {
         listener(event.data.payload);
       }
@@ -434,21 +672,57 @@ export class PreviewClient {
     }
 
     if (event.data.type === 'studio.preview/rendered') {
-      if (event.data.payload.draftDigest !== this.#latestRenderDigest) {
+      if (event.data.payload.requestId !== this.#latestRenderRequestId) {
         return;
       }
-      const pending = this.#pending.get(event.data.payload.draftDigest);
+      const pending = this.#pending.get(event.data.payload.requestId);
+      if (pending !== undefined && event.data.payload.draftDigest !== pending.payload.draftDigest) {
+        clearTimeout(pending.timeout);
+        pending.cleanup();
+        this.#pending.delete(event.data.payload.requestId);
+        this.#latestRenderRequestId = undefined;
+        pending.reject(
+          new PreviewChannelError(
+            'studio.preview/render-correlation-mismatch',
+            'Preview response digest did not match its render request.',
+          ),
+        );
+        return;
+      }
       if (pending !== undefined) {
         clearTimeout(pending.timeout);
         pending.cleanup();
-        this.#pending.delete(event.data.payload.draftDigest);
-        this.#latestRenderDigest = undefined;
+        this.#pending.delete(event.data.payload.requestId);
+        this.#latestRenderRequestId = undefined;
         this.#latestRenderedDigest = event.data.payload.draftDigest;
+        this.#markerInventory.clear();
+        for (const marker of event.data.payload.markers) {
+          this.#markerInventory.add(marker);
+        }
         pending.resolve(event.data.payload);
       }
     } else if (event.data.type === 'studio.preview/measurements') {
       const pending = this.#pendingMeasures.get(event.data.payload.requestId);
       if (pending !== undefined) {
+        const responseMarkers = [
+          ...Object.keys(event.data.payload.measurements),
+          ...event.data.payload.unknown,
+        ];
+        if (
+          responseMarkers.length !== pending.payload.markers.length ||
+          pending.payload.markers.some((marker) => !responseMarkers.includes(marker))
+        ) {
+          clearTimeout(pending.timeout);
+          pending.cleanup();
+          this.#pendingMeasures.delete(event.data.payload.requestId);
+          pending.reject(
+            new PreviewChannelError(
+              'studio.preview/invalid-measurements',
+              'Preview measurements did not exactly partition the requested marker inventory.',
+            ),
+          );
+          return;
+        }
         clearTimeout(pending.timeout);
         pending.cleanup();
         this.#pendingMeasures.delete(event.data.payload.requestId);
@@ -472,16 +746,21 @@ export class PreviewClient {
         if (pendingRender !== undefined) {
           clearTimeout(pendingRender.timeout);
           pendingRender.cleanup();
-          pendingRender.reject(new Error(message));
+          pendingRender.reject(
+            new PreviewChannelError(event.data.payload.code, message, event.data.payload.retryable),
+          );
           this.#pending.delete(correlationId);
-          if (this.#latestRenderDigest === correlationId) {
-            this.#latestRenderDigest = undefined;
+          if (this.#latestRenderRequestId === correlationId) {
+            this.#latestRenderRequestId = undefined;
+            this.#markerInventory.clear();
           }
         }
         if (pendingMeasure !== undefined) {
           clearTimeout(pendingMeasure.timeout);
           pendingMeasure.cleanup();
-          pendingMeasure.reject(new Error(message));
+          pendingMeasure.reject(
+            new PreviewChannelError(event.data.payload.code, message, event.data.payload.retryable),
+          );
           this.#pendingMeasures.delete(correlationId);
         }
       } else {
@@ -497,7 +776,9 @@ export class PreviewClient {
           pending.reject(new Error(message));
         }
         this.#pendingMeasures.clear();
-        this.#latestRenderDigest = undefined;
+        this.#latestRenderRequestId = undefined;
+        this.#latestRenderedDigest = undefined;
+        this.#markerInventory.clear();
       }
     } else if (event.data.type === 'studio.preview/ready') {
       this.#readyPayload = event.data.payload;
@@ -530,8 +811,9 @@ export class PreviewClient {
         pending.reject(new Error(reason));
       }
       this.#pendingMeasures.clear();
-      this.#latestRenderDigest = undefined;
+      this.#latestRenderRequestId = undefined;
       this.#latestRenderedDigest = undefined;
+      this.#markerInventory.clear();
       // A reloaded renderer announces itself again; the cached payload may
       // no longer describe it.
       this.#readyPayload = undefined;
@@ -554,7 +836,7 @@ export class PreviewClient {
       contractVersion: STUDIO_CONTRACT_VERSION,
       kind: 'preview-message',
       payload: { reason },
-      sequence: this.#sequence++,
+      sequence: this.#sequence,
       sessionGeneration: this.#sessionGeneration,
       type: 'studio.preview/teardown',
     });

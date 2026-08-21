@@ -7,7 +7,7 @@ The package deliberately contains no DOM or framework dependency. JSON Schemas a
 the `schemas` export for authoritative validation outside TypeScript.
 
 The initial contract covers blueprints, block definitions, design profiles, host capabilities,
-commands and canonical command vectors, preview messages, host port errors, media asset
+commands and canonical command vectors, preview messages and identity vectors, host port errors, media asset
 projections, persisted media references, media upload sessions, portable rich text, plugin
 manifests, and entries. `MediaAsset` describes host-owned library state; the smaller
 `MediaReference` is the portable value stored in an artifact. Consumers validate the document's
@@ -16,7 +16,13 @@ inferred from the other or from the `/studio/v1/` schema epoch URI.
 
 Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its nine
 typed ports sharing one request envelope), the stable host error taxonomy with the
-`isHostPortError` guard, the extension lifecycle state vocabulary, and the preview message guard.
+`isHostPortError` guard, the extension lifecycle state vocabulary, and preview guards for the message,
+rendered inventory, and canonical marker grammar. Preview draft.2 closes its message discriminator,
+requires artifact/revision/digest plus session-unique render-attempt correlation, and applies the same
+safe local-name and 240–10000 pixel viewport bounds in schema and runtime guards.
 `schemas/manifest.json` records the schema epoch plus the file, canonical `$id`, and sha256 digest
 of every published schema so generated SDKs can pin the exact corpus they were built against.
 Canonical command vectors and the negative-fixture corpus ship through `@kumwe/studio-testkit`.
+The protocol package also exports the single-exchange and ordered host-vector schemas. The sequence
+schema fixes the idempotency scope/preimage and its deterministic clock/render control steps; the
+portable corpora and runner-neutral digest manifest ship through the testkit.

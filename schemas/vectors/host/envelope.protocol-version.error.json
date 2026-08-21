@@ -18,7 +18,7 @@
     "sessionGeneration": "session-r1"
   },
   "context": {
-    "operationId": "studio.host/operation",
+    "operationId": "studio.operation/artifact.load",
     "protocolVersion": "9.9.9",
     "requestId": "requests/vector-1",
     "resourceContextKey": "contexts/vector",

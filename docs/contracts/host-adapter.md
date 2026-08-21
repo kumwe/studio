@@ -72,6 +72,25 @@ The error document shape is canonical in [`host-error.schema.json`](../../schema
 
 A host mutation MUST be authenticated, authorized, schema- and domain-validated, audited according to host policy, concurrency-protected, and atomic for its declared unit. Retryable mutations require idempotency. Browser transports apply CSRF or equivalent same-origin protections.
 
+An idempotency record is scoped by `idempotencyKey`, operation capability, resolved
+`resourceContextKey`, and `sessionGeneration`. Within that scope, its exact intent preimage is the
+operation argument plus `expectedRevision`, `locale`, and `protocolVersion`, serialized with Studio's
+canonical JSON profile. Optional semantic fields that are absent are omitted rather than encoded as
+null; canonical number rules apply, including negative-zero normalization. The per-attempt `requestId`
+and privacy-filtered `traceContext` are correlation only and MUST NOT change intent. A no-argument
+mutation supplies the operation's declared JSON null argument rather than inventing an absent-field
+spelling.
+
+A retry of an accepted intent returns the original result exactly, including its revision; it does
+not repeat the mutation or consume another rate-limit unit. Reusing the scoped key for different
+intent is `invalid-request` before optimistic-concurrency evaluation. A failed attempt is not retained
+as an accepted result.
+
+Rate-limit errors carry `retryable: true` and `retryAfterMilliseconds` when the host can safely disclose
+the remaining delay. Refused work has no mutation side effect. Preview cancellation is scoped to the
+resolved session, resource context, and draft digest; cancel returns null, the in-flight render settles
+as `cancelled`, and a renderer result arriving after cancellation is discarded.
+
 ## Query guarantees
 
 Resource search, counts, facets, pagination, relations and projections enforce authorization inside the host query. Studio never post-filters unauthorized results. Opaque cursors are preferred over client-constructed offsets for mutable datasets.
@@ -82,8 +101,14 @@ The ports above are behaviour, not a wire format. The normative HTTP binding —
 
 ## Proving conformance
 
-A host adapter claims [`studio.profile/host-baseline`](conformance-profiles.md) by replaying the canonical host conformance corpus published as `vectors/host/` in `@kumwe/studio-testkit`. Each vector fixes reproducible host state, the request envelope and argument, and the required outcome, so an adapter in any language proves the persistence, concurrency, envelope, bounded-query, absence, authority, and telemetry obligations above without executing Studio code. The corpus records its own limitations; obligations it does not yet assert remain obligations.
+A host adapter claims [`studio.profile/host-baseline`](conformance-profiles.md) by replaying the
+canonical single-exchange corpus published as `vectors/host/` in `@kumwe/studio-testkit`. It claims
+`studio.profile/host-baseline-v2` by replaying that corpus plus `vectors/host-sequence/`. Each vector
+fixes reproducible host state, requests, ordered settlement, explicit logical-clock or renderer
+controls where needed, and required final state. The exact portable assertions and their recorded
+limits are enumerated in the profile; a replay does not imply unlisted transport, security, renderer,
+or production-policy coverage.
 
 ## Reference implementation requirements
 
-The Kumwe adapter must call application services rather than querying Doctrine, resolving the DI container dynamically, or putting business rules in TypeScript. Twig renderers remain server-side. Flutter and other hosts can implement the same behavior through HTTP or a native bridge.
+The Kumwe App adapter must call application services rather than querying Doctrine, resolving the DI container dynamically, or putting business rules in TypeScript. Twig renderers remain server-side. Flutter and other hosts can implement the same behavior through HTTP or a native bridge.

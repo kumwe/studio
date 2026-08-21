@@ -1,6 +1,6 @@
 {
   "contractVersion": "0.1-draft",
-  "protocolVersion": "0.1.0-draft.1",
+  "protocolVersion": "0.1.0-draft.2",
   "sessionId": "session-018f",
   "sessionGeneration": "session-generation-1",
   "mode": "content",
@@ -89,11 +89,11 @@
     "contractVersion": "0.1-draft",
     "kind": "host-capabilities",
     "host": {
-      "id": "org.kumwe/cms",
+      "id": "org.kumwe/app",
       "version": "3.0.0-alpha.1",
       "generation": "runtime-generation-42"
     },
-    "protocolVersions": ["0.1.0-draft.1"],
+    "protocolVersions": ["0.1.0-draft.2"],
     "ports": [
       {
         "id": "studio.port/artifact",

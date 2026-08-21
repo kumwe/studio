@@ -12,6 +12,7 @@
       "artifactId": "org.example.blueprints/product-card",
       "draftDigest": "not-a-digest",
       "draftRevision": "product-card-r5-local-12",
+      "requestId": "renders/product-card-14",
       "viewport": "expanded"
     }
   }

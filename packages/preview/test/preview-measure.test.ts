@@ -21,6 +21,10 @@ import {
 const digest = 'a'.repeat(64);
 const newerDigest = 'b'.repeat(64);
 
+function previewMarker(draftDigest: string, ordinal: number): string {
+  return `studio.preview/node/${draftDigest}/${ordinal}`;
+}
+
 const viewport: PreviewViewportMetrics = {
   devicePixelRatio: 2,
   height: 800,
@@ -85,12 +89,18 @@ function createHost(pair: LinkedPair, measure?: PreviewMeasureCallback): Preview
   return new PreviewHost({
     channelId: 'preview-channel-1',
     ...(measure === undefined ? {} : { measure }),
-    render: (payload) =>
-      Promise.resolve({
+    render: (payload) => {
+      const marker0 = previewMarker(payload.draftDigest, 0);
+      const marker1 = previewMarker(payload.draftDigest, 1);
+      const markers = [marker0, marker1];
+      return Promise.resolve({
         diagnostics: [],
         draftDigest: payload.draftDigest,
-        markers: ['marker-1', 'marker-2'],
-      }),
+        markerMap: { [marker0]: 'node-1', [marker1]: 'node-2' },
+        markers,
+        requestId: payload.requestId,
+      });
+    },
     renderer: 'kumwe/fixture-renderer',
     sessionGeneration: 'session-r1',
     source: pair.hostWindow,
@@ -109,19 +119,35 @@ function measureRequest(requestId: string, sequence: number): PreviewMeasureMess
     channelId: 'preview-channel-1',
     contractVersion: STUDIO_CONTRACT_VERSION,
     kind: 'preview-message',
-    payload: { markers: ['marker-1'], requestId },
+    payload: {
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId,
+    },
     sequence,
     sessionGeneration: 'session-r1',
     type: 'studio.preview/measure',
   };
 }
 
-function renderedMessage(draftDigest: string, sequence: number): PreviewRenderedMessage {
+function renderedMessage(
+  draftDigest: string,
+  sequence: number,
+  requestId = 'renders/1',
+): PreviewRenderedMessage {
+  const marker = previewMarker(draftDigest, 0);
   return {
     channelId: 'preview-channel-1',
     contractVersion: STUDIO_CONTRACT_VERSION,
     kind: 'preview-message',
-    payload: { diagnostics: [], draftDigest, markers: ['marker-1'] },
+    payload: {
+      diagnostics: [],
+      draftDigest,
+      markerMap: { [marker]: 'node-1' },
+      markers: [marker],
+      requestId,
+    },
     sequence,
     sessionGeneration: 'session-r1',
     type: 'studio.preview/rendered',
@@ -133,13 +159,14 @@ function measurementsMessage(
   draftDigest: string,
   sequence: number,
 ): PreviewMeasurementsMessage {
+  const marker = previewMarker(draftDigest, 0);
   return {
     channelId: 'preview-channel-1',
     contractVersion: STUDIO_CONTRACT_VERSION,
     kind: 'preview-message',
     payload: {
       draftDigest,
-      measurements: { 'marker-1': [rect(10, 20, 300, 16)] },
+      measurements: { [marker]: [rect(10, 20, 300, 16)] },
       requestId,
       unknown: [],
       viewport,
@@ -155,16 +182,58 @@ function postedByType(windowRef: FakeWindow, type: string): unknown[] {
 }
 
 async function renderFirst(client: PreviewClient): Promise<void> {
-  await client.render({ artifactId: 'blueprint-1', draftDigest: digest, viewport: 'expanded' });
+  await client.render({
+    artifactId: 'blueprint-1',
+    draftDigest: digest,
+    draftRevision: 'blueprint-r1',
+    requestId: 'renders/1',
+    viewport: 'expanded',
+  });
 }
 
 describe('measure round trips', () => {
+  it('snapshots the request identity and marker inventory before caller mutation', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    let settle: ((measurement: PreviewMeasurement) => void) | undefined;
+    createHost(
+      pair,
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    await renderFirst(client);
+    const marker0 = previewMarker(digest, 0);
+    const mutableRequest = { markers: [marker0], requestId: 'measure-mutable' };
+
+    const outcome = client.measure(mutableRequest);
+    mutableRequest.requestId = 'measure-mutated';
+    mutableRequest.markers[0] = previewMarker(digest, 1);
+    settle?.({ rects: { [marker0]: [rect(10, 20, 300, 16)] }, viewport });
+
+    expect(postedByType(pair.hostWindow, 'studio.preview/measure')).toEqual([
+      expect.objectContaining({
+        payload: { markers: [marker0], requestId: 'measure-mutable' },
+      }),
+    ]);
+    await expect(outcome).resolves.toMatchObject({
+      geometry: { requestId: 'measure-mutable' },
+      status: 'measured',
+    });
+  });
+
   it('round-trips multi-rect marker geometry from the renderer-supplied measurer', async () => {
     const pair = linkedPair();
     const client = createClient(pair);
     const rects = {
-      'marker-1': [rect(10, 20, 300, 16), rect(10, 36, 120, 16)],
-      'marker-2': [rect(10, 60, 300, 40)],
+      'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+        rect(10, 20, 300, 16),
+        rect(10, 36, 120, 16),
+      ],
+      'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1': [
+        rect(10, 60, 300, 40),
+      ],
     };
     const measured: string[][] = [];
     const responder = createHost(pair, (markers) => {
@@ -174,7 +243,10 @@ describe('measure round trips', () => {
     await renderFirst(client);
 
     const outcome = await client.measure({
-      markers: ['marker-1', 'marker-2'],
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1',
+      ],
       requestId: 'measure-1',
     });
 
@@ -188,7 +260,12 @@ describe('measure round trips', () => {
       },
       status: 'measured',
     });
-    expect(measured).toEqual([['marker-1', 'marker-2']]);
+    expect(measured).toEqual([
+      [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1',
+      ],
+    ]);
     const wire = postedByType(pair.clientWindow, 'studio.preview/measurements').at(0);
     expect(isPreviewMessage(wire)).toBe(true);
     client.dispose();
@@ -200,23 +277,34 @@ describe('measure round trips', () => {
     const client = createClient(pair);
     const responder = createHost(pair, () =>
       Promise.resolve({
-        rects: { 'marker-1': [rect(0, 0, 10, 10)], 'marker-empty': [] },
+        rects: {
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+            [rect(0, 0, 10, 10)],
+        },
         viewport,
       }),
     );
     await renderFirst(client);
 
     const outcome = await client.measure({
-      markers: ['marker-1', 'marker-ghost', 'marker-empty'],
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1',
+      ],
       requestId: 'measure-1',
     });
 
     expect(outcome).toEqual({
       geometry: {
         draftDigest: digest,
-        measurements: { 'marker-1': [rect(0, 0, 10, 10)] },
+        measurements: {
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+            [rect(0, 0, 10, 10)],
+        },
         requestId: 'measure-1',
-        unknown: ['marker-ghost', 'marker-empty'],
+        unknown: [
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/1',
+        ],
         viewport,
       },
       status: 'measured',
@@ -230,18 +318,31 @@ describe('measure round trips', () => {
     const client = createClient(pair);
     const responder = createHost(pair, () =>
       Promise.resolve({
-        rects: { 'marker-1': [rect(0, 0, 10, 10)], 'marker-uninvited': [rect(1, 1, 2, 2)] },
+        rects: {
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+            [rect(0, 0, 10, 10)],
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/4':
+            [rect(1, 1, 2, 2)],
+        },
         viewport,
       }),
     );
     await renderFirst(client);
 
-    const outcome = await client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const outcome = await client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
 
     expect(outcome).toEqual({
       geometry: {
         draftDigest: digest,
-        measurements: { 'marker-1': [rect(0, 0, 10, 10)] },
+        measurements: {
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+            [rect(0, 0, 10, 10)],
+        },
         requestId: 'measure-1',
         unknown: [],
         viewport,
@@ -254,6 +355,59 @@ describe('measure round trips', () => {
 });
 
 describe('measure failure isolation', () => {
+  it('rejects a foreign marker at the client without posting or invoking the host', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    let calls = 0;
+    const responder = createHost(pair, () => {
+      calls += 1;
+      return Promise.resolve({ rects: {}, viewport });
+    });
+    await renderFirst(client);
+    const outboundBefore = pair.hostWindow.posted.length;
+
+    await expect(
+      client.measure({
+        markers: [previewMarker(digest, 2)],
+        requestId: 'measure-1',
+      }),
+    ).rejects.toMatchObject({ code: 'studio.preview/measure-stale-marker' });
+    expect(calls).toBe(0);
+    expect(pair.hostWindow.posted).toHaveLength(outboundBefore);
+    client.dispose();
+    responder.dispose();
+  });
+
+  it('answers a raw foreign-marker request with a stable error before measuring', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    let calls = 0;
+    const responder = createHost(pair, () => {
+      calls += 1;
+      return Promise.resolve({ rects: {}, viewport });
+    });
+    await renderFirst(client);
+
+    pair.hostWindow.emit({
+      data: {
+        ...measureRequest('raw-measure-1', 1),
+        payload: { markers: [previewMarker(digest, 2)], requestId: 'raw-measure-1' },
+      },
+      origin: 'https://studio.test',
+      source: pair.clientWindow,
+    });
+
+    expect(calls).toBe(0);
+    const failure = postedByType(pair.clientWindow, 'studio.preview/error').at(0);
+    expect((failure as PreviewErrorMessage).payload).toMatchObject({
+      code: 'studio.preview/measure-stale-marker',
+      correlationId: 'raw-measure-1',
+      retryable: true,
+    });
+    client.dispose();
+    responder.dispose();
+  });
+
   it('isolates a rejecting measurer behind a stable qualified error', async () => {
     const pair = linkedPair();
     const client = createClient(pair);
@@ -262,7 +416,12 @@ describe('measure failure isolation', () => {
     );
     await renderFirst(client);
 
-    const measure = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const measure = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
 
     await expect(measure).rejects.toThrow('Preview measurement failed.');
     const failure = postedByType(pair.clientWindow, 'studio.preview/error').at(0);
@@ -288,9 +447,14 @@ describe('measure failure isolation', () => {
     });
     await renderFirst(client);
 
-    await expect(client.measure({ markers: ['marker-1'], requestId: 'measure-1' })).rejects.toThrow(
-      'Preview measurement failed.',
-    );
+    await expect(
+      client.measure({
+        markers: [
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        ],
+        requestId: 'measure-1',
+      }),
+    ).rejects.toThrow('Preview measurement failed.');
     expect(JSON.stringify(pair.clientWindow.posted)).not.toContain('secret synchronous detail');
     client.dispose();
     responder.dispose();
@@ -302,7 +466,12 @@ describe('measure failure isolation', () => {
     const responder = createHost(pair);
     await renderFirst(client);
 
-    const measure = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const measure = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
 
     await expect(measure).rejects.toThrow('Preview measurement is unavailable.');
     const failure = postedByType(pair.clientWindow, 'studio.preview/error').at(0);
@@ -350,9 +519,14 @@ describe('measure lifecycle', () => {
     const client = createClient(pair);
     const responder = createHost(pair, () => Promise.resolve({ rects: {}, viewport }));
 
-    await expect(client.measure({ markers: ['marker-1'], requestId: 'measure-1' })).rejects.toThrow(
-      /completed render/u,
-    );
+    await expect(
+      client.measure({
+        markers: [
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        ],
+        requestId: 'measure-1',
+      }),
+    ).rejects.toThrow(/completed render/u);
     client.dispose();
     responder.dispose();
   });
@@ -370,11 +544,97 @@ describe('measure lifecycle', () => {
     );
     await renderFirst(client);
 
-    const measure = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const measure = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
     responder.reload('studio.preview/renderer-restarted');
 
     await expect(measure).rejects.toThrow('Preview renderer reloaded before responding.');
-    resolvers.at(0)?.({ rects: { 'marker-1': [rect(0, 0, 1, 1)] }, viewport });
+    resolvers.at(0)?.({
+      rects: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(0, 0, 1, 1),
+        ],
+      },
+      viewport,
+    });
+    await Promise.resolve();
+    expect(postedByType(pair.clientWindow, 'studio.preview/measurements')).toHaveLength(0);
+    client.dispose();
+    responder.dispose();
+  });
+
+  it('aborts measurement before a viewport listener runs and drops late geometry', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    let resolveMeasurement: ((measurement: PreviewMeasurement) => void) | undefined;
+    let measureSignal: AbortSignal | undefined;
+    const responder = createHost(
+      pair,
+      (_markers, signal) =>
+        new Promise<PreviewMeasurement>((resolve) => {
+          measureSignal = signal;
+          resolveMeasurement = resolve;
+        }),
+    );
+    const abortedAtViewportListener: boolean[] = [];
+    responder.onViewport(() => {
+      abortedAtViewportListener.push(measureSignal?.aborted === true);
+    });
+    await renderFirst(client);
+
+    const measure = client.measure({ markers: [previewMarker(digest, 0)], requestId: 'measure-1' });
+    client.setViewport({ height: 800 });
+
+    await expect(measure).rejects.toMatchObject({
+      code: 'studio.preview/measure-viewport-changed',
+    });
+    expect(abortedAtViewportListener).toEqual([true]);
+    expect(measureSignal?.aborted).toBe(true);
+
+    resolveMeasurement?.({
+      rects: { [previewMarker(digest, 0)]: [rect(0, 0, 1, 1)] },
+      viewport,
+    });
+    await Promise.resolve();
+    expect(postedByType(pair.clientWindow, 'studio.preview/measurements')).toHaveLength(0);
+    client.dispose();
+    responder.dispose();
+  });
+
+  it('invalidates an in-flight measurement when the same digest is rerendered', async () => {
+    const pair = linkedPair();
+    const client = createClient(pair);
+    let resolveMeasurement: ((measurement: PreviewMeasurement) => void) | undefined;
+    let measureSignal: AbortSignal | undefined;
+    const responder = createHost(
+      pair,
+      (_markers, signal) =>
+        new Promise<PreviewMeasurement>((resolve) => {
+          measureSignal = signal;
+          resolveMeasurement = resolve;
+        }),
+    );
+    await renderFirst(client);
+
+    const measure = client.measure({ markers: [previewMarker(digest, 0)], requestId: 'measure-1' });
+    await client.render({
+      artifactId: 'blueprint-1',
+      draftDigest: digest,
+      draftRevision: 'blueprint-r1',
+      requestId: 'renders/2',
+      viewport: 'compact',
+    });
+    await expect(measure).rejects.toThrow(/superseded/u);
+    expect(measureSignal?.aborted).toBe(true);
+
+    resolveMeasurement?.({
+      rects: { [previewMarker(digest, 0)]: [rect(0, 0, 1, 1)] },
+      viewport,
+    });
     await Promise.resolve();
     expect(postedByType(pair.clientWindow, 'studio.preview/measurements')).toHaveLength(0);
     client.dispose();
@@ -394,17 +654,44 @@ describe('measure lifecycle', () => {
     );
     await renderFirst(client);
 
-    const older = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
-    const newer = client.measure({ markers: ['marker-1'], requestId: 'measure-2' });
+    const older = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
+    const newer = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-2',
+    });
 
-    resolvers.at(0)?.({ rects: { 'marker-1': [rect(0, 0, 1, 1)] }, viewport });
-    resolvers.at(1)?.({ rects: { 'marker-1': [rect(2, 2, 3, 3)] }, viewport });
+    resolvers.at(0)?.({
+      rects: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(0, 0, 1, 1),
+        ],
+      },
+      viewport,
+    });
+    resolvers.at(1)?.({
+      rects: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(2, 2, 3, 3),
+        ],
+      },
+      viewport,
+    });
 
     await expect(older).rejects.toThrow(/superseded/u);
     await expect(newer).resolves.toEqual({
       geometry: {
         draftDigest: digest,
-        measurements: { 'marker-1': [rect(2, 2, 3, 3)] },
+        measurements: {
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+            [rect(2, 2, 3, 3)],
+        },
         requestId: 'measure-2',
         unknown: [],
         viewport,
@@ -416,12 +703,14 @@ describe('measure lifecycle', () => {
     responder.dispose();
   });
 
-  it('resolves a typed stale outcome for geometry measured against a superseded digest', async () => {
+  it('rejects geometry whose marker partition belongs to another digest', async () => {
     const pair = linkedPair();
     const client = createClient(pair);
     const render = client.render({
       artifactId: 'blueprint-1',
       draftDigest: digest,
+      draftRevision: 'blueprint-r1',
+      requestId: 'renders/1',
       viewport: 'expanded',
     });
     pair.clientWindow.emit({
@@ -431,14 +720,21 @@ describe('measure lifecycle', () => {
     });
     await render;
 
-    const measure = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const measure = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
     pair.clientWindow.emit({
       data: measurementsMessage('measure-1', newerDigest, 1),
       origin: 'https://preview.test',
       source: pair.hostWindow,
     });
 
-    await expect(measure).resolves.toEqual({ measuredDigest: newerDigest, status: 'stale' });
+    await expect(measure).rejects.toMatchObject({
+      code: 'studio.preview/invalid-measurements',
+    });
     client.dispose();
   });
 
@@ -467,13 +763,23 @@ describe('measure lifecycle', () => {
     const responder = createHost(pair, () => new Promise<PreviewMeasurement>(() => undefined));
     await renderFirst(client);
 
-    const measure = client.measure({ markers: ['marker-1'], requestId: 'measure-1' });
+    const measure = client.measure({
+      markers: [
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+      ],
+      requestId: 'measure-1',
+    });
     client.dispose();
 
     await expect(measure).rejects.toThrow(/disposed/u);
-    await expect(client.measure({ markers: ['marker-1'], requestId: 'measure-2' })).rejects.toThrow(
-      /disposed/u,
-    );
+    await expect(
+      client.measure({
+        markers: [
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        ],
+        requestId: 'measure-2',
+      }),
+    ).rejects.toThrow(/disposed/u);
     responder.dispose();
   });
 });
@@ -494,7 +800,11 @@ describe('measure message guards', () => {
   function measurementsPayload(): Record<string, unknown> {
     return {
       draftDigest: digest,
-      measurements: { 'marker-1': [rect(10, 20, 300, 16)] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(10, 20, 300, 16),
+        ],
+      },
       requestId: 'measure-1',
       unknown: [],
       viewport,
@@ -510,19 +820,22 @@ describe('measure message guards', () => {
     const oversizedRequest = {
       ...canonicalMeasure(),
       payload: {
-        markers: Array.from({ length: 1_001 }, (_, index) => `marker-${index}`),
+        markers: Array.from({ length: 1_001 }, (_, index) => previewMarker(digest, index)),
         requestId: 'measure-1',
       },
     };
     const oversizedMap = withMeasurementsPayload({
       ...measurementsPayload(),
       measurements: Object.fromEntries(
-        Array.from({ length: 1_001 }, (_, index) => [`marker-${index}`, [rect(0, 0, 1, 1)]]),
+        Array.from({ length: 1_001 }, (_, index) => [
+          previewMarker(digest, index),
+          [rect(0, 0, 1, 1)],
+        ]),
       ),
     });
     const oversizedUnknown = withMeasurementsPayload({
       ...measurementsPayload(),
-      unknown: Array.from({ length: 1_001 }, (_, index) => `marker-${index}`),
+      unknown: Array.from({ length: 1_001 }, (_, index) => previewMarker(digest, index)),
     });
 
     expect(isPreviewMessage(oversizedRequest)).toBe(false);
@@ -533,21 +846,35 @@ describe('measure message guards', () => {
   it('rejects non-finite and out-of-bound geometry numbers', () => {
     const nanRect = withMeasurementsPayload({
       ...measurementsPayload(),
-      measurements: { 'marker-1': [{ height: 16, width: 300, x: Number.NaN, y: 20 }] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          { height: 16, width: 300, x: Number.NaN, y: 20 },
+        ],
+      },
     });
     const infiniteRect = withMeasurementsPayload({
       ...measurementsPayload(),
       measurements: {
-        'marker-1': [{ height: 16, width: Number.POSITIVE_INFINITY, x: 10, y: 20 }],
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          { height: 16, width: Number.POSITIVE_INFINITY, x: 10, y: 20 },
+        ],
       },
     });
     const negativeExtent = withMeasurementsPayload({
       ...measurementsPayload(),
-      measurements: { 'marker-1': [rect(10, 20, -1, 16)] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(10, 20, -1, 16),
+        ],
+      },
     });
     const hugeCoordinate = withMeasurementsPayload({
       ...measurementsPayload(),
-      measurements: { 'marker-1': [rect(1_000_000_000, 20, 300, 16)] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          rect(1_000_000_000, 20, 300, 16),
+        ],
+      },
     });
     const nanViewport = withMeasurementsPayload({
       ...measurementsPayload(),
@@ -569,11 +896,21 @@ describe('measure message guards', () => {
   it('rejects unknown members on payloads, rectangles, and viewport records', () => {
     const extraRequestMember = {
       ...canonicalMeasure(),
-      payload: { markers: ['marker-1'], requestId: 'measure-1', urgent: true },
+      payload: {
+        markers: [
+          'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0',
+        ],
+        requestId: 'measure-1',
+        urgent: true,
+      },
     };
     const extraRectMember = withMeasurementsPayload({
       ...measurementsPayload(),
-      measurements: { 'marker-1': [{ height: 16, top: 20, width: 300, x: 10, y: 20 }] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0': [
+          { height: 16, top: 20, width: 300, x: 10, y: 20 },
+        ],
+      },
     });
     const extraViewportMember = withMeasurementsPayload({
       ...measurementsPayload(),
@@ -594,7 +931,10 @@ describe('measure message guards', () => {
     });
     const emptyRects = withMeasurementsPayload({
       ...measurementsPayload(),
-      measurements: { 'marker-1': [] },
+      measurements: {
+        'studio.preview/node/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/0':
+          [],
+      },
     });
 
     expect(isPreviewMessage(polluted)).toBe(false);

@@ -25,9 +25,9 @@ A native Flutter renderer may support a subset of blocks. Capability negotiation
 
 ## Host independence
 
-The protocol must not expose Kumwe route names, PHP classes, Twig template paths, SQL identifiers, or authorization implementation details. Kumwe maps its own concepts to stable Studio vocabulary at the adapter boundary.
+The protocol must not expose Kumwe App route names, PHP classes, Twig template paths, SQL identifiers, or authorization implementation details. Kumwe App maps its own concepts to stable Studio vocabulary at the adapter boundary.
 
-Likewise, Studio does not dictate that other hosts use revisions, workflows, or permission systems identical to Kumwe. It requires observable guarantees—expected-revision saves, explicit publication, denied operations, stable identity and structured errors—without prescribing internal implementation.
+Likewise, Studio does not dictate that other hosts use revisions, workflows, or permission systems identical to Kumwe App. It requires observable guarantees—expected-revision saves, explicit publication, denied operations, stable identity and structured errors—without prescribing internal implementation.
 
 ## Data evolution
 

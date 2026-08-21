@@ -1,4 +1,10 @@
-import { PreviewHost, type PreviewMeasurement } from '@kumwe/studio-preview';
+import {
+  computePreviewDraftDigest,
+  createPreviewMarker,
+  createPreviewMarkerInventory,
+  PreviewHost,
+  type PreviewMeasurement,
+} from '@kumwe/studio-preview';
 import type {
   BlueprintDocument,
   BlueprintNode,
@@ -18,12 +24,12 @@ export interface ReferenceRendererOptions {
   endpoint: PreviewChannelEndpoint;
   origin: string;
   /**
-   * Resolves a draft digest to the composition it names. The render request
-   * carries only the digest — never the document — mirroring the contract's
-   * bounded draft payload reference; the host owns the draft store and the
-   * renderer reads it back through this seam.
+   * Resolves the exact artifact, revision, and digest tuple to the composition
+   * it names. The request carries a bounded reference — never the document —
+   * so the host owns validation and storage and the renderer reads the draft
+   * back through this seam.
    */
-  resolveDraft: (draftDigest: string) => BlueprintDocument | undefined;
+  resolveDraft: (payload: PreviewRenderPayload) => Promise<BlueprintDocument | undefined>;
   sessionGeneration: string;
   surface: HTMLElement;
   theme: ThemeDocument;
@@ -78,34 +84,50 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     theme.recipes.map((recipe) => [recipe.blockType, recipe.designValues]),
   );
   let markerByNode = new Map<NodeId, StableId>();
-  let markerSerial = 0;
   let selectedNodeId: NodeId | undefined;
 
-  function render(payload: PreviewRenderPayload): Promise<PreviewRenderedPayload> {
-    const draft = resolveDraft(payload.draftDigest);
+  async function render(
+    payload: PreviewRenderPayload,
+    signal: AbortSignal,
+  ): Promise<PreviewRenderedPayload> {
+    const draft = await resolveDraft(payload);
+    signal.throwIfAborted();
     if (draft === undefined) {
       // The responder replaces this reason with the stable, non-disclosing
       // `studio.preview/render-failed` error before it crosses the channel.
       throw new Error('The requested draft digest is not resolvable.');
     }
+    if ((await computePreviewDraftDigest(draft)) !== payload.draftDigest) {
+      throw new Error('The resolved draft no longer matches its requested digest.');
+    }
+    signal.throwIfAborted();
     const viewport = theme.viewports.find((entry) => entry.id === payload.viewport);
     if (viewport === undefined) {
       throw new Error('The requested viewport is not declared by the theme.');
     }
-    const result = renderDraft(draft, viewport);
+    const result = renderDraft(draft, viewport, payload.draftDigest);
+    const expected = createPreviewMarkerInventory(draft, payload.draftDigest);
+    if (!sameMarkerInventory(result, expected)) {
+      throw new Error('The renderer marker map does not match canonical Blueprint preorder.');
+    }
     markerByNode = result.markerByNode;
     if (selectedNodeId !== undefined) {
       highlight(selectedNodeId);
     }
-    return Promise.resolve({
+    return {
       diagnostics: result.diagnostics,
       draftDigest: payload.draftDigest,
       markerMap: result.markerMap,
       markers: result.markers,
-    });
+      requestId: payload.requestId,
+    };
   }
 
-  function renderDraft(draft: BlueprintDocument, viewport: ThemeViewport): RenderResult {
+  function renderDraft(
+    draft: BlueprintDocument,
+    viewport: ThemeViewport,
+    draftDigest: string,
+  ): RenderResult {
     const columns = columnsForViewport(viewport);
     const result: RenderResult = {
       diagnostics: [],
@@ -131,7 +153,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     grid.className = 'preview-grid';
     grid.style.setProperty('--preview-columns', String(columns));
     for (const root of draft.roots) {
-      grid.append(renderNode(root, viewport, columns, result));
+      grid.append(renderNode(root, viewport, columns, draftDigest, result));
     }
     surface.append(grid);
     return result;
@@ -141,14 +163,18 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     node: BlueprintNode,
     viewport: ThemeViewport,
     columns: number,
+    draftDigest: string,
     result: RenderResult,
   ): HTMLElement {
     const element = createBlockElement(node, result);
-    markNode(element, node, result);
+    markNode(element, node, draftDigest, result);
     element.style.gridColumn = `span ${spanFor(node, viewport, columns)}`;
     applyRecipeTokens(element, node);
 
-    for (const [slot, children] of Object.entries(node.slots)) {
+    const slots = Object.entries(node.slots).sort(([left], [right]) =>
+      left < right ? -1 : left > right ? 1 : 0,
+    );
+    for (const [slot, children] of slots) {
       if (children.length === 0) {
         continue;
       }
@@ -156,7 +182,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
       slotElement.className = 'preview-slot';
       slotElement.dataset.slot = slot;
       for (const child of children) {
-        slotElement.append(renderNode(child, viewport, columns, result));
+        slotElement.append(renderNode(child, viewport, columns, draftDigest, result));
       }
       element.append(slotElement);
     }
@@ -194,9 +220,13 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     return fallback;
   }
 
-  function markNode(element: HTMLElement, node: BlueprintNode, result: RenderResult): void {
-    markerSerial += 1;
-    const marker: StableId = `markers/m${markerSerial}`;
+  function markNode(
+    element: HTMLElement,
+    node: BlueprintNode,
+    draftDigest: string,
+    result: RenderResult,
+  ): void {
+    const marker = createPreviewMarker(draftDigest, result.markers.length);
     element.dataset.marker = marker;
     result.markers.push(marker);
     result.markerMap[marker] = node.id;
@@ -294,6 +324,21 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     }
   });
   return host;
+}
+
+function sameMarkerInventory(
+  actual: Pick<RenderResult, 'markerMap' | 'markers'>,
+  expected: Pick<RenderResult, 'markerMap' | 'markers'>,
+): boolean {
+  return (
+    actual.markers.length === expected.markers.length &&
+    actual.markers.every(
+      (marker, index) =>
+        marker === expected.markers[index] &&
+        actual.markerMap[marker] === expected.markerMap[marker],
+    ) &&
+    Object.keys(actual.markerMap).length === Object.keys(expected.markerMap).length
+  );
 }
 
 function columnsForViewport(viewport: ThemeViewport): number {

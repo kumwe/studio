@@ -14,7 +14,7 @@ This documentation separates normative requirements, architectural rationale, im
 | [Roadmap](roadmap/README.md)           | Ordered six-month programme, Gates A and B                 | Planned work           |
 | [Status](roadmap/STATUS.md)            | Current gate and workstream state                          | Sole gate authority    |
 | [Evidence](roadmap/evidence.md)        | Proof required to advance programme claims                 | Normative gate policy  |
-| [Integration](integration/README.md)   | Generic and Kumwe-specific host responsibilities           | Implementer guidance   |
+| [Integration](integration/README.md)   | Generic and Kumwe App-specific host responsibilities       | Implementer guidance   |
 | [Portability](portability/README.md)   | Cross-language and Flutter strategy                        | Implementer guidance   |
 | [Media](media/README.md)               | Media ownership and end-to-end experience                  | Implementer guidance   |
 | [Governance](governance/README.md)     | Compatibility, contribution, and release policy            | Project policy         |

@@ -85,8 +85,29 @@ function createHost(pair: LinkedPair, render: PreviewRenderCallback): PreviewHos
   });
 }
 
-function renderedPayload(draftDigest = digest): PreviewRenderedPayload {
-  return { diagnostics: [], draftDigest, markers: ['node-1'] };
+function request(
+  draftDigest = digest,
+  requestId = 'renders/1',
+  viewport = 'expanded',
+): PreviewRenderMessage['payload'] {
+  return {
+    artifactId: 'blueprint-1',
+    draftDigest,
+    draftRevision: 'blueprint-r1',
+    requestId,
+    viewport,
+  };
+}
+
+function renderedPayload(draftDigest = digest, requestId = 'renders/1'): PreviewRenderedPayload {
+  const marker = `studio.preview/node/${draftDigest}/0`;
+  return {
+    diagnostics: [],
+    draftDigest,
+    markerMap: { [marker]: 'node-1' },
+    markers: [marker],
+    requestId,
+  };
 }
 
 function renderRequest(draftDigest = digest, sequence = 0): PreviewRenderMessage {
@@ -94,7 +115,7 @@ function renderRequest(draftDigest = digest, sequence = 0): PreviewRenderMessage
     channelId: 'preview-channel-1',
     contractVersion: STUDIO_CONTRACT_VERSION,
     kind: 'preview-message',
-    payload: { artifactId: 'blueprint-1', draftDigest, viewport: 'expanded' },
+    payload: request(draftDigest, `renders/${sequence + 1}`),
     sequence,
     sessionGeneration: 'session-r1',
     type: 'studio.preview/render',
@@ -167,24 +188,20 @@ describe('PreviewHost', () => {
     const pair = linkedPair();
     const preview = createClient(pair);
     const responder = createHost(pair, (payload) =>
-      Promise.resolve(renderedPayload(payload.draftDigest)),
+      Promise.resolve(renderedPayload(payload.draftDigest, payload.requestId)),
     );
 
-    await expect(
-      preview.render({ artifactId: 'blueprint-1', draftDigest: digest, viewport: 'expanded' }),
-    ).resolves.toEqual(renderedPayload());
+    await expect(preview.render(request())).resolves.toEqual(renderedPayload());
     preview.dispose();
     responder.dispose();
   });
 
-  it('stamps the requested draft digest onto the rendered response', async () => {
+  it('rejects a renderer response that does not match the requested draft digest', async () => {
     const pair = linkedPair();
     const preview = createClient(pair);
     const responder = createHost(pair, () => Promise.resolve(renderedPayload(foreignDigest)));
 
-    await expect(
-      preview.render({ artifactId: 'blueprint-1', draftDigest: digest, viewport: 'expanded' }),
-    ).resolves.toEqual(renderedPayload(digest));
+    await expect(preview.render(request())).rejects.toThrow('Preview rendering failed.');
     preview.dispose();
     responder.dispose();
   });
@@ -195,17 +212,13 @@ describe('PreviewHost', () => {
     const responder = createHost(pair, () =>
       Promise.reject(new Error('secret renderer detail: /etc/passwd')),
     );
-    const render = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const render = preview.render(request());
 
     await expect(render).rejects.toThrow('Preview rendering failed.');
     const failure = postedByType(pair.clientWindow, 'studio.preview/error').at(0);
     expect((failure as PreviewErrorMessage).payload).toEqual({
       code: 'studio.preview/render-failed',
-      correlationId: digest,
+      correlationId: 'renders/1',
       message: {
         defaultMessage: 'Preview rendering failed.',
         key: 'studio.preview/render-failed',
@@ -228,23 +241,91 @@ describe('PreviewHost', () => {
           resolvers.set(payload.draftDigest, resolve);
         }),
     );
-    const older = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
-    const newer = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: newerDigest,
-      viewport: 'expanded',
-    });
+    const older = preview.render(request(digest, 'renders/1'));
+    const newer = preview.render(request(newerDigest, 'renders/2'));
 
-    resolvers.get(digest)?.(renderedPayload(digest));
-    resolvers.get(newerDigest)?.(renderedPayload(newerDigest));
+    resolvers.get(digest)?.(renderedPayload(digest, 'renders/1'));
+    resolvers.get(newerDigest)?.(renderedPayload(newerDigest, 'renders/2'));
 
     await expect(older).rejects.toThrow(/superseded/u);
-    await expect(newer).resolves.toEqual(renderedPayload(newerDigest));
+    await expect(newer).resolves.toEqual(renderedPayload(newerDigest, 'renders/2'));
     expect(postedByType(pair.clientWindow, 'studio.preview/rendered')).toHaveLength(1);
+    preview.dispose();
+    responder.dispose();
+  });
+
+  it('aborts and drops a stale same-digest callback across viewport retries', async () => {
+    const pair = linkedPair();
+    const preview = createClient(pair);
+    const resolvers = new Map<string, (rendered: PreviewRenderedPayload) => void>();
+    const signals = new Map<string, AbortSignal>();
+    const responder = createHost(
+      pair,
+      (payload, signal) =>
+        new Promise<PreviewRenderedPayload>((resolve) => {
+          signals.set(payload.requestId, signal);
+          resolvers.set(payload.requestId, resolve);
+        }),
+    );
+
+    const compact = preview.render(request(digest, 'renders/compact-1', 'compact'));
+    const expanded = preview.render(request(digest, 'renders/expanded-2', 'expanded'));
+    expect(signals.get('renders/compact-1')?.aborted).toBe(true);
+
+    resolvers.get('renders/compact-1')?.(renderedPayload(digest, 'renders/compact-1'));
+    resolvers.get('renders/expanded-2')?.(renderedPayload(digest, 'renders/expanded-2'));
+
+    await expect(compact).rejects.toThrow(/superseded/u);
+    await expect(expanded).resolves.toEqual(renderedPayload(digest, 'renders/expanded-2'));
+    expect(postedByType(pair.clientWindow, 'studio.preview/rendered')).toHaveLength(1);
+    preview.dispose();
+    responder.dispose();
+  });
+
+  it('dispose invalidates an in-flight render and prevents late inventory reactivation', async () => {
+    const pair = linkedPair();
+    const preview = createClient(pair);
+    let resolveRender: ((rendered: PreviewRenderedPayload) => void) | undefined;
+    let renderSignal: AbortSignal | undefined;
+    const responder = createHost(
+      pair,
+      (_payload, signal) =>
+        new Promise<PreviewRenderedPayload>((resolve) => {
+          renderSignal = signal;
+          resolveRender = resolve;
+        }),
+    );
+    const render = preview.render(request());
+
+    preview.disposeDraft({ draftDigest: digest, reason: 'studio.preview/superseded' });
+    await expect(render).rejects.toMatchObject({ code: 'studio.preview/render-disposed' });
+    expect(renderSignal?.aborted).toBe(true);
+
+    resolveRender?.(renderedPayload());
+    await Promise.resolve();
+    expect(postedByType(pair.clientWindow, 'studio.preview/rendered')).toHaveLength(0);
+    expect(() =>
+      responder.announceActivation({
+        interaction: 'activate',
+        marker: `studio.preview/node/${digest}/0`,
+      }),
+    ).toThrow(/current render inventory/u);
+    preview.dispose();
+    responder.dispose();
+  });
+
+  it('client timeout revokes and aborts the host callback', async () => {
+    const pair = linkedPair();
+    const preview = createClient(pair, 10);
+    let renderSignal: AbortSignal | undefined;
+    const responder = createHost(pair, (_payload, signal) => {
+      renderSignal = signal;
+      return new Promise<PreviewRenderedPayload>(neverSettle);
+    });
+
+    await expect(preview.render(request())).rejects.toThrow(/timed out/u);
+    expect(renderSignal?.aborted).toBe(true);
+    expect(postedByType(pair.clientWindow, 'studio.preview/rendered')).toHaveLength(0);
     preview.dispose();
     responder.dispose();
   });
@@ -317,11 +398,7 @@ describe('PreviewHost', () => {
           resolvers.set(payload.draftDigest, resolve);
         }),
     );
-    const render = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const render = preview.render(request());
 
     responder.dispose();
     resolvers.get(digest)?.(renderedPayload());
@@ -342,11 +419,7 @@ describe('PreviewHost', () => {
           resolvers.set(payload.draftDigest, resolve);
         }),
     );
-    const render = preview.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const render = preview.render(request());
 
     preview.dispose();
     await expect(render).rejects.toThrow(/disposed/u);
@@ -366,11 +439,7 @@ describe('reload and teardown', () => {
     responder.announce();
     await client.ready();
 
-    const pendingRender = client.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const pendingRender = client.render(request());
     responder.reload('studio.preview/renderer-restarted');
 
     await expect(pendingRender).rejects.toThrow('Preview renderer reloaded before responding.');
@@ -390,17 +459,13 @@ describe('reload and teardown', () => {
     responder.announce();
     await client.ready();
 
-    const pendingRender = client.render({
-      artifactId: 'blueprint-1',
-      draftDigest: digest,
-      viewport: 'expanded',
-    });
+    const pendingRender = client.render(request());
     responder.teardown('studio.preview/session-ended');
 
     await expect(pendingRender).rejects.toThrow('Preview channel was torn down.');
-    await expect(
-      client.render({ artifactId: 'blueprint-1', draftDigest: newerDigest, viewport: 'expanded' }),
-    ).rejects.toThrow('Preview client was disposed.');
+    await expect(client.render(request(newerDigest, 'renders/2'))).rejects.toThrow(
+      'Preview client was disposed.',
+    );
     expect(() => responder.announce()).toThrow('Preview host was disposed.');
   });
 
@@ -409,7 +474,7 @@ describe('reload and teardown', () => {
     const rendered: unknown[] = [];
     const responder = createHost(pair, (payload) => {
       rendered.push(payload);
-      return Promise.resolve(renderedPayload(payload.draftDigest));
+      return Promise.resolve(renderedPayload(payload.draftDigest, payload.requestId));
     });
     responder.announce();
     const client = createClient(pair);

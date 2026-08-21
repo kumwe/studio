@@ -75,9 +75,9 @@
       "coveredBy": ["testkit-host-testbed"]
     },
     {
-      "id": "kumwe-host",
+      "id": "kumwe-app-host",
       "kind": "host",
-      "requirement": "Kumwe profile with its supported PHP and MariaDB/MySQL/PostgreSQL matrix",
+      "requirement": "Kumwe App profile with its supported PHP and MariaDB/MySQL/PostgreSQL matrix",
       "status": "target",
       "coveredBy": []
     }

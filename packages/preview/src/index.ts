@@ -1,5 +1,6 @@
 export {
   PreviewClient,
+  PreviewChannelError,
   type PreviewClientOptions,
   type PreviewMeasureOptions,
   type PreviewMeasureOutcome,
@@ -19,3 +20,11 @@ export {
   type PreviewRenderCallback,
   type PreviewSelectListener,
 } from './preview-host.js';
+export {
+  canonicalPreviewDraftBytes,
+  computePreviewDraftDigest,
+  createPreviewMarker,
+  createPreviewMarkerInventory,
+  type PreviewDigestOptions,
+  type PreviewMarkerInventory,
+} from './preview-identity.js';

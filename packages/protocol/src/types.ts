@@ -2,7 +2,7 @@ export const STUDIO_CONTRACT_VERSION = '0.1-draft' as const;
 
 export type StudioContractVersion = typeof STUDIO_CONTRACT_VERSION;
 
-export const STUDIO_WIRE_PROTOCOL_VERSION = '0.1.0-draft.1' as const;
+export const STUDIO_WIRE_PROTOCOL_VERSION = '0.1.0-draft.2' as const;
 
 export type StudioWireProtocolVersion = typeof STUDIO_WIRE_PROTOCOL_VERSION;
 
@@ -624,6 +624,7 @@ export interface HostRequestContext {
   requestId: StableId;
   resourceContextKey: StableId;
   sessionGeneration: Revision;
+  traceContext?: Record<LocalName, string>;
 }
 
 export interface HostPortResult<TValue> {
@@ -1210,17 +1211,21 @@ export interface PreviewReadyPayload {
 export interface PreviewRenderPayload {
   artifactId: StableId;
   draftDigest: string;
-  draftRevision?: Revision;
+  draftRevision: Revision;
+  /** Session-unique identity for this render attempt, including retries. */
+  requestId: StableId;
   viewport: LocalName;
 }
 
 export interface PreviewRenderedPayload {
   diagnostics: StudioDiagnostic[];
   draftDigest: string;
-  /** Opaque render markers in document order. */
+  /** Exact render request this response settles. */
+  requestId: StableId;
+  /** Canonical render markers in deterministic Blueprint preorder. */
   markers: StableId[];
-  /** Optional mapping from an opaque marker to the node it renders. */
-  markerMap?: Record<StableId, NodeId>;
+  /** Exact one-to-one mapping from every marker to the node it renders. */
+  markerMap: Record<StableId, NodeId>;
 }
 
 export interface PreviewSelectPayload {
@@ -1248,6 +1253,7 @@ export interface PreviewViewportMetrics {
 export interface PreviewMeasurePayload {
   /** Opaque render markers to measure, as a bounded explicit list. */
   markers: StableId[];
+  /** Session-unique request identity; never reused for a render or measurement. */
   requestId: StableId;
 }
 
@@ -1319,6 +1325,7 @@ export type PreviewReloadMessage = PreviewMessageBase<
  */
 export interface PreviewActivatedPayload {
   interaction: 'activate' | 'context-menu' | 'focus';
+  /** A marker from the currently accepted render inventory. */
   marker: StableId;
 }
 

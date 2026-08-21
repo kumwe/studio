@@ -2,7 +2,7 @@
 
 Kumwe Studio is a portable, schema-aware visual composition platform for building reusable blueprints and populating structured content without authoring HTML, CSS, JavaScript, or template code.
 
-Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. Kumwe CMS is the first reference host, not a hard-coded dependency.
+Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe App](https://github.com/kumwe/app) is the first reference host, not a hard-coded dependency.
 
 > **Project status:** foundation programme with the contract corpus, headless runtime, and authoring shell under active implementation. Contracts are intentionally unstable until Gate A. No package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
 
@@ -56,7 +56,7 @@ packages/
   testkit/       Fixtures, builders, command/media/host vectors, negative corpus, conformance assertions
 examples/
   reference-host/ Experimental Lit-shell development harness
-schemas/          Canonical JSON Schemas, examples, command/media/host vectors, and negative fixtures
+schemas/          Canonical JSON Schemas, examples, command/media/host sequence vectors, and negative fixtures
 evidence/         Machine-checkable evidence bundles, schemas, and gate records
 docs/             Normative architecture, contracts, integration, roadmap, and quality guidance
 ```
@@ -67,7 +67,7 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 2. Read the [architecture](docs/architecture/README.md) and [normative contracts](docs/contracts/README.md).
 3. Walk through the [authoring experience](docs/experience/README.md) and its implementable workspace specification.
 4. Check the [programme status](docs/roadmap/STATUS.md) and [dependency roadmap](docs/roadmap/README.md).
-5. Choose the [generic host](docs/integration/generic-host.md) or [Kumwe CMS](docs/integration/kumwe-cms.md) integration path.
+5. Choose the [generic host](docs/integration/generic-host.md) or [Kumwe App](docs/integration/kumwe-app.md) integration path.
 6. Follow [contribution requirements](CONTRIBUTING.md) and the repository instructions in [AGENTS.md](AGENTS.md).
 
 ## Local development
@@ -75,19 +75,36 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 Kumwe Studio targets Node.js 24 or newer for development, build, test, and package publication. Published web packages are browser ES modules; a production host is not required to run Node.js.
 
 ```bash
-npm install
+npm ci
 npm run check
-npm test
-npm run build
 ```
 
 The lockfile is authoritative. Do not replace exact protocol fixtures or weaken a failing gate to make a build pass.
+
+Run the standalone reference host in development mode and open the URL Vite prints (normally
+`http://localhost:5173`):
+
+```bash
+npm run dev
+```
+
+For a production-like local smoke test, build every package and serve the generated reference-host
+bundle with its pinned Content Security Policy:
+
+```bash
+npm start
+```
+
+The reference host demonstrates the current authoring shell, deterministic commands, theme-aware
+rendering, and canonical preview channel without Kumwe App or another server. It is a development
+harness and integration example, not a substitute for a host's authentication, policy, persistence,
+media, audit, or publication services. See its [scope and limitations](examples/reference-host/README.md).
 
 ## Gate model
 
 **Gate A — Integration Contract Ready** permits host integration to begin. Every public artifact, command, provider, extension, preview, media, versioning, compatibility, security, accessibility, and SDK contract must be declared, machine-checkable, reviewed, and supported by conformance fixtures. Gate A does not claim that the complete product is implemented.
 
-**Gate B — Production Foundation Ready** permits the first stable release. The declared foundation must be implemented across packages, qualified against reference and Kumwe hosts, portable through TypeScript and Dart contract suites, accessible, secure, recoverable, documented, and released from reproducible artifacts.
+**Gate B — Production Foundation Ready** permits the first stable release. The declared foundation must be implemented across packages, qualified against reference and Kumwe App hosts, portable through TypeScript and Dart contract suites, accessible, secure, recoverable, documented, and released from reproducible artifacts.
 
 See the [six-month programme](docs/roadmap/README.md) for ordered work and exact evidence requirements.
 
@@ -101,7 +118,7 @@ See [portability](docs/portability/README.md) and the [Dart/Flutter plan](docs/p
 
 Studio is configured through immutable documents and explicit host ports. Blocks, patterns, design profiles, media providers, preview providers, data sources, translation services, and policy snapshots enter through typed registries. A host decides which contributions are trusted and active.
 
-Kumwe CMS will reconcile Studio contributions through its existing signed, owner-aware extension runtime. Other hosts may implement different trust mechanisms while satisfying the same Studio contract and conformance suite.
+Kumwe App will reconcile Studio contributions through its existing signed, owner-aware extension runtime. Other hosts may implement different trust mechanisms while satisfying the same Studio contract and conformance suite.
 
 ## Security and accessibility
 

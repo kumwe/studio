@@ -68,6 +68,13 @@ The `Evidence bundle` workflow runs the same script on an independent runner and
 an artifact, so a reviewer can compare a bundle produced elsewhere against the one they produced
 themselves. Downloading that artifact is not itself reproduction.
 
+For `studio.profile/preview-identity-v1`, the contract inputs are
+`schemas/preview-vector.schema.json`, `schemas/vectors/preview/*.json`, the canonical serialization
+corpus, and the preview negative fixtures. Reproduction runs the contract check plus
+`packages/testkit/test/preview-vectors.test.ts` against the candidate commit and records the packaged
+`vectors/preview/` checksums from `corpus-manifest.json`. This defines the evidence inputs; it does not
+create or accept a bundle, and the profile remains unclaimed until an independent reviewer records one.
+
 ## Gate review procedure
 
 `docs/roadmap/evidence.md` is normative; this checklist orders its requirements for a gate review:
