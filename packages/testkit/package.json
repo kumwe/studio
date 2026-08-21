@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-testkit",
-  "version": "0.1.0-alpha.7",
+  "version": "0.1.0-alpha.8",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -36,8 +36,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.7",
-    "@kumwe/studio-protocol": "0.1.0-alpha.5"
+    "@kumwe/studio-core": "0.1.0-alpha.8",
+    "@kumwe/studio-protocol": "0.1.0-alpha.6"
   },
   "publishConfig": {
     "access": "public",
