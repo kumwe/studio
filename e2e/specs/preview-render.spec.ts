@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { isPreviewMarker } from '@kumwe/studio-protocol';
 import { openShell } from '../support/shell.js';
 
 /**
@@ -65,7 +66,7 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   const renderedSection = surface.locator('section.preview-section');
   await expect(renderedSection).toHaveCount(1);
   await expect(renderedSection.locator('h3')).toHaveText('Section');
-  await expect(renderedSection).toHaveAttribute('data-marker', /^markers\/m\d+$/u);
+  expect(isPreviewMarker(await renderedSection.getAttribute('data-marker'))).toBe(true);
 
   // Selecting in the shell's outline corresponds to a rendered region: the
   // host resolves the node through the returned marker map, the renderer
@@ -78,7 +79,7 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   const highlighted = surface.locator('[data-selected="true"]');
   await expect(highlighted).toHaveCount(1);
   const marker = await highlighted.getAttribute('data-marker');
-  expect(marker).toMatch(/^markers\/m\d+$/u);
+  expect(isPreviewMarker(marker)).toBe(true);
   await expect(selection).toContainText(`Selected marker ${marker ?? ''}`);
   // The geometry in the affordance comes from the measurer over the channel:
   // real, non-degenerate CSS-pixel rectangles.
