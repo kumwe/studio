@@ -94,6 +94,43 @@ kumwe-studio {
   margin-top: 0.375rem;
 }
 
+.preview-layout > .preview-slot {
+  gap: var(--layout-gap, var(--theme-block-gap, 0.75rem));
+}
+
+.preview-layout[data-layout-alignment='start'] > .preview-slot {
+  align-items: start;
+}
+
+.preview-layout[data-layout-alignment='center'] > .preview-slot {
+  align-items: center;
+}
+
+.preview-layout[data-layout-alignment='end'] > .preview-slot {
+  align-items: end;
+}
+
+.preview-stack > .preview-slot {
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-stack[data-layout-direction='inline'] > .preview-slot {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.preview-grid-block > .preview-slot,
+.preview-columns > .preview-slot {
+  display: grid;
+  grid-template-columns: repeat(var(--layout-columns, 1), minmax(0, 1fr));
+}
+
+.preview-grid-block[data-layout-collapse='wrap'] > .preview-slot,
+.preview-columns[data-layout-collapse='wrap'] > .preview-slot {
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+}
+
 .preview-empty {
   color: #3f4854;
   margin: 0;

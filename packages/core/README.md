@@ -26,6 +26,9 @@ The implemented surface covers:
   stable diagnostics;
 - `canonicalStringify` / `canonicalUtf8Bytes` — the canonical cross-language serialization form
   used for checksums.
+- `createCoreLayoutBlockDefinitions` / `resolveCoreLayoutIntent` — first-party section, stack, grid,
+  and columns definitions plus theme-validated responsive intent resolution, with no DOM or stored
+  CSS;
 - `compileStudioPropertySchema` / `assertStudioPropertySchema` — eval-free admission and validation
   for the closed, local-only `studio.profile/schema-property` surface, with stable
   `StudioSchemaProfileError` codes and schema pointers.

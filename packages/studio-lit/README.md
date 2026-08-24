@@ -12,6 +12,11 @@ mode-to-command table, and hybrid structure controls are additionally bounded to
 composable slots. These UI checks are explanatory only: programmatic commands still pass through the
 headless session's fail-closed mode and hybrid-boundary guards.
 
+Supplying a complete `ThemeDocument` feeds the viewport switcher, typed design-token controls, and
+block recipes from one immutable source. Recipes dispatch as canonical atomic batches. The four core
+layout definitions insert structural nodes with their declared slots and bounded defaults; responsive
+token edits state whether their value is base, inherited, or overridden for the active viewport.
+
 Importing the package has no registration side effect. Call `defineKumweStudio()` once, then use the
 `<kumwe-studio>` custom element or register the class under a host-specific tag.
 

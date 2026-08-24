@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.0.0",
+  "catalogVersion": "1.1.0",
   "locale": "en",
   "messages": {
     "studio.shell/announce-binding-removed": {
@@ -84,6 +84,10 @@
     "studio.shell/announce-property-unset": {
       "defaultMessage": "Unset {property}",
       "parameters": ["property"]
+    },
+    "studio.shell/announce-recipe-applied": {
+      "defaultMessage": "Applied the {recipe} recipe",
+      "parameters": ["recipe"]
     },
     "studio.shell/announce-redid": {
       "defaultMessage": "Redid change",
@@ -233,6 +237,18 @@
       "defaultMessage": "Bindings",
       "parameters": []
     },
+    "studio.shell/inspector-design-heading": {
+      "defaultMessage": "Design",
+      "parameters": []
+    },
+    "studio.shell/inspector-design-placeholder": {
+      "defaultMessage": "Choose a token",
+      "parameters": []
+    },
+    "studio.shell/inspector-design-unset": {
+      "defaultMessage": "Remove",
+      "parameters": []
+    },
     "studio.shell/inspector-empty": {
       "defaultMessage": "Select a block to inspect its contract.",
       "parameters": []
@@ -343,6 +359,18 @@
     },
     "studio.shell/inspector-read-only": {
       "defaultMessage": "Editing is disabled because this session is read-only.",
+      "parameters": []
+    },
+    "studio.shell/inspector-recipe-label": {
+      "defaultMessage": "Recipe",
+      "parameters": []
+    },
+    "studio.shell/inspector-recipe-placeholder": {
+      "defaultMessage": "Choose a recipe",
+      "parameters": []
+    },
+    "studio.shell/inspector-recipes-heading": {
+      "defaultMessage": "Recipes",
       "parameters": []
     },
     "studio.shell/inspector-remove-binding": {

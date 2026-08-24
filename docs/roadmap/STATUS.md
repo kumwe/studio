@@ -74,7 +74,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M3-03` | evidence-review | Testbed, HTTP adapter, and single-exchange plus stateful host corpora               | Independent replay and reviewer reproduction                            |
 | `M3-04` | evidence-review | Responder, handshake, geometry, attempt-safe cancellation, portable identity corpus | Reviewer reproduction                                                   |
 | `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations            | Kumwe App's Gate A contribution contract; its host adapter at Gate B    |
-| `M4-02` | active          | Size-role editing with textual inheritance provenance                               | Grid and column composition; two-theme four-to-two-to-one proof         |
+| `M4-02` | active          | Core section/stack/grid/columns, typed recipes/tokens, reference reflow, two-theme semantic resolution | Independent second-renderer replay and reviewer reproduction |
 | `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                    | Reviewer reproduction                                                   |
 | `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag                | Reviewer reproduction                                                   |
 | `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                     | Reviewer reproduction                                                   |

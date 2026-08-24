@@ -81,4 +81,6 @@ Studio preserves an unknown node as opaque data and displays its type, owner, ve
 
 ## Core layout blocks
 
-The protocol should standardize semantics for section, container, stack, grid, columns and region blocks without standardizing their HTML/CSS implementation. Layout blocks expose bounded roles for flow, span, gap, alignment, order and collapse, ensuring themes can render the same Blueprint appropriately.
+Studio ships canonical `section`, `stack`, `grid`, and `columns` block definitions without standardizing their HTML/CSS implementation. The definitions expose closed semantic properties for alignment, spacing, per-viewport visibility, stack direction, a one-through-twelve grid/column count, and collapse behavior. Responsive overrides use the ordinary Blueprint property map and inherit from the base value when the active viewport has no override; the document never stores a media query, class name, declaration, or viewport-specific markup.
+
+`createCoreLayoutBlockDefinitions` admits the layout family recursively and requires a host to add each content block type explicitly. It likewise requires one or more trusted renderer capabilities; there is no wildcard slot or renderer. `resolveCoreLayoutIntent` validates the effective tokens against the active theme and reports exact base/default/viewport provenance. A missing theme control or choice fails closed instead of selecting a visually similar replacement. See [ADR 0022](../decisions/0022-core-layout-block-family.md).

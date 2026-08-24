@@ -9,7 +9,11 @@ import {
 } from 'lit';
 import {
   BlockRegistry,
+  RECIPE_MARKER_PROPERTY,
+  coreLayoutInitialProperties,
+  isCoreLayoutBlockType,
   permittedCommandTypes,
+  recipeSelectionOperations,
   resolveSessionMode,
   StudioCommandError,
   StudioSession,
@@ -48,6 +52,7 @@ import type {
   StudioSessionMode,
   ThemeDesignChoice,
   ThemeDesignControl,
+  ThemeDocument,
   ThemeViewport,
   UnsetPropertyCommand,
   UnsetPropertyPayload,
@@ -121,6 +126,7 @@ export class KumweStudioElement extends LitElement {
     paletteFilter: { attribute: false, state: true },
     paletteOpen: { attribute: false, state: true },
     selectedNodeId: { attribute: false, state: true },
+    theme: { attribute: false },
     viewports: { attribute: false },
   };
 
@@ -517,6 +523,7 @@ export class KumweStudioElement extends LitElement {
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
+  declare public theme: ThemeDocument | undefined;
   declare public viewports: ThemeViewport[] | undefined;
   declare protected announcement: string | undefined;
   declare protected paletteFilter: string | undefined;
@@ -648,7 +655,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('viewports')) {
+    if (changed.has('viewports') || changed.has('theme')) {
       this.#activeViewportId = undefined;
     }
     if (changed.has('configuration')) {
@@ -665,6 +672,14 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override updated(): void {
+    for (const select of this.shadowRoot?.querySelectorAll<HTMLSelectElement>(
+      'select[data-current-value]',
+    ) ?? []) {
+      const current = select.dataset.currentValue;
+      if (current !== undefined && select.value !== current) {
+        select.value = current;
+      }
+    }
     // The announcement rendered; a preview lifecycle announcement deferred
     // behind it now takes the slot on the next update, so both are spoken.
     this.#announcementPending = false;
@@ -1092,11 +1107,13 @@ export class KumweStudioElement extends LitElement {
       nodeId = `${base}-${counter}`;
     }
     const node: BlueprintNode = {
-      authoring: { mode: 'content' },
+      authoring: { mode: isCoreLayoutBlockType(definition.type) ? 'structural' : 'content' },
       bindings: {},
       id: nodeId,
-      properties: {},
-      slots: {},
+      properties: isCoreLayoutBlockType(definition.type)
+        ? coreLayoutInitialProperties(definition.type)
+        : {},
+      slots: Object.fromEntries(definition.slots.map((slot) => [slot.id, []])),
       type: definition.type,
       version: definition.version,
     };
@@ -1577,7 +1594,60 @@ export class KumweStudioElement extends LitElement {
   }
 
   #orderedViewports(): ThemeViewport[] {
-    return [...(this.viewports ?? [])].sort((left, right) => left.order - right.order);
+    return [...(this.viewports ?? this.theme?.viewports ?? [])].sort(
+      (left, right) => left.order - right.order,
+    );
+  }
+
+  #activeDesignControls(): ThemeDesignControl[] | undefined {
+    return this.designControls ?? this.theme?.designControls;
+  }
+
+  #propertyTargetViewport(): ThemeViewport | undefined {
+    const viewport = this.activeViewport;
+    return viewport === undefined || viewport.base ? undefined : viewport;
+  }
+
+  #designControlProperty(definition: BlockDefinition, control: ThemeDesignControl): string {
+    return (
+      definition.propertyControls?.find((entry) => entry.control.endsWith(`/${control.id}`))
+        ?.property ?? control.id
+    );
+  }
+
+  #applyRecipe(node: BlueprintNode, recipeId: string): void {
+    const document = this.document;
+    const session = this.#session;
+    const theme = this.theme;
+    if (
+      document === undefined ||
+      session === undefined ||
+      theme === undefined ||
+      !this.#permits('studio.command/batch')
+    ) {
+      return;
+    }
+    let operations;
+    try {
+      operations = recipeSelectionOperations(node, theme, recipeId);
+    } catch (error) {
+      this.#announce('studio.shell/announce-command-failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+    const command: BlueprintCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { operations },
+      type: 'studio.command/batch',
+    };
+    if (!this.#runShellCommand(command)) {
+      return;
+    }
+    const recipe = theme.recipes.find((candidate) => candidate.id === recipeId);
+    this.#announce('studio.shell/announce-recipe-applied', {
+      recipe: recipe === undefined ? recipeId : referenceText(recipe.label),
+    });
   }
 
   /**
@@ -1998,10 +2068,147 @@ export class KumweStudioElement extends LitElement {
             </p>`
           : html`<p class="hint">${this.#text('studio.shell/inspector-hint')}</p>`
       }
+      ${this.#renderInspectorRecipes(node, !this.#permits('studio.command/batch'))}
+      ${this.#renderInspectorDesign(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorProperties(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorBindings(node, !this.#permits('studio.command/set-binding'))}
       ${this.#renderInspectorOverrides(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorLayout(node, !this.#permits('studio.command/set-size-role'))}
+    `;
+  }
+
+  /** Theme recipes are atomic command batches, never an untracked style mutation. */
+  #renderInspectorRecipes(node: BlueprintNode, disabled: boolean): TemplateResult | typeof nothing {
+    const theme = this.theme;
+    if (theme === undefined) {
+      return nothing;
+    }
+    const recipes = theme.recipes.filter((recipe) => recipe.blockType === node.type);
+    if (recipes.length === 0) {
+      return nothing;
+    }
+    const selected = node.properties[RECIPE_MARKER_PROPERTY];
+    return html`
+      <section
+        class="inspector-section inspector-recipes"
+        aria-label=${this.#text('studio.shell/inspector-recipes-heading')}
+      >
+        <h3>${this.#text('studio.shell/inspector-recipes-heading')}</h3>
+        <label class="inspector-row">
+          <span class="inspector-name">${this.#text('studio.shell/inspector-recipe-label')}</span>
+          <select
+            class="inspector-recipe-select"
+            data-current-value=${typeof selected === 'string' ? selected : ''}
+            ?disabled=${disabled}
+            @change=${(event: Event): void => {
+              const target = event.currentTarget;
+              if (target instanceof HTMLSelectElement && target.value !== '') {
+                this.#applyRecipe(node, target.value);
+              }
+            }}
+          >
+            <option value="" disabled .selected=${typeof selected !== 'string'}>
+              ${this.#text('studio.shell/inspector-recipe-placeholder')}
+            </option>
+            ${recipes.map(
+              (recipe) => html`
+                <option value=${recipe.id} .selected=${selected === recipe.id}>
+                  ${referenceText(recipe.label)}
+                </option>
+              `,
+            )}
+          </select>
+        </label>
+      </section>
+    `;
+  }
+
+  /** Typed theme controls bound to this block definition's declared vocabulary. */
+  #renderInspectorDesign(node: BlueprintNode, disabled: boolean): TemplateResult | typeof nothing {
+    const definition = this.#findDefinition(node);
+    const controls = this.#activeDesignControls();
+    if (definition === undefined || controls === undefined) {
+      return nothing;
+    }
+    const declared = definition.themeControls
+      .map((id) => controls.find((control) => control.id === id))
+      .filter((control): control is ThemeDesignControl => control !== undefined);
+    if (declared.length === 0) {
+      return nothing;
+    }
+    const viewport = this.#propertyTargetViewport();
+    return html`
+      <section
+        class="inspector-section inspector-design"
+        aria-label=${this.#text('studio.shell/inspector-design-heading')}
+      >
+        <h3>${this.#text('studio.shell/inspector-design-heading')}</h3>
+        <ul class="inspector-rows">
+          ${declared.map((control) => {
+            const property = this.#designControlProperty(definition, control);
+            const base = node.properties[property];
+            const override =
+              viewport === undefined ? undefined : node.responsive?.[property]?.[viewport.id];
+            const effective = override ?? base;
+            return html`
+              <li class="inspector-row" data-control=${control.id}>
+                <label class="inspector-name" for=${`design-${node.id}-${control.id}`}>
+                  ${referenceText(control.label)}
+                </label>
+                <span class="inspector-provenance">
+                  ${
+                    viewport === undefined
+                      ? this.#text('studio.shell/inspector-provenance-base')
+                      : override === undefined
+                        ? this.#text('studio.shell/inspector-provenance-inherited', {
+                            value: JSON.stringify(base),
+                          })
+                        : this.#text('studio.shell/inspector-provenance-overridden', {
+                            value: JSON.stringify(override),
+                            viewport: referenceText(viewport.label),
+                          })
+                  }
+                </span>
+                <select
+                  id=${`design-${node.id}-${control.id}`}
+                  class="inspector-design-select"
+                  data-current-value=${typeof effective === 'string' ? effective : ''}
+                  data-property=${property}
+                  ?disabled=${disabled}
+                  @change=${(event: Event): void => {
+                    const target = event.currentTarget;
+                    if (target instanceof HTMLSelectElement && target.value !== '') {
+                      this.#setNodeProperty(node, property, target.value, viewport);
+                    }
+                  }}
+                >
+                  <option value="" disabled .selected=${typeof effective !== 'string'}>
+                    ${this.#text('studio.shell/inspector-design-placeholder')}
+                  </option>
+                  ${control.choices.map(
+                    (choice) => html`
+                      <option value=${choice.id} .selected=${effective === choice.id}>
+                        ${referenceText(choice.label)}
+                      </option>
+                    `,
+                  )}
+                </select>
+                <button
+                  type="button"
+                  class="inspector-design-unset"
+                  data-property=${property}
+                  ?disabled=${disabled || (viewport === undefined ? base : override) === undefined}
+                  @click=${(): void => {
+                    this.#unsetNodeProperty(node, property, viewport);
+                  }}
+                >
+                  ${this.#text('studio.shell/inspector-design-unset')}
+                </button>
+              </li>
+            `;
+          })}
+        </ul>
+      </section>
     `;
   }
 
@@ -2891,7 +3098,7 @@ export class KumweStudioElement extends LitElement {
    * the layout editor then falls back to a validated identifier input.
    */
   #sizeRoleVocabulary(): ThemeDesignChoice[] | undefined {
-    const controls = this.designControls;
+    const controls = this.#activeDesignControls();
     if (controls === undefined) {
       return undefined;
     }

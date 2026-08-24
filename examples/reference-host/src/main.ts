@@ -1,5 +1,10 @@
 import { defineKumweStudio, type KumweStudioElement } from '@kumwe/studio';
-import { BlockRegistry } from '@kumwe/studio-core';
+import {
+  BlockRegistry,
+  coreLayoutInitialProperties,
+  createCoreLayoutBlockDefinitions,
+  isCoreLayoutBlockType,
+} from '@kumwe/studio-core';
 import { PreviewClient } from '@kumwe/studio-preview';
 import {
   STUDIO_CONTRACT_VERSION,
@@ -18,16 +23,12 @@ import './style.css';
 defineKumweStudio();
 
 const blocks: BlockDefinition[] = [
-  defineBlock('studio.core/section', 'Section', [
-    {
-      accepts: { types: ['studio.core/text'] },
-      id: 'content',
-      label: { defaultMessage: 'Content', key: 'studio.reference/section-content' },
-      maximum: 100,
-      minimum: 0,
-      ordered: true,
-    },
-  ]),
+  ...createCoreLayoutBlockDefinitions({
+    acceptedChildTypes: ['studio.core/text'],
+    rendererRequirements: [
+      { capability: 'studio.renderer/reference', surface: 'preview', versions: '^0.1.0' },
+    ],
+  }),
   defineBlock('studio.core/text', 'Text'),
 ];
 const blockRegistry = new BlockRegistry(blocks);
@@ -134,17 +135,30 @@ studio.configuration = configuration;
 studio.document = blueprint;
 
 studio.addEventListener('studio-insert-request', (event: Event) => {
-  const customEvent = event as CustomEvent<{ definition: BlockDefinition }>;
+  const customEvent = event as CustomEvent<{
+    definition: BlockDefinition;
+    parentId: string | null;
+    slot?: string;
+  }>;
   const definition = customEvent.detail.definition;
+  const layoutType = isCoreLayoutBlockType(definition.type) ? definition.type : undefined;
   const node: BlueprintNode = {
-    authoring: { mode: 'designer' },
+    authoring: { mode: layoutType === undefined ? 'designer' : 'structural' },
     bindings: {},
     id: crypto.randomUUID(),
-    properties: definition.type === 'studio.core/text' ? { text: 'Editable text' } : {},
+    properties:
+      definition.type === 'studio.core/text'
+        ? { text: 'Editable text' }
+        : layoutType === undefined
+          ? {}
+          : coreLayoutInitialProperties(layoutType),
+    ...(definition.type === 'studio.core/grid' || definition.type === 'studio.core/columns'
+      ? { responsive: { columns: { expanded: 4, medium: 2 } } }
+      : {}),
     // A named inline size role, not CSS: the reference renderer maps it to a
     // column span at the active viewport, so a quarter block reflows
     // four-to-two-to-one across the expanded/medium/compact switcher.
-    sizeRoles: { inline: definition.type === 'studio.core/section' ? 'quarter' : 'half' },
+    sizeRoles: { inline: layoutType === undefined ? 'half' : 'quarter' },
     slots: Object.fromEntries(definition.slots.map((slot) => [slot.id, []])),
     type: definition.type,
     version: definition.version,
@@ -157,7 +171,20 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
     contractVersion: STUDIO_CONTRACT_VERSION,
     id: crypto.randomUUID(),
     kind: 'command',
-    payload: { destination: { position: studio.document?.roots.length ?? 0 }, node },
+    payload: {
+      destination:
+        customEvent.detail.parentId === null || customEvent.detail.slot === undefined
+          ? { position: studio.document?.roots.length ?? 0 }
+          : {
+              parentNodeId: customEvent.detail.parentId,
+              position:
+                findNode(studio.document?.roots ?? [], customEvent.detail.parentId)?.slots[
+                  customEvent.detail.slot
+                ]?.length ?? 0,
+              slot: customEvent.detail.slot,
+            },
+      node,
+    },
     sessionGeneration: configuration.session.sessionGeneration,
     type: 'studio.command/insert-node',
   });
@@ -178,7 +205,7 @@ const previewSurface = requirePaneElement('.preview-surface');
 const previewStatus = requirePaneElement('.preview-status');
 const previewSelection = requirePaneElement('.preview-selection');
 
-studio.viewports = referenceTheme.viewports;
+studio.theme = referenceTheme;
 
 const pageOrigin = window.location.origin;
 const previewChannelId = crypto.randomUUID();
@@ -352,6 +379,23 @@ function requirePaneElement(selector: string): HTMLElement {
     throw new Error('Reference host is missing its preview pane.');
   }
   return element;
+}
+
+function findNode(nodes: readonly BlueprintNode[], id: string): BlueprintNode | undefined {
+  const stack = [...nodes];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (node === undefined) {
+      break;
+    }
+    if (node.id === id) {
+      return node;
+    }
+    for (const children of Object.values(node.slots)) {
+      stack.push(...children);
+    }
+  }
+  return undefined;
 }
 
 function defineBlock(

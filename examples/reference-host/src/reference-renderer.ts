@@ -5,6 +5,12 @@ import {
   PreviewHost,
   type PreviewMeasurement,
 } from '@kumwe/studio-preview';
+import {
+  CORE_LAYOUT_BLOCK_TYPES,
+  CORE_LAYOUT_THEME_CONTROLS,
+  isCoreLayoutBlockType,
+  resolveCoreLayoutIntent,
+} from '@kumwe/studio-core';
 import type {
   BlueprintDocument,
   BlueprintNode,
@@ -45,6 +51,12 @@ export interface ReferenceRendererOptions {
 const themeTokenCss: Record<string, Record<string, string>> = {
   'block-gap': { cozy: '0.5rem', roomy: '1rem' },
   'heading-scale': { display: '1.25rem', regular: '1rem' },
+  [CORE_LAYOUT_THEME_CONTROLS.spacing]: {
+    comfortable: '1rem',
+    compact: '0.5rem',
+    none: '0',
+    spacious: '2rem',
+  },
   'surface-tone': { paper: '#ffffff', tinted: '#eef2fb' },
 };
 
@@ -170,6 +182,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     markNode(element, node, draftDigest, result);
     element.style.gridColumn = `span ${spanFor(node, viewport, columns)}`;
     applyRecipeTokens(element, node);
+    applyCoreLayout(element, node, viewport);
 
     const slots = Object.entries(node.slots).sort(([left], [right]) =>
       left < right ? -1 : left > right ? 1 : 0,
@@ -190,13 +203,28 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
   }
 
   function createBlockElement(node: BlueprintNode, result: RenderResult): HTMLElement {
-    if (node.type === 'studio.core/section') {
+    if (node.type === CORE_LAYOUT_BLOCK_TYPES.section) {
       const section = document.createElement('section');
-      section.className = 'preview-block preview-section';
+      section.className = 'preview-block preview-layout preview-section';
       const heading = document.createElement('h3');
       heading.textContent = 'Section';
       section.append(heading);
       return section;
+    }
+    if (node.type === CORE_LAYOUT_BLOCK_TYPES.stack) {
+      const stack = document.createElement('div');
+      stack.className = 'preview-block preview-layout preview-stack';
+      return stack;
+    }
+    if (node.type === CORE_LAYOUT_BLOCK_TYPES.grid) {
+      const grid = document.createElement('div');
+      grid.className = 'preview-block preview-layout preview-grid-block';
+      return grid;
+    }
+    if (node.type === CORE_LAYOUT_BLOCK_TYPES.columns) {
+      const columns = document.createElement('div');
+      columns.className = 'preview-block preview-layout preview-columns';
+      return columns;
     }
     if (node.type === 'studio.core/text') {
       const paragraph = document.createElement('p');
@@ -218,6 +246,35 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     fallback.className = 'preview-block preview-unknown';
     fallback.textContent = 'Unsupported block';
     return fallback;
+  }
+
+  function applyCoreLayout(
+    element: HTMLElement,
+    node: BlueprintNode,
+    viewport: ThemeViewport,
+  ): void {
+    if (!isCoreLayoutBlockType(node.type)) {
+      return;
+    }
+    const intent = resolveCoreLayoutIntent(node, viewport, theme);
+    element.dataset.layoutAlignment = intent.alignment.value;
+    element.dataset.layoutSpacing = intent.spacing.value;
+    element.dataset.layoutVisibility = intent.visibility.value;
+    element.hidden = intent.visibility.value === 'hidden';
+    const gap = themeTokenCss[CORE_LAYOUT_THEME_CONTROLS.spacing]?.[intent.spacing.value];
+    if (gap !== undefined) {
+      element.style.setProperty('--layout-gap', gap);
+    }
+    if (intent.columns !== undefined) {
+      element.style.setProperty('--layout-columns', String(intent.columns.value));
+      element.dataset.layoutColumns = String(intent.columns.value);
+    }
+    if (intent.collapse !== undefined) {
+      element.dataset.layoutCollapse = intent.collapse.value;
+    }
+    if (intent.direction !== undefined) {
+      element.dataset.layoutDirection = intent.direction.value;
+    }
   }
 
   function markNode(

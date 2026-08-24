@@ -6,6 +6,9 @@ channel against a real reference renderer. It needs no external service and stor
 Its bounded in-memory preview store validates complete drafts with `validateBlueprint` before hashing,
 storing, and resolving them; keys include artifact ID, revision, and digest. The renderer recomputes
 identity, verifies its node map against canonical preorder, and cooperates with render cancellation.
+The block palette includes Studio's canonical section, stack, grid, and columns family. Grid and columns
+nodes store one semantic column count plus viewport overrides, and the bundled renderer demonstrates the
+same nested composition reflowing one, two, and four columns without document-authored CSS or markup.
 
 From the repository root:
 
