@@ -35,6 +35,7 @@ import type {
   MessageReference,
   NodeId,
   PreviewMessage,
+  QualifiedName,
   RemoveBindingCommand,
   RemoveNodeCommand,
   ReorderChildrenCommand,
@@ -66,6 +67,11 @@ import {
   findAncestry,
   findOutlineLocation,
 } from './outline.js';
+import {
+  StudioPreviewSurface,
+  type StudioPreviewBinding,
+  type StudioPreviewState,
+} from './preview-surface.js';
 
 export interface StudioDocumentChangeDetail {
   command: BlueprintCommand | null;
@@ -125,6 +131,8 @@ export class KumweStudioElement extends LitElement {
     messages: { attribute: false },
     paletteFilter: { attribute: false, state: true },
     paletteOpen: { attribute: false, state: true },
+    previewBinding: { attribute: false },
+    previewState: { attribute: false, state: true },
     selectedNodeId: { attribute: false, state: true },
     theme: { attribute: false },
     viewports: { attribute: false },
@@ -311,6 +319,37 @@ export class KumweStudioElement extends LitElement {
     .viewport-switcher button {
       font-size: 0.8125rem;
       padding: 0.375rem 0.5rem;
+    }
+
+    .preview-region {
+      background: white;
+      border: 1px solid var(--studio-border);
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+    }
+
+    .preview-region h2 {
+      margin-bottom: 0.25rem;
+    }
+
+    .preview-status {
+      color: #5d6671;
+      font-size: 0.8125rem;
+      margin: 0 0 0.625rem;
+    }
+
+    .preview-surface-slot {
+      display: block;
+      max-inline-size: 100%;
+      overflow: auto;
+    }
+
+    .preview-surface-slot::slotted(iframe) {
+      border: 0;
+      display: block;
+      inline-size: 100%;
+      min-block-size: 20rem;
     }
 
     .breadcrumb ol {
@@ -524,10 +563,12 @@ export class KumweStudioElement extends LitElement {
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
   declare public theme: ThemeDocument | undefined;
+  declare public previewBinding: StudioPreviewBinding | undefined;
   declare public viewports: ThemeViewport[] | undefined;
   declare protected announcement: string | undefined;
   declare protected paletteFilter: string | undefined;
   declare protected paletteOpen: boolean | undefined;
+  declare protected previewState: StudioPreviewState | 'unavailable' | undefined;
   declare protected selectedNodeId: string | undefined;
 
   #activeViewportId: string | undefined;
@@ -541,6 +582,9 @@ export class KumweStudioElement extends LitElement {
   #pendingFocusNodeId: NodeId | undefined;
   #pendingPaletteFocus = false;
   readonly #pendingPreviewAnnouncements: string[] = [];
+  #activePreviewBinding: StudioPreviewBinding | undefined;
+  #previewBindingGeneration: Revision | undefined;
+  #previewSurface: StudioPreviewSurface | undefined;
   #registry: BlockRegistry | undefined;
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
@@ -604,6 +648,23 @@ export class KumweStudioElement extends LitElement {
   }
 
   /**
+   * Closes the bound preview channel without changing authoring state or
+   * focus. A later preview session requires a fresh binding.
+   */
+  public teardownPreview(reason: QualifiedName): void {
+    if (this.#previewSurface === undefined) {
+      return;
+    }
+    this.#queuePreviewAnnouncement('studio.shell/announce-preview-torn-down', { reason });
+    this.#previewSurface.teardown(reason);
+  }
+
+  public override disconnectedCallback(): void {
+    this.teardownPreview('studio.preview/surface-disconnected');
+    super.disconnectedCallback();
+  }
+
+  /**
    * Consumes preview channel messages a host forwards (for example from
    * `PreviewClient.onMessage`). Renderer reload and channel teardown are
    * announced through the single polite live region with their qualified
@@ -661,6 +722,9 @@ export class KumweStudioElement extends LitElement {
     if (changed.has('configuration')) {
       this.#rebuildRegistry();
     }
+    if (changed.has('configuration') || changed.has('previewBinding')) {
+      this.#synchronizePreviewSurface();
+    }
     if (changed.has('document') || changed.has('configuration')) {
       if (this.#internalDocumentUpdate) {
         this.#internalDocumentUpdate = false;
@@ -671,7 +735,7 @@ export class KumweStudioElement extends LitElement {
     }
   }
 
-  protected override updated(): void {
+  protected override updated(changed: PropertyValues<this>): void {
     for (const select of this.shadowRoot?.querySelectorAll<HTMLSelectElement>(
       'select[data-current-value]',
     ) ?? []) {
@@ -698,6 +762,15 @@ export class KumweStudioElement extends LitElement {
       'select.layout-role-select',
     ) ?? []) {
       select.value = select.dataset.role ?? '';
+    }
+    if (
+      changed.has('document') ||
+      changed.has('configuration') ||
+      changed.has('previewBinding') ||
+      changed.has('theme') ||
+      changed.has('viewports')
+    ) {
+      this.#schedulePreview();
     }
     const nodeId = this.#pendingFocusNodeId;
     if (nodeId === undefined) {
@@ -756,7 +829,7 @@ export class KumweStudioElement extends LitElement {
             this.#onCanvasPointerCancel(event);
           }}
         >
-          ${this.#renderViewportSwitcher()} ${this.#renderBreadcrumb()}
+          ${this.#renderViewportSwitcher()} ${this.#renderBreadcrumb()} ${this.#renderPreview()}
           <button
             type="button"
             class="command-palette-toggle"
@@ -1728,6 +1801,7 @@ export class KumweStudioElement extends LitElement {
         run: (): void => {
           this.#session?.clearSelection();
           this.selectedNodeId = undefined;
+          this.#previewSurface?.selectNode(undefined);
           this.#announce('studio.shell/announce-selection-cleared');
         },
       },
@@ -1824,6 +1898,7 @@ export class KumweStudioElement extends LitElement {
     }
     this.#drag = undefined;
     this.selectedNodeId = undefined;
+    this.#previewSurface?.selectNode(undefined);
     this.#syncDirty();
   }
 
@@ -2770,6 +2845,38 @@ export class KumweStudioElement extends LitElement {
     `;
   }
 
+  #renderPreview(): TemplateResult {
+    const available = this.#previewCapabilityAvailable() && this.previewBinding !== undefined;
+    const state = available ? (this.previewState ?? 'connecting') : 'unavailable';
+    const statusKey: StudioMessageKey =
+      state === 'closed'
+        ? 'studio.shell/preview-closed'
+        : state === 'connecting'
+          ? 'studio.shell/preview-connecting'
+          : state === 'current'
+            ? 'studio.shell/preview-current'
+            : state === 'rendering'
+              ? 'studio.shell/preview-rendering'
+              : state === 'stale'
+                ? 'studio.shell/preview-stale'
+                : 'studio.shell/preview-unavailable';
+    return html`
+      <section
+        class="preview-region"
+        data-preview-state=${state}
+        aria-label=${this.#text('studio.shell/preview-label')}
+      >
+        <h2>${this.#text('studio.shell/preview-heading')}</h2>
+        <p class="preview-status">${this.#text(statusKey)}</p>
+        ${
+          available && state !== 'closed'
+            ? html`<slot class="preview-surface-slot" name="preview"></slot>`
+            : nothing
+        }
+      </section>
+    `;
+  }
+
   #renderViewportSwitcher(): TemplateResult | typeof nothing {
     const ordered = this.#orderedViewports();
     if (ordered.length === 0) {
@@ -2906,7 +3013,7 @@ export class KumweStudioElement extends LitElement {
     }
   }
 
-  #selectNode(nodeId: NodeId): void {
+  #selectNode(nodeId: NodeId, notifyPreview = true): void {
     const session = this.#session;
     if (session === undefined) {
       return;
@@ -2917,6 +3024,9 @@ export class KumweStudioElement extends LitElement {
       return;
     }
     this.selectedNodeId = nodeId;
+    if (notifyPreview) {
+      this.#previewSurface?.selectNode(nodeId);
+    }
   }
 
   #selectViewport(viewport: ThemeViewport): void {
@@ -2934,7 +3044,76 @@ export class KumweStudioElement extends LitElement {
     this.#announce('studio.shell/announce-viewport-changed', {
       label: referenceText(viewport.label),
     });
+    this.#schedulePreview();
     this.requestUpdate();
+  }
+
+  /**
+   * Preview is deny-by-default: feature policy, the canonical preview port
+   * with render and cancellation operations, and a concrete browser binding
+   * must all agree before the shell opens a channel.
+   */
+  #previewCapabilityAvailable(): boolean {
+    const session = this.configuration?.session;
+    if (session?.preview.enabled !== true) {
+      return false;
+    }
+    return session.hostCapabilities.ports.some(
+      (port) =>
+        port.id === 'studio.port/preview' &&
+        port.operations.includes('studio.operation/preview.render') &&
+        port.operations.includes('studio.operation/preview.cancel'),
+    );
+  }
+
+  #schedulePreview(): void {
+    const surface = this.#previewSurface;
+    const document = this.document;
+    if (surface === undefined || document === undefined) {
+      return;
+    }
+    surface.update(
+      document,
+      this.activeViewport?.id ?? this.configuration?.session.preview.initialViewport,
+    );
+  }
+
+  #synchronizePreviewSurface(): void {
+    const binding = this.previewBinding;
+    const generation = this.configuration?.session.sessionGeneration;
+    const available = this.#previewCapabilityAvailable();
+    if (!available || binding === undefined || generation === undefined) {
+      if (this.#previewSurface !== undefined) {
+        this.#previewSurface.teardown('studio.preview/capability-revoked');
+      }
+      this.#previewSurface = undefined;
+      this.#activePreviewBinding = undefined;
+      this.#previewBindingGeneration = undefined;
+      this.previewState = 'unavailable';
+      return;
+    }
+    if (
+      this.#previewSurface !== undefined &&
+      this.#activePreviewBinding === binding &&
+      this.#previewBindingGeneration === generation
+    ) {
+      return;
+    }
+    this.#previewSurface?.teardown('studio.preview/session-replaced');
+    this.#activePreviewBinding = binding;
+    this.#previewBindingGeneration = generation;
+    this.#previewSurface = new StudioPreviewSurface(binding, {
+      onActivated: (nodeId): void => {
+        this.#selectNode(nodeId, false);
+        this.requestUpdate();
+      },
+      onMessage: (message): void => {
+        this.notifyPreviewMessage(message);
+      },
+      onState: (state): void => {
+        this.previewState = state;
+      },
+    });
   }
 
   #serializedInspectorValue(

@@ -119,6 +119,35 @@ A browser preview bridge must:
 
 Cross-origin preview is deny-by-default and requires an explicit capability plus an equivalent security proof.
 
+### Bind the browser surface
+
+For `@kumwe/studio`, advertise `studio.port/preview` with both render and cancel operations, enable preview
+in the resolved session, place the renderer surface in the element's `preview` slot, and assign one
+`StudioPreviewBinding`:
+
+```ts
+studio.previewBinding = {
+  client,
+  async stage(draft, { signal }) {
+    signal.throwIfAborted();
+    const identity = await authenticatedDraftStore.stage(draft, sessionContext);
+    signal.throwIfAborted();
+    return identity;
+  },
+};
+```
+
+The host constructs `client` against the supplied same-origin frame (or an equivalently isolated mechanism)
+with an unpredictable channel ID, exact origin and current session generation before assigning the binding.
+The stage result contains `artifactId`, `draftRevision` and `draftDigest`; it contains no credential. The shell
+owns request coalescing, ready/render ordering, supersession, viewport instructions and marker selection for
+the lifetime of that binding. The host owns every authorization, staging, renderer and sandbox decision.
+
+The canonical shell does not create a frame from a URL: URLs and sandbox grants are host policy, and creating
+one before the client is pinned would open an unbound surface. Replacing a binding or session generation
+tears down the old channel. Removing preview authority renders the textual fallback and does not create a
+browser-storage or direct-rendering fallback.
+
 ## 6. Integrate extensions and themes
 
 The host compiles one immutable contribution generation from trusted declarations. Every contribution carries

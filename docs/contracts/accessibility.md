@@ -72,7 +72,11 @@ Studio preserves accessibility information during copy, migration, theme switch 
 
 ## Preview accessibility
 
-The preview frame has a descriptive title and a clear mechanism to enter and leave it. Studio provides separate structure and diagnostics views so screen-reader users are not forced to navigate a fully rendered page for every edit. Preview refreshes are announced politely without reading the page again.
+When the host supplies a preview frame, it has a descriptive title and a clear mechanism to enter and leave
+it. An equivalently isolated non-frame surface has an equivalent accessible name and boundary. Studio
+provides separate structure and diagnostics views so screen-reader users are not forced to navigate a fully
+rendered page for every edit. Preview refreshes are announced politely without reading the page again; a
+reload, teardown or failed render never moves focus.
 
 Theme preview controls expose viewport role and dimensions textually. Responsive state is not conveyed only through visual width.
 

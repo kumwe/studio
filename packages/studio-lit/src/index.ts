@@ -14,6 +14,12 @@ export {
   type StudioViewportChangeDetail,
 } from './kumwe-studio.js';
 export {
+  type StudioPreviewBinding,
+  type StudioPreviewDraftIdentity,
+  type StudioPreviewStageOptions,
+  type StudioPreviewState,
+} from './preview-surface.js';
+export {
   messageText,
   studioMessageCatalog,
   studioMessages,

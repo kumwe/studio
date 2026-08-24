@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@kumwe/studio-core": "0.1.0-alpha.8",
+    "@kumwe/studio-preview": "0.1.0-alpha.6",
     "@kumwe/studio-protocol": "0.1.0-alpha.6",
     "lit": "3.3.3"
   },

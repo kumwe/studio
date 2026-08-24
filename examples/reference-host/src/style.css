@@ -35,31 +35,10 @@ kumwe-studio {
   overflow: hidden;
 }
 
-/* The renderer pane. Layout-affecting values arrive exclusively as custom
-   properties (--theme-* from the theme document, --preview-columns from the
-   active viewport), so this stylesheet stays a bundled, CSP-clean asset. */
-.preview-pane {
-  background: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
-  margin: 1.5rem auto 0;
-  max-width: 90rem;
-  padding: 1rem 1.25rem 1.5rem;
-}
-
-.preview-pane h2 {
-  font-size: 1rem;
-  margin: 0 0 0.25rem;
-}
-
-.preview-status,
-.preview-selection {
-  color: #3f4854;
-  font-size: 0.8125rem;
-  margin: 0 0 0.5rem;
-  overflow-wrap: anywhere;
-}
-
+/* The shell-owned renderer surface. Layout-affecting values arrive
+   exclusively as custom properties (--theme-* from the theme document,
+   --preview-columns from the active viewport), so this stylesheet stays a
+   bundled, CSP-clean asset. */
 .preview-surface {
   border: 1px solid #d7dce2;
   border-radius: 0.5rem;

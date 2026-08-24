@@ -4,12 +4,11 @@ import { openShell } from '../support/shell.js';
 
 /**
  * M3-04/M4-01: the reference renderer behind the preview bridge. The host
- * page runs the real preview channel — PreviewClient and PreviewHost joined
- * over a MessageChannel with the contract's origin/channel/generation/
- * sequence filtering — and the renderer projects the draft into semantic DOM.
- * The spec drives insertion, selection correspondence through the marker-map
- * affordance, and the size-role-driven four-to-two-to-one reflow across the
- * viewport switcher, all under the pinned CSP with zero violations.
+ * page runs the shell-owned preview surface over PreviewClient and PreviewHost
+ * joined by a MessageChannel with the contract's origin/channel/generation/
+ * sequence filtering. The spec drives insertion, selection in both
+ * directions through the marker map, and size-role reflow across the viewport
+ * switcher, all under the pinned CSP with zero violations.
  */
 
 interface RecordedViolation {
@@ -48,13 +47,12 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   page,
 }) => {
   const shell = await openShell(page);
-  const pane = page.getByRole('region', { name: 'Preview' });
-  const surface = pane.locator('.preview-surface');
+  const pane = shell.getByRole('region', { name: 'Rendered preview' });
+  const surface = page.locator('.preview-surface');
   const status = pane.locator('.preview-status');
-  const selection = pane.locator('.preview-selection');
 
   // The channel handshake completed and the empty draft rendered.
-  await expect(status).toContainText('studio.renderer/reference');
+  await expect(status).toHaveText('Preview is current.');
   await expect(surface.locator('.preview-empty')).toBeVisible();
 
   // Inserting from the palette flows through the render path to real
@@ -69,9 +67,8 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   expect(isPreviewMarker(await renderedSection.getAttribute('data-marker'))).toBe(true);
 
   // Selecting in the shell's outline corresponds to a rendered region: the
-  // host resolves the node through the returned marker map, the renderer
-  // highlights that marker, and the textual affordance names the same marker
-  // with real measured geometry.
+  // shell admits only a node present in the latest marker map and sends the
+  // selection through PreviewClient.
   await shell
     .getByRole('complementary', { name: 'Outline' })
     .getByRole('button', { name: 'Section' })
@@ -80,10 +77,24 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   await expect(highlighted).toHaveCount(1);
   const marker = await highlighted.getAttribute('data-marker');
   expect(isPreviewMarker(marker)).toBe(true);
-  await expect(selection).toContainText(`Selected marker ${marker ?? ''}`);
-  // The geometry in the affordance comes from the measurer over the channel:
-  // real, non-degenerate CSS-pixel rectangles.
-  await expect(selection).toContainText(/— [1-9]\d*×[1-9]\d* CSS px at \(\d+, \d+\)\./u);
+
+  // Trusted activation travels the other way. Add a second region, keep the
+  // Section selected, then click the rendered Text and verify that the shell
+  // resolves its marker back to the exact outline node.
+  await shell
+    .getByRole('complementary', { name: 'Block palette' })
+    .getByRole('button', { name: 'Text' })
+    .click();
+  const renderedText = surface.locator('p.preview-text');
+  await expect(renderedText).toHaveCount(1);
+  await shell
+    .getByRole('complementary', { name: 'Outline' })
+    .getByRole('button', { name: 'Section' })
+    .click();
+  await renderedText.click();
+  await expect(
+    shell.getByRole('complementary', { name: 'Outline' }).getByRole('button', { name: 'Text' }),
+  ).toHaveAttribute('aria-pressed', 'true');
 
   // Size-role reflow: the inserted section carries the `quarter` inline size
   // role. At the compact base viewport the single-column grid gives it the
