@@ -8,6 +8,20 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Gate evidence authenticity (M1-04)
+
+- Stable IDs and required evidence-class mappings now cover all 14 Gate A and 18 Gate B criteria.
+  Closed bundle, registry, and multi-bundle gate schemas distinguish mechanical evidence modality,
+  pending/reproduced human review, and per-criterion gate outcomes without creating a gate claim.
+- Strict semantic checks reject fabricated or unreachable commits, nonexistent/sample/source-mismatched
+  bundles, stale reviews, retries, uncovered criteria, invalid profile partitions, reviewer/sign-off
+  defects, path traversal, symlinks, checksum drift, and passing records with high-risk defects. With no
+  gate record, all criteria are explicitly reported uncovered and both gates remain unassessed.
+- Bundle generation validates inputs before filesystem access, uses fixed argument vectors, runs the
+  complete quality/contract/test/build/Chromium lane with zero retries, captures bounded scanned logs,
+  and atomically writes a schema-valid pending bundle. Immutable, credential-free workflows upload only
+  that exact directory and keep release publication disabled.
+
 ### Version 2 web scope and coordinated release family (M1-03, M1-05, M2-06)
 
 - Version 2 now qualifies the explicit web profile target set. Dart generation, cross-runtime parity,

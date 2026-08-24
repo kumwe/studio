@@ -1,9 +1,12 @@
-import { readFile, readdir } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
+import {
+  buildCriterionIndex,
+  collectBundleFailures,
+  collectGateRecordFailures,
+} from './evidence-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const schemaDirectory = new URL('../evidence/schema/', import.meta.url);
@@ -13,6 +16,7 @@ const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 const schemaFiles = [
   'environment-matrix.schema.json',
   'evidence-bundle.schema.json',
+  'gate-criteria.schema.json',
   'gate-record.schema.json',
 ];
 const schemas = await Promise.all(
@@ -31,6 +35,7 @@ for (const schema of schemas) {
   ajv.addSchema(schema);
 }
 const validateBundle = getValidator('evidence-bundle.schema.json');
+const validateGateCriteria = getValidator('gate-criteria.schema.json');
 const validateGateRecord = getValidator('gate-record.schema.json');
 const validateEnvironmentMatrix = getValidator('environment-matrix.schema.json');
 
@@ -55,19 +60,50 @@ for (const environment of environmentMatrix.environments) {
   }
 }
 
-const checkedOutCommit = execFileSync('git', ['rev-parse', 'HEAD'], {
-  cwd: repositoryRoot,
-  encoding: 'utf8',
-}).trim();
-const checkedOutCommitTime = Date.parse(
-  execFileSync('git', ['show', '--no-patch', '--format=%cI', 'HEAD'], {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-  }).trim(),
+const registry = JSON.parse(
+  await readFile(new URL('../evidence/gate-criteria.json', import.meta.url), 'utf8'),
 );
-if (!/^[a-f0-9]{40}$/u.test(checkedOutCommit) || Number.isNaN(checkedOutCommitTime)) {
+if (!validateGateCriteria(registry)) {
+  throw new Error(
+    `The gate criterion registry violates its schema: ${ajv.errorsText(validateGateCriteria.errors)}`,
+  );
+}
+const criterionIndex = buildCriterionIndex(registry);
+if (criterionIndex.failures.length > 0) {
+  throw new Error(
+    `The gate criterion registry is invalid:\n- ${criterionIndex.failures.join('\n- ')}`,
+  );
+}
+const roadmap = await readFile(new URL('../docs/roadmap/README.md', import.meta.url), 'utf8');
+const roadmapCriterionIds = [...roadmap.matchAll(/\*\*`(gate-[ab]\/[^`]+)`\*\*/gu)].map(
+  (match) => match[1],
+);
+const registryCriterionIds = [...registry.gates.A, ...registry.gates.B].map(
+  (criterion) => criterion.id,
+);
+if (JSON.stringify(roadmapCriterionIds) !== JSON.stringify(registryCriterionIds)) {
+  throw new Error(
+    'The stable gate criterion identifiers in docs/roadmap/README.md drifted from ' +
+      'evidence/gate-criteria.json.',
+  );
+}
+
+const releaseRecord = JSON.parse(
+  await readFile(new URL('../studio-release.json', import.meta.url), 'utf8'),
+);
+const checkedOutCommit = git(['rev-parse', 'HEAD']);
+if (!/^[a-f0-9]{40}$/u.test(checkedOutCommit)) {
   throw new Error('The checked-out commit identity is unavailable; evidence cannot be verified.');
 }
+
+const validationContext = {
+  ...criterionIndex,
+  getCommitTime,
+  isCommitReachable,
+  now: Date.now(),
+  packageVersions: releaseRecord.packages,
+  repositoryRoot,
+};
 
 const bundleNames = (await readdir(bundleDirectory, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
@@ -75,10 +111,16 @@ const bundleNames = (await readdir(bundleDirectory, { withFileTypes: true }))
   .sort();
 
 let sampleCount = 0;
+const bundlesById = new Map();
 for (const name of bundleNames) {
-  const manifest = JSON.parse(
-    await readFile(new URL(`${name}/manifest.json`, bundleDirectory), 'utf8'),
-  );
+  let manifest;
+  try {
+    manifest = JSON.parse(
+      await readFile(new URL(`${name}/manifest.json`, bundleDirectory), 'utf8'),
+    );
+  } catch (error) {
+    throw new Error(`Bundle ${name} has no parseable manifest.json.`, { cause: error });
+  }
   if (!validateBundle(manifest)) {
     throw new Error(
       `Bundle ${name} violates the manifest schema: ${ajv.errorsText(validateBundle.errors)}`,
@@ -89,7 +131,7 @@ for (const name of bundleNames) {
       `Bundle directory ${name} must be named after its bundleId ${manifest.bundleId}.`,
     );
   }
-  const failures = await collectAuthenticityFailures(manifest);
+  const failures = await collectBundleFailures(manifest, validationContext);
   if (name.startsWith('SAMPLE-')) {
     sampleCount += 1;
     if (failures.length === 0) {
@@ -98,8 +140,11 @@ for (const name of bundleNames) {
           'the validator must reject stale or missing evidence.',
       );
     }
-  } else if (failures.length > 0) {
-    throw new Error(`Bundle ${name} failed authenticity checks:\n- ${failures.join('\n- ')}`);
+  } else {
+    if (failures.length > 0) {
+      throw new Error(`Bundle ${name} failed authenticity checks:\n- ${failures.join('\n- ')}`);
+    }
+    bundlesById.set(name, manifest);
   }
 }
 if (sampleCount === 0) {
@@ -116,9 +161,7 @@ try {
     throw error;
   }
 }
-if (gateFiles.length === 0) {
-  console.log('No gate records exist; Gates A and B remain unassessed.');
-}
+const gatesSeen = new Set();
 for (const name of gateFiles) {
   const record = JSON.parse(await readFile(new URL(name, gateDirectory), 'utf8'));
   if (!validateGateRecord(record)) {
@@ -126,91 +169,67 @@ for (const name of gateFiles) {
       `Gate record ${name} violates the gate record schema: ${ajv.errorsText(validateGateRecord.errors)}`,
     );
   }
+  if (gatesSeen.has(record.gate)) {
+    throw new Error(`Gate ${record.gate} has more than one decision record.`);
+  }
+  gatesSeen.add(record.gate);
+  const failures = await collectGateRecordFailures(record, name, {
+    ...validationContext,
+    bundlesById,
+    registry,
+  });
+  if (failures.length > 0) {
+    throw new Error(`Gate record ${name} failed authenticity checks:\n- ${failures.join('\n- ')}`);
+  }
+}
+
+for (const gate of ['A', 'B']) {
+  if (gatesSeen.has(gate)) {
+    continue;
+  }
+  const uncovered = registry.gates[gate].map((criterion) => criterion.id);
+  console.log(
+    `Gate ${gate} remains unassessed; uncovered criteria (${uncovered.length}): ${uncovered.join(', ')}`,
+  );
 }
 
 console.log(
-  `${schemaFiles.length} evidence schemas, ${bundleNames.length} bundle manifests ` +
+  `${schemaFiles.length} evidence schemas, ${registry.gates.A.length + registry.gates.B.length} ` +
+    `registered gate criteria, ${bundleNames.length} bundle manifests ` +
     `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
     `${environmentMatrix.environments.length} environment-matrix entries verified.`,
 );
 
-async function collectAuthenticityFailures(manifest) {
-  const failures = [];
-  // Evidence is produced at the commit under review and is then committed
-  // itself, which necessarily advances HEAD. Requiring equality would make a
-  // bundle unrecordable: the manifest would have to name the hash of the
-  // commit that contains it. The reviewed source must therefore be HEAD or an
-  // ancestor of it, and the checksum verification below is what actually
-  // proves the recorded inputs and artifacts still match the working tree.
-  if (!isAncestorOfHead(manifest.source.commit)) {
-    failures.push(
-      `source.commit ${manifest.source.commit} is neither the checked-out commit ` +
-        `${checkedOutCommit} nor an ancestor of it`,
-    );
-  }
-  if (manifest.source.workingTreeState !== 'clean') {
-    failures.push('source.workingTreeState must be "clean" for acceptable evidence');
-  }
-  for (const [member, checksums] of [
-    ['inputFixtureChecksums', manifest.inputFixtureChecksums],
-    ['artifactChecksums', manifest.artifactChecksums],
-  ]) {
-    for (const [path, expected] of Object.entries(checksums)) {
-      const resolved = resolve(repositoryRoot, path);
-      const relativePath = relative(repositoryRoot, resolved);
-      if (relativePath.startsWith('..') || isAbsolute(relativePath)) {
-        failures.push(`${member} path ${path} escapes the repository`);
-        continue;
-      }
-      let content;
-      try {
-        content = await readFile(resolved);
-      } catch {
-        failures.push(`${member} path ${path} does not exist in the repository`);
-        continue;
-      }
-      const actual = `sha256-${createHash('sha256').update(content).digest('base64')}`;
-      if (actual !== expected) {
-        failures.push(
-          `${member} path ${path} has checksum ${actual}, not the recorded ${expected}`,
-        );
-      }
-    }
-  }
-  const freshnessExpiresAt = manifest.review?.freshnessExpiresAt;
-  if (freshnessExpiresAt !== undefined) {
-    const expiry = Date.parse(freshnessExpiresAt);
-    if (Number.isNaN(expiry)) {
-      failures.push(`review.freshnessExpiresAt ${freshnessExpiresAt} is not a parseable timestamp`);
-    } else if (expiry < checkedOutCommitTime) {
-      failures.push(
-        `review.freshnessExpiresAt ${freshnessExpiresAt} precedes the checked-out commit time`,
-      );
-    }
-  }
-  return failures;
+function git(args) {
+  return execFileSync('git', args, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  }).trim();
 }
 
-/**
- * True when the recorded commit is reachable from HEAD. An unknown commit -
- * one this clone has never seen, including the zeroed sample - is not an
- * ancestor, so stale and fabricated evidence still fails.
- */
-function isAncestorOfHead(commit) {
+function isCommitReachable(commit) {
   if (!/^[a-f0-9]{40}$/u.test(commit)) {
     return false;
   }
-  if (commit === checkedOutCommit) {
-    return true;
-  }
   try {
-    execFileSync('git', ['merge-base', '--is-ancestor', commit, 'HEAD'], {
+    execFileSync('git', ['merge-base', '--is-ancestor', commit, checkedOutCommit], {
       cwd: repositoryRoot,
       stdio: 'ignore',
     });
     return true;
   } catch {
     return false;
+  }
+}
+
+function getCommitTime(commit) {
+  if (!isCommitReachable(commit)) {
+    return Number.NaN;
+  }
+  try {
+    return Date.parse(git(['show', '--no-patch', '--format=%cI', commit]));
+  } catch {
+    return Number.NaN;
   }
 }
 

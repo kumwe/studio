@@ -283,19 +283,24 @@ unpublished key reaches the interface.
 
 ### `ST-10` — Close the evidence lane's holes
 
-The lane currently accepts evidence it should refuse. Fix before any gate claim rests on it.
+**Repository state:** implemented as evidence infrastructure only. The registry, strict semantic
+validator, safe complete generator lane, negative regression suite, and immutable workflows are present.
+No real bundle has been reproduced, no gate record exists, and neither gate or profile status changed.
 
-1. `check-evidence.mjs` only schema-checks gate records: a fabricated gate record naming a nonexistent
-   bundle and a zeroed commit passes. Verify that a referenced bundle exists, that its commit resolves,
-   and that its criteria are covered.
-2. `create-evidence-bundle.mjs` writes `criteria: []`, which the manifest schema rejects — the generator
-   cannot currently produce a valid bundle.
-3. Give the fourteen Gate A criteria stable identifiers, map each to its evidence class, and add a
-   coverage check so an uncovered criterion fails rather than passing silently.
-4. Extend the bundle lane to the checks it omits: format, lint, typecheck, build, the four missing check
-   scripts, and the accessibility lane.
-5. Document the clean-room command a reviewer executes, which is required by the evidence model and
-   never written down.
+The earlier lane accepted evidence it should refuse. These controls are now required before any gate
+claim rests on it.
+
+1. `check-evidence.mjs` resolves every referenced non-sample bundle, refuses unknown or mismatched source
+   commits, authenticates exact files and checksums, and verifies per-criterion evidence-class coverage;
+   the former fabricated zero-commit record is a negative regression case.
+2. The generator writes nonempty mechanical criterion/class entries plus an explicit pending review,
+   schema-validates before an atomic create, and never records a gate outcome or reproduction.
+3. All fourteen Gate A and eighteen Gate B criteria have stable identifiers and evidence-class mappings;
+   document/registry drift fails and an absent record prints every criterion as uncovered.
+4. The bundle lane includes format, lint, typecheck, build, every governance script, the complete unit
+   command, and Chromium accessibility with zero retries and bounded credential-scanned logs.
+5. `evidence/README.md` carries the exact clean-room procedure, human review boundary, freshness rules,
+   and durable-retention requirement.
 
 **Acceptance.** A fabricated gate record fails; the generator emits a schema-valid bundle; every
 criterion is either covered or named as uncovered.

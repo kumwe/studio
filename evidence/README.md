@@ -1,97 +1,138 @@
 # Evidence
 
-This directory holds machine-readable acceptance evidence for Studio work packages and gates. The
-normative model — bundle manifest fields, evidence classes, criterion outcomes, reproduction and
-independence rules, freshness, and the gate review record — is `docs/roadmap/evidence.md`. This
-directory is its executable instantiation.
+This directory is the executable form of the acceptance model in
+`docs/roadmap/evidence.md`. It defines stable Gate A and Gate B criteria, bundle and decision schemas,
+strict source/artifact validation, and deliberately failing specimens.
 
-Everything under `evidence/` is currently draft scaffolding. No evidence bundle has been accepted and no
-gate has passed. `docs/roadmap/STATUS.md` remains the sole authority for Gate A and Gate B status.
+The machinery is implemented, but no real bundle has been reproduced and no gate record exists.
+`docs/roadmap/STATUS.md` remains the sole gate authority; both gates remain unassessed.
 
 ## Layout
 
-| Path                                 | Content                                                         |
-| ------------------------------------ | --------------------------------------------------------------- |
-| `schema/evidence-bundle.schema.json` | Manifest schema for one evidence bundle                         |
-| `schema/gate-record.schema.json`     | Schema for one gate decision record                             |
-| `bundles/<bundleId>/manifest.json`   | One immutable bundle manifest; sibling files are its artifacts  |
-| `gates/gate-<a\|b>.json`             | Gate decision records; none exist, so both gates are unassessed |
+| Path                                 | Content                                                              |
+| ------------------------------------ | -------------------------------------------------------------------- |
+| `gate-criteria.json`                 | Stable criterion IDs, required evidence classes, profile vocabulary  |
+| `schema/gate-criteria.schema.json`   | Closed schema for the criterion registry                             |
+| `schema/evidence-bundle.schema.json` | Closed schema for one immutable bundle manifest                      |
+| `schema/gate-record.schema.json`     | Closed schema for a multi-bundle, per-criterion gate decision        |
+| `bundles/<bundleId>/manifest.json`   | One manifest; regular files below `artifacts/` are its exact outputs |
+| `gates/gate-<a\|b>.json`             | Gate records; none exist, so both gates remain unassessed            |
 
-Bundle directories prefixed `SAMPLE-` are deliberately failing specimens. They must remain schema-valid,
-must fail the strict authenticity checks, and must never be linked from a work package, gate record, or
-status entry.
+The eight entries in `gate-criteria.json#profileVocabulary` are allowable Version 2 identifiers, not
+support claims. Only `supportedProfiles` in a valid, reviewed gate record can participate in a claim,
+and `STATUS.md` still controls programme status.
 
-## Content addressing
+Directories prefixed `SAMPLE-` are deliberately failing specimens. They stay schema-valid, must fail
+authenticity, and may never be referenced by a gate. A sample that starts passing causes the lane to
+fail.
 
-- A bundle directory is named exactly after its `bundleId`; the validator rejects a mismatch.
-- Every dependency lockfile, input fixture, and produced artifact is recorded as a repository-relative
-  path with a `sha256-` SRI checksum. The validator recomputes each checksum from the working tree.
-- A bundle is immutable: a changed artifact produces a different checksum and therefore a different
-  bundle. A CI rerun produces a new bundle; it never silently replaces prior evidence.
-- Manifests are never edited in place. A correction is a new bundle directory with a new `bundleId`.
+## Authenticity and immutability
 
-## Artifact retention
+- The bundle directory name equals `bundleId`. `SAMPLE-` is reserved and rejected by the generator.
+- The canonical repository URL, exact source commit, clean source state, lockfile, release record,
+  criterion registry, protocol manifest, and testkit corpus manifest are recorded.
+- Every checksum is `sha256-` SRI over the exact bytes. Artifact array entries and
+  `artifactChecksums` have identical path/checksum membership.
+- Recorded paths are bounded repository-relative paths. Validators resolve them, refuse traversal and
+  symlinks, require regular files, and verify the resolved path remains inside the selected checkout.
+- Every real bundle carries all mandatory lane IDs with ordered timestamps, exit status zero, and zero
+  retries. Retried evidence is failing evidence.
+- The generator stages outside `evidence/bundles/`, rechecks `HEAD` and cleanliness after all commands,
+  validates its manifest, and atomically renames it into place. An existing bundle is never replaced.
+- A changed input, artifact, commit, package version, profile, or review produces a new bundle; a
+  correction never mutates an accepted bundle.
 
-1. A bundle referenced by an accepted work package, gate record, or published release is retained for the
-   life of that release plus its published support window.
-2. A bundle superseded before acceptance keeps its manifest; its raw artifacts may be pruned once the
-   replacing bundle is accepted.
-3. Raw artifacts too large for the repository live in external content-addressed storage; the manifest
-   checksums remain authoritative and must still resolve during review.
-4. Nothing under `evidence/` is rewritten in place, and deletion of an accepted bundle is a
-   record-keeping defect, not housekeeping.
+Accepted bundle artifacts must remain reachable as regular content-addressed files for the release plus
+its support window. The current schema does not model external object storage, so a gate cannot rely on
+an external URL or a CI-retention promise. The workflow's 90-day upload is provisional transport for
+review, not accepted retention.
 
 ## Validation
 
-`node scripts/check-evidence.mjs` runs in the repository check lane (`npm run check` via
-`contracts:check`). It meta-validates both schemas, validates every bundle manifest and gate record, and
-applies strict authenticity checks to every non-`SAMPLE-` bundle: the recorded commit must be the
-checked-out `HEAD` or an ancestor of it, the working tree state must be `clean`, every recorded fixture
-and artifact path must exist with a matching sha256 checksum, and a recorded freshness expiry must not
-precede the checked-out commit time. A commit this clone has never seen — including the zeroed sample —
-is not an ancestor, so fabricated evidence still fails. A `SAMPLE-` bundle must fail at least one of those checks; a sample that passes fails the
-lane.
+`node scripts/check-evidence.mjs` runs through `contracts:check`. It validates all four evidence
+schemas, registry/document ID parity, the environment matrix, bundle authenticity, and gate semantics.
+For a gate it additionally requires:
 
-## Producing a bundle
+- the exact registered criterion set, once each, with `met`, `not-met`, or `not-assessed`;
+- the top-level bundle set to equal the union of per-criterion links;
+- every referenced non-sample bundle to exist, authenticate, describe the gate's exact source commit,
+  be independently reproduced, and remain fresh now and at decision time;
+- a `met` criterion to carry every required evidence class across its linked bundles;
+- supported and excluded profiles to be disjoint and partition the Version 2 vocabulary, with evidence
+  for each supported profile;
+- exact reachable artifact hashes, two distinct human reviewers, one independent reviewer, and named
+  accessibility, security, compatibility, and data-integrity reviewers with matching roles; and
+- a passing decision to have every criterion met and no unresolved critical/high defect.
 
-`node scripts/create-evidence-bundle.mjs --package <M2-01>` captures everything mechanical: the reviewed
-commit, the environment, each lane command with its exit status and timings, and the sha256 checksum of
-every recorded input and produced artifact. It refuses to run against a dirty tree and refuses to record
-a failing lane.
+When no record exists, the command prints every stable criterion as uncovered and leaves the gate
+unassessed. It never manufactures a record or changes `STATUS.md`.
 
-It deliberately leaves `criteria` empty and writes no `review` block. Criterion outcomes are the
-reviewer's judgement and `reproduced` is the reviewer's attestation; a generator that filled them in
-would be self-certifying evidence, which this model forbids. The bundle is left uncommitted so a
-reviewer inspects it, reproduces the run, records their outcomes and identity, and commits it.
+## Producing a pending bundle
 
-The `Evidence bundle` workflow runs the same script on an independent runner and uploads the result as
-an artifact, so a reviewer can compare a bundle produced elsewhere against the one they produced
-themselves. Downloading that artifact is not itself reproduction.
+Install the locked Chromium first, then identify one or more criterion IDs whose automated evidence
+classes the generic lane can produce:
 
-For `studio.profile/preview-identity-v1`, the contract inputs are
-`schemas/preview-vector.schema.json`, `schemas/vectors/preview/*.json`, the canonical serialization
-corpus, and the preview negative fixtures. Reproduction runs the contract check plus
-`packages/testkit/test/preview-vectors.test.ts` against the candidate commit and records the packaged
-`vectors/preview/` checksums from `corpus-manifest.json`. This defines the evidence inputs; it does not
-create or accept a bundle, and the profile remains unclaimed until an independent reviewer records one.
+```bash
+./node_modules/.bin/playwright install --with-deps chromium
+node scripts/create-evidence-bundle.mjs \
+  --package M2-01 \
+  --criteria gate-a/02-protocol-schemas,gate-a/12-accessible-interactions \
+  --profiles studio.profile/engine-core \
+  --runner local/clean-room
+```
+
+The script accepts no shell fragments: every flag is unique and bounded, the package and bundle ID are
+validated before filesystem access, criteria and profiles must exist in the registry, and unknown or
+missing flags fail. It runs format, lint, typecheck, build, all nine contract/governance scripts, the
+complete unit/Node test command, and the Chromium accessibility lane with zero retries. Each lane gets a
+bounded, credential-scanned log artifact.
+
+The generated manifest has nonempty mechanical criterion/class entries and
+`review: { "status": "pending" }`. These criterion entries describe evidence modality (`positive`,
+`negative`, `migration`, `recovery`, or `manual`); they are not gate judgements. The generator cannot
+write `met`, cannot mark reproduction, and cannot accept a gate.
+
+The `Evidence bundle` workflow accepts an exact candidate SHA, validates dispatch values before
+checkout, installs the locked toolchain and Chromium, derives an immutable server-side bundle ID, and
+uploads only the generated directory. A badge or downloaded workflow artifact is not reproduction.
+
+## Reviewer clean-room procedure
+
+Replace every angle-bracket value before executing this exact sequence in a fresh directory:
+
+```bash
+git clone https://github.com/kumwe/studio.git studio-evidence-review
+cd studio-evidence-review
+git checkout --detach <candidate-40-character-sha>
+test "$(git rev-parse HEAD)" = "<candidate-40-character-sha>"
+test "$(node -p 'process.versions.node.split(".")[0]')" = "24"
+test "$(npm --version)" = "11.9.0"
+npm ci
+./node_modules/.bin/playwright install --with-deps chromium
+node scripts/create-evidence-bundle.mjs \
+  --candidate <candidate-40-character-sha> \
+  --package <work-package> \
+  --criteria <comma-separated-stable-criterion-ids> \
+  --id <new-immutable-review-bundle-id> \
+  --runner clean-room/<runner-id>
+node scripts/check-evidence.mjs
+```
+
+The reviewer then compares commands, inputs, environment, raw logs, and checksums with the proposed CI
+bundle; randomly inspects raw artifacts; and rejects any unexplained difference, retry, redaction issue,
+or source mutation. Only the human who performed that review may replace `pending` with a bounded
+`reproduced` or `rejected` review block. The review identity must not be a runner identity. Reproduction
+still does not set a gate outcome.
 
 ## Gate review procedure
 
-`docs/roadmap/evidence.md` is normative; this checklist orders its requirements for a gate review:
-
-1. Confirm the proposed commit is the exact reviewed source and record the artifact hashes it produced.
-2. Link every gate criterion to a complete, current evidence bundle. A criterion outcome is exactly
-   `met`, `not-met`, or `not-assessed`; nothing else is a gate outcome.
-3. Verify each linked bundle carries the evidence classes its criterion requires and that flaky or
-   retried evidence has been classified and corrected.
-4. Reproduce: execute the documented clean-room command, or verify a trusted attestation plus randomly
-   selected raw artifacts. Reading a CI badge is not reproduction.
-5. Verify freshness: no relevant source, lockfile, schema, SDK, fixture, environment, or artifact change
-   postdates the evidence, and mandatory rerun classes were rerun for this candidate.
-6. Record supported and excluded profiles, unresolved defects with severity and non-impact rationale,
-   the compatibility/migration statement, and security and accessibility sign-off. Mandatory security,
-   accessibility, privacy, data-integrity, and compatibility criteria cannot be waived.
-7. Two reviewers, at least one independent of the work-package owners, record their identities and the
-   decision time; the decision is `pass` or `fail`.
-8. Write the record to `evidence/gates/gate-<a|b>.json`, run `node scripts/check-evidence.mjs`, and
-   update `docs/roadmap/STATUS.md` in the same change.
+1. Confirm the exact proposed source commit and all artifact hashes.
+2. Link every criterion to complete, current bundles; leave missing work explicitly `not-assessed`.
+3. Prove every `met` criterion has all classes declared in `gate-criteria.json`.
+4. Reject nonzero, retried, expired, unreviewed, missing, sample, source-mismatched, or unreachable data.
+5. Partition the profile vocabulary into supported and excluded entries without turning targets into
+   claims, and record defects plus the compatibility/migration statement.
+6. Record two distinct human reviewers, one independent, with competent accessibility, security,
+   compatibility, and data-integrity sign-off. An automated contributor is never a reviewer.
+7. Write `gate-a.json` or `gate-b.json`, run `node scripts/check-evidence.mjs`, and update `STATUS.md` in
+   the same reviewed change. A failing record may preserve `not-assessed`; a passing record may not.

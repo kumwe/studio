@@ -57,30 +57,30 @@ Repository-verified increments per work package, with the scope that still block
 the programme vocabulary; `evidence-review` here means the implementation is complete against its
 acceptance list and awaits an evidence bundle plus an independent reviewer.
 
-| Package | State           | Delivered (see changelog)                                                           | Still blocking acceptance                                              |
-| ------- | --------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `M1-04` | evidence-review | Manifest schemas, validator, failing sample, environment matrix                     | Reviewer reproduction; CI artifact retention                           |
-| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                             | Reviewer reproduction; first alpha publish not yet exercised           |
-| `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane                        | Reviewer reproduction                                                  |
-| `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors    | Reviewer reproduction; independent cross-runtime profile replay        |
-| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                           | Reviewer reproduction                                                  |
-| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds               | Reviewer reproduction                                                  |
-| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding                | Reviewer reproduction                                                  |
-| `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors                  | Reviewer reproduction                                                  |
-| `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest                   | Generated TypeScript models and canonical round-trip                   |
-| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals                   | Reviewer reproduction                                                  |
-| `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes                    | Reviewer reproduction against the Version 2 TypeScript profile         |
-| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations                        | Reviewer reproduction; lifecycle fixtures for non-block contributions  |
-| `M3-03` | evidence-review | Testbed, HTTP adapter, and single-exchange plus stateful host corpora               | Independent replay and reviewer reproduction                           |
-| `M3-04` | evidence-review | Responder, handshake, geometry, attempt-safe cancellation, portable identity corpus | Reviewer reproduction                                                  |
-| `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations            | Kumwe App's Gate A contribution contract; its host adapter at Gate B   |
-| `M4-02` | active          | Size-role editing with textual inheritance provenance                               | Grid and column composition; two-theme four-to-two-to-one proof        |
-| `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                    | Reviewer reproduction                                                  |
-| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag                | Reviewer reproduction                                                  |
-| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                     | Reviewer reproduction                                                  |
-| `M5-01` | active          | Upload orchestration over the canonical session state machine                       | Media browser UI; paste/drop capture; real host adapter exercises      |
-| `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                  | Ratified `engine-dart` profile, generated models, cross-runtime replay |
-| `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                  | `M3-06` and native Flutter authoring/renderer profiles                 |
+| Package | State           | Delivered (see changelog)                                                           | Still blocking acceptance                                               |
+| ------- | --------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `M1-04` | evidence-review | Stable criterion registry; strict bundle/gate validator; safe complete bundle lane  | First real bundle; independent human reproduction and durable retention |
+| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                             | Reviewer reproduction; first alpha publish not yet exercised            |
+| `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane                        | Reviewer reproduction                                                   |
+| `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors    | Reviewer reproduction; independent cross-runtime profile replay         |
+| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                           | Reviewer reproduction                                                   |
+| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds               | Reviewer reproduction                                                   |
+| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding                | Reviewer reproduction                                                   |
+| `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors                  | Reviewer reproduction                                                   |
+| `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest                   | Generated TypeScript models and canonical round-trip                    |
+| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals                   | Reviewer reproduction                                                   |
+| `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes                    | Reviewer reproduction against the Version 2 TypeScript profile          |
+| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations                        | Reviewer reproduction; lifecycle fixtures for non-block contributions   |
+| `M3-03` | evidence-review | Testbed, HTTP adapter, and single-exchange plus stateful host corpora               | Independent replay and reviewer reproduction                            |
+| `M3-04` | evidence-review | Responder, handshake, geometry, attempt-safe cancellation, portable identity corpus | Reviewer reproduction                                                   |
+| `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations            | Kumwe App's Gate A contribution contract; its host adapter at Gate B    |
+| `M4-02` | active          | Size-role editing with textual inheritance provenance                               | Grid and column composition; two-theme four-to-two-to-one proof         |
+| `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                    | Reviewer reproduction                                                   |
+| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag                | Reviewer reproduction                                                   |
+| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                     | Reviewer reproduction                                                   |
+| `M5-01` | active          | Upload orchestration over the canonical session state machine                       | Media browser UI; paste/drop capture; real host adapter exercises       |
+| `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                  | Ratified `engine-dart` profile, generated models, cross-runtime replay  |
+| `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                  | `M3-06` and native Flutter authoring/renderer profiles                  |
 
 ## Downstream integration commitments
 

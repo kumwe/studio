@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/gate-criteria.schema.json",
+  "title": "Studio gate criterion registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "gates", "kind", "profileVocabulary"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["A", "B"],
+      "properties": {
+        "A": {
+          "type": "array",
+          "minItems": 14,
+          "maxItems": 14,
+          "items": { "$ref": "#/$defs/criterion" }
+        },
+        "B": {
+          "type": "array",
+          "minItems": 18,
+          "maxItems": 18,
+          "items": { "$ref": "#/$defs/criterion" }
+        }
+      }
+    },
+    "kind": { "const": "gate-criterion-registry" },
+    "profileVocabulary": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidenceClasses", "id", "summary"],
+      "properties": {
+        "evidenceClasses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "contract",
+              "unit",
+              "property-fuzz",
+              "integration",
+              "lifecycle",
+              "end-to-end",
+              "accessibility",
+              "security",
+              "performance",
+              "portability",
+              "release",
+              "manual-decision"
+            ]
+          }
+        },
+        "id": { "$ref": "#/$defs/stableId" },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      }
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^studio\\.profile/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 160
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^gate-[ab]/[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}
