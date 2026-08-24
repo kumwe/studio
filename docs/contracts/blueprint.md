@@ -52,6 +52,11 @@ Static values MUST satisfy the target port schema. Query references MUST resolve
 
 Responsive behavior uses semantic viewport roles supplied by the theme, for example `compact`, `medium`, and `expanded`. Layout values MAY vary by role using a cascade from the theme-declared base role. Pixel breakpoints, raw media queries and utility-class strings MUST NOT be stored in a portable Blueprint.
 
+The effective property object at every declared viewport MUST satisfy the block definition's exact
+`propertySchema` after responsive overrides cascade over base properties. Validation reports the
+stored responsive location, and an invalid override blocks publication even when the base object is
+valid; a host never defers that refusal until a visitor renders the affected viewport.
+
 For a grid, a Blueprint stores bounded column count, span, order, alignment, gap role and collapse strategy supported by the block/theme pair. The renderer owns exact CSS.
 
 ## Authoring controls

@@ -5,6 +5,7 @@ import {
   type BlueprintBlockLock,
   type BlueprintDocument,
   type BlueprintNode,
+  type JsonObject,
   type QualifiedName,
   type StudioDiagnostic,
 } from '@kumwe/studio-protocol';
@@ -439,15 +440,68 @@ function validateNodeProperties(
     validator = compiled;
   }
 
-  if (!validator.validate(node.properties)) {
-    diagnostics.push(
-      ...schemaDiagnostics(validator.errors).map((entry) => ({
-        ...entry,
-        code: `studio.validation/block-properties-${entry.code.split('/').at(-1) ?? 'invalid'}` as QualifiedName,
-        location: { ...entry.location, nodeId: node.id },
-      })),
-    );
+  validateEffectiveProperties(node, validator, node.properties, undefined, diagnostics);
+
+  const effective = new Map<string, JsonObject>();
+  for (const property of Object.keys(node.responsive ?? {}).sort(compareCodeUnits)) {
+    const overrides = node.responsive?.[property];
+    if (overrides === undefined) {
+      continue;
+    }
+    for (const viewport of Object.keys(overrides).sort(compareCodeUnits)) {
+      const override = overrides[viewport];
+      if (override === undefined) {
+        continue;
+      }
+      const properties = effective.get(viewport) ?? { ...node.properties };
+      properties[property] = override;
+      effective.set(viewport, properties);
+    }
   }
+  for (const viewport of [...effective.keys()].sort(compareCodeUnits)) {
+    const properties = effective.get(viewport);
+    if (properties !== undefined) {
+      validateEffectiveProperties(node, validator, properties, viewport, diagnostics);
+    }
+  }
+}
+
+function validateEffectiveProperties(
+  node: BlueprintNode,
+  validator: CompiledSchemaValidator,
+  properties: JsonObject,
+  viewport: string | undefined,
+  diagnostics: StudioDiagnostic[],
+): void {
+  if (validator.validate(properties)) {
+    return;
+  }
+  diagnostics.push(
+    ...schemaDiagnostics(validator.errors).map((entry) => ({
+      ...entry,
+      code: `studio.validation/block-properties-${entry.code.split('/').at(-1) ?? 'invalid'}` as QualifiedName,
+      location: {
+        ...entry.location,
+        nodeId: node.id,
+        ...(viewport === undefined
+          ? {}
+          : { jsonPointer: responsivePropertyPointer(entry.location?.jsonPointer, viewport) }),
+      },
+    })),
+  );
+}
+
+function responsivePropertyPointer(jsonPointer: string | undefined, viewport: string): string {
+  const segments = jsonPointer?.split('/').slice(1) ?? [];
+  const property = segments.shift();
+  if (property === undefined) {
+    return `/responsive/${escapePointerToken(viewport)}`;
+  }
+  return ['', 'responsive', property, escapePointerToken(viewport), ...segments].join('/');
+}
+
+function escapePointerToken(value: string): string {
+  return value.replaceAll('~', '~0').replaceAll('/', '~1');
 }
 
 function indexBlockLocks(
@@ -620,4 +674,8 @@ function diagnostic(
     }
   }
   return result;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
