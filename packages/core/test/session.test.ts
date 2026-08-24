@@ -129,8 +129,28 @@ describe('StudioSession', () => {
     expect(session.dirty).toBe(true);
     session.markSaved('blueprint-r2');
     expect(session.dirty).toBe(false);
+    expect(session.document.revision).toBe('blueprint-r2');
     session.undo();
     expect(session.dirty).toBe(true);
+    expect(session.document.revision).toBe('blueprint-r2');
+  });
+
+  it('rebases a late save while preserving newer edits and undo/redo identity', () => {
+    const session = editableSession();
+    session.select(['b']);
+    session.execute(removeCommand('a'));
+    const savedStateVersion = session.stateVersion;
+    session.execute(removeCommand('b', { baseStateVersion: savedStateVersion }));
+
+    session.markSaved('blueprint-r2', savedStateVersion);
+
+    expect(session.document).toMatchObject({ revision: 'blueprint-r2', roots: [] });
+    expect(session.savedRevision).toBe('blueprint-r2');
+    expect(session.stateVersion).toBe(2);
+    expect(session.dirty).toBe(true);
+    expect(session.selection).toEqual([]);
+    expect(session.undo()).toMatchObject({ revision: 'blueprint-r2' });
+    expect(session.redo()).toMatchObject({ revision: 'blueprint-r2', roots: [] });
   });
 
   it('validates selection against the document and prunes removed nodes', () => {

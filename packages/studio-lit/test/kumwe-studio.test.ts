@@ -507,10 +507,38 @@ describe('kumwe-studio element', () => {
     expect(saveStateText(element)).toBe('Unsaved changes');
     expect(observed).toEqual([true]);
 
-    element.markSaved();
+    element.markSaved('blueprint-r2');
     await element.updateComplete;
     expect(saveStateText(element)).toBe('Saved');
+    expect(element.document?.revision).toBe('blueprint-r2');
     expect(observed).toEqual([true, false]);
+    element.remove();
+  });
+
+  it('rebases a late save without replacing shell history or selection', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    await selectNode(element, 'text-1');
+    element.execute(insertTextCommand(element, 'saved-edit'));
+    const savedStateVersion = element.stateVersion;
+    element.execute(insertTextCommand(element, 'newer-edit'));
+
+    element.markSaved('blueprint-r2', savedStateVersion);
+    await element.updateComplete;
+
+    expect(element.document?.revision).toBe('blueprint-r2');
+    expect(element.stateVersion).toBe(2);
+    expect(saveStateText(element)).toBe('Unsaved changes');
+    expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
+
+    expect(element.undo()).toMatchObject({ revision: 'blueprint-r2' });
+    await element.updateComplete;
+    expect(element.document?.roots.some((node) => node.id === 'newer-edit')).toBe(false);
+    expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
+
+    expect(element.redo()).toMatchObject({ revision: 'blueprint-r2' });
+    await element.updateComplete;
+    expect(element.document?.roots.some((node) => node.id === 'newer-edit')).toBe(true);
+    expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
     element.remove();
   });
 });

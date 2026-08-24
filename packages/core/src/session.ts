@@ -158,11 +158,11 @@ export class StudioSession {
   }
 
   /**
-   * Records the host revision that accepted a local snapshot. Callers normally
-   * omit `stateVersion`, which marks the current document clean. A host save
-   * that settles after another local edit passes the captured snapshot version
-   * instead: the accepted base revision advances while the newer draft stays
-   * dirty.
+   * Records the host revision that accepted a local snapshot and rebases every
+   * undo/redo snapshot onto it. Callers normally omit `stateVersion`, which
+   * marks the current document clean. A host save that settles after another
+   * local edit passes the captured snapshot version instead: the accepted base
+   * revision advances while the newer draft stays dirty.
    */
   public markSaved(revision: Revision, stateVersion: number = this.#history.stateVersion): void {
     if (
@@ -172,6 +172,7 @@ export class StudioSession {
     ) {
       throw new RangeError('A saved snapshot version must be a known non-negative state version.');
     }
+    this.#history.rebaseRevision(revision);
     this.#savedRevision = revision;
     this.#savedStateVersion = stateVersion;
   }

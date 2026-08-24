@@ -35,6 +35,13 @@ guard settlement in addition to the client's request identity, so a callback tha
 replace the latest marker map. Selection travels only when that map proves a live node/marker association;
 trusted renderer activation resolves the marker back through the same map.
 
+A save acknowledgement is also an identity transition. The shell forwards the accepted revision and the
+saved snapshot's captured state version to its existing `StudioSession`, then exposes the session's rebased
+document without constructing a replacement session. The resulting document update preserves selection and
+history, supersedes preview work for the old revision, and stages the complete draft again with the accepted
+revision and its exact canonical digest. A late acknowledgement therefore advances the preview base while
+newer edits remain dirty.
+
 Reload clears marker authority, preserves focus, waits for the renewed ready handshake and resends the latest
 snapshot. Teardown closes the channel and leaves the document untouched. Missing authority or channel failure
 renders explicit unavailable, stale or disconnected text while normal authoring remains available according

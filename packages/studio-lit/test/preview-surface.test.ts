@@ -404,6 +404,48 @@ describe('shell preview surface', () => {
     element.remove();
   });
 
+  it('supersedes preview work and stages the exact rebased save identity', async () => {
+    const { client, element, staged } = await mount();
+    client.announceReady();
+    await client.waitForRenders(1);
+    const initialDigest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, { [marker(initialDigest, 0)]: 'node-1' });
+    await settle(element);
+
+    element.execute({
+      artifactId: element.document?.id ?? 'test.blueprint',
+      baseStateVersion: element.stateVersion,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: 'insert-before-save-acknowledgement',
+      kind: 'command',
+      payload: { destination: { position: 1 }, node: node('node-2') },
+      sessionGeneration: 'session-r1',
+      type: 'studio.command/insert-node',
+    });
+    const savedStateVersion = element.stateVersion;
+    await client.waitForRenders(2);
+
+    element.markSaved('blueprint-r2', savedStateVersion);
+    await client.waitForRenders(3);
+    await settle(element);
+
+    const rebasedDraft = staged[2];
+    expect(client.renders[1]?.options.signal?.aborted).toBe(true);
+    expect(rebasedDraft).toMatchObject({ revision: 'blueprint-r2' });
+    expect(rebasedDraft?.roots.map((entry) => entry.id)).toEqual(['node-1', 'node-2']);
+    if (rebasedDraft === undefined) {
+      throw new Error('The rebased preview draft was not staged.');
+    }
+    const rebasedDigest = await computePreviewDraftDigest(rebasedDraft);
+    expect(client.renders[2]?.payload).toMatchObject({
+      artifactId: rebasedDraft?.id,
+      draftDigest: rebasedDigest,
+      draftRevision: 'blueprint-r2',
+    });
+    expect(element.document?.revision).toBe('blueprint-r2');
+    element.remove();
+  });
+
   it('drops geometry from a superseded measurement of the same accepted render', async () => {
     const client = new FakePreviewClient();
     const first = deferred<PreviewMeasureOutcome>();

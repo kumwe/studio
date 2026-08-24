@@ -52,7 +52,9 @@ configuration, or provide a transport.
 The returned handle serializes saves against the latest accepted host revision and coalesces matching
 concurrent intents. An exact retry after failure retains its idempotency key. If the document changes
 while a snapshot is saving, the success advances the accepted revision but the newer state remains
-dirty. Conflicts and other refusals preserve the document, history, selection, and saved baseline.
+dirty. Every current, undo, and redo snapshot carries that accepted revision without a local state-version
+change, so later history and exact preview staging use one coherent base. Conflicts and other refusals
+preserve the document, history, selection, and saved baseline.
 
 `StudioHostSessionHandle.recovery` is a `StudioHostSessionRecovery` with direct `store`, `load`, and
 `discard` calls when the optional port is present, and is `undefined` otherwise. The core does not
