@@ -302,6 +302,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
 
   function measure(markers: StableId[]): Promise<PreviewMeasurement> {
     const rects: Record<StableId, PreviewMarkerRect[]> = {};
+    const surfaceRect = surface.getBoundingClientRect();
     for (const marker of markers) {
       const element = surface.querySelector(`[data-marker="${marker}"]`);
       if (element === null) {
@@ -310,8 +311,8 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
       const boxes = [...element.getClientRects()].map((rect) => ({
         height: rect.height,
         width: rect.width,
-        x: rect.x,
-        y: rect.y,
+        x: rect.x - surfaceRect.x,
+        y: rect.y - surfaceRect.y,
       }));
       if (boxes.length > 0) {
         rects[marker] = boxes;
@@ -321,10 +322,10 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
       rects,
       viewport: {
         devicePixelRatio: window.devicePixelRatio,
-        height: window.innerHeight,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
-        width: window.innerWidth,
+        height: surface.clientHeight,
+        scrollX: surface.scrollLeft,
+        scrollY: surface.scrollTop,
+        width: surface.clientWidth,
       },
     });
   }

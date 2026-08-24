@@ -4,15 +4,18 @@ import {
   type PreviewClient,
   type PreviewProtocolListener,
   type PreviewRenderOptions,
+  type PreviewMeasureOutcome,
 } from '@kumwe/studio-preview';
 import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
   type BlueprintDocument,
   type BlueprintNode,
+  type BlockDefinition,
   type PreviewActivatedPayload,
   type PreviewDisposePayload,
   type PreviewMessage,
+  type PreviewMeasurePayload,
   type PreviewReadyPayload,
   type PreviewRenderedPayload,
   type PreviewRenderPayload,
@@ -44,6 +47,13 @@ class FakePreviewClient {
   public readonly selections: PreviewSelectPayload[] = [];
   public readonly viewports: PreviewViewportPayload[] = [];
   public readonly order: string[] = [];
+  public readonly measures: PreviewMeasurePayload[] = [];
+  public readonly rectsByNode: Record<
+    string,
+    { height: number; width: number; x: number; y: number }[]
+  > = {};
+  public measureImplementation:
+    ((payload: PreviewMeasurePayload) => Promise<PreviewMeasureOutcome>) | undefined;
   public teardownReason: QualifiedName | undefined;
 
   readonly #activationListeners = new Set<(payload: PreviewActivatedPayload) => void>();
@@ -51,6 +61,7 @@ class FakePreviewClient {
   readonly #ready = deferred<PreviewReadyPayload>();
   readonly #renderWaiters: { count: number; resolve: () => void }[] = [];
   #readyPayload: PreviewReadyPayload | undefined;
+  #latestMarkerMap: Record<string, string> = {};
 
   public announceReady(): void {
     const payload: PreviewReadyPayload = {
@@ -94,6 +105,41 @@ class FakePreviewClient {
     };
   }
 
+  public measure(payload: PreviewMeasurePayload): Promise<PreviewMeasureOutcome> {
+    this.measures.push(structuredClone(payload));
+    this.order.push('measure');
+    if (this.measureImplementation !== undefined) {
+      return this.measureImplementation(payload);
+    }
+    const measurements = Object.fromEntries(
+      payload.markers.map((entry, index) => {
+        const nodeId = this.#latestMarkerMap[entry];
+        return [
+          entry,
+          nodeId === undefined
+            ? []
+            : (this.rectsByNode[nodeId] ?? [{ height: 30, width: 120, x: 10, y: 10 + index * 40 }]),
+        ];
+      }),
+    );
+    return Promise.resolve({
+      geometry: {
+        draftDigest: payload.markers[0]?.split('/')[2] ?? '',
+        measurements,
+        requestId: payload.requestId,
+        unknown: payload.markers.filter((entry) => this.#latestMarkerMap[entry] === undefined),
+        viewport: {
+          devicePixelRatio: 1,
+          height: 480,
+          scrollX: 0,
+          scrollY: 0,
+          width: 640,
+        },
+      },
+      status: 'measured',
+    });
+  }
+
   public ready(): Promise<PreviewReadyPayload> {
     this.order.push('wait-ready');
     return this.#readyPayload === undefined
@@ -122,6 +168,7 @@ class FakePreviewClient {
     if (call === undefined) {
       throw new Error(`Missing render ${index}`);
     }
+    this.#latestMarkerMap = structuredClone(markerMap);
     call.deferred.resolve({
       diagnostics: [],
       draftDigest: call.payload.draftDigest,
@@ -179,6 +226,18 @@ function node(id: string): BlueprintNode {
   };
 }
 
+function section(id: string, children: BlueprintNode[]): BlueprintNode {
+  return {
+    authoring: { mode: 'structural' },
+    bindings: {},
+    id,
+    properties: {},
+    slots: { content: children },
+    type: 'studio.core/section',
+    version: '1.0.0',
+  };
+}
+
 function marker(digest: string, ordinal: number): string {
   return `studio.preview/node/${digest}/${ordinal}`;
 }
@@ -200,6 +259,7 @@ function previewMessage<Type extends PreviewMessage['type']>(
 }
 
 interface MountOptions {
+  blockDefinitions?: BlockDefinition[];
   client?: FakePreviewClient;
   preview?: boolean;
   roots?: BlueprintNode[];
@@ -245,7 +305,9 @@ async function mount(options: MountOptions = {}): Promise<{
   };
   const element = new KumweStudioElement();
   element.configuration = {
-    blockDefinitions: [defineTestBlock({ label: 'Text', type: 'studio.core/text' })],
+    blockDefinitions: options.blockDefinitions ?? [
+      defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+    ],
     session: configuration,
   };
   element.document = createBlueprintFixture({ roots: options.roots ?? [node('node-1')] });
@@ -291,6 +353,23 @@ function outlineEntry(element: KumweStudioElement, nodeId: string): HTMLButtonEl
   return entry;
 }
 
+function pointerEvent(
+  type: string,
+  pointerId: number,
+  clientX: number,
+  clientY: number,
+): PointerEvent {
+  return new PointerEvent(type, {
+    bubbles: true,
+    button: 0,
+    cancelable: true,
+    clientX,
+    clientY,
+    composed: true,
+    pointerId,
+  });
+}
+
 describe('shell preview surface', () => {
   it('waits for ready and deterministically coalesces synchronous draft changes', async () => {
     const { client, element, staged } = await mount();
@@ -306,6 +385,14 @@ describe('shell preview surface', () => {
     client.resolveRender(0, { [marker(initialDigest, 0)]: 'node-1' });
     await settle(element);
     expect(previewStatus(element)).toBe('Preview is current.');
+    expect(client.measures).toHaveLength(1);
+    expect(
+      element.shadowRoot?.querySelector('[data-node-id="node-1"].preview-canvas-region'),
+    ).not.toBeNull();
+
+    element.refreshPreviewGeometry();
+    await settle(element);
+    expect(client.measures).toHaveLength(2);
 
     element.document = createBlueprintFixture({ roots: [node('discarded-node')] });
     element.document = createBlueprintFixture({ roots: [node('new-node')] });
@@ -314,6 +401,60 @@ describe('shell preview surface', () => {
     expect(staged).toHaveLength(2);
     expect(staged[1]?.roots.map((entry) => entry.id)).toEqual(['new-node']);
     expect(client.renders).toHaveLength(2);
+    element.remove();
+  });
+
+  it('drops geometry from a superseded measurement of the same accepted render', async () => {
+    const client = new FakePreviewClient();
+    const first = deferred<PreviewMeasureOutcome>();
+    const second = deferred<PreviewMeasureOutcome>();
+    client.measureImplementation = () =>
+      client.measures.length === 1 ? first.promise : second.promise;
+    const { element } = await mount({ client });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    const liveMarker = marker(digest, 0);
+    client.resolveRender(0, { [liveMarker]: 'node-1' });
+    await settle(element);
+    expect(client.measures).toHaveLength(1);
+
+    element.refreshPreviewGeometry();
+    await settle(element);
+    expect(client.measures).toHaveLength(2);
+    const outcome = (requestId: string, width: number): PreviewMeasureOutcome => ({
+      geometry: {
+        draftDigest: digest,
+        measurements: {
+          [liveMarker]: [{ height: 30, width, x: 10, y: 10 }],
+        },
+        requestId,
+        unknown: [],
+        viewport: {
+          devicePixelRatio: 1,
+          height: 480,
+          scrollX: 0,
+          scrollY: 0,
+          width: 640,
+        },
+      },
+      status: 'measured',
+    });
+    second.resolve(outcome(client.measures[1]?.requestId ?? '', 222));
+    await settle(element);
+    expect(
+      element.shadowRoot
+        ?.querySelector('[data-node-id="node-1"].preview-canvas-region')
+        ?.getAttribute('width'),
+    ).toBe('222');
+
+    first.resolve(outcome(client.measures[0]?.requestId ?? '', 111));
+    await settle(element);
+    expect(
+      element.shadowRoot
+        ?.querySelector('[data-node-id="node-1"].preview-canvas-region')
+        ?.getAttribute('width'),
+    ).toBe('222');
     element.remove();
   });
 
@@ -336,6 +477,8 @@ describe('shell preview surface', () => {
     await settle(element);
     client.resolveRender(0, { [marker(oldDigest, 0)]: 'node-1' });
     await settle(element);
+    expect(client.measures).toHaveLength(1);
+    expect(client.measures[0]?.markers).toEqual([newMarker, secondMarker]);
 
     outlineEntry(element, 'node-2').click();
     await settle(element);
@@ -423,6 +566,117 @@ describe('shell preview surface', () => {
     });
     await settle(element);
     expect(element.document?.roots.map((entry) => entry.id)).toEqual(['node-1', 'node-2']);
+    element.remove();
+  });
+
+  it('reparents over measured preview geometry and exposes the identical keyboard command', async () => {
+    const client = new FakePreviewClient();
+    client.rectsByNode['section-a'] = [{ height: 100, width: 300, x: 0, y: 0 }];
+    client.rectsByNode['text-1'] = [{ height: 30, width: 120, x: 10, y: 20 }];
+    client.rectsByNode['section-b'] = [{ height: 100, width: 300, x: 0, y: 200 }];
+    const sectionDefinition = defineTestBlock({
+      label: 'Section',
+      slots: [
+        {
+          accepts: { types: ['studio.core/text'] },
+          id: 'content',
+          label: { defaultMessage: 'Content', key: 'studio.test/content' },
+          maximum: 20,
+          minimum: 0,
+          ordered: true,
+        },
+      ],
+      type: 'studio.core/section',
+    });
+    const { element } = await mount({
+      blockDefinitions: [
+        sectionDefinition,
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      client,
+      roots: [section('section-a', [node('text-1')]), section('section-b', [])],
+    });
+    const commandTypes: string[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+      if (detail.command !== null) {
+        commandTypes.push(detail.command.type);
+      }
+    });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, {
+      [marker(digest, 0)]: 'section-a',
+      [marker(digest, 1)]: 'text-1',
+      [marker(digest, 2)]: 'section-b',
+    });
+    await settle(element);
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.canvas-edit-toggle')?.click();
+    await element.updateComplete;
+
+    const region = element.shadowRoot?.querySelector<SVGRectElement>(
+      '.preview-canvas-region[data-node-id="text-1"]',
+    );
+    const overlay = element.shadowRoot?.querySelector<SVGSVGElement>('.preview-canvas-overlay');
+    expect(region).not.toBeNull();
+    expect(overlay).not.toBeNull();
+    const beforeCancel = structuredClone(element.document);
+    region?.dispatchEvent(pointerEvent('pointerdown', 40, 20, 30));
+    overlay?.dispatchEvent(pointerEvent('pointermove', 40, 150, 250));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+    overlay?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        key: 'Escape',
+      }),
+    );
+    await element.updateComplete;
+    overlay?.dispatchEvent(pointerEvent('pointerup', 40, 150, 250));
+    await element.updateComplete;
+    expect(element.document).toEqual(beforeCancel);
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+
+    const activeRegion = element.shadowRoot?.querySelector<SVGRectElement>(
+      '.preview-canvas-region[data-node-id="text-1"]',
+    );
+    const activeOverlay =
+      element.shadowRoot?.querySelector<SVGSVGElement>('.preview-canvas-overlay');
+    activeRegion?.dispatchEvent(pointerEvent('pointerdown', 41, 20, 30));
+    activeOverlay?.dispatchEvent(pointerEvent('pointermove', 41, 150, 250));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-status')?.textContent).toContain(
+      'section-b',
+    );
+    activeOverlay?.dispatchEvent(pointerEvent('pointerup', 41, 150, 250));
+    await settle(element);
+
+    expect(element.document?.roots[0]?.slots.content).toBeUndefined();
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
+    expect(commandTypes.at(-1)).toBe('studio.command/move-node');
+
+    element.undo();
+    await settle(element);
+    outlineEntry(element, 'text-1').click();
+    await settle(element);
+    const destination = element.shadowRoot?.querySelector<HTMLSelectElement>(
+      '.outline-move-destination',
+    );
+    const option = [...(destination?.options ?? [])].find((candidate) =>
+      candidate.textContent.includes('section-b'),
+    );
+    expect(option).toBeDefined();
+    if (destination !== null && destination !== undefined && option !== undefined) {
+      destination.value = option.value;
+      destination.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    await settle(element);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
+    expect(commandTypes.at(-1)).toBe('studio.command/move-node');
     element.remove();
   });
 

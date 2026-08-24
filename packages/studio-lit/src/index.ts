@@ -16,6 +16,7 @@ export {
 export {
   type StudioPreviewBinding,
   type StudioPreviewDraftIdentity,
+  type StudioPreviewGeometry,
   type StudioPreviewStageOptions,
   type StudioPreviewState,
 } from './preview-surface.js';

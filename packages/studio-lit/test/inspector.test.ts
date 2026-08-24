@@ -318,8 +318,10 @@ describe('inspector property editing', () => {
       'inspector-binding-port',
       'inspector-binding-value-input',
       'inspector-binding-set',
+      'inspector-inheritance-reset',
       'inspector-override-input',
       'inspector-override-remove',
+      'inspector-inheritance-reset',
       'inspector-add-override-name',
       'inspector-add-override-value',
       'inspector-add-override-submit',
@@ -420,6 +422,31 @@ describe('inspector responsive overrides', () => {
       type: 'studio.command/unset-property',
     });
     expect(liveRegionText(element)).toContain('Removed the size override for the Narrow viewport');
+    element.remove();
+  });
+
+  it('resets every viewport override through reset-inherited-property', async () => {
+    const roots = inspectorRoots();
+    const first = roots[0];
+    if (first !== undefined) {
+      first.responsive = { size: { narrow: 1, wide: 4 } };
+    }
+    const element = await mountShell({ roots, viewports: themeViewports() });
+    viewportButton(element, 'narrow').click();
+    await element.updateComplete;
+    await selectNode(element, 'text-1');
+    const commands = observeCommands(element);
+
+    inspectorButton(element, 'button.inspector-inheritance-reset[data-property="size"]').click();
+    await element.updateComplete;
+
+    expect(selectedNode(element).responsive).toBeUndefined();
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toMatchObject({
+      payload: { nodeId: 'text-1', property: 'size' },
+      type: 'studio.command/reset-inherited-property',
+    });
+    expect(liveRegionText(element)).toContain('all viewports now inherit the base value');
     element.remove();
   });
 
