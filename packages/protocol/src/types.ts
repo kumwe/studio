@@ -571,6 +571,44 @@ export interface DesignVocabulary {
   version: SemanticVersion;
 }
 
+/**
+ * The declarative payload behind a `field-adapter` contribution. Executable
+ * control code remains host-bound; this document is safe to validate and
+ * activate into an immutable contribution generation.
+ */
+export interface FieldAdapterContribution {
+  contractVersion: StudioContractVersion;
+  control: QualifiedName;
+  description?: MessageReference;
+  extensions?: Record<QualifiedName, JsonValue>;
+  fieldKinds: QualifiedName[];
+  id: QualifiedName;
+  kind: 'field-adapter';
+  label: MessageReference;
+  optionSchema?: JsonSchema;
+  owner: OwnerReference;
+  requiredCapability?: QualifiedName;
+  version: SemanticVersion;
+}
+
+/**
+ * The declarative payload behind an `inspector` contribution. Its executable
+ * surface is resolved separately through host capability policy.
+ */
+export interface InspectorContribution {
+  blockTypes: BlockType[];
+  contractVersion: StudioContractVersion;
+  description?: MessageReference;
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: QualifiedName;
+  kind: 'inspector';
+  label: MessageReference;
+  owner: OwnerReference;
+  placement: 'augment' | 'replace';
+  requiredCapability?: QualifiedName;
+  version: SemanticVersion;
+}
+
 export type MigrationArtifactKind =
   'block-definition' | 'blueprint' | 'content-model' | 'entry' | 'theme';
 

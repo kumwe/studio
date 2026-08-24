@@ -3,6 +3,9 @@
 - Status: proposed
 - Scope: plugin manifest contribution kinds and their declarative payload schemas
 
+Runtime activation of these payloads is extended by
+[ADR 0021](0021-kind-scoped-composition-registries.md).
+
 ## Context
 
 Kumwe App's programme freezes the contract an extension declares composition contributions through

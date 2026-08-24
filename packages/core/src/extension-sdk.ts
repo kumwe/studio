@@ -5,8 +5,14 @@ import {
 } from '@kumwe/studio-protocol';
 import type {
   BlockDefinition,
+  DesignVocabulary,
   ExtensionLifecycleState,
+  FieldAdapterContribution,
+  InspectorContribution,
+  MigrationDeclaration,
   OwnerReference,
+  PatternDocument,
+  PluginContributionKind,
   PluginManifest,
   QualifiedName,
   StudioDiagnostic,
@@ -18,6 +24,7 @@ import { cloneContractValue } from './clone.js';
 import {
   ContributionRuntime,
   StudioContributionError,
+  type ExtensionContributions,
   type GenerationOptions,
   type RegistryGeneration,
 } from './contributions.js';
@@ -25,18 +32,32 @@ import { compileProfileSchema, type CompiledSchemaValidator } from './profile-va
 
 /**
  * One authored Studio plugin: the declarative manifest plus the concrete
- * block definitions the manifest declares. Non-block contribution kinds are
- * resource-backed declarations; their payloads stay inside the plugin
- * package and are validated by the host when the resource is loaded.
+ * canonical composition payloads the manifest declares. All six payload
+ * families are validated and activated transactionally; other manifest kinds
+ * remain resource-backed host declarations.
  */
 export interface StudioPluginDefinition {
   blocks?: readonly BlockDefinition[];
+  designVocabularies?: readonly DesignVocabulary[];
+  fieldAdapters?: readonly FieldAdapterContribution[];
+  inspectors?: readonly InspectorContribution[];
   manifest: PluginManifest;
+  migrations?: readonly MigrationDeclaration[];
+  patterns?: readonly PatternDocument[];
 }
 
 const validateManifestSchema: CompiledSchemaValidator = compileProfileSchema(pluginManifestSchema, {
   schemas: [commonSchema],
 });
+
+const canonicalContributionKinds: ReadonlySet<PluginContributionKind> = new Set([
+  'block',
+  'design-vocabulary',
+  'field-adapter',
+  'inspector',
+  'migration',
+  'pattern',
+]);
 
 /**
  * The typed authoring entry point for extension developers. At compile time
@@ -55,11 +76,9 @@ export function defineStudioPlugin<TDefinition extends StudioPluginDefinition>(
 ): TDefinition {
   assertCoherentDefinition(definition);
   const dryRun = new ContributionRuntime({ generation: 'authoring-mirror-0' });
-  dryRun.activate(
-    definition.manifest.owner,
-    { blocks: [...(definition.blocks ?? [])] },
-    { generation: 'authoring-mirror-1' },
-  );
+  dryRun.activate(definition.manifest.owner, mutableContributions(definition), {
+    generation: 'authoring-mirror-1',
+  });
   return deepFreeze(definition);
 }
 
@@ -76,11 +95,7 @@ export function activateStudioPlugin(
   options: Readonly<GenerationOptions>,
 ): RegistryGeneration {
   assertCoherentDefinition(definition);
-  return runtime.activate(
-    definition.manifest.owner,
-    { blocks: [...(definition.blocks ?? [])] },
-    options,
-  );
+  return runtime.activate(definition.manifest.owner, mutableContributions(definition), options);
 }
 
 /**
@@ -108,7 +123,9 @@ export function unresolvedDeclaredContributions(
       continue;
     }
     seen.add(key);
-    const resolution = resolveDeclaredReference(states, plugins, reference);
+    const resolution = canonicalContributionKinds.has(reference.contribution)
+      ? runtime.unresolvedReference(reference)
+      : resolveDeclaredReference(states, plugins, reference);
     if (resolution === undefined) {
       continue;
     }
@@ -148,7 +165,10 @@ function resolveDeclaredReference(
 ): DeclaredReferenceResolution | undefined {
   for (const plugin of plugins) {
     const versions = plugin.manifest.contributions
-      .filter((contribution) => contribution.id === reference.id)
+      .filter(
+        (contribution) =>
+          contribution.kind === reference.contribution && contribution.id === reference.id,
+      )
       .map((contribution) => contribution.version);
     if (versions.length === 0) {
       continue;
@@ -211,12 +231,12 @@ function collectDefinitionDiagnostics(definition: StudioPluginDefinition): Studi
         ),
       );
     }
-    const key = `${contribution.id}@${contribution.version}`;
+    const key = declarationKey(contribution.kind, contribution.id, contribution.version);
     if (declared.has(key)) {
       diagnostics.push(
         coherenceDiagnostic(
           'studio.contribution/duplicate-contribution',
-          `Contribution ${key} is contributed twice by ${manifest.id}.`,
+          `${contribution.kind} contribution ${contribution.id}@${contribution.version} is declared twice by ${manifest.id}.`,
         ),
       );
     }
@@ -231,37 +251,118 @@ function collectDefinitionDiagnostics(definition: StudioPluginDefinition): Studi
     }
   }
 
-  const declaredBlocks = new Set(
-    manifest.contributions
-      .filter((contribution) => contribution.kind === 'block')
-      .map((contribution) => `${contribution.id}@${contribution.version}`),
-  );
   const declaredCapabilities = new Set(
     [...manifest.requiredCapabilities, ...manifest.optionalCapabilities].map(
       (capability) => capability.id,
     ),
   );
-  for (const block of definition.blocks ?? []) {
-    if (!declaredBlocks.has(`${block.type}@${block.version}`)) {
+  const payloadEntries = definitionContributionEntries(definition);
+  const payloadKeys = new Set<string>();
+  for (const entry of payloadEntries) {
+    const key = declarationKey(entry.kind, entry.id, entry.version);
+    payloadKeys.add(key);
+    if (!declared.has(key)) {
       diagnostics.push(
         coherenceDiagnostic(
           'studio.contribution/undeclared-registration',
-          `Block ${block.type}@${block.version} is not declared as a block contribution of ${manifest.id}.`,
+          `${entry.kind} ${entry.id}@${entry.version} is not declared by ${manifest.id}.`,
         ),
       );
     }
-    for (const requirement of block.rendererRequirements) {
-      if (!declaredCapabilities.has(requirement.capability)) {
+    for (const capability of entry.requiredCapabilities) {
+      if (!declaredCapabilities.has(capability)) {
         diagnostics.push(
           coherenceDiagnostic(
             'studio.contribution/undeclared-capability',
-            `Block ${block.type} requires the ${requirement.capability} capability, which ${manifest.id} does not declare.`,
+            `${entry.kind} ${entry.id} requires the ${capability} capability, which ${manifest.id} does not declare.`,
           ),
         );
       }
     }
   }
+  for (const contribution of manifest.contributions) {
+    if (
+      canonicalContributionKinds.has(contribution.kind) &&
+      !payloadKeys.has(declarationKey(contribution.kind, contribution.id, contribution.version))
+    ) {
+      diagnostics.push(
+        coherenceDiagnostic(
+          'studio.contribution/missing-registration',
+          `${contribution.kind} ${contribution.id}@${contribution.version} has no canonical payload in ${manifest.id}.`,
+        ),
+      );
+    }
+  }
   return diagnostics;
+}
+
+interface DefinitionContributionEntry {
+  id: string;
+  kind: PluginContributionKind;
+  requiredCapabilities: QualifiedName[];
+  version: string;
+}
+
+function definitionContributionEntries(
+  definition: StudioPluginDefinition,
+): DefinitionContributionEntry[] {
+  return [
+    ...(definition.blocks ?? []).map((payload) => ({
+      id: payload.type,
+      kind: 'block' as const,
+      requiredCapabilities: payload.rendererRequirements.map(
+        (requirement) => requirement.capability,
+      ),
+      version: payload.version,
+    })),
+    ...(definition.designVocabularies ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'design-vocabulary' as const,
+      requiredCapabilities: [],
+      version: payload.version,
+    })),
+    ...(definition.fieldAdapters ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'field-adapter' as const,
+      requiredCapabilities:
+        payload.requiredCapability === undefined ? [] : [payload.requiredCapability],
+      version: payload.version,
+    })),
+    ...(definition.inspectors ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'inspector' as const,
+      requiredCapabilities:
+        payload.requiredCapability === undefined ? [] : [payload.requiredCapability],
+      version: payload.version,
+    })),
+    ...(definition.migrations ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'migration' as const,
+      requiredCapabilities: [],
+      version: payload.version,
+    })),
+    ...(definition.patterns ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'pattern' as const,
+      requiredCapabilities: [],
+      version: payload.version,
+    })),
+  ];
+}
+
+function mutableContributions(definition: StudioPluginDefinition): ExtensionContributions {
+  return {
+    blocks: [...(definition.blocks ?? [])],
+    designVocabularies: [...(definition.designVocabularies ?? [])],
+    fieldAdapters: [...(definition.fieldAdapters ?? [])],
+    inspectors: [...(definition.inspectors ?? [])],
+    migrations: [...(definition.migrations ?? [])],
+    patterns: [...(definition.patterns ?? [])],
+  };
+}
+
+function declarationKey(kind: PluginContributionKind, id: string, version: string): string {
+  return `${kind}\u0000${id}\u0000${version}`;
 }
 
 function namespaceOf(id: QualifiedName): string {

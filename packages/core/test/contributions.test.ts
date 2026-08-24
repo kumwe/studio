@@ -5,7 +5,12 @@ import {
   STUDIO_CONTRACT_VERSION,
   type BlockDefinition,
   type BlueprintDocument,
+  type DesignVocabulary,
+  type FieldAdapterContribution,
+  type InspectorContribution,
+  type MigrationDeclaration,
   type OwnerReference,
+  type PatternDocument,
   type PluginContributionDeclaration,
   type PluginContributionKind,
   type SemanticVersion,
@@ -87,11 +92,12 @@ function documentUsing(type: `${string}/${string}`): BlueprintDocument {
 }
 
 const toolkitKinds = [
+  'block',
+  'design-vocabulary',
   'field-adapter',
-  'pattern',
-  'transform',
-  'renderer-capability',
   'inspector',
+  'migration',
+  'pattern',
 ] as const;
 
 function toolkitDeclaration(
@@ -109,7 +115,75 @@ function toolkitDeclaration(
 }
 
 function toolkitDefinition(version: SemanticVersion = '1.0.0'): StudioPluginDefinition {
+  const owner: OwnerReference = { id: 'org.example/toolkit', version };
+  const designVocabulary: DesignVocabulary = {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    designControls: [],
+    id: 'org.example.toolkit/design-vocabulary',
+    kind: 'design-vocabulary',
+    label: { defaultMessage: 'Toolkit vocabulary', key: 'org.example.toolkit/vocabulary' },
+    owner,
+    recipes: [],
+    version,
+  };
+  const fieldAdapter: FieldAdapterContribution = {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    control: 'org.example.toolkit/control',
+    fieldKinds: ['studio.field/string'],
+    id: 'org.example.toolkit/field-adapter',
+    kind: 'field-adapter',
+    label: { defaultMessage: 'Toolkit field', key: 'org.example.toolkit/field' },
+    owner,
+    version,
+  };
+  const inspector: InspectorContribution = {
+    blockTypes: ['org.example.toolkit/block'],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id: 'org.example.toolkit/inspector',
+    kind: 'inspector',
+    label: { defaultMessage: 'Toolkit inspector', key: 'org.example.toolkit/inspector' },
+    owner,
+    placement: 'augment',
+    version,
+  };
+  const migration: MigrationDeclaration = {
+    artifactKinds: ['blueprint'],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id: 'org.example.toolkit/migration',
+    kind: 'migration',
+    label: { defaultMessage: 'Toolkit migration', key: 'org.example.toolkit/migration' },
+    lossClassification: 'lossless',
+    owner,
+    sourceVersions: '*',
+    targetVersion: version,
+    version,
+  };
+  const pattern: PatternDocument = {
+    blockDependencies: [],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id: 'org.example.toolkit/pattern',
+    kind: 'pattern',
+    label: { defaultMessage: 'Toolkit pattern', key: 'org.example.toolkit/pattern' },
+    owner,
+    revision: `pattern-${version}`,
+    roots: [
+      {
+        authoring: { mode: 'designer' },
+        bindings: {},
+        id: 'pattern-root',
+        properties: {},
+        slots: {},
+        type: 'org.example.toolkit/block',
+        version,
+      },
+    ],
+    version,
+  };
   return {
+    blocks: [block('org.example.toolkit/block', owner, version)],
+    designVocabularies: [designVocabulary],
+    fieldAdapters: [fieldAdapter],
+    inspectors: [inspector],
     manifest: {
       activation: 'declarative',
       contractVersion: STUDIO_CONTRACT_VERSION,
@@ -120,11 +194,13 @@ function toolkitDefinition(version: SemanticVersion = '1.0.0'): StudioPluginDefi
       kind: 'plugin-manifest',
       label: { defaultMessage: 'Toolkit', key: 'org.example.toolkit/plugin' },
       optionalCapabilities: [],
-      owner: { id: 'org.example/toolkit', version },
+      owner,
       permissions: [],
-      requiredCapabilities: [],
+      requiredCapabilities: [{ id: 'studio.renderer/test', versions: '^0.1.0' }],
       version,
     },
+    migrations: [migration],
+    patterns: [pattern],
   };
 }
 
@@ -367,11 +443,101 @@ describe('extension lifecycle beyond blocks', () => {
     const generation = activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
     expect(generation.generation).toBe('gen-1');
     expect(generation.owners()).toEqual([definition.manifest.owner]);
+    for (const kind of toolkitKinds) {
+      const id = `org.example.toolkit/${kind}`;
+      expect(generation.resolveContribution(kind, id, '1.0.0'), kind).toBeDefined();
+      expect(generation.contributions(kind), kind).toHaveLength(1);
+    }
+    const vocabulary = generation.resolveContribution(
+      'design-vocabulary',
+      'org.example.toolkit/design-vocabulary',
+      '1.0.0',
+    ) as DesignVocabulary;
+    vocabulary.designControls.push({
+      choices: [],
+      id: 'mutated',
+      kind: 'enum',
+      label: { key: 'org.example.toolkit/mutated' },
+    });
+    expect(
+      (
+        generation.resolveContribution(
+          'design-vocabulary',
+          'org.example.toolkit/design-vocabulary',
+          '1.0.0',
+        ) as DesignVocabulary
+      ).designControls,
+    ).toEqual([]);
     expect(() => generation.registry.register(block('org.example/late', ownerA))).toThrow(
       'immutable',
     );
     expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
     expect(runtime.inventory()).toEqual([expect.objectContaining({ state: 'active' }) as object]);
+  });
+
+  it('keeps contribution identity kind-scoped', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = toolkitDefinition();
+    const vocabulary = definition.designVocabularies?.[0];
+    const pattern = definition.patterns?.[0];
+    if (vocabulary === undefined || pattern === undefined) {
+      throw new Error('fixture requires vocabulary and pattern payloads');
+    }
+    vocabulary.id = 'org.example.toolkit/shared';
+    pattern.id = 'org.example.toolkit/shared';
+    for (const declaration of definition.manifest.contributions) {
+      if (declaration.kind === 'design-vocabulary' || declaration.kind === 'pattern') {
+        declaration.id = 'org.example.toolkit/shared';
+      }
+    }
+    const generation = activateStudioPlugin(runtime, defineStudioPlugin(definition), {
+      generation: 'gen-1',
+    });
+    expect(
+      generation.resolveContribution('design-vocabulary', 'org.example.toolkit/shared', '1.0.0'),
+    ).toMatchObject({ kind: 'design-vocabulary' });
+    expect(
+      generation.resolveContribution('pattern', 'org.example.toolkit/shared', '1.0.0'),
+    ).toMatchObject({ kind: 'pattern' });
+    expect(
+      runtime.unresolvedReference({
+        contribution: 'field-adapter',
+        id: 'org.example.toolkit/shared',
+        version: '1.0.0',
+      }),
+    ).toEqual({ reason: 'not-installed' });
+  });
+
+  it('rejects a malformed non-block payload atomically', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const active = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, active, { generation: 'gen-1' });
+    const before = runtime.current;
+    const malformed = toolkitDefinition('2.0.0');
+    const adapter = malformed.fieldAdapters?.[0];
+    if (adapter === undefined) {
+      throw new Error('fixture requires a field adapter');
+    }
+    adapter.fieldKinds = [];
+    try {
+      activateStudioPlugin(runtime, malformed, { generation: 'gen-2' });
+      throw new Error('Expected malformed activation to fail.');
+    } catch (error) {
+      expect(error).toBeInstanceOf(StudioContributionError);
+      if (error instanceof StudioContributionError) {
+        expect(error.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+          'studio.contribution/invalid-definition',
+        );
+      }
+    }
+    expect(runtime.current).toBe(before);
+    expect(
+      runtime.current.resolveContribution(
+        'field-adapter',
+        'org.example.toolkit/field-adapter',
+        '1.0.0',
+      ),
+    ).toBeDefined();
   });
 
   it('owner disable removes the executable surface while every declared kind stays diagnosable', () => {
