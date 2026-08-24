@@ -174,6 +174,12 @@ produce several rectangles because inline content fragments across line boxes â€
 record (`width`, `height`, `scrollX`, `scrollY`, `devicePixelRatio`). Measured and unknown keys exactly
 partition the requested marker list.
 
+The shell sizes the SVG viewport to those reported `width` and `height` CSS pixels without stretching it.
+The slotted preview and SVG share one shell-owned overflow surface and the same logical start edge, so an
+embedding width larger than the available editor column scrolls both layers together. Regions outside the
+visible iframe viewport are clipped; neither editor reflow nor a responsive viewport choice may rescale the
+measurement coordinate space.
+
 Requested markers the renderer cannot associate with any on-screen geometry are reported in the response's distinct `unknown` list. An unknown marker is a normal outcome, never an exception, and is never silently dropped. Markers a measurer volunteers beyond the request are discarded by the responder.
 
 Geometry is a volatile measurement, not document state. Every response carries the `draftDigest` of

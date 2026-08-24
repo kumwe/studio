@@ -389,6 +389,11 @@ describe('shell preview surface', () => {
     expect(
       element.shadowRoot?.querySelector('[data-node-id="node-1"].preview-canvas-region'),
     ).not.toBeNull();
+    const overlay = element.shadowRoot?.querySelector<SVGSVGElement>('.preview-canvas-overlay');
+    expect(overlay?.getAttribute('width')).toBe('640');
+    expect(overlay?.getAttribute('height')).toBe('480');
+    expect(overlay?.getAttribute('viewBox')).toBe('0 0 640 480');
+    expect(overlay?.getAttribute('preserveAspectRatio')).toBe('xMinYMin meet');
 
     element.refreshPreviewGeometry();
     await settle(element);

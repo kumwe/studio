@@ -60,7 +60,9 @@ snapshot, aborts and disposes superseded work, drives semantic viewports, and ma
 directions through the latest accepted marker map. It then measures that map through the canonical channel
 in bounded chunks and draws selection, hover and semantic drop targets as a CSP-safe SVG overlay. The overlay
 is pointer-inert until the author enables `Select and move rendered blocks`, preserving an explicit
-edit/operate boundary for trusted preview controls.
+edit/operate boundary for trusted preview controls. Its SVG is explicitly sized to the measured iframe
+viewport and shares the iframe's overflow surface, so editor-column reflow and horizontal panning cannot
+stretch or desynchronize marker geometry.
 
 After persistence succeeds, call `studio.markSaved(acceptedRevision, savedStateVersion)`. The optional state
 version is the value captured with the saved snapshot and is required when a save may settle after newer
