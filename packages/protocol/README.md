@@ -14,6 +14,12 @@ manifests, and entries. `MediaAsset` describes host-owned library state; the sma
 `contractVersion` and separately negotiate the SemVer wire `protocolVersion`; neither value may be
 inferred from the other or from the `/studio/v1/` schema epoch URI.
 
+The TypeScript projection covers all six canonical composition payload families. Manifest `block`
+declarations map to `BlockDefinition` documents whose discriminator is `block-definition`; patterns,
+design vocabulary, migrations, inspectors, and field adapters retain matching discriminators.
+`InspectorContribution` and `FieldAdapterContribution` are declarative data types only—execution
+remains a negotiated host capability.
+
 Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its nine
 typed ports sharing one request envelope), the stable host error taxonomy with the
 `isHostPortError` guard, and the JavaScript `HostPortFailure` rejection wrapper with its

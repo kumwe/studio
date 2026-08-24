@@ -17,6 +17,8 @@ export {
   type ExtensionContributions,
   type ExtensionInventory,
   type GenerationOptions,
+  type StudioCompositionContribution,
+  type StudioCompositionContributionKind,
   type UnresolvedNodeReport,
 } from './contributions.js';
 export {

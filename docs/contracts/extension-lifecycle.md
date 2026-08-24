@@ -56,7 +56,14 @@ Operators can inspect extension ID, owner, package and contract versions, integr
 
 ## Conformance fixtures
 
-Lifecycle conformance fixtures in `@kumwe/studio-core` exercise this contract beyond block contributions: field-adapter, pattern, transform, renderer-capability, and inspector contributions are covered for activation into a sealed immutable generation, owner disable, trust revocation, rejected incompatible-owner and duplicate-ID activations that leave the active generation untouched, atomic upgrade to new declared versions, and per-kind unresolved-reason reporting (`not-installed`, `incompatible`, `owner-disabled`, `owner-revoked`) while documents stay diagnosable.
+Lifecycle conformance fixtures in `@kumwe/studio-core` exercise all six canonical composition
+payloads: block definitions, patterns, design vocabulary, migrations, field adapters, and inspectors.
+The fixtures cover canonical schema validation, kind-scoped resolution into a sealed immutable
+generation, owner disable, trust revocation, rejected incompatible-owner and duplicate-kind/ID
+activations that leave the active generation untouched, atomic upgrade to new declared versions, and
+per-kind unresolved-reason reporting (`not-installed`, `incompatible`, `owner-disabled`,
+`owner-revoked`) while documents stay diagnosable. Manifest-only executable kinds remain host-owned
+declarations and are not falsely presented as registered composition payloads.
 
 ## Kumwe App mapping
 

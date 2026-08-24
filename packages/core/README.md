@@ -18,9 +18,10 @@ The implemented surface covers:
 - `openStudioSession` — capability-negotiated Blueprint loading and a headless host-session handle for
   serialized optimistic saves, raw optional recovery-port access, stale-generation invalidation, and
   local idempotent disposal;
-- `ContributionRuntime` — owner-aware, transactional contribution activation into immutable
-  registry generations with disable, reactivate, trust-revocation, stale-generation refusal, and
-  inspectable unresolved nodes;
+- `ContributionRuntime` — owner-aware, transactional, schema-validated activation of block,
+  pattern, design-vocabulary, migration, inspector, and field-adapter payloads into kind-scoped
+  immutable generations, with disable, reactivate, trust-revocation, stale-generation refusal, and
+  inspectable unresolved contributions;
 - `validateBlueprint` and `BlockRegistry` — schema, limit, lock, and registry validation with
   stable diagnostics;
 - `canonicalStringify` / `canonicalUtf8Bytes` — the canonical cross-language serialization form

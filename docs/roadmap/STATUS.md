@@ -60,7 +60,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane                        | Reviewer reproduction                                                 |
 | `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors    | Reviewer reproduction; independent cross-runtime profile replay       |
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                           | Reviewer reproduction                                                 |
-| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across five kinds                        | Reviewer reproduction                                                 |
+| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds               | Reviewer reproduction                                                 |
 | `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding                | Reviewer reproduction                                                 |
 | `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors                  | Reviewer reproduction                                                 |
 | `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest                   | Dart model generation and round-trip (`M3-06` not started)            |

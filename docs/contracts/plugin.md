@@ -22,9 +22,15 @@ Entry modules and contribution resources use the same restricted package-relativ
 
 ## Declarative composition payloads
 
-Four contribution kinds carry a canonical, purely declarative payload the host validates at
+Six contribution kinds carry a canonical, purely declarative payload the host validates at
 admission and at install without executing plugin code (ADR 0012):
 
+- a `block` contribution's resource conforms to
+  [`block-definition.schema.json`](../../schemas/block-definition.schema.json); the manifest kind
+  maps explicitly to the payload discriminator `block-definition`;
+- a `pattern` contribution's resource conforms to
+  [`pattern.schema.json`](../../schemas/pattern.schema.json), carrying a reusable closed composition
+  fragment and its exact block dependencies;
 - a `design-vocabulary` contribution's resource conforms to
   [`design-vocabulary.schema.json`](../../schemas/design-vocabulary.schema.json): design controls
   and recipes an extension offers, byte-compatible with the theme document's own members so a
@@ -48,15 +54,20 @@ An inspector and a field adapter are executable surfaces, so each declares the c
 executable half requires; a declaration without one is inspectable but never executed, which is what
 lets an administrator review a plugin's contributions without running its code.
 
-All four kinds are inert declarations until a host implements the consuming surface. Their shapes
-are part of the surface a host freezes against; changing them after a downstream freeze is a
-breaking change to published extensions.
+All six payloads activate as inert, schema-validated data in one immutable, kind-scoped registry
+generation. Activation never executes extension code. A consuming surface or trusted migration
+implementation still requires explicit host capability and policy. Their shapes are part of the
+surface a host freezes against; changing them after a downstream freeze is a breaking change to
+published extensions.
 
 ## Namespacing and ownership
 
 Every contribution ID begins with a namespace owned by the plugin. The `studio.*` namespace is reserved. A plugin cannot replace another owner's contribution. Overrides require an explicit host composition mapping and do not change ownership.
 
-Duplicate IDs, undeclared registrations, registrations exceeding limits, incompatible contract versions, circular required dependencies, or privilege requirements absent from the manifest reject the entire plugin registration transaction.
+Duplicate kind/ID/version tuples, undeclared registrations, registrations exceeding limits,
+incompatible contract versions, circular required dependencies, or privilege requirements absent
+from the manifest reject the entire plugin registration transaction. Equal IDs in different
+contribution kinds remain distinct.
 
 ## Registration
 
@@ -66,14 +77,23 @@ The registrar exposes only the contribution kinds declared and permitted for tha
 
 ## Authoring SDK
 
-`@kumwe/studio-core` exports `defineStudioPlugin` as the typed authoring surface for plugin packages. At compile time it is an identity function over the closed manifest and block-definition types, so a misspelled or missing field is an editor error. At runtime it front-loads activation and nothing else. It checks:
+`@kumwe/studio-core` exports `defineStudioPlugin` as the typed authoring surface for plugin packages.
+At compile time it is an identity function over the closed manifest and all six canonical payload
+types, so a misspelled or missing field is an editor error. At runtime it front-loads activation and
+nothing else. It checks:
 
 - the manifest against the canonical `plugin-manifest.schema.json`;
 - namespace ownership: every contribution ID sits in the plugin's namespace or a dotted sub-namespace of it;
-- duplicate declarations: the same contribution ID may recur only at distinct versions;
-- declaration coverage: every bundled block definition must be declared as a `block` contribution at the same ID and version;
-- capability coverage: every renderer capability a bundled block requires must appear among the declared required or optional capabilities, and a contribution marked `executable` requires the manifest to declare `executable` activation;
-- the contribution runtime's own activation transaction, applied as a dry run — owner match, per-owner duplicate rules, and the Studio Schema Profile check on property schemas are reused from the runtime, not reimplemented.
+- duplicate declarations: the same kind, ID, and version tuple may occur only once; equal IDs in
+  different kinds do not collide;
+- declaration coverage: every canonical payload has one matching declaration, including the
+  explicit `block` to `block-definition` mapping, and every canonical declaration has its payload;
+- capability coverage: every renderer, inspector, or field-adapter capability the payload requires
+  appears among the declared required or optional capabilities, and a contribution marked
+  `executable` requires the manifest to declare `executable` activation;
+- the contribution runtime's own activation transaction, applied as a dry run — canonical payload
+  schema validation, exact owner match, kind-scoped collision rules, and Studio Schema Profile checks
+  for block properties and field-adapter options are reused from the runtime, not reimplemented.
 
 The SDK is a front-loaded mirror of activation and adds no invariant of its own: everything it rejects would be rejected identically by the extension lifecycle's activation step, and a violation throws the runtime's error shape — `StudioContributionError` carrying blocking diagnostics. A valid definition is deep-frozen and returned unchanged.
 

@@ -1,24 +1,67 @@
-import { STUDIO_CONTRACT_VERSION } from '@kumwe/studio-protocol';
+import {
+  blockDefinitionSchema,
+  blueprintSchema,
+  commonSchema,
+  designVocabularySchema,
+  fieldAdapterSchema,
+  inspectorSchema,
+  migrationSchema,
+  patternSchema,
+  STUDIO_CONTRACT_VERSION,
+} from '@kumwe/studio-protocol';
 import type {
   BlockDefinition,
   BlockType,
   BlueprintDocument,
   BlueprintNode,
+  DesignVocabulary,
   ExtensionLifecycleState,
+  FieldAdapterContribution,
+  InspectorContribution,
+  MigrationDeclaration,
   NodeId,
   OwnerReference,
+  PatternDocument,
   Revision,
   StudioDiagnostic,
   UnresolvedContribution,
+  UnresolvedContributionReference,
   UnresolvedContributionReason,
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
 import { StudioCommandError } from './commands.js';
 import { BlockRegistry } from './registry.js';
+import { compileProfileSchema, type CompiledSchemaValidator } from './profile-validator.js';
+import { assertStudioPropertySchema } from './schema-profile.js';
 
 export interface ExtensionContributions {
   blocks: BlockDefinition[];
+  designVocabularies?: DesignVocabulary[];
+  fieldAdapters?: FieldAdapterContribution[];
+  inspectors?: InspectorContribution[];
+  migrations?: MigrationDeclaration[];
+  patterns?: PatternDocument[];
 }
+
+interface NormalizedExtensionContributions {
+  blocks: BlockDefinition[];
+  designVocabularies: DesignVocabulary[];
+  fieldAdapters: FieldAdapterContribution[];
+  inspectors: InspectorContribution[];
+  migrations: MigrationDeclaration[];
+  patterns: PatternDocument[];
+}
+
+export type StudioCompositionContributionKind =
+  'block' | 'design-vocabulary' | 'field-adapter' | 'inspector' | 'migration' | 'pattern';
+
+export type StudioCompositionContribution =
+  | BlockDefinition
+  | DesignVocabulary
+  | FieldAdapterContribution
+  | InspectorContribution
+  | MigrationDeclaration
+  | PatternDocument;
 
 export interface ExtensionInventory {
   diagnostics: StudioDiagnostic[];
@@ -49,17 +92,39 @@ export class StudioContributionError extends Error {
 }
 
 interface ExtensionRecord {
-  contributions: ExtensionContributions;
+  contributions: NormalizedExtensionContributions;
   diagnostics: StudioDiagnostic[];
   owner: OwnerReference;
   state: ExtensionLifecycleState;
 }
+
+interface ContributionEntry {
+  id: string;
+  kind: StudioCompositionContributionKind;
+  owner: OwnerReference;
+  payload: StudioCompositionContribution;
+  version: string;
+}
+
+const contributionValidators: Readonly<
+  Record<StudioCompositionContributionKind, CompiledSchemaValidator>
+> = {
+  block: compileProfileSchema(blockDefinitionSchema, { schemas: [commonSchema] }),
+  'design-vocabulary': compileProfileSchema(designVocabularySchema, {
+    schemas: [commonSchema],
+  }),
+  'field-adapter': compileProfileSchema(fieldAdapterSchema, { schemas: [commonSchema] }),
+  inspector: compileProfileSchema(inspectorSchema, { schemas: [commonSchema] }),
+  migration: compileProfileSchema(migrationSchema, { schemas: [commonSchema] }),
+  pattern: compileProfileSchema(patternSchema, { schemas: [commonSchema, blueprintSchema] }),
+};
 
 /**
  * One immutable, resolvable registry generation. A generation never changes
  * after publication; lifecycle transitions publish a successor instead.
  */
 export class RegistryGeneration {
+  readonly #contributions: ReadonlyMap<string, StudioCompositionContribution>;
   readonly #generation: Revision;
   readonly #owners: readonly OwnerReference[];
   readonly #registry: BlockRegistry;
@@ -68,7 +133,14 @@ export class RegistryGeneration {
     generation: Revision,
     owners: readonly OwnerReference[],
     registry: BlockRegistry,
+    contributions: readonly ContributionEntry[] = [],
   ) {
+    this.#contributions = new Map(
+      contributions.map((entry) => [
+        contributionKey(entry.kind, entry.id, entry.version),
+        cloneContractValue(entry.payload),
+      ]),
+    );
     this.#generation = generation;
     this.#owners = owners;
     this.#registry = registry;
@@ -92,6 +164,31 @@ export class RegistryGeneration {
 
   public resolveBlock(type: BlockType, version: string): BlockDefinition | undefined {
     return this.#registry.resolve(type, version);
+  }
+
+  /** Resolve one of the six canonical composition payload kinds by exact identity. */
+  public resolveContribution(
+    kind: StudioCompositionContributionKind,
+    id: string,
+    version: string,
+  ): StudioCompositionContribution | undefined {
+    if (kind === 'block') {
+      return this.resolveBlock(id as BlockType, version);
+    }
+    const payload = this.#contributions.get(contributionKey(kind, id, version));
+    return payload === undefined ? undefined : cloneContractValue(payload);
+  }
+
+  /** Enumerate one canonical kind in deterministic identity/version order. */
+  public contributions(kind: StudioCompositionContributionKind): StudioCompositionContribution[] {
+    if (kind === 'block') {
+      return this.blocks();
+    }
+    const prefix = `${kind}\u0000`;
+    return [...this.#contributions.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, payload]) => cloneContractValue(payload));
   }
 }
 
@@ -135,12 +232,12 @@ export class ContributionRuntime {
     contributions: Readonly<ExtensionContributions>,
     options: Readonly<GenerationOptions>,
   ): RegistryGeneration {
-    const candidate = cloneContractValue(contributions) as ExtensionContributions;
+    const candidate = normalizeContributions(contributions);
     const diagnostics = this.#collectActivationDiagnostics(owner, candidate);
     if (diagnostics.length > 0) {
       if (!this.#extensions.has(owner.id)) {
         this.#extensions.set(owner.id, {
-          contributions: { blocks: [] },
+          contributions: normalizeContributions({ blocks: [] }),
           diagnostics,
           owner: cloneContractValue(owner),
           state: 'rejected',
@@ -281,14 +378,46 @@ export class ContributionRuntime {
     return [...grouped.values()];
   }
 
+  /**
+   * Resolve the lifecycle reason for any canonical contribution reference.
+   * Identity is kind-scoped, so a pattern can never satisfy a field-adapter
+   * reference merely because their IDs and versions match.
+   */
+  public unresolvedReference(
+    reference: UnresolvedContributionReference,
+  ): { owner?: OwnerReference; reason: UnresolvedContributionReason } | undefined {
+    if (!isCompositionContributionKind(reference.contribution)) {
+      return { reason: 'not-installed' };
+    }
+    if (
+      this.#current.resolveContribution(reference.contribution, reference.id, reference.version) !==
+      undefined
+    ) {
+      return undefined;
+    }
+    return this.#unresolvedContributionReason(
+      reference.contribution,
+      reference.id,
+      reference.version,
+    );
+  }
+
   #unresolvedReason(
     type: BlockType,
     version: string,
   ): { owner?: OwnerReference; reason: UnresolvedContributionReason } {
+    return this.#unresolvedContributionReason('block', type, version);
+  }
+
+  #unresolvedContributionReason(
+    kind: StudioCompositionContributionKind,
+    id: string,
+    version: string,
+  ): { owner?: OwnerReference; reason: UnresolvedContributionReason } {
     for (const record of this.#extensions.values()) {
-      const versions = record.contributions.blocks
-        .filter((block) => block.type === type)
-        .map((block) => block.version);
+      const versions = contributionEntries(record.contributions)
+        .filter((entry) => entry.kind === kind && entry.id === id)
+        .map((entry) => entry.version);
       if (versions.length === 0) {
         continue;
       }
@@ -305,37 +434,47 @@ export class ContributionRuntime {
 
   #collectActivationDiagnostics(
     owner: OwnerReference,
-    candidate: ExtensionContributions,
+    candidate: NormalizedExtensionContributions,
   ): StudioDiagnostic[] {
     const diagnostics: StudioDiagnostic[] = [];
     const seen = new Set<string>();
-    for (const block of candidate.blocks) {
-      if (block.owner.id !== owner.id || block.owner.version !== owner.version) {
+    for (const entry of contributionEntries(candidate)) {
+      if (entry.owner.id !== owner.id || entry.owner.version !== owner.version) {
         diagnostics.push(
           activationDiagnostic(
             'studio.contribution/owner-mismatch',
-            `Block ${block.type} declares owner ${block.owner.id}@${block.owner.version}.`,
+            `${entry.kind} ${entry.id} declares owner ${entry.owner.id}@${entry.owner.version}.`,
           ),
         );
         continue;
       }
-      const key = `${block.type}@${block.version}`;
+      const key = contributionKey(entry.kind, entry.id, entry.version);
       if (seen.has(key)) {
         diagnostics.push(
           activationDiagnostic(
             'studio.contribution/duplicate-contribution',
-            `Block ${key} is contributed twice by ${owner.id}.`,
+            `${entry.kind} ${entry.id}@${entry.version} is contributed twice by ${owner.id}.`,
           ),
         );
         continue;
       }
       seen.add(key);
-      const conflictingOwner = this.#ownerOfBlockType(block.type, owner.id);
+      const conflictingOwner = this.#ownerOfContribution(entry.kind, entry.id, owner.id);
       if (conflictingOwner !== undefined) {
         diagnostics.push(
           activationDiagnostic(
             'studio.contribution/cross-owner-collision',
-            `Block type ${block.type} is owned by ${conflictingOwner}.`,
+            `${entry.kind} ${entry.id} is owned by ${conflictingOwner}.`,
+          ),
+        );
+      }
+      const validator = contributionValidators[entry.kind];
+      if (!validator.validate(entry.payload)) {
+        const first = validator.errors?.[0];
+        diagnostics.push(
+          activationDiagnostic(
+            'studio.contribution/invalid-definition',
+            `${entry.kind} ${entry.id}@${entry.version} ${first?.instancePath ?? 'document'} ${first?.message ?? 'violates its canonical schema'}.`,
           ),
         );
       }
@@ -355,6 +494,11 @@ export class ContributionRuntime {
         for (const block of candidate.blocks) {
           dryRun.register(cloneContractValue(block));
         }
+        for (const adapter of candidate.fieldAdapters) {
+          if (adapter.optionSchema !== undefined) {
+            assertStudioPropertySchema(adapter.optionSchema);
+          }
+        }
       } catch (error) {
         diagnostics.push(
           activationDiagnostic(
@@ -367,7 +511,11 @@ export class ContributionRuntime {
     return diagnostics;
   }
 
-  #ownerOfBlockType(type: BlockType, exceptOwnerId: string): string | undefined {
+  #ownerOfContribution(
+    kind: StudioCompositionContributionKind,
+    id: string,
+    exceptOwnerId: string,
+  ): string | undefined {
     for (const record of this.#extensions.values()) {
       if (record.owner.id === exceptOwnerId) {
         continue;
@@ -375,7 +523,11 @@ export class ContributionRuntime {
       if (record.state === 'purged' || record.state === 'uninstalled-data-preserved') {
         continue;
       }
-      if (record.contributions.blocks.some((block) => block.type === type)) {
+      if (
+        contributionEntries(record.contributions).some(
+          (entry) => entry.kind === kind && entry.id === id,
+        )
+      ) {
         return record.owner.id;
       }
     }
@@ -385,6 +537,7 @@ export class ContributionRuntime {
   #publish(generation: Revision): RegistryGeneration {
     const registry = new SealedBlockRegistry();
     const owners: OwnerReference[] = [];
+    const contributions: ContributionEntry[] = [];
     for (const record of this.#extensions.values()) {
       if (record.state !== 'active') {
         continue;
@@ -393,9 +546,10 @@ export class ContributionRuntime {
       for (const block of record.contributions.blocks) {
         registry.register(cloneContractValue(block));
       }
+      contributions.push(...contributionEntries(record.contributions));
     }
     registry.seal();
-    return new RegistryGeneration(generation, owners, registry);
+    return new RegistryGeneration(generation, owners, registry, contributions);
   }
 
   #requireExtension(ownerId: string): ExtensionRecord {
@@ -408,6 +562,87 @@ export class ContributionRuntime {
     }
     return record;
   }
+}
+
+function normalizeContributions(
+  contributions: Readonly<ExtensionContributions>,
+): NormalizedExtensionContributions {
+  return {
+    blocks: cloneContractValue(contributions.blocks),
+    designVocabularies: cloneContractValue(contributions.designVocabularies ?? []),
+    fieldAdapters: cloneContractValue(contributions.fieldAdapters ?? []),
+    inspectors: cloneContractValue(contributions.inspectors ?? []),
+    migrations: cloneContractValue(contributions.migrations ?? []),
+    patterns: cloneContractValue(contributions.patterns ?? []),
+  };
+}
+
+function contributionEntries(contributions: NormalizedExtensionContributions): ContributionEntry[] {
+  return [
+    ...contributions.blocks.map((payload) => ({
+      id: payload.type,
+      kind: 'block' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+    ...contributions.designVocabularies.map((payload) => ({
+      id: payload.id,
+      kind: 'design-vocabulary' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+    ...contributions.fieldAdapters.map((payload) => ({
+      id: payload.id,
+      kind: 'field-adapter' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+    ...contributions.inspectors.map((payload) => ({
+      id: payload.id,
+      kind: 'inspector' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+    ...contributions.migrations.map((payload) => ({
+      id: payload.id,
+      kind: 'migration' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+    ...contributions.patterns.map((payload) => ({
+      id: payload.id,
+      kind: 'pattern' as const,
+      owner: payload.owner,
+      payload,
+      version: payload.version,
+    })),
+  ];
+}
+
+function contributionKey(
+  kind: StudioCompositionContributionKind,
+  id: string,
+  version: string,
+): string {
+  return `${kind}\u0000${id}\u0000${version}`;
+}
+
+function isCompositionContributionKind(
+  kind: UnresolvedContributionReference['contribution'],
+): kind is StudioCompositionContributionKind {
+  return (
+    kind === 'block' ||
+    kind === 'design-vocabulary' ||
+    kind === 'field-adapter' ||
+    kind === 'inspector' ||
+    kind === 'migration' ||
+    kind === 'pattern'
+  );
 }
 
 function activationDiagnostic(code: StudioDiagnostic['code'], message: string): StudioDiagnostic {

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   STUDIO_CONTRACT_VERSION,
   type BlockDefinition,
+  type DesignVocabulary,
+  type FieldAdapterContribution,
+  type InspectorContribution,
+  type MigrationDeclaration,
   type OwnerReference,
+  type PatternDocument,
   type PluginContributionDeclaration,
   type PluginContributionKind,
   type PluginManifest,
@@ -88,6 +93,84 @@ function block(
   };
 }
 
+function fieldAdapter(id: QualifiedName, version = '1.0.0'): FieldAdapterContribution {
+  return {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    control: 'org.example.kit/control',
+    fieldKinds: ['studio.field/string'],
+    id,
+    kind: 'field-adapter',
+    label: { defaultMessage: 'Field adapter', key: 'org.example.kit/field-adapter' },
+    owner: kitOwner,
+    version,
+  };
+}
+
+function inspector(id: QualifiedName, version = '1.0.0'): InspectorContribution {
+  return {
+    blockTypes: ['org.example/hero'],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id,
+    kind: 'inspector',
+    label: { defaultMessage: 'Inspector', key: 'org.example.kit/inspector' },
+    owner: kitOwner,
+    placement: 'augment',
+    version,
+  };
+}
+
+function designVocabulary(id: QualifiedName): DesignVocabulary {
+  return {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    designControls: [],
+    id,
+    kind: 'design-vocabulary',
+    label: { defaultMessage: 'Vocabulary', key: 'org.example.kit/vocabulary' },
+    owner: kitOwner,
+    recipes: [],
+    version: '1.0.0',
+  };
+}
+
+function migration(id: QualifiedName): MigrationDeclaration {
+  return {
+    artifactKinds: ['blueprint'],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id,
+    kind: 'migration',
+    label: { defaultMessage: 'Migration', key: 'org.example.kit/migration' },
+    lossClassification: 'lossless',
+    owner: kitOwner,
+    sourceVersions: '*',
+    targetVersion: '1.0.0',
+    version: '1.0.0',
+  };
+}
+
+function pattern(id: QualifiedName): PatternDocument {
+  return {
+    blockDependencies: [],
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id,
+    kind: 'pattern',
+    label: { defaultMessage: 'Pattern', key: 'org.example.kit/pattern' },
+    owner: kitOwner,
+    revision: 'pattern-r1',
+    roots: [
+      {
+        authoring: { mode: 'designer' },
+        bindings: {},
+        id: 'pattern-root',
+        properties: {},
+        slots: {},
+        type: 'org.example/hero',
+        version: '1.0.0',
+      },
+    ],
+    version: '1.0.0',
+  };
+}
+
 function heroDefinition(): StudioPluginDefinition {
   return {
     blocks: [block('org.example/hero', kitOwner)],
@@ -126,6 +209,7 @@ describe('defineStudioPlugin', () => {
 
   it('accepts the frozen composition declaration kinds', () => {
     const definition = defineStudioPlugin({
+      designVocabularies: [designVocabulary('org.example.kit/vocabulary')],
       manifest: manifest({
         contributions: [
           declaration('design-vocabulary', 'org.example.kit/vocabulary'),
@@ -133,6 +217,8 @@ describe('defineStudioPlugin', () => {
           declaration('pattern', 'org.example.kit/landing'),
         ],
       }),
+      migrations: [migration('org.example.kit/hero-to-banner')],
+      patterns: [pattern('org.example.kit/landing')],
     });
     expect(definition.manifest.contributions.map((entry) => entry.kind)).toEqual([
       'design-vocabulary',
@@ -143,6 +229,7 @@ describe('defineStudioPlugin', () => {
 
   it('accepts contribution ids in dotted sub-namespaces of the plugin namespace', () => {
     const definition = defineStudioPlugin({
+      fieldAdapters: [fieldAdapter('org.example.kit.fields/slider')],
       manifest: manifest({
         contributions: [declaration('field-adapter', 'org.example.kit.fields/slider')],
       }),
@@ -165,6 +252,7 @@ describe('defineStudioPlugin', () => {
   it('rejects contribution ids outside the plugin namespace', () => {
     const foreign = diagnosticsOf(() =>
       defineStudioPlugin({
+        patterns: [pattern('org.other/card')],
         manifest: manifest({ contributions: [declaration('pattern', 'org.other/card')] }),
       }),
     );
@@ -172,6 +260,7 @@ describe('defineStudioPlugin', () => {
 
     const sibling = diagnosticsOf(() =>
       defineStudioPlugin({
+        patterns: [pattern('org.example-extra/card')],
         manifest: manifest({ contributions: [declaration('pattern', 'org.example-extra/card')] }),
       }),
     );
@@ -181,6 +270,7 @@ describe('defineStudioPlugin', () => {
   it('rejects duplicate declarations while allowing multi-version declarations', () => {
     const duplicate = diagnosticsOf(() =>
       defineStudioPlugin({
+        fieldAdapters: [fieldAdapter('org.example/slider')],
         manifest: manifest({
           contributions: [
             declaration('field-adapter', 'org.example/slider'),
@@ -192,6 +282,10 @@ describe('defineStudioPlugin', () => {
     expect(duplicate.codes).toEqual(['studio.contribution/duplicate-contribution']);
 
     const multiVersion = defineStudioPlugin({
+      fieldAdapters: [
+        fieldAdapter('org.example/slider', '1.0.0'),
+        fieldAdapter('org.example/slider', '2.0.0'),
+      ],
       manifest: manifest({
         contributions: [
           declaration('field-adapter', 'org.example/slider', '1.0.0'),
@@ -234,6 +328,7 @@ describe('defineStudioPlugin', () => {
   it('rejects executable declarations under declarative activation', () => {
     const declarative = diagnosticsOf(() =>
       defineStudioPlugin({
+        inspectors: [inspector('org.example/inspector')],
         manifest: manifest({
           contributions: [declaration('inspector', 'org.example/inspector', '1.0.0', true)],
         }),
@@ -242,6 +337,7 @@ describe('defineStudioPlugin', () => {
     expect(declarative.codes).toEqual(['studio.contribution/undeclared-executable']);
 
     const executable = defineStudioPlugin({
+      inspectors: [inspector('org.example/inspector')],
       manifest: manifest({
         activation: 'executable',
         contributions: [declaration('inspector', 'org.example/inspector', '1.0.0', true)],
@@ -288,6 +384,35 @@ describe('defineStudioPlugin', () => {
     );
     expect(invalid.codes).toEqual(['studio.contribution/invalid-definition']);
   });
+
+  it('applies the property-schema profile to field-adapter options', () => {
+    const adapter = fieldAdapter('org.example/slider');
+    adapter.optionSchema = { patternProperties: {}, type: 'object' };
+    const invalid = diagnosticsOf(() =>
+      defineStudioPlugin({
+        fieldAdapters: [adapter],
+        manifest: manifest({
+          contributions: [declaration('field-adapter', 'org.example/slider')],
+        }),
+      }),
+    );
+    expect(invalid.codes).toEqual(['studio.contribution/invalid-definition']);
+  });
+
+  it('requires inspector and field-adapter capabilities to be declared', () => {
+    const panel = inspector('org.example/inspector');
+    panel.requiredCapability = 'studio.capability/custom-inspectors';
+    const missing = diagnosticsOf(() =>
+      defineStudioPlugin({
+        inspectors: [panel],
+        manifest: manifest({
+          activation: 'executable',
+          contributions: [declaration('inspector', 'org.example/inspector', '1.0.0', true)],
+        }),
+      }),
+    );
+    expect(missing.codes).toEqual(['studio.contribution/undeclared-capability']);
+  });
 });
 
 describe('activateStudioPlugin', () => {
@@ -313,6 +438,7 @@ describe('activateStudioPlugin', () => {
             id: 'org.other/tools',
             owner: { id: 'org.other/tools', version: '1.0.0' },
           }),
+          patterns: [pattern('org.example.kit/card')],
         },
         { generation: 'gen-2' },
       ),
