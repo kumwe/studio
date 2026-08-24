@@ -16,8 +16,13 @@ inferred from the other or from the `/studio/v1/` schema epoch URI.
 
 Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its nine
 typed ports sharing one request envelope), the stable host error taxonomy with the
-`isHostPortError` guard, the extension lifecycle state vocabulary, and preview guards for the message,
-rendered inventory, and canonical marker grammar. Preview draft.2 closes its message discriminator,
+`isHostPortError` guard, and the JavaScript `HostPortFailure` rejection wrapper with its
+`isHostPortFailure` guard. A stale generation remains `invalid-request` and is distinguished by the
+stable `studio.host/stale-session-generation` diagnostic, also exported as
+`STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE`, allowing a composed session to invalidate the
+complete handle without treating every invalid request as stale. The package also projects the
+extension lifecycle state vocabulary and preview guards for the message, rendered inventory, and
+canonical marker grammar. Preview draft.2 closes its message discriminator,
 requires artifact/revision/digest plus session-unique render-attempt correlation, and applies the same
 safe local-name and 240–10000 pixel viewport bounds in schema and runtime guards.
 `schemas/manifest.json` records the schema epoch plus the file, canonical `$id`, and sha256 digest

@@ -4,7 +4,7 @@
 
 A resolved Studio configuration describes one authoring session and its policy. It does not contain secrets, bearer tokens, executable callbacks in serialized form, or persistent artifacts.
 
-The serializable portion conforms to [`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations remain separate from that document. A `createStudio(config, hostAdapter)`-style composition API is a Gate A target, not a current export or stable function name. The present foundation alpha exposes `defineKumweStudio()` to register the experimental custom-element shell, whose limited surface accepts `ExperimentalShellConfiguration`; it does not yet consume the complete canonical Studio configuration or host-adapter contract.
+The serializable portion conforms to [`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations and deterministic identifier factories remain separate from that document. The headless `openStudioSession` composition API consumes the complete resolved configuration for the bounded Blueprint persistence profile described below. The experimental custom-element shell remains a separate alpha surface: `defineKumweStudio()` registers a shell whose `ExperimentalShellConfiguration` does not yet consume this canonical configuration or host-adapter contract.
 
 ## Required configuration
 
@@ -27,6 +27,45 @@ A session MUST define:
 `hybrid` is not a fourth editing mode. It coordinates only the authorized Blueprint and Content operations and is invalid with Model mode. `read-only` is not a mode: it is a session state that rejects every persistent command regardless of the visible editing mode or declared permissions.
 
 The headless session flattens the three members above into one session mode — `model`, `blueprint`, `content`, `hybrid`, or `read-only` — fixed at session creation: a read-only session state always flattens to `read-only`, the hybrid composite flattens to `hybrid`, and every other session keeps its editing mode. One deterministic mode-to-permitted-command table decides every dispatch; a command outside the active mode's permitted set fails closed with the stable `mode-forbidden` code, while a read-only session keeps rejecting with `read-only-session`. UIs MUST derive disabled affordances from the same exported table rather than duplicating it, and MUST NOT treat a hidden or disabled control as a substitute for the session-level check ([ADR 0011](../decisions/0011-editing-modes.md)).
+
+## Headless Blueprint composition profile
+
+`openStudioSession` accepts a host-supplied `StudioConfiguration` only after the host has completed
+layering, authority resolution, and protocol selection. The core does not fetch, merge, or repair
+configuration and does not attach authentication evidence. The caller separately supplies the typed
+host adapter and `StudioHostSessionIdentifierFactories`, whose deterministic methods are
+`requestId(operationId)` and `idempotencyKey(operationId)`; those executable values are runtime
+dependencies and MUST NOT be serialized into this document.
+
+The current profile requires `mode: blueprint`, `composite: single`, either `editable` or `read-only`
+session state, and `artifacts.blueprint`. It negotiates the configured protocol and artifact port and
+loads that exact reference; the result MUST be a Blueprint. Extra model or theme references may remain
+configuration dependencies but are not separately loaded by this profile. A model, content, or hybrid
+configuration remains a valid configuration document but is unsupported by this composition profile
+until the core has corresponding artifact state, persistence, and history. Opening MUST fail with a
+stable diagnostic; it MUST NOT create an empty Blueprint, substitute a related artifact, or infer
+identifiers.
+
+The resulting handle fixes the configuration's generation, resource-context key, locale, resolved
+session mode, and maximum history length for its lifetime. Changing any of those members requires a
+new resolved configuration and handle. Host calls carry the generation, resource-context key, locale,
+and protocol unchanged in the request envelope; the resolved `blueprint` or `read-only` mode and
+history limit govern the local session. A host failure carrying diagnostic code
+`studio.host/stale-session-generation` invalidates the whole handle; an unrelated `invalid-request`
+does not.
+
+Blueprint saves use the latest accepted host revision as the optimistic `expectedRevision`. They are
+serialized, and identical concurrent save intents coalesce. An exact failed-intent retry keeps its
+idempotency key, while a changed semantic intent receives a new one. A success marks the snapshot
+durable only if the local session is still at that snapshot; edits made during the request remain
+dirty. Conflict and failure never rewrite the draft or select a reconciliation policy.
+
+If the optional recovery port was negotiated, `StudioHostSessionHandle.recovery` is a
+`StudioHostSessionRecovery` exposing only raw `store`, `load`, and `discard` calls; otherwise it is
+`undefined`, with the absence available in negotiation diagnostics. A loaded object is not applied
+automatically. Recovery validation, compatibility, reconciliation, and UI remain host/application
+concerns. Synchronous `dispose()` is a local idempotent lifecycle boundary and does not claim host
+teardown ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
 
 ## Contract and protocol selection
 
@@ -71,7 +110,7 @@ At minimum, a host specifies limits for:
 
 A missing limit is a configuration error. Protocol releases publish safe maxima; a host MAY lower them. Raising a security-critical maximum beyond the protocol maximum requires a new negotiated capability version.
 
-`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo history; zero is not a hidden way to disable the invariant. The Gate A composition API MUST pass the resolved value to the core history engine. The experimental alpha shell does not yet consume canonical StudioConfig and currently uses the core's explicit default, so it does not claim this pass-through is implemented.
+`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo history; zero is not a hidden way to disable the invariant. `openStudioSession` passes the resolved value to the core history engine. The experimental alpha shell does not yet consume canonical StudioConfig and currently uses the core's explicit default, so it does not claim this pass-through is implemented there.
 
 ## Feature policy
 

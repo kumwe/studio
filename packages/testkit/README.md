@@ -21,11 +21,15 @@ seeded fixtures (`documents`, `resources`, `mediaAssets`, `messages`, `permissio
 optional asynchronous preview `render` callback). Each operation first validates connectivity and the
 `HostRequestContext`, including exact operation-capability matching, wire protocol, and current session
 generation. Every failure rejects with `TestbedHostError`, whose `error` document satisfies
-`isHostPortError`; `not-found` messages never disclose which identifiers exist. Seed artifact kinds,
-revisions, and the optional initial `sessionGeneration` are retained exactly; subsequent revisions
-advance as deterministic counters (`<id>-r<n>`). Optimistic-concurrency conflicts return the safe
-current revision without changing
-stored state, and search/media pagination uses opaque cursors. The returned `controls` drive
+`isHostPortError`. `TestbedHostError` extends the protocol's public `HostPortFailure`, so the same
+rejection satisfies `isHostPortFailure` without consumers depending on the testbed-specific class.
+Stale-generation rejection is `invalid-request` with the exact
+`studio.host/stale-session-generation` diagnostic used for whole-handle invalidation; unrelated
+invalid requests do not carry that meaning. `not-found` messages never disclose which identifiers
+exist. Seed artifact kinds, revisions, and the optional initial `sessionGeneration` are retained
+exactly; subsequent revisions advance as deterministic counters (`<id>-r<n>`).
+Optimistic-concurrency conflicts return the safe current revision without changing stored state, and
+search/media pagination uses opaque cursors. The returned `controls` drive
 failure scenarios: `disconnect()`/`reconnect()` for retryable `unavailable` outages,
 `failNext(port, operation, category)` for exactly one injected failure (retryable only for
 `unavailable` and `rate-limited`), and `setPermissions(...)`, which replaces the permission list

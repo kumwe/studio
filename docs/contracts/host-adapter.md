@@ -23,6 +23,14 @@ Capabilities state technical support. Permissions state actor authority. Studio 
 
 Negotiation produces one resolved StudioConfig. Its `contractVersion` selects that configuration document's shape, while its `protocolVersion` is the one wire version selected from Studio support and `hostCapabilities.protocolVersions`. The schema epoch is identified by canonical schema `$id`; it is not transmitted as a substitute for either value. No common wire version or unsupported document revision prevents an editable session.
 
+The headless Blueprint composition entry point consumes that resolved configuration; it does not
+perform or simulate this handshake. Before loading, it verifies the selected protocol and negotiates
+the required artifact port against the capability inventory. The host still checks the exact operation
+capability, resource context, generation, and authority on every request. The current composition
+profile requires `mode: blueprint`, `composite: single`, and a configured Blueprint reference. It
+refuses other modes, hybrid composition, or a loaded model or entry rather than fabricating a
+different artifact kind ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
+
 ## Standard ports
 
 | Port           | Responsibility                                                             |
@@ -68,6 +76,18 @@ Errors include a correlation ID, safe localized message key, retry classificatio
 
 The error document shape is canonical in [`host-error.schema.json`](../../schemas/host-error.schema.json), projected as `HostPortError` with the `isHostPortError` guard, and the port surface above is executable as the typed `HostAdapter` port interfaces in `@kumwe/studio-protocol`.
 
+In JavaScript, a conforming port promise rejects with `HostPortFailure`, whose public `error` member is
+that canonical `HostPortError`. Consumers use `isHostPortFailure` instead of depending on an adapter's
+private exception class or accepting a structurally similar transport exception. A boundary receiving
+any other thrown value converts it to a safe, non-retryable `internal` failure and does not expose the
+original message or stack.
+
+Rejection of a stale session generation uses category `invalid-request` and includes a diagnostic with
+the exact code `studio.host/stale-session-generation`. That code, not the broad category by itself,
+invalidates a composed host-session handle. Once observed, the handle makes no more host calls; a new
+resolved configuration and generation are required. Other `invalid-request` failures remain scoped to
+their attempted operation.
+
 ## Mutation guarantees
 
 A host mutation MUST be authenticated, authorized, schema- and domain-validated, audited according to host policy, concurrency-protected, and atomic for its declared unit. Retryable mutations require idempotency. Browser transports apply CSRF or equivalent same-origin protections.
@@ -90,6 +110,19 @@ Rate-limit errors carry `retryable: true` and `retryAfterMilliseconds` when the 
 the remaining delay. Refused work has no mutation side effect. Preview cancellation is scoped to the
 resolved session, resource context, and draft digest; cancel returns null, the in-flight render settles
 as `cancelled`, and a renderer result arriving after cancellation is discarded.
+
+The Blueprint host-session handle serializes saves and coalesces concurrent requests for the same
+current intent. Each attempt has a new caller-supplied request ID. An exact retry of a failed intent
+reuses its caller-supplied idempotency key; any semantic change to the intent receives a new key. A save
+uses the latest host-accepted revision as `expectedRevision`. If the actor edits while that snapshot is
+in flight, a success advances the handle's accepted revision but does not mark the newer local state
+saved. Conflict or refusal leaves the local document, history, selection, dirty state, and saved
+baseline unchanged.
+
+The optional recovery port remains a raw storage boundary. Composition may invoke `store`, `load`, or
+`discard` with bounded JSON, but it neither synthesizes a recovery format nor applies, merges, or
+reconciles loaded data. Local handle disposal is idempotent and does not imply a host call: the adapter
+currently declares no session-teardown operation.
 
 ## Query guarantees
 

@@ -157,9 +157,23 @@ export class StudioSession {
     return applyModelCommand(model, command);
   }
 
-  public markSaved(revision: Revision): void {
+  /**
+   * Records the host revision that accepted a local snapshot. Callers normally
+   * omit `stateVersion`, which marks the current document clean. A host save
+   * that settles after another local edit passes the captured snapshot version
+   * instead: the accepted base revision advances while the newer draft stays
+   * dirty.
+   */
+  public markSaved(revision: Revision, stateVersion: number = this.#history.stateVersion): void {
+    if (
+      !Number.isSafeInteger(stateVersion) ||
+      stateVersion < 0 ||
+      stateVersion > this.#history.stateVersion
+    ) {
+      throw new RangeError('A saved snapshot version must be a known non-negative state version.');
+    }
     this.#savedRevision = revision;
-    this.#savedStateVersion = this.#history.stateVersion;
+    this.#savedStateVersion = stateVersion;
   }
 
   public get savedRevision(): Revision {
