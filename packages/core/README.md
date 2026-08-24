@@ -16,8 +16,10 @@ The implemented surface covers:
 - `StudioSession` — bounded history behind fail-closed session guards (read-only state, session
   generation, expected revision), dirty tracking, and a validated selection model;
 - `openStudioSession` — capability-negotiated Blueprint loading and a headless host-session handle for
-  serialized optimistic saves, raw optional recovery-port access, stale-generation invalidation, and
-  local idempotent disposal;
+  serialized optimistic saves, raw optional recovery-port access, read-only model `list`/`get`,
+  stale-generation invalidation, and local idempotent disposal;
+- `projectBlueprintFieldBindings` — an immutable exact-model projection of compatible block-port field
+  candidates, declared authoring controls and stable invalid-binding diagnostics;
 - `ContributionRuntime` — owner-aware, transactional, schema-validated activation of block,
   pattern, design-vocabulary, migration, inspector, and field-adapter payloads into kind-scoped
   immutable generations, with disable, reactivate, trust-revocation, stale-generation refusal, and
@@ -44,7 +46,7 @@ adapters can therefore share the same command and validation semantics through t
 `mode: blueprint`, `composite: single`, either session state, and the configured Blueprint reference;
 it passes the resolved Blueprint/read-only mode, session generation, resource context, locale,
 protocol, and history limit through the headless lifecycle. It does not perform the host handshake,
-load additional model/theme dependencies, fabricate an artifact for model/content/hybrid
+automatically load model/theme dependencies, fabricate an artifact for model/content/hybrid
 configuration, or provide a transport.
 
 The returned handle serializes saves against the latest accepted host revision and coalesces matching
@@ -58,3 +60,10 @@ synthesize or reconcile recovery envelopes. A
 `studio.host/stale-session-generation` diagnostic invalidates the complete handle. `dispose()` is
 local and idempotent and does not imply host teardown or preview cleanup. See
 [ADR 0020](../../docs/decisions/0020-blueprint-host-session-composition.md) for the deliberate scope.
+
+`StudioHostSessionHandle.models` is present only when the negotiated model port and adapter both implement
+`list` and `get`. Results are canonical-schema validated, exact-coordinate checked and detached before they
+leave the boundary; stale generation invalidates the whole handle. The surface is deliberately read-only.
+Pass an authorized active model to `projectBlueprintFieldBindings(blueprint, model, definitions)` to derive
+portable candidates and diagnostics without changing any input. See
+[ADR 0024](../../docs/decisions/0024-read-only-model-binding-projection.md).

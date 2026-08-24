@@ -50,12 +50,12 @@ region.
 ## Inspector
 
 The inspector edits the selected node without leaving the keyboard. Every value input holds the
-JSON serialization of its property, binding, or override, and every control is a native input,
+JSON serialization of its property or override, and every control is a native input,
 select, or button, so `Tab` moves through them in one documented order: the recipe selector when
 the active theme offers a matching recipe; declared Design token selectors and their `Remove`
 buttons; base property rows (value input, then `Unset`); the add-property row (name, value,
-`Add property`); binding rows (one `Remove` button per port); the set-binding form (port, value,
-`Set binding`); then — when the host supplies viewports — the responsive rows for the active
+`Add property`); model field selectors and their `Remove` buttons, or the legacy binding rows and
+set-binding form when no model port is negotiated; then — when the host supplies viewports — the responsive rows for the active
 viewport and the add-override form; and finally the Layout size-role section. In read-only or
 mode-incompatible sessions the corresponding controls are disabled.
 
@@ -71,8 +71,12 @@ marked `Base value`.
 | `Escape`          | In a value input, revert to the committed value and announce the cancel |
 | `Enter` / `Space` | Activate the focused unset, add, set-binding, or remove button          |
 
-Property commits dispatch `set-property`, unset buttons `unset-property`, the binding form
-`set-binding`, and binding removal `remove-binding`. Override rows dispatch the same property
+Property commits dispatch `set-property`, unset buttons `unset-property`, a model field selection or the
+legacy binding form dispatches `set-binding`, and binding removal dispatches `remove-binding`. A model field
+selector contains only compatible, visible fields from the Blueprint's exact locked model and uses native
+select keyboard behavior; its adjacent disabled control preview is not an entry-value editor. When model
+reads are advertised but the projection is unavailable or mismatched, Studio offers no free-form substitute.
+Override rows dispatch the same property
 commands carrying the active viewport of the viewport switcher, and their announcements name that
 viewport — this is the non-visual path to responsive resize work. Invalid JSON never dispatches:
 the polite live region announces the invalid value and the text stays in the input for
@@ -134,6 +138,7 @@ These interactions are executable assertions in
 `packages/studio-lit/test/command-surfaces.test.ts`,
 `packages/studio-lit/test/layout-blocks.test.ts`,
 `packages/studio-lit/test/inspector.test.ts`, and
+`packages/studio-lit/test/model-bindings.test.ts`,
 `packages/studio-lit/test/layout-editing.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
 cancellation, inspector editing with its Tab order and conflict recovery, size-role editing with

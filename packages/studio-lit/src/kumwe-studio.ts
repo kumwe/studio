@@ -13,6 +13,7 @@ import {
   coreLayoutInitialProperties,
   isCoreLayoutBlockType,
   permittedCommandTypes,
+  projectBlueprintFieldBindings,
   recipeSelectionOperations,
   resolveSessionMode,
   StudioCommandError,
@@ -20,6 +21,9 @@ import {
   validateBlueprint,
   type StudioCommandErrorCode,
   type StudioSessionOptions,
+  type BlueprintFieldBindingProjection,
+  type FieldBindingCandidate,
+  type FieldBindingPortProjection,
 } from '@kumwe/studio-core';
 import type {
   BlockDefinition,
@@ -27,9 +31,11 @@ import type {
   BlueprintDocument,
   BlueprintNode,
   CommandDestination,
+  ContentModelDocument,
   DuplicateNodeCommand,
   ExperimentalShellConfiguration,
   FieldBinding,
+  FieldDefinition,
   InsertNodeCommand,
   JsonValue,
   MessageReference,
@@ -126,6 +132,7 @@ export class KumweStudioElement extends LitElement {
   public static override properties = {
     announcement: { attribute: false, state: true },
     configuration: { attribute: false },
+    contentModel: { attribute: false },
     designControls: { attribute: false },
     document: { attribute: false },
     messages: { attribute: false },
@@ -507,6 +514,47 @@ export class KumweStudioElement extends LitElement {
       opacity: 0.55;
     }
 
+    .inspector textarea {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      flex: 1 1 6rem;
+      font: inherit;
+      min-block-size: 3rem;
+      min-inline-size: 0;
+      padding: 0.375rem 0.5rem;
+      resize: vertical;
+    }
+
+    .inspector-binding-model {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      display: grid;
+      gap: 0.375rem;
+      padding: 0.5rem;
+    }
+
+    .inspector-binding-control {
+      align-items: center;
+      background: white;
+      border-inline-start: 0.1875rem solid var(--studio-border);
+      display: grid;
+      flex-basis: 100%;
+      gap: 0.25rem;
+      padding: 0.375rem 0.5rem;
+    }
+
+    .inspector-binding-control > :is(input, select, textarea) {
+      inline-size: 100%;
+    }
+
+    .inspector-binding-path,
+    .inspector-binding-status {
+      color: #5d6671;
+      flex-basis: 100%;
+      font-size: 0.75rem;
+      overflow-wrap: anywhere;
+    }
+
     .inspector-provenance {
       color: #5d6671;
       flex-basis: 100%;
@@ -559,6 +607,7 @@ export class KumweStudioElement extends LitElement {
   `;
 
   declare public configuration: ExperimentalShellConfiguration | undefined;
+  declare public contentModel: ContentModelDocument | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
@@ -574,6 +623,7 @@ export class KumweStudioElement extends LitElement {
   #activeViewportId: string | undefined;
   #announcementPending = false;
   #commandSequence = 0;
+  #bindingProjection: BlueprintFieldBindingProjection | undefined;
   #diagnostics: StudioDiagnostic[] = [];
   #drag: CanvasDragState | undefined;
   #internalDocumentUpdate = false;
@@ -731,6 +781,8 @@ export class KumweStudioElement extends LitElement {
       } else {
         this.#rebuildSession();
       }
+    }
+    if (changed.has('document') || changed.has('configuration') || changed.has('contentModel')) {
       this.#revalidate();
     }
   }
@@ -2078,7 +2130,7 @@ export class KumweStudioElement extends LitElement {
     const message = diagnosticText(entry);
     const nodeId = entry.location?.nodeId;
     return html`
-      <li>
+      <li data-diagnostic-code=${entry.code}>
         ${
           nodeId === undefined
             ? html`<span class="diagnostic-text">${severity} ${message}</span>`
@@ -2288,6 +2340,240 @@ export class KumweStudioElement extends LitElement {
   }
 
   #renderInspectorBindings(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const projection = this.#bindingProjection?.nodes.find((entry) => entry.nodeId === node.id);
+    if (projection === undefined) {
+      if (this.#modelPortAdvertised()) {
+        return html`
+          <section
+            class="inspector-section inspector-bindings"
+            aria-label=${this.#text('studio.shell/inspector-bindings-heading')}
+          >
+            <h3>${this.#text('studio.shell/inspector-bindings-heading')}</h3>
+            <p class="inspector-empty inspector-binding-model-unavailable">
+              ${this.#text('studio.shell/inspector-binding-model-unavailable')}
+            </p>
+          </section>
+        `;
+      }
+      return this.#renderLegacyInspectorBindings(node, readOnly);
+    }
+    const modelCompatible = !this.#bindingProjection?.diagnostics.some((entry) =>
+      entry.code.startsWith('studio.binding/model-'),
+    );
+    return html`
+      <section
+        class="inspector-section inspector-bindings"
+        aria-label=${this.#text('studio.shell/inspector-bindings-heading')}
+      >
+        <h3>${this.#text('studio.shell/inspector-bindings-heading')}</h3>
+        <p class="hint inspector-binding-model">
+          ${this.#text('studio.shell/inspector-binding-model', {
+            model: `${this.contentModel?.id ?? ''}@${this.contentModel?.version ?? ''}#${
+              this.contentModel?.revision ?? ''
+            }`,
+          })}
+        </p>
+        ${
+          !modelCompatible
+            ? html`<p class="inspector-empty inspector-binding-model-mismatch">
+                ${this.#text('studio.shell/inspector-binding-model-mismatch')}
+              </p>`
+            : projection.ports.length === 0
+              ? html`<p class="inspector-empty">
+                  ${this.#text('studio.shell/inspector-bindings-empty')}
+                </p>`
+              : html`<ul class="inspector-rows">
+                  ${projection.ports.map((port) =>
+                    this.#renderProjectedBindingPort(node, port, readOnly),
+                  )}
+                </ul>`
+        }
+      </section>
+    `;
+  }
+
+  #renderProjectedBindingPort(
+    node: BlueprintNode,
+    projection: FieldBindingPortProjection,
+    readOnly: boolean,
+  ): TemplateResult {
+    const definition = this.#findDefinition(node);
+    const declared = definition?.ports.find((candidate) => candidate.id === projection.port);
+    const boundPath = projection.boundFieldPath;
+    const selectedValue = boundPath === undefined ? '' : JSON.stringify(boundPath);
+    const selected = projection.candidates.find(
+      (candidate) => JSON.stringify(candidate.fieldPath) === selectedValue,
+    );
+    const label = declared === undefined ? projection.port : referenceText(declared.label);
+    return html`
+      <li class="inspector-row inspector-binding-model" data-port=${projection.port}>
+        <label class="inspector-name" for=${`binding-${node.id}-${projection.port}`}>
+          ${label}
+          ${
+            projection.required === true
+              ? this.#text('studio.shell/inspector-binding-required')
+              : nothing
+          }
+        </label>
+        ${
+          projection.valueType === undefined
+            ? nothing
+            : html`<span class="inspector-binding-status">
+                ${this.#text('studio.shell/inspector-binding-accepts', {
+                  cardinality: projection.multiple === true ? 'many' : 'one',
+                  'value-type': projection.valueType,
+                })}
+              </span>`
+        }
+        ${
+          projection.status === 'non-field-source'
+            ? html`<span class="inspector-binding-status">
+                ${this.#text('studio.shell/inspector-binding-non-field-source')}
+              </span>`
+            : projection.status === 'invalid'
+              ? html`<span class="inspector-binding-status">
+                  ${this.#text('studio.shell/inspector-binding-invalid')}
+                </span>`
+              : nothing
+        }
+        <select
+          id=${`binding-${node.id}-${projection.port}`}
+          class="inspector-binding-field"
+          data-port=${projection.port}
+          data-current-value=${selectedValue}
+          data-authoring-control=${selected?.control ?? nothing}
+          ?disabled=${
+            readOnly || projection.valueType === undefined || projection.candidates.length === 0
+          }
+          @change=${(event: Event): void => {
+            const target = event.currentTarget;
+            if (!(target instanceof HTMLSelectElement) || target.value === '') {
+              return;
+            }
+            const candidate = projection.candidates.find(
+              (entry) => JSON.stringify(entry.fieldPath) === target.value,
+            );
+            if (candidate !== undefined) {
+              this.#setFieldBinding(node, projection.port, candidate);
+            }
+          }}
+        >
+          <option value="" .selected=${selected === undefined}>
+            ${
+              projection.candidates.length === 0
+                ? this.#text('studio.shell/inspector-binding-no-compatible-fields')
+                : this.#text('studio.shell/inspector-binding-field-placeholder')
+            }
+          </option>
+          ${projection.candidates.map(
+            (candidate) => html`
+              <option
+                value=${JSON.stringify(candidate.fieldPath)}
+                data-authoring-control=${candidate.control ?? nothing}
+                .selected=${JSON.stringify(candidate.fieldPath) === selectedValue}
+              >
+                ${referenceText(candidate.label)} (${candidate.fieldPath.join('.')})
+              </option>
+            `,
+          )}
+        </select>
+        ${
+          boundPath === undefined
+            ? nothing
+            : html`<code class="inspector-binding-path">${boundPath.join('.')}</code>`
+        }
+        ${selected === undefined ? nothing : this.#renderDeclaredFieldControl(selected)}
+        ${
+          projection.binding === undefined
+            ? nothing
+            : html`<button
+                type="button"
+                class="inspector-binding-remove"
+                data-port=${projection.port}
+                aria-label=${this.#text('studio.shell/inspector-remove-binding-label', {
+                  port: projection.port,
+                })}
+                ?disabled=${readOnly}
+                @click=${(): void => {
+                  this.#removeBinding(node, projection.port);
+                }}
+              >
+                ${this.#text('studio.shell/inspector-remove-binding')}
+              </button>`
+        }
+      </li>
+    `;
+  }
+
+  #renderDeclaredFieldControl(candidate: FieldBindingCandidate): TemplateResult {
+    const field = this.#fieldAtPath(candidate.fieldPath);
+    const control = candidate.control;
+    if (field === undefined || control === undefined) {
+      return html`<div class="inspector-binding-control">
+        <span class="inspector-binding-status">
+          ${this.#text('studio.shell/inspector-binding-control-undeclared')}
+        </span>
+      </div>`;
+    }
+    const label = referenceText(field.label);
+    const controlLabel = this.#text('studio.shell/inspector-binding-control-label', {
+      control,
+      field: label,
+    });
+    let rendered: TemplateResult;
+    switch (control) {
+      case 'studio.control/date':
+        rendered = html`<input type="date" aria-label=${controlLabel} disabled />`;
+        break;
+      case 'studio.control/date-time':
+        rendered = html`<input type="datetime-local" aria-label=${controlLabel} disabled />`;
+        break;
+      case 'studio.control/number':
+        rendered = html`<input type="number" aria-label=${controlLabel} disabled />`;
+        break;
+      case 'studio.control/select':
+        rendered = html`<select aria-label=${controlLabel} disabled>
+          <option>${this.#text('studio.shell/inspector-binding-control-preview')}</option>
+          ${(field.enumValues ?? []).map(
+            (value) => html`<option value=${value.value}>${referenceText(value.label)}</option>`,
+          )}
+        </select>`;
+        break;
+      case 'studio.control/switch':
+        rendered = html`<input type="checkbox" aria-label=${controlLabel} disabled />`;
+        break;
+      case 'studio.control/multi-line-text':
+        rendered = html`<textarea aria-label=${controlLabel} disabled></textarea>`;
+        break;
+      case 'studio.control/single-line-text':
+        rendered = html`<input
+          type="text"
+          aria-label=${controlLabel}
+          placeholder=${
+            field.authoring?.placeholder === undefined
+              ? nothing
+              : referenceText(field.authoring.placeholder)
+          }
+          disabled
+        />`;
+        break;
+      default:
+        rendered = html`<span class="inspector-binding-status">
+          ${this.#text('studio.shell/inspector-binding-control-unavailable', { control })}
+        </span>`;
+        break;
+    }
+    return html`<div
+      class="inspector-binding-control"
+      data-authoring-control=${control}
+      aria-label=${controlLabel}
+    >
+      <span class="inspector-binding-status">${control}</span>
+      ${rendered}
+    </div>`;
+  }
+
+  #renderLegacyInspectorBindings(node: BlueprintNode, readOnly: boolean): TemplateResult {
     const entries = Object.entries(node.bindings);
     return html`
       <section
@@ -2976,13 +3262,23 @@ export class KumweStudioElement extends LitElement {
   #revalidate(): void {
     if (this.document === undefined) {
       this.#diagnostics = [];
+      this.#bindingProjection = undefined;
       return;
     }
     const registry = this.#registry ?? new BlockRegistry();
     const result = validateBlueprint(this.document, registry);
-    this.#diagnostics = [...result.diagnostics].sort(
-      (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
-    );
+    this.#bindingProjection =
+      this.contentModel === undefined
+        ? undefined
+        : projectBlueprintFieldBindings(
+            this.document,
+            this.contentModel,
+            this.configuration?.blockDefinitions ?? [],
+          );
+    this.#diagnostics = [
+      ...result.diagnostics,
+      ...(this.#bindingProjection?.diagnostics ?? []),
+    ].sort((left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity]);
   }
 
   #revealDiagnosticNode(nodeId: NodeId): void {
@@ -3126,6 +3422,63 @@ export class KumweStudioElement extends LitElement {
         ? node.properties[property]
         : node.responsive?.[property]?.[viewport.id];
     return value === undefined ? '' : JSON.stringify(value);
+  }
+
+  #fieldAtPath(fieldPath: readonly string[]): FieldDefinition | undefined {
+    let fields = this.contentModel?.fields;
+    let resolved: FieldDefinition | undefined;
+    for (const member of fieldPath) {
+      resolved = fields?.find((field) => field.id === member);
+      if (resolved === undefined) {
+        return undefined;
+      }
+      fields = resolved.fields;
+    }
+    return resolved;
+  }
+
+  #modelPortAdvertised(): boolean {
+    return (
+      this.configuration?.session.hostCapabilities.ports.some(
+        (port) => port.id === 'studio.port/model',
+      ) ?? false
+    );
+  }
+
+  #setFieldBinding(node: BlueprintNode, port: string, candidate: FieldBindingCandidate): void {
+    const session = this.#session;
+    const document = this.document;
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/set-binding')
+    ) {
+      return;
+    }
+    const current = node.bindings[port];
+    const binding: FieldBinding =
+      current?.source.kind === 'entry-field'
+        ? {
+            ...current,
+            source: { fieldPath: [...candidate.fieldPath], kind: 'entry-field' },
+          }
+        : {
+            onError: 'error',
+            onNull: 'empty',
+            source: { fieldPath: [...candidate.fieldPath], kind: 'entry-field' },
+            transforms: [],
+          };
+    const command: SetBindingCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { binding, nodeId: node.id, port },
+      type: 'studio.command/set-binding',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#announce('studio.shell/announce-field-bound', {
+        field: candidate.fieldPath.join('.'),
+        port,
+      });
+    }
   }
 
   #setBinding(node: BlueprintNode): void {

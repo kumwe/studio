@@ -7,6 +7,7 @@ export {
 export { HostPortFailure, isHostPortFailure } from './host-failure.js';
 export {
   blockDefinitionSchema,
+  bindingProjectionVectorSchema,
   blueprintSchema,
   commandSchema,
   commandVectorSchema,

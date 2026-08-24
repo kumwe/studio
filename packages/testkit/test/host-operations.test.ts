@@ -76,8 +76,8 @@ describe('host operation registry', () => {
 
   it('covers exactly the operations the typed port surface exposes', () => {
     const { host } = createTestbedHost();
-    // The reference host implements every port except `model`, so the registry
-    // is compared against the surface it does expose plus that known absence.
+    // The reference host implements the complete typed surface, including the
+    // read-only model port, so no registered route may remain a paper API.
     const implemented = typedSurface(host);
     const declared = registry.operations.map((entry) => `${entry.port}.${entry.method}`).sort();
     for (const method of implemented) {
@@ -85,9 +85,7 @@ describe('host operation registry', () => {
         method,
       );
     }
-    const modelOperations = declared.filter((method) => method.startsWith('model.'));
-    expect(modelOperations).toEqual(['model.get', 'model.list']);
-    expect(declared.filter((method) => !method.startsWith('model.'))).toEqual(implemented);
+    expect(declared).toEqual(implemented);
   });
 
   it('binds the three names of every operation one to one', () => {

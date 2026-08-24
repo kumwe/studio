@@ -9,6 +9,14 @@ const rootExampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const packageFixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
 const rootVectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const packageVectorDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
+const rootBindingProjectionVectorDirectory = new URL(
+  '../schemas/vectors/binding-projection/',
+  import.meta.url,
+);
+const packageBindingProjectionVectorDirectory = new URL(
+  '../packages/testkit/vectors/binding-projection/',
+  import.meta.url,
+);
 const rootMediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const packageMediaVectorDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
 const rootCanonicalVectorDirectory = new URL('../schemas/vectors/canonical/', import.meta.url);
@@ -76,6 +84,24 @@ const packageVectorFiles = (await readdir(packageVectorDirectory))
 
 assertSameNames('testkit command-vector copies', vectorFiles, packageVectorFiles);
 await assertCopies(rootVectorDirectory, packageVectorDirectory, vectorFiles);
+
+const bindingProjectionVectorFiles = (await readdir(rootBindingProjectionVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageBindingProjectionVectorFiles = (await readdir(packageBindingProjectionVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames(
+  'testkit binding-projection-vector copies',
+  bindingProjectionVectorFiles,
+  packageBindingProjectionVectorFiles,
+);
+await assertCopies(
+  rootBindingProjectionVectorDirectory,
+  packageBindingProjectionVectorDirectory,
+  bindingProjectionVectorFiles,
+);
 
 const mediaVectorFiles = (await readdir(rootMediaVectorDirectory))
   .filter((name) => name.endsWith('.json'))
@@ -216,6 +242,7 @@ if (corpusManifest.kind !== 'corpus-manifest' || !Array.isArray(corpusManifest.g
   throw new Error('The published corpus manifest is malformed.');
 }
 const corpusDirectories = new Map([
+  ['binding-projection-vectors', packageBindingProjectionVectorDirectory],
   ['canonical-vectors', packageCanonicalVectorDirectory],
   ['command-vectors', packageVectorDirectory],
   ['fixtures', packageFixtureDirectory],
@@ -321,6 +348,40 @@ for (const exampleFile of exampleFiles) {
 const validateCommandVector = getCanonicalValidator('command-vector.schema.json');
 if (vectorFiles.length === 0) {
   throw new Error('The canonical command-vector corpus is empty.');
+}
+
+const validateBindingProjectionVector = getCanonicalValidator(
+  'binding-projection-vector.schema.json',
+);
+if (bindingProjectionVectorFiles.length === 0) {
+  throw new Error('The canonical binding projection vector corpus is empty.');
+}
+const bindingProjectionVectorIdentifiers = new Set();
+for (const vectorFile of bindingProjectionVectorFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(vectorFile, rootBindingProjectionVectorDirectory), 'utf8'),
+  );
+  if (!validateBindingProjectionVector(vector)) {
+    throw new Error(
+      `${vectorFile} violates binding-projection-vector.schema.json: ` +
+        ajv.errorsText(validateBindingProjectionVector.errors),
+    );
+  }
+  if (bindingProjectionVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Binding projection vector identifier ${vector.id} is duplicated.`);
+  }
+  bindingProjectionVectorIdentifiers.add(vector.id);
+  if (
+    vector.blueprint.model.id !== vector.expect.model.id ||
+    vector.blueprint.model.version !== vector.expect.model.version ||
+    vector.blueprint.model.revision !== vector.expect.model.revision
+  ) {
+    throw new Error(`${vectorFile} must preserve the Blueprint's exact locked model coordinate.`);
+  }
+  const expectedNodeIds = vector.expect.nodes.map((node) => node.nodeId);
+  if (new Set(expectedNodeIds).size !== expectedNodeIds.length) {
+    throw new Error(`${vectorFile} duplicates an expected node projection.`);
+  }
 }
 const vectorIdentifiers = new Set();
 for (const vectorFile of vectorFiles) {
@@ -1032,6 +1093,7 @@ for (const required of ['artifact', 'permission']) {
 console.log(
   `${schemaFiles.length} schemas, ${exampleFiles.length} canonical fixtures, ` +
     `${vectorFiles.length} command vectors, ${mediaVectorFiles.length} media policy vectors, ` +
+    `${bindingProjectionVectorFiles.length} binding projection vectors, ` +
     `${hostVectorFiles.length} host conformance vectors, ` +
     `${hostSequenceVectorFiles.length} host sequence vectors, ` +
     `${previewVectorFiles.length} preview identity vectors, ` +

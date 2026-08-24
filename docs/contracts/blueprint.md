@@ -34,6 +34,18 @@ Each binding specifies a target block port, a typed source, an optional chain of
 
 Field paths address model field IDs, not display labels or storage column names. Renaming a label does not change a binding. Removing or type-changing a field requires a model and Blueprint migration.
 
+The active binding surface MUST use the Blueprint's exact locked model ID, version and revision. A model
+coordinate mismatch offers no fields. For each declared block port, Studio MAY offer only visible fields
+whose cardinality and kind satisfy the portable compatibility rules in the
+[content model contract](content-and-entries.md). Candidate order and nested object paths are deterministic,
+and the field's declared authoring control is preserved rather than inferred.
+
+Projection is diagnostic, never reparative. An entry-field binding whose field or block port disappears, or
+whose field kind/cardinality becomes incompatible, remains in the Blueprint and receives its exact
+`studio.binding/*` diagnostic. Non-field sources remain non-field sources until an explicit `set-binding`
+command replaces them. Studio MUST NOT change a host model definition while resolving or editing a Blueprint
+binding.
+
 Static values MUST satisfy the target port schema. Query references MUST resolve through a host-owned registered query and MUST preserve authorization before counts, filters, pagination, aggregation, or projection.
 
 ## Responsive intent

@@ -48,6 +48,31 @@ Studio derives an entry editing surface from the intersection of:
 
 A field hidden by permission MUST NOT appear in the canvas, inspector, outline, diagnostics, clipboard, undo metadata, preview messages, telemetry, or counts. The host enforces the same rule when resolving preview or rendering data.
 
+Blueprint binding projection consumes one already-authorized `content-model` snapshot and the Blueprint's
+exact model lock. The model ID, semantic version and immutable revision MUST all match before any candidate
+is offered. A mismatch fails the candidate surface closed and reports the exact coordinate member; Studio
+does not search the catalog for a plausible replacement.
+
+Candidate order is deterministic: fields follow `authoring.order`, then their declaration order; nodes use
+Blueprint preorder with slot names compared by UTF-16 code unit. An authoring-hidden field is not a candidate.
+A single-cardinality object may expose its children through their complete field-ID path; collection/object
+children are not flattened into an invented coordinate. Port and field cardinality MUST agree. Field kind
+matches the port value type exactly except for the declared portable aliases: `text` accepts `string` and
+`enum`, while `number` accepts `integer` and `decimal`; a collection compares its `itemKind`.
+
+The field's declared `authoring.control` travels with the candidate exactly. A built-in client may render the
+matching control; a namespaced control requires the host's field-adapter contribution and MUST NOT be
+silently replaced by an inferred input. Controls are presentation hints, not entry-write authority.
+
+An existing binding is never rewritten during projection. A removed field reports
+`studio.binding/field-missing`; changed cardinality or kind reports
+`studio.binding/field-cardinality-incompatible` or `studio.binding/field-kind-incompatible`; a removed block
+port reports `studio.binding/port-missing`; and a required unbound port reports
+`studio.binding/required-port-unbound`. The binding remains serialized so an explicit migration can address
+it. The projection operation is read-only and detached: it cannot mutate the model, Blueprint, block
+definition, workflow, translation or field policy
+([ADR 0024](../decisions/0024-read-only-model-binding-projection.md)).
+
 ## Hybrid composition
 
 The `hybrid` composite coordinates Blueprint and Content mode operations for structured fields and authorized compositional regions. It is not an unrestricted fourth editing mode. Business records remain authoritative in their host domain. Studio sends typed field and composition commands through host ports; it does not store a business aggregate in the Blueprint or generic entry JSON unless the host's public entry contract intentionally represents that content model.

@@ -2,8 +2,12 @@ import {
   HostPortFailure,
   STUDIO_CONTRACT_VERSION,
   STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
+  commonSchema,
+  contentModelSchema,
   isHostPortFailure,
   type BlueprintDocument,
+  type ArtifactReference,
+  type ContentModelDocument,
   type HostAdapter,
   type HostPortError,
   type HostPortResult,
@@ -21,18 +25,37 @@ import { canonicalStringify } from './canonical.js';
 import { cloneContractValue } from './clone.js';
 import { negotiateCapabilities, type CapabilityNegotiationResult } from './negotiation.js';
 import { resolveSessionMode } from './modes.js';
+import { compileProfileSchema, type CompiledSchemaValidator } from './profile-validator.js';
 import { StudioSession } from './session.js';
 
 const ARTIFACT_PORT: QualifiedName = 'studio.port/artifact';
+const MODEL_PORT: QualifiedName = 'studio.port/model';
 const RECOVERY_PORT: QualifiedName = 'studio.port/recovery';
 const ARTIFACT_LOAD: QualifiedName = 'studio.operation/artifact.load';
 const ARTIFACT_SAVE: QualifiedName = 'studio.operation/artifact.save';
+const MODEL_GET: QualifiedName = 'studio.operation/model.get';
+const MODEL_LIST: QualifiedName = 'studio.operation/model.list';
 const RECOVERY_STORE: QualifiedName = 'studio.operation/recovery.store';
 const RECOVERY_LOAD: QualifiedName = 'studio.operation/recovery.load';
 const RECOVERY_DISCARD: QualifiedName = 'studio.operation/recovery.discard';
 
 const STABLE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
 const FORBIDDEN_IDENTIFIERS = new Set(['__proto__', 'prototype', 'constructor']);
+
+// Model reads cross the same untrusted adapter boundary as artifact reads. The
+// canonical schema is interpreted without eval before any model field reaches
+// binding projection or an authoring shell.
+const validateContentModelSchema: CompiledSchemaValidator = compileProfileSchema(
+  contentModelSchema,
+  { schemas: [commonSchema] },
+);
+const validateArtifactReferenceSchema: CompiledSchemaValidator = compileProfileSchema(
+  {
+    $ref: 'https://schemas.kumwe.org/studio/v1/common.schema.json#/$defs/artifactReference',
+    $schema: 'https://json-schema.org/draft/2020-12/schema',
+  },
+  { schemas: [commonSchema] },
+);
 
 export interface StudioHostSessionIdentifierFactories {
   /** Allocates a session-unique request identifier for one host attempt. */
@@ -56,12 +79,20 @@ export interface StudioHostSessionRecovery {
   store(envelope: JsonObject): Promise<HostPortResult<null>>;
 }
 
+/** Read-only access to the authorized model projection behind this session. */
+export interface StudioHostSessionModels {
+  get(reference: ArtifactReference): Promise<HostPortResult<ContentModelDocument>>;
+  list(): Promise<HostPortResult<ContentModelDocument[]>>;
+}
+
 export interface StudioHostSessionHandle {
   /** The complete open-time negotiation and profile diagnostics. */
   readonly diagnostics: readonly StudioDiagnostic[];
   readonly disposed: boolean;
   readonly invalidated: boolean;
   readonly negotiation: CapabilityNegotiationResult;
+  /** Present only when the model port advertises and implements both read operations. */
+  readonly models: StudioHostSessionModels | undefined;
   /** Present only when feature policy, advertised operations, and adapter agree. */
   readonly recovery: StudioHostSessionRecovery | undefined;
   /** The most recent host-accepted Blueprint revision. */
@@ -76,6 +107,7 @@ export type StudioHostSessionErrorCode =
   | 'configuration-blocked'
   | 'disposed'
   | 'invalid-identifier'
+  | 'invalid-model-reference'
   | 'read-only-session'
   | 'unexpected-artifact';
 
@@ -121,6 +153,7 @@ export async function openStudioSession(
 
   appendProfileDiagnostics(configuration, negotiation);
   const recoveryAvailable = appendOperationDiagnostics(adapter, configuration, negotiation);
+  const modelsAvailable = appendModelOperationDiagnostics(adapter, configuration, negotiation);
   if (negotiation.diagnostics.some((entry) => entry.severity === 'blocking')) {
     throw new StudioHostSessionError(
       'configuration-blocked',
@@ -177,6 +210,7 @@ export async function openStudioSession(
     identifiers,
     negotiation,
     recoveryAvailable,
+    modelsAvailable,
     session,
     document.revision,
   );
@@ -185,6 +219,7 @@ export async function openStudioSession(
 class BoundStudioHostSession implements StudioHostSessionHandle {
   public readonly diagnostics: readonly StudioDiagnostic[];
   public readonly negotiation: CapabilityNegotiationResult;
+  public readonly models: StudioHostSessionModels | undefined;
   public readonly recovery: StudioHostSessionRecovery | undefined;
   public readonly session: StudioSession;
 
@@ -204,6 +239,7 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
     identifiers: SessionIdentifierAllocator,
     negotiation: CapabilityNegotiationResult,
     recoveryAvailable: boolean,
+    modelsAvailable: boolean,
     session: StudioSession,
     revision: Revision,
   ) {
@@ -220,6 +256,13 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
           load: (): Promise<HostPortResult<JsonObject | null>> => this.#loadRecovery(),
           store: (envelope: JsonObject): Promise<HostPortResult<null>> =>
             this.#storeRecovery(envelope),
+        })
+      : undefined;
+    this.models = modelsAvailable
+      ? Object.freeze({
+          get: (reference: ArtifactReference): Promise<HostPortResult<ContentModelDocument>> =>
+            this.#getModel(reference),
+          list: (): Promise<HostPortResult<ContentModelDocument[]>> => this.#listModels(),
         })
       : undefined;
   }
@@ -325,6 +368,63 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
     return {
       ...(result.revision === undefined ? {} : { revision: result.revision }),
       value: result.value === null ? null : cloneContractValue(result.value),
+    };
+  }
+
+  async #getModel(reference: ArtifactReference): Promise<HostPortResult<ContentModelDocument>> {
+    this.#assertActive();
+    if (!isArtifactReference(reference)) {
+      throw new StudioHostSessionError(
+        'invalid-model-reference',
+        'A model read requires a canonical artifact identifier and semantic version.',
+      );
+    }
+    const modelPort = this.#adapter.model;
+    if (modelPort === undefined) {
+      throw adapterContractFailure(
+        'studio.host/adapter-port-unavailable',
+        'The negotiated model adapter is unavailable.',
+      );
+    }
+    const referenceSnapshot = cloneContractValue(reference);
+    const context = createContext(this.#configuration, this.#identifiers.requestId(MODEL_GET), {
+      operationId: MODEL_GET,
+    });
+    const result: unknown = await this.#invoke(() => modelPort.get(referenceSnapshot, context));
+    if (!isModelGetResult(result, referenceSnapshot)) {
+      throw adapterContractFailure(
+        'studio.host/unexpected-model-result',
+        'The model port returned a document outside the requested model coordinate.',
+      );
+    }
+    return {
+      ...(result.revision === undefined ? {} : { revision: result.revision }),
+      value: cloneContractValue(result.value),
+    };
+  }
+
+  async #listModels(): Promise<HostPortResult<ContentModelDocument[]>> {
+    this.#assertActive();
+    const modelPort = this.#adapter.model;
+    if (modelPort === undefined) {
+      throw adapterContractFailure(
+        'studio.host/adapter-port-unavailable',
+        'The negotiated model adapter is unavailable.',
+      );
+    }
+    const context = createContext(this.#configuration, this.#identifiers.requestId(MODEL_LIST), {
+      operationId: MODEL_LIST,
+    });
+    const result: unknown = await this.#invoke(() => modelPort.list(context));
+    if (!isModelListResult(result)) {
+      throw adapterContractFailure(
+        'studio.host/unexpected-model-result',
+        'The model port returned a malformed or duplicate model collection.',
+      );
+    }
+    return {
+      ...(result.revision === undefined ? {} : { revision: result.revision }),
+      value: cloneContractValue(result.value).sort(compareModelCoordinates),
     };
   }
 
@@ -569,6 +669,43 @@ function appendOperationDiagnostics(
   return available;
 }
 
+function appendModelOperationDiagnostics(
+  adapter: HostAdapter,
+  configuration: StudioConfiguration,
+  negotiation: CapabilityNegotiationResult,
+): boolean {
+  const model = configuration.hostCapabilities.ports.find((entry) => entry.id === MODEL_PORT);
+  if (model === undefined) {
+    return false;
+  }
+  let available = true;
+  for (const operationId of [MODEL_LIST, MODEL_GET]) {
+    if (!model.operations.includes(operationId)) {
+      available = false;
+      negotiation.diagnostics.push(
+        createDiagnostic(
+          'studio.host/missing-optional-operation',
+          `The model port omits ${operationId}; model binding is disabled.`,
+          'information',
+          { operationId },
+        ),
+      );
+    }
+  }
+  if (adapter.model === undefined) {
+    available = false;
+    negotiation.diagnostics.push(
+      createDiagnostic(
+        'studio.host/adapter-port-unavailable',
+        'The capability document advertises model reads but the adapter does not implement them.',
+        'information',
+        { port: MODEL_PORT },
+      ),
+    );
+  }
+  return available;
+}
+
 function appendProfileDiagnostics(
   configuration: StudioConfiguration,
   negotiation: CapabilityNegotiationResult,
@@ -602,6 +739,9 @@ function requestedOptionalPorts(
   ports.delete(ARTIFACT_PORT);
   if (configuration.features.offlineRecovery) {
     ports.add(RECOVERY_PORT);
+  }
+  if (configuration.hostCapabilities.ports.some((entry) => entry.id === MODEL_PORT)) {
+    ports.add(MODEL_PORT);
   }
   return [...ports];
 }
@@ -677,6 +817,72 @@ function isBlueprintLoadResult(
     'id' in document &&
     document.id === artifactId
   );
+}
+
+function isModelGetResult(
+  value: unknown,
+  reference: ArtifactReference,
+): value is HostPortResult<ContentModelDocument> {
+  if (!isHostResultRecord(value) || !isContentModelDocument(value.value)) {
+    return false;
+  }
+  const expectedRevision = lockedReferenceRevision(reference);
+  return (
+    value.value.id === reference.id &&
+    value.value.version === reference.version &&
+    (expectedRevision === undefined || value.value.revision === expectedRevision) &&
+    (value.revision === undefined || value.revision === value.value.revision)
+  );
+}
+
+function isModelListResult(value: unknown): value is HostPortResult<ContentModelDocument[]> {
+  if (!isHostResultRecord(value) || !Array.isArray(value.value)) {
+    return false;
+  }
+  const coordinates = new Set<string>();
+  for (const model of value.value) {
+    if (!isContentModelDocument(model)) {
+      return false;
+    }
+    const coordinate = `${model.id}\u0000${model.version}\u0000${model.revision}`;
+    if (coordinates.has(coordinate)) {
+      return false;
+    }
+    coordinates.add(coordinate);
+  }
+  return true;
+}
+
+function isHostResultRecord(value: unknown): value is { revision?: Revision; value: unknown } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value) || !('value' in value)) {
+    return false;
+  }
+  return !('revision' in value) || isRevision(value.revision);
+}
+
+function isContentModelDocument(value: unknown): value is ContentModelDocument {
+  return validateContentModelSchema.validate(value);
+}
+
+function isArtifactReference(value: unknown): value is ArtifactReference {
+  return validateArtifactReferenceSchema.validate(value);
+}
+
+function lockedReferenceRevision(reference: ArtifactReference): Revision | undefined {
+  const candidate = reference as ArtifactReference & { revision?: unknown };
+  return isRevision(candidate.revision) ? candidate.revision : undefined;
+}
+
+function compareModelCoordinates(left: ContentModelDocument, right: ContentModelDocument): number {
+  return (
+    compareCodeUnits(left.id, right.id) ||
+    compareCodeUnits(left.version, right.version) ||
+    compareCodeUnits(left.revision, right.revision)
+  );
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 function mutationFingerprint(

@@ -20,7 +20,7 @@ runtime. Its schema ships with `@kumwe/studio-protocol`.
 ## Host testbed
 
 `createTestbedHost(options)` builds a deterministic, fully in-memory `HostAdapter` reference host
-for conformance and failure testing. Every standard port except `model` is implemented against
+for conformance and failure testing. Every standard port is implemented against
 seeded fixtures (`documents`, `resources`, `mediaAssets`, `messages`, `permissions`, and an
 optional asynchronous preview `render` callback). Each operation first validates connectivity and the
 `HostRequestContext`, including exact operation-capability matching, wire protocol, and current session
@@ -73,6 +73,11 @@ TypeScript replay is `test/host-sequence-vectors.test.ts`; other runtimes consum
 schema directly. The exact assertion list and deliberately recorded limits live in
 `docs/contracts/conformance-profiles.md`.
 
+The host corpus includes `model.get` and `model.list` exchanges over seeded content models. The testbed
+resolves exact ID/version/revision coordinates and lists detached projections in deterministic coordinate
+order. The injected HTTP adapter maps the same operations to `POST /ports/model/get` and
+`POST /ports/model/list`.
+
 `@kumwe/studio-testkit/vectors/canonical/<filename>` publishes the canonical serialization corpus:
 each vector carries a bounded value and either the exact canonical string with the SRI-style digest of
 its UTF-8 bytes, or the stable reason the canonical form refuses it. Its expectations were produced by
@@ -98,6 +103,12 @@ TypeScript reference exposes the full ordered set of distinct failures: repeated
 duplicate an otherwise identical keyword, instance pointer, and message diagnostic.
 Competing-failure vectors also pin one admission order across root invariants, local-reference
 resolution, recursion, and structural keyword checks.
+
+`@kumwe/studio-testkit/vectors/binding-projection/<filename>` publishes
+`studio.profile/binding-projection-v1`. Each vector carries a complete Blueprint, authorized content model,
+block definitions and exact normalized candidate/control/status/diagnostic output.
+`runBindingProjectionVector(vector)` replays one vector without reading its expected result; another runtime
+consumes the same JSON directly. The runner and reference projection never mutate vector input.
 
 `@kumwe/studio-testkit/corpus-manifest.json` carries the sha256 digest of every file in the published
 corpus, grouped by the directory it ships in. A host that vendors the corpus verifies its copy against

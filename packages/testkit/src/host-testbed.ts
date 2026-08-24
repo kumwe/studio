@@ -4,6 +4,7 @@ import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
   STUDIO_WIRE_PROTOCOL_VERSION,
+  type ContentModelDocument,
   type HostAdapter,
   type HostErrorCategory,
   type HostPortError,
@@ -33,6 +34,7 @@ export type TestbedPortName =
   | 'artifact'
   | 'localization'
   | 'media'
+  | 'model'
   | 'permission'
   | 'preview'
   | 'recovery'
@@ -665,6 +667,41 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
         });
       },
     },
+    model: {
+      get(reference, context) {
+        return run('model', 'get', context, () => {
+          const stored = requireStored(reference.id);
+          if (
+            stored.document.kind !== 'content-model' ||
+            stored.document.version !== reference.version ||
+            ('revision' in reference && reference.revision !== stored.revision)
+          ) {
+            fail('not-found', 'The requested model projection is not available.');
+          }
+          return {
+            revision: stored.revision,
+            value: cloneValue(stored.document),
+          };
+        });
+      },
+      list(context) {
+        return run('model', 'list', context, () => {
+          const value = [...artifactStore.values()]
+            .filter(
+              (stored): stored is StoredArtifact & { document: ContentModelDocument } =>
+                stored.document.kind === 'content-model',
+            )
+            .map((stored) => cloneValue(stored.document))
+            .sort(
+              (left, right) =>
+                compareCodeUnits(left.id, right.id) ||
+                compareCodeUnits(left.version, right.version) ||
+                compareCodeUnits(left.revision, right.revision),
+            );
+          return { value };
+        });
+      },
+    },
     permission: {
       explain(operation, context) {
         return run('permission', 'explain', context, () => {
@@ -993,6 +1030,10 @@ function decodeCursor(cursor: string): number | undefined {
 
 function cloneValue<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
 }
 
 /**

@@ -13,6 +13,14 @@ const englishMessageCatalog = new URL(
 const studioCatalogDirectory = new URL('../packages/studio-lit/src/catalogs/', import.meta.url);
 const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
+const bindingProjectionVectorDirectory = new URL(
+  '../schemas/vectors/binding-projection/',
+  import.meta.url,
+);
+const bindingProjectionVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/binding-projection/',
+  import.meta.url,
+);
 const mediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
 const mediaVectorTargetDirectory = new URL('../packages/testkit/vectors/media/', import.meta.url);
 const canonicalVectorDirectory = new URL('../schemas/vectors/canonical/', import.meta.url);
@@ -55,6 +63,7 @@ await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
   recursive: true,
 });
 await mkdir(vectorTargetDirectory, { recursive: true });
+await mkdir(bindingProjectionVectorTargetDirectory, { recursive: true });
 await mkdir(mediaVectorTargetDirectory, { recursive: true });
 await mkdir(hostVectorTargetDirectory, { recursive: true });
 await mkdir(hostSequenceVectorTargetDirectory, { recursive: true });
@@ -86,6 +95,15 @@ await cp(englishMessageCatalog, new URL('en.json', studioCatalogDirectory));
 for (const entry of await readdir(vectorDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.json')) {
     await cp(new URL(entry.name, vectorDirectory), new URL(entry.name, vectorTargetDirectory));
+  }
+}
+
+for (const entry of await readdir(bindingProjectionVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, bindingProjectionVectorDirectory),
+      new URL(entry.name, bindingProjectionVectorTargetDirectory),
+    );
   }
 }
 
@@ -171,6 +189,15 @@ if (fixtures.length === 0) {
 const vectors = (await readdir(vectorTargetDirectory)).filter((name) => name.endsWith('.json'));
 if (vectors.length === 0) {
   throw new Error(`No command vectors were copied to ${join(vectorTargetDirectory.pathname)}.`);
+}
+
+const bindingProjectionVectors = (await readdir(bindingProjectionVectorTargetDirectory)).filter(
+  (name) => name.endsWith('.json'),
+);
+if (bindingProjectionVectors.length === 0) {
+  throw new Error(
+    `No binding projection vectors were copied to ${join(bindingProjectionVectorTargetDirectory.pathname)}.`,
+  );
 }
 
 const mediaVectors = (await readdir(mediaVectorTargetDirectory)).filter((name) =>
@@ -263,6 +290,11 @@ await writeFile(
 // between replaying the contract and replaying a stale fork of it.
 const corpusGroups = [
   { directory: fixtureDirectory, name: 'fixtures', path: 'fixtures' },
+  {
+    directory: bindingProjectionVectorTargetDirectory,
+    name: 'binding-projection-vectors',
+    path: 'vectors/binding-projection',
+  },
   { directory: vectorTargetDirectory, name: 'command-vectors', path: 'vectors/command' },
   { directory: mediaVectorTargetDirectory, name: 'media-vectors', path: 'vectors/media' },
   { directory: hostVectorTargetDirectory, name: 'host-vectors', path: 'vectors/host' },

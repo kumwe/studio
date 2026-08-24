@@ -40,6 +40,7 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 | [`plugin-manifest.schema.json`](plugin-manifest.schema.json)                     | Declarative plugin inventory and requirements            |
 | [`schema-profile.schema.json`](schema-profile.schema.json)                       | Admitted property-schema meta-schema                     |
 | [`schema-profile-vector.schema.json`](schema-profile-vector.schema.json)         | Portable property-schema conformance vectors             |
+| [`binding-projection-vector.schema.json`](binding-projection-vector.schema.json) | Portable model-to-block binding projection vectors       |
 | [`host-capabilities.schema.json`](host-capabilities.schema.json)                 | Host port and limit negotiation                          |
 | [`host-sequence-vector.schema.json`](host-sequence-vector.schema.json)           | Ordered stateful host conformance exchanges              |
 | [`command.schema.json`](command.schema.json)                                     | Persistent authoring command envelopes                   |

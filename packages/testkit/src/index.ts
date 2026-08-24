@@ -1,6 +1,7 @@
 import {
   BlockRegistry,
   compileStudioPropertySchema,
+  projectBlueprintFieldBindings,
   StudioSchemaProfileError,
   validateBlueprint,
   type StudioSchemaProfileErrorCode,
@@ -14,6 +15,10 @@ import {
   type BlueprintDocument,
   type BlueprintBlockLock,
   type BlueprintNode,
+  type ContentFieldKind,
+  type ContentModelDocument,
+  type DiagnosticLocation,
+  type FieldDefinition,
   type JsonSchema,
   type StudioConfiguration,
   type StudioDiagnostic,
@@ -64,6 +69,85 @@ export interface StudioConfigurationFixtureOptions {
 export interface SchemaProfileVectorInstance {
   value: unknown;
   valid: boolean;
+}
+
+/** Portable input consumed by `studio.profile/binding-projection-v1`. */
+export interface BindingProjectionVectorInput {
+  blockDefinitions: readonly BlockDefinition[];
+  blueprint: BlueprintDocument;
+  model: ContentModelDocument;
+}
+
+export interface BindingProjectionVectorCandidateResult {
+  cardinality: FieldDefinition['cardinality'];
+  control?: string;
+  fieldPath: string[];
+  itemKind?: Exclude<ContentFieldKind, 'collection'>;
+  kind: ContentFieldKind;
+}
+
+export interface BindingProjectionVectorPortResult {
+  bindingSourceKind?: string;
+  boundFieldPath?: string[];
+  candidates: BindingProjectionVectorCandidateResult[];
+  multiple?: boolean;
+  port: string;
+  required?: boolean;
+  status: 'invalid' | 'non-field-source' | 'resolved' | 'unbound';
+  valueType?: string;
+}
+
+export interface BindingProjectionVectorRunResult {
+  diagnostics: {
+    code: string;
+    location?: DiagnosticLocation;
+    severity: StudioDiagnostic['severity'];
+  }[];
+  model: BlueprintDocument['model'];
+  nodes: { nodeId: string; ports: BindingProjectionVectorPortResult[] }[];
+}
+
+/**
+ * Replays a binding vector without consulting its expected projection. The
+ * normalized result intentionally excludes localized labels and prose so a
+ * non-TypeScript host compares stable coordinates, controls, outcomes, and
+ * diagnostic locations rather than an English rendering.
+ */
+export function runBindingProjectionVector(
+  vector: BindingProjectionVectorInput,
+): BindingProjectionVectorRunResult {
+  const projection = projectBlueprintFieldBindings(
+    vector.blueprint,
+    vector.model,
+    vector.blockDefinitions,
+  );
+  return cloneValue({
+    diagnostics: projection.diagnostics.map((entry) => ({
+      code: entry.code,
+      ...(entry.location === undefined ? {} : { location: entry.location }),
+      severity: entry.severity,
+    })),
+    model: projection.model,
+    nodes: projection.nodes.map((node) => ({
+      nodeId: node.nodeId,
+      ports: node.ports.map((port) => ({
+        ...(port.binding === undefined ? {} : { bindingSourceKind: port.binding.source.kind }),
+        ...(port.boundFieldPath === undefined ? {} : { boundFieldPath: [...port.boundFieldPath] }),
+        candidates: port.candidates.map((candidate) => ({
+          cardinality: candidate.cardinality,
+          ...(candidate.control === undefined ? {} : { control: candidate.control }),
+          fieldPath: [...candidate.fieldPath],
+          ...(candidate.itemKind === undefined ? {} : { itemKind: candidate.itemKind }),
+          kind: candidate.kind,
+        })),
+        ...(port.multiple === undefined ? {} : { multiple: port.multiple }),
+        port: port.port,
+        ...(port.required === undefined ? {} : { required: port.required }),
+        status: port.status,
+        ...(port.valueType === undefined ? {} : { valueType: port.valueType }),
+      })),
+    })),
+  });
 }
 
 export interface SchemaProfileVectorInput {
