@@ -21,16 +21,24 @@ implementation that claimed a profile keeps claiming it for the version it passe
 
 ## Declared profiles
 
-| Profile                              | Claimed by                  | Executable assertion set                                     | State                |
-| ------------------------------------ | --------------------------- | ------------------------------------------------------------ | -------------------- |
-| `studio.profile/host-baseline`       | A host adapter              | `vectors/host/` replayed through the adapter                 | Declared, executable |
-| `studio.profile/host-baseline-v2`    | A host adapter              | `host-baseline` plus `vectors/host-sequence/`                | Declared, executable |
-| `studio.profile/engine-core`         | A protocol engine           | `vectors/command/` and `vectors/canonical/`                  | Declared, executable |
-| `studio.profile/media-policy`        | A host media pipeline       | `vectors/media/`                                             | Declared, executable |
-| `studio.profile/preview-identity-v1` | A preview client/host       | `vectors/preview/`                                           | Declared, executable |
-| `studio.profile/schema-property`     | A property-schema validator | `vectors/schema-profile/`                                    | Declared, executable |
-| `studio.profile/renderer-web`        | A trusted renderer          | `conformance/rich-text/` and the preview channel obligations | Target               |
-| `studio.profile/authoring-web`       | An authoring client         | The interaction requirement registry and accessibility lanes | Target               |
+| Profile                              | Claimed by                        | Executable assertion set                                      | State                |
+| ------------------------------------ | --------------------------------- | ------------------------------------------------------------- | -------------------- |
+| `studio.profile/host-baseline`       | A host adapter                    | `vectors/host/` replayed through the adapter                  | Declared, executable |
+| `studio.profile/host-baseline-v2`    | A host adapter                    | `host-baseline` plus `vectors/host-sequence/`                 | Declared, executable |
+| `studio.profile/engine-core`         | A protocol engine                 | `vectors/command/` and `vectors/canonical/`                   | Declared, executable |
+| `studio.profile/media-policy`        | A host media pipeline             | `vectors/media/`                                              | Declared, executable |
+| `studio.profile/preview-identity-v1` | A preview client/host             | `vectors/preview/`                                            | Declared, executable |
+| `studio.profile/schema-property`     | A property-schema validator       | `vectors/schema-profile/`                                     | Declared, executable |
+| `studio.profile/renderer-web`        | A trusted renderer                | `conformance/rich-text/` and the preview channel obligations  | Target               |
+| `studio.profile/authoring-web`       | An authoring client               | The interaction requirement registry and accessibility lanes  | Target               |
+| `studio.profile/engine-dart`         | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay | Version 3 target     |
+| `studio.profile/renderer-flutter`    | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions | Version 3 target     |
+| `studio.profile/authoring-flutter`   | A native Flutter authoring client | Version 3 interaction and accessibility assertions            | Version 3 target     |
+
+The Version 2 qualification target comprises the six declared executable profiles plus
+`renderer-web` and `authoring-web` when their assertion sets become executable. The three Dart/Flutter
+profiles are Version 3 targets and do not block Version 2. A target row is not a support or conformance
+claim; the current release record claims no profiles.
 
 A profile marked **Target** is named so that consumers can see the intended boundary. It is not
 claimable: its assertion set is not yet executable, and no implementation may advertise it.

@@ -46,7 +46,7 @@ for (const packageName of packageNames) {
 
   const { stdout } = await execFileAsync(
     'npm',
-    ['pack', '--dry-run', '--json', '--ignore-scripts'],
+    ['pack', '--dry-run', '--json', '--ignore-scripts', '--workspaces=false'],
     {
       cwd: fileURLToPath(packageDirectory),
       maxBuffer: 5 * 1_024 * 1_024,
@@ -59,13 +59,20 @@ for (const packageName of packageNames) {
       `${manifest.name ?? packageName} did not produce an inspectable pack manifest.`,
     );
   }
-  for (const required of [
+  const requiredFiles = [
     'LICENSE',
     'README.md',
     'dist/index.d.ts',
     'dist/index.js',
     'package.json',
-  ]) {
+  ];
+  if (manifest.name === '@kumwe/studio-protocol') {
+    requiredFiles.push('schemas/studio-release.schema.json', 'studio-release.json');
+  }
+  if (manifest.name === '@kumwe/studio-testkit') {
+    requiredFiles.push('studio-release.json');
+  }
+  for (const required of requiredFiles) {
     if (!packedFiles.includes(required)) {
       throw new Error(`${manifest.name ?? packageName} tarball is missing ${required}.`);
     }

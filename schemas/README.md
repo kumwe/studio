@@ -6,16 +6,21 @@ This directory is the canonical source for Studio's language-neutral artifact an
 
 Files copied into `packages/protocol`, generated language packages, documentation sites, release archives, or schema registries are generated artifacts. They MUST be byte-identical to, or reproducibly generated from, the files here. A package-local schema MUST NOT be edited independently.
 
-The current alpha synchronizer copies canonical schemas and fixtures, publishes a digest manifest,
-compares generated copies byte-for-byte, and runs strict schema/example validation. It does not yet
-generate complete TypeScript or Dart bindings. The Gate A release workflow must:
+The current alpha synchronizer copies canonical schemas and fixtures, compares them byte-for-byte,
+publishes a digest-verified schema manifest, regenerates the canonical Studio release record, and
+runs strict schema/example validation. It does not yet generate TypeScript or Dart bindings. The
+Version 2 Gate A release workflow must:
 
 1. validate every canonical schema against its declared meta-schema;
 2. validate all examples and conformance fixtures;
-3. generate TypeScript and Dart bindings where supported;
+3. generate TypeScript bindings and prove their canonical round-trip; Version 3 adds Dart bindings before a native profile claim;
 4. copy/package schemas through one deterministic command;
 5. compare packaged digests with canonical digests and fail on divergence;
 6. publish a manifest containing each `$id`, file digest, schema epoch URI, document contract revision, and generator version.
+
+The separate [`studio-release.schema.json`](studio-release.schema.json) closes the seven-package release
+family. The generated root record and its protocol/testkit copies bind exact package versions to the wire
+protocol and corpus-manifest digest; `claimedProfiles` remains empty until immutable evidence permits a claim.
 
 Any existing package-local schema with a different shape or `$id` is an incompatible duplicate and must be reviewed, migrated, and removed before Gate A. Runtime code must resolve schema IDs from its packaged canonical copies, not from the network.
 
@@ -26,6 +31,7 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 | [`common.schema.json`](common.schema.json)                                       | Shared identifiers, references, messages and diagnostics |
 | [`authoring-message-catalog.schema.json`](authoring-message-catalog.schema.json) | Versioned shell locale catalog and named parameters      |
 | [`studio-config.schema.json`](studio-config.schema.json)                         | Resolved serializable session configuration              |
+| [`studio-release.schema.json`](studio-release.schema.json)                       | Fixed seven-package Studio release coordinate            |
 | [`content-model.schema.json`](content-model.schema.json)                         | Portable content-model definition                        |
 | [`entry.schema.json`](entry.schema.json)                                         | Typed-model entry envelope and values                    |
 | [`blueprint.schema.json`](blueprint.schema.json)                                 | Composition tree, bindings and dependency locks          |

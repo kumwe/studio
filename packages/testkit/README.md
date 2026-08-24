@@ -105,6 +105,11 @@ this manifest, so a stale or altered fixture is detected before it silently chan
 claim means. The schema manifest in `@kumwe/studio-protocol` covers the schemas; this covers everything
 replayed against them.
 
+`@kumwe/studio-testkit/studio-release.json` is byte-identical to the workspace and protocol copies. A
+host can vendor this record with the corpus, verify `corpusManifestDigest`, and resolve the exact seven
+package versions named by one Studio release coordinate. An empty `claimedProfiles` array is deliberate:
+repository tests and declared targets are not evidence-backed release claims.
+
 Gate A requires valid and invalid fixture corpora plus runner-neutral assertions for block, theme,
 plugin, host-port, command, preview, media, compatibility, migration, lifecycle, security,
 accessibility, localization, and TypeScript/Dart equivalence. The host-port and narrow preview-identity

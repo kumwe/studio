@@ -14,6 +14,9 @@ Studio separates portable documents and behavior from presentation technology. T
 
 ## Flutter and native clients
 
+Flutter and native clients are Version 3 targets. They remain part of the portability architecture but
+are not Version 2 Gate A or Gate B dependencies.
+
 Flutter must not embed the TypeScript state engine as an undocumented dependency. A Flutter integration has two legitimate modes:
 
 - **Web authoring surface:** host the full Studio browser build in a hardened WebView with a typed native bridge. This delivers feature parity quickly while maintaining explicit protocol boundaries.
@@ -31,4 +34,4 @@ Likewise, Studio does not dictate that other hosts use revisions, workflows, or 
 
 ## Data evolution
 
-Schema artifacts are language-neutral. Generated TypeScript or Dart types, when introduced, are conveniences and never supersede schemas and semantic conformance fixtures. The current foundation alpha exposes a deliberately incomplete set of handwritten TypeScript draft projections; it does not claim schema-generated coverage. Gate A generated bindings must record the generator version, schema digest, schema epoch URI, and document contract revision from which they were produced.
+Schema artifacts are language-neutral. Generated TypeScript or Dart types, when introduced, are conveniences and never supersede schemas and semantic conformance fixtures. The current foundation alpha exposes a deliberately incomplete set of handwritten TypeScript draft projections; it does not claim schema-generated coverage. Version 2 Gate A TypeScript bindings must record the generator version, schema digest, schema epoch URI, and document contract revision from which they were produced. Version 3 applies the same rule to Dart bindings before a native profile is claimed.

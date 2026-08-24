@@ -19,15 +19,16 @@ the first stable release.
 | Schema epoch URI              | Major compatibility family and reference base for serialized document schemas                                                               |
 | Artifact contract version     | Schema/semantic revision for model, Blueprint, entry, theme, media, rich text or another artifact                                           |
 | Command/port/message version  | Behavioural version of a command family, host port or preview channel                                                                       |
-| Package semantic version      | npm or Dart API/distribution version                                                                                                        |
+| Package semantic version      | Fixed-family npm API/distribution version in Version 2; separately qualified Dart package version in Version 3                              |
 | Contribution semantic version | Block, pattern, theme profile, renderer or plugin implementation version                                                                    |
 | Contribution contract version | Stored schema/behaviour version used by documents and migrations                                                                            |
 | Conformance profile version   | Exact assertions required to claim a host/client/renderer profile, declared in [conformance profiles](../contracts/conformance-profiles.md) |
-| Release manifest version      | Tested set of package, schema, fixture and SDK digests                                                                                      |
+| Studio release coordinate     | One fixed npm-family version whose generated record names exact packages, wire protocol, corpus digest, and claimed profiles                |
 
-These values are explicit and must not be guessed from one another. All first-party packages declare their
-supported schema epochs, document contract revisions, and wire-protocol ranges, then publish a release manifest
-identifying the tested set.
+These values are explicit and must not be guessed from one another. All seven Version 2 packages share the
+Studio release coordinate while still declaring their supported schema epochs, document contract revisions,
+and wire-protocol ranges. The generated release record identifies the exact set. A future Dart package version
+does not follow from the npm coordinate unless a Version 3 record explicitly binds it.
 
 ## Semantic-version rules
 
@@ -53,7 +54,8 @@ An additive change is compatible only when all of these hold:
 3. New data is optional or isolated in a declared extension envelope.
 4. Old readers either preserve the data losslessly or capability negotiation prevents write mode.
 5. Canonicalization/checksum rules remain stable or carry a new explicit algorithm/version.
-6. Generated TypeScript and Dart types remain source-compatible within their documented semantic range.
+6. Generated TypeScript types remain source-compatible within their documented semantic range; generated Dart
+   types meet the same rule when a Version 3 native profile is affected.
 7. Valid, invalid, unknown-field and mixed-version fixtures prove the behaviour.
 
 Adding a required field, changing a default, broadening executable authority, reinterpreting an enum, changing
@@ -124,7 +126,8 @@ Every release candidate runs:
 - previous supported writer/current reader;
 - current writer/previous supported reader in read-only and writable negotiation;
 - each stored artifact and contribution version;
-- TypeScript/Dart canonical round-trip and command parity;
+- TypeScript canonical round-trip and command results for Version 2, plus TypeScript/Dart parity for any
+  Version 3 native profile;
 - host/preview/plugin/theme/media mixed-version negotiation;
 - migration, interrupted migration, restart, rollback and downgrade refusal; and
 - representative unknown optional and unknown required capabilities.
@@ -137,7 +140,8 @@ insufficient.
 1. Approve an ADR/proposal describing necessity and rejected compatible alternatives.
 2. Define the new schema epoch and/or wire major, supported bridge period, and exact old/new profiles.
 3. Publish schemas, fixtures, diagnostics, migration/adapter tooling and generated SDK candidates.
-4. Exercise real generic, Kumwe App, web and Flutter integrations.
+4. Exercise real generic, Kumwe App, and web integrations; add Flutter integrations when the breaking change
+   affects a Version 3 native profile.
 5. Complete the deprecation window unless a documented security emergency applies.
 6. Qualify upgrade, rollback and preserved-old-data paths.
 7. Publish the tested release set, support dates and recovery instructions.

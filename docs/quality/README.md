@@ -17,7 +17,7 @@ A change is complete only when:
 3. deterministic failure behaviour and stable diagnostics are specified;
 4. tests cover the lowest responsible package and every affected public boundary;
 5. security, privacy, accessibility, localization, portability and host-authority impacts are exercised;
-6. TypeScript and Dart impact is accounted for;
+6. TypeScript impact is accounted for, and Dart/Flutter impact is accounted for when a Version 3 native profile is affected;
 7. documentation covers users, host integrators and extension/theme authors as applicable;
 8. package/release metadata and changesets are correct; and
 9. reproducible evidence is attached before any programme or support claim changes.
@@ -27,19 +27,19 @@ capability.
 
 ## Quality attributes
 
-| Attribute            | Required guarantee                                                                                                                               | Representative evidence                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Integrity            | Commands, revisions, validation, migration and canonical bytes are deterministic; conflict never becomes silent data loss                        | Golden/property transitions, concurrency, corruption, migration and recovery                |
-| Security/privacy     | Bounded inert artifacts, least-authority ports, trusted contributions, isolated preview, hostile media/rich text handling and redacted telemetry | Threat matrix, negative corpus, CSP/message tests, dependency/supply-chain review           |
-| Accessibility        | Complete non-drag operation, semantic UI, error prevention, output assistance and equivalent web/Flutter operation                               | Automated checks plus keyboard, touch, screen-reader, zoom/reflow and authoring-task review |
-| Portability          | Schemas/commands/errors/capabilities have consistent TypeScript and Dart meaning                                                                 | Cross-runtime canonical fixtures, clean consumers and alternative host/renderer             |
-| Extensibility        | Namespaced owner-aware immutable registries survive lifecycle changes without data loss                                                          | Third-party block/theme/host, collision, disable/revoke/reactivate/upgrade fixtures         |
-| Replaceability       | No canonical DOM/vendor project state; hosts/renderers depend only on public contracts                                                           | Second host, non-Twig renderer and preview-rebuild proof                                    |
-| Resilience           | Timeouts, stale revisions, disconnects, crashes and invalid plugins degrade explicitly and recover safely                                        | Failure injection, restart, recovery-envelope and interrupted-upgrade drills                |
-| Internationalization | Locale-independent artifacts; localized/RTL/pseudolocale UI and diagnostics                                                                      | Catalogue checks, long-label/RTL/plural/date/number fixtures and locale switch              |
-| Performance          | Finite limits, responsive core/UI, cancellable/coalesced preview/media operations                                                                | Reproducible benchmarks and enforced regression budgets                                     |
-| Observability        | Correlated safe diagnostics and lifecycle events without hidden content or secrets                                                               | Trace schemas, redaction tests, failure/operator runbook proof                              |
-| Release integrity    | Reviewed sources and dependencies produce the published bits                                                                                     | Clean rebuild, SBOM, provenance, signature/checksum and registry reinstall                  |
+| Attribute            | Required guarantee                                                                                                                               | Representative evidence                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| Integrity            | Commands, revisions, validation, migration and canonical bytes are deterministic; conflict never becomes silent data loss                        | Golden/property transitions, concurrency, corruption, migration and recovery                         |
+| Security/privacy     | Bounded inert artifacts, least-authority ports, trusted contributions, isolated preview, hostile media/rich text handling and redacted telemetry | Threat matrix, negative corpus, CSP/message tests, dependency/supply-chain review                    |
+| Accessibility        | Complete non-drag operation, semantic UI, error prevention, output assistance, and profile-specific interaction parity                           | Automated checks plus keyboard, touch, screen-reader, zoom/reflow and authoring-task review          |
+| Portability          | Schemas/commands/errors/capabilities have consistent TypeScript meaning in Version 2 and TypeScript/Dart meaning for Version 3 native profiles   | Canonical fixtures, clean consumers and alternative host/renderer; cross-runtime replay in Version 3 |
+| Extensibility        | Namespaced owner-aware immutable registries survive lifecycle changes without data loss                                                          | Third-party block/theme/host, collision, disable/revoke/reactivate/upgrade fixtures                  |
+| Replaceability       | No canonical DOM/vendor project state; hosts/renderers depend only on public contracts                                                           | Second host, non-Twig renderer and preview-rebuild proof                                             |
+| Resilience           | Timeouts, stale revisions, disconnects, crashes and invalid plugins degrade explicitly and recover safely                                        | Failure injection, restart, recovery-envelope and interrupted-upgrade drills                         |
+| Internationalization | Locale-independent artifacts; localized/RTL/pseudolocale UI and diagnostics                                                                      | Catalogue checks, long-label/RTL/plural/date/number fixtures and locale switch                       |
+| Performance          | Finite limits, responsive core/UI, cancellable/coalesced preview/media operations                                                                | Reproducible benchmarks and enforced regression budgets                                              |
+| Observability        | Correlated safe diagnostics and lifecycle events without hidden content or secrets                                                               | Trace schemas, redaction tests, failure/operator runbook proof                                       |
+| Release integrity    | Reviewed sources and dependencies produce the published bits                                                                                     | Clean rebuild, SBOM, provenance, signature/checksum and registry reinstall                           |
 
 ## Test architecture
 
@@ -47,7 +47,7 @@ capability.
 
 - Meta-validate every schema and prohibit unresolved references.
 - Maintain valid, invalid, boundary, malicious, prior-version and migration fixtures.
-- Generate TypeScript and Dart models and verify a clean regeneration diff.
+- Generate TypeScript models and verify a clean regeneration diff; add the same Dart lane before a Version 3 native profile is claimed.
 - Validate examples and documentation snippets against the exact schema/version they describe.
 - Run public API/schema compatibility diff against every supported release.
 - Map each normative `MUST`/`MUST NOT` statement to an executable assertion or an identified manual procedure.
@@ -81,8 +81,9 @@ capability.
 - Component tests cover semantics, focus, keyboard, pointer/touch, localization and state changes.
 - End-to-end scenarios use real built packages and a reference host.
 - Every drag/resize/nest/reorder action has a tested outline/inspector/keyboard equivalent.
-- Browser and Flutter flows cover start, resume, save, conflict, preview failure, upload failure, permission
-  reduction, plugin disappearance, migration and recovery.
+- Browser flows cover start, resume, save, conflict, preview failure, upload failure, permission reduction,
+  plugin disappearance, migration and recovery. Version 3 adds equivalent Flutter flows for its claimed
+  profile.
 - Visual regression supplements semantic/interaction assertions; a matching screenshot never proves behaviour
   or accessibility by itself.
 - JavaScript-disabled qualification applies to host/public output and host recovery; the Studio web authoring
@@ -100,12 +101,13 @@ capability.
 
 ### Portability
 
-- TypeScript and Dart consume the same fixture bytes and emit identical canonical results/checksums.
-- Each language applies supported command and migration vectors to the same result or stable error.
+- TypeScript consumes the canonical fixture bytes and emits the required results/checksums for Version 2.
+- Version 3 adds Dart replay of the same applicable bytes, command vectors, migrations, results, and stable errors.
 - Unknown optional/required capabilities and extension data test lossless preservation/read-only negotiation.
-- npm and Dart packages install in clean projects without workspace paths or undeclared tools.
-- Generic/Kumwe App and server/native renderer profiles prove no route/class/Twig/Flutter implementation leaks
-  into portable artifacts.
+- The fixed npm release family installs in clean projects without workspace paths or undeclared tools;
+  Version 3 additionally proves clean Dart consumers.
+- Generic/Kumwe App and server-renderer profiles prove no route/class/Twig implementation leaks into
+  portable artifacts; Version 3 applies the equivalent check to native renderers and Flutter.
 
 ## Accessibility and authoring quality
 
@@ -131,18 +133,19 @@ claiming support.
 
 ## Supported environment matrix
 
-Exact versions are recorded in each release manifest. Gate B covers at least:
+Exact versions are recorded in each release record and its qualification evidence. Version 2 Gate B covers at least:
 
 - current and preceding stable Chromium, Firefox and WebKit/Safari desktop engines;
 - current stable Android Chrome and iOS Safari for supported web-authoring workflows;
-- supported Windows, macOS and Linux desktop environments for browser and Flutter desktop claims;
-- supported Android/iOS versions for Flutter mobile claims;
-- current supported stable Dart/Flutter line plus the preceding line when the SDK's language constraints permit;
+- supported Windows, macOS and Linux desktop environments for browser claims;
 - clean npm consumers on the repository-declared Node/npm versions;
 - generic reference host and Kumwe App profile; and
 - Kumwe App's supported PHP and MariaDB/MySQL/PostgreSQL matrix for its adapter.
 
 An environment is removed only through compatibility/release policy and published migration/support dates.
+Version 3 adds the supported Flutter desktop/mobile environments and the current stable Dart/Flutter line
+plus the preceding line where language constraints permit. Those rows become required only for a native
+profile claim.
 
 ## Performance and resource budgets
 
@@ -161,18 +164,19 @@ The reference performance floor is:
 - optional rich-text, media and plugin code is lazy-loaded and does not enter the base shell bundle by default.
 
 `M1-04` defines reference hardware and benchmark method; `M6-04` publishes measured package/startup/large-
-document/media/Flutter budgets and converts them into regression thresholds before Gate B. A threshold change
+document/media web budgets and converts them into regression thresholds before Version 2 Gate B. Version 3
+adds Flutter budgets before a native profile claim. A threshold change
 requires evidence and release-note classification, not a quiet test edit.
 
 ## Execution lanes
 
-| Lane              | Trigger                | Required scope                                                                                                                                                                               |
-| ----------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Local             | Before handoff         | Formatting, lint, type, schemas/contracts, affected unit/property tests, build                                                                                                               |
-| Pull request      | Every change           | Clean install, local lane, architecture/public-API checks, affected integration, package pack/install, secret scan                                                                           |
-| Main              | Every merge            | Pull-request lane plus reference-host, browser smoke and generated-source verification                                                                                                       |
-| Nightly           | Scheduled/current main | Full browsers, Dart/Flutter, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, benchmarks                     |
-| Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe App lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers |
+| Lane              | Trigger                | Required scope                                                                                                                                                                                                              |
+| ----------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Local             | Before handoff         | Formatting, lint, type, schemas/contracts, affected unit/property tests, build                                                                                                                                              |
+| Pull request      | Every change           | Clean install, local lane, architecture/public-API checks, affected integration, package pack/install, secret scan                                                                                                          |
+| Main              | Every merge            | Pull-request lane plus reference-host, browser smoke and generated-source verification                                                                                                                                      |
+| Nightly           | Scheduled/current main | Full Version 2 browsers, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, and benchmarks; Dart/Flutter joins when the Version 3 lane exists |
+| Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe App lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers                                |
 
 The pull-request lane's secret scan is implemented by `scripts/check-secrets.mjs`, which executes in
 the repository check lane through `npm run contracts:check`.
@@ -188,8 +192,8 @@ it is not repeatedly retried until green.
 - Quarantine has a named owner, defect, impact, expiry and profile effect. Mandatory security, accessibility,
   integrity, compatibility or core conformance tests cannot be quarantined for release.
 - Timeouts use observable conditions and bounded waits, not arbitrary sleeps.
-- Browser/Flutter failures retain trace, screenshot/video where useful, console/network logs and accessibility
-  tree/semantics evidence with secrets removed.
+- Browser failures retain trace, screenshot/video where useful, console/network logs, and accessibility
+  evidence with secrets removed. Version 3 Flutter failures retain the equivalent semantics evidence.
 - A false-positive test is repaired with a fixture/rationale; it is not deleted merely because implementation
   repeatedly fails it.
 
@@ -223,12 +227,15 @@ clean-room host/plugin/theme integration is the decisive documentation test befo
 
 ## Release qualification
 
-Gate A quality proves the declared integration boundary is complete, internally consistent, machine-checkable,
-portable to generated TypeScript/Dart models, threat-reviewed and executable as conformance fixtures.
+Version 2 Gate A quality proves the declared integration boundary is complete, internally consistent,
+machine-checkable, portable to generated TypeScript models, threat-reviewed, and executable as conformance
+fixtures.
 
-Gate B quality proves those contracts are implemented and supportable in published artifacts. It includes real
-generic/Kumwe App hosts, web/Flutter interfaces, extension/theme/media lifecycles, accessibility/security/performance
-matrices, migration/rollback/recovery, reproducible releases and clean-registry consumers.
+Version 2 Gate B quality proves those contracts are implemented and supportable in published artifacts. It
+includes real generic/Kumwe App hosts, web interfaces, extension/theme/media lifecycles,
+accessibility/security/performance matrices, migration/rollback/recovery, reproducible releases, and clean npm
+consumers. Version 3 adds TypeScript/Dart parity, Flutter interfaces, native matrices, and clean Dart consumers
+before a native profile claim.
 
 The exact evidence schema and reviewer rules are in [`../roadmap/evidence.md`](../roadmap/evidence.md); release
 construction is in [`../governance/releases.md`](../governance/releases.md).

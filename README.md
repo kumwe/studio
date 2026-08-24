@@ -6,6 +6,9 @@ Studio brings content models, visual layout, responsive behaviour, theme capabil
 
 > **Project status:** foundation programme with the contract corpus, headless runtime, and authoring shell under active implementation. Contracts are intentionally unstable until Gate A. No package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
 
+Version 2 qualifies the web integration only. Dart and native Flutter profiles remain Version 3 targets;
+their deferral neither removes them from the architecture nor turns them into Version 2 gate blockers.
+
 ## Why Studio exists
 
 Most page builders begin with HTML and CSS, then try to attach structured data later. Studio begins with typed data and produces a portable composition document that a host can validate, authorize, render, migrate, and expose through more than one client.
@@ -104,13 +107,13 @@ media, audit, or publication services. See its [scope and limitations](examples/
 
 **Gate A — Integration Contract Ready** permits host integration to begin. Every public artifact, command, provider, extension, preview, media, versioning, compatibility, security, accessibility, and SDK contract must be declared, machine-checkable, reviewed, and supported by conformance fixtures. Gate A does not claim that the complete product is implemented.
 
-**Gate B — Production Foundation Ready** permits the first stable release. The declared foundation must be implemented across packages, qualified against reference and Kumwe App hosts, portable through TypeScript and Dart contract suites, accessible, secure, recoverable, documented, and released from reproducible artifacts.
+**Gate B — Production Foundation Ready** permits the first stable Version 2 release. The declared web foundation must be implemented across packages, qualified against reference and Kumwe App hosts, portable through the TypeScript contract suite, accessible, secure, recoverable, documented, and released from reproducible artifacts. Dart/Flutter qualification applies when Version 3 claims those native profiles.
 
 See the [six-month programme](docs/roadmap/README.md) for ordered work and exact evidence requirements.
 
 ## Portability
 
-TypeScript and Lit provide the reference web implementation, not the storage format. Canonical JSON Schemas, fixtures, commands, errors, and capability negotiation are language-neutral. The target native Flutter profile will use generated Dart bindings and supply its own renderer/editor; embedding the Lit application is not the portability strategy.
+TypeScript and Lit provide the Version 2 web implementation, not the storage format. Canonical JSON Schemas, fixtures, commands, errors, and capability negotiation are language-neutral. The Version 3 native Flutter target will use generated Dart bindings and supply its own renderer/editor; embedding the Lit application is not proof of a native profile.
 
 See [portability](docs/portability/README.md) and the [Dart/Flutter plan](docs/portability/dart-flutter.md).
 
@@ -128,7 +131,11 @@ Accessibility is a product invariant for both the authoring interface and the ou
 
 ## Releases
 
-Packages are independently publishable under the `@kumwe` npm scope but advance through one compatibility programme. Protocol compatibility, changesets, provenance, SBOMs, signed artifacts, deprecation windows, and generated SDK verification are required before stable release.
+The seven `@kumwe` packages form one fixed release family. [`studio-release.json`](studio-release.json)
+records the exact package versions, wire protocol, corpus digest, and evidence-backed profile claims and
+ships byte-identically in protocol and testkit. The publish lane refuses a staggered family. Protocol
+compatibility, changesets, provenance, SBOMs, signed artifacts, deprecation windows, and generated SDK
+verification remain required before stable release.
 
 ## Contributing and security
 

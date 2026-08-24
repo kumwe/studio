@@ -1,7 +1,8 @@
 # Release policy
 
-Studio releases a coordinated, verified set of npm packages, language-neutral schemas/fixtures, Dart packages,
-examples, documentation and a release manifest. Publishing one package does not imply Gate A/B or production
+Studio Version 2 releases a coordinated, verified family of seven npm packages with language-neutral
+schemas/fixtures, examples, documentation, and a canonical release record. Version 3 may add a separately
+qualified Dart/Flutter set. Publishing one package does not imply Gate A/B, a profile claim, or production
 readiness for the whole product.
 
 ## Channels
@@ -30,38 +31,52 @@ Promotion from `alpha` to `beta` additionally requires a declared, executable co
 candidate is feature-complete against, claimed with reproduced evidence. The profiles and their assertion
 sets are in [conformance profiles](../contracts/conformance-profiles.md).
 
-## Release unit and manifest
+## Release unit and record
 
-Packages use independent semantic versions while advancing through one compatibility train. The immutable
-release manifest records:
+The seven npm packages are one Changesets fixed group and advance to the same semantic version. The
+repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
+into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
+records the release version, exact package versions, wire protocol version, corpus-manifest digest, and only
+profiles backed by acceptable evidence. The current pre-version alpha baseline claims no profiles.
+
+The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
+fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The version
+command runs Changesets first, regenerates the record, and requires every package version to equal its release
+coordinate. Publication runs the same strict check and a post-publication registry lookup of all seven exact
+versions. Therefore a partial or staggered set cannot be treated as a Studio release.
+
+Qualification evidence associated with the release record additionally records:
 
 - schema epoch, document contract revisions, wire-protocol versions, and every artifact/command/port/profile version;
-- npm and Dart package name/version/integrity;
+- npm package name/version/integrity, and Dart package coordinates only for a Version 3 native claim;
 - schema, generated-source, fixture and documentation digests;
-- supported Node/build, browser, Dart/Flutter, host and renderer matrices;
+- supported Node/build, browser, host and renderer matrices, plus Dart/Flutter matrices only for a Version 3 native claim;
 - extension/theme/media/rich-text compatibility ranges;
 - source commit, toolchain, lockfiles and build environment;
 - SBOM, provenance, signature and archive checksums;
 - Gate/evidence decision identifier; and
 - known limitations, deprecations and support end dates.
 
-Consumers pin the tested set directly or through a release-set convenience manifest. Broad ranges that can
-resolve an untested combination are not used in deployable first-party builds.
+Consumers pin the single Studio release coordinate and verify the bundled record before resolving its exact
+package versions. Broad ranges that can resolve an untested combination are not used in deployable first-party
+builds.
 
 ## Candidate creation
 
 1. Freeze the proposed commit and verify a clean checkout.
 2. Resolve all changesets and validate semantic/compatibility classification.
 3. Install from the lockfile with the declared Node/npm toolchain.
-4. Run format, lint, type, schema, unit, property/fuzz, integration, browser, Flutter, accessibility, security,
-   compatibility, migration, performance and packaging lanes required by the support matrix.
-5. Generate TypeScript and Dart sources from canonical schemas and prove a clean regeneration diff.
+4. Run format, lint, type, schema, unit, property/fuzz, integration, browser, accessibility, security,
+   compatibility, migration, performance, and packaging lanes required by the exact profile matrix. Add
+   Flutter lanes only for a Version 3 native claim.
+5. Generate TypeScript sources from canonical schemas and prove a clean regeneration diff; generate and compare
+   Dart sources when a Version 3 native profile is in the candidate.
 6. Build packages/examples/docs twice in isolated environments and compare expected deterministic outputs.
 7. Generate SBOM and provenance; scan source, history, dependencies, artifacts and fixtures for secrets and
    vulnerabilities.
-8. Pack npm/Dart artifacts and install them into clean generic, Kumwe App, TypeScript and Dart consumers without
-   workspace links.
-9. Create the release manifest and content-addressed evidence bundle.
+8. Pack the fixed npm family and install it into clean generic, Kumwe App, and TypeScript consumers without
+   workspace links. Add Dart clean consumers for a Version 3 native claim.
+9. Regenerate and verify the canonical release record, then create the content-addressed evidence bundle.
 10. Sign/attest the candidate and enter evidence review. The candidate bits do not change during review.
 
 If a fix is required, create a new commit, versioned candidate, manifest and affected evidence. A mutable
@@ -74,7 +89,7 @@ Stable publication requires:
 - Gate B `pass` for the exact candidate;
 - approved changelog/release notes and migration/recovery guide;
 - registry ownership, protected publishing environment and least-privilege trusted publication;
-- npm provenance and equivalent Dart/source attestations;
+- npm provenance, plus equivalent Dart/source attestations for a Version 3 native release;
 - package/archive checksum verification after registry download;
 - documentation and examples deployed from the same release set; and
 - a post-publication clean-consumer smoke test before announcement.

@@ -23,10 +23,10 @@ style or code.
 there. **Dart and Flutter parity is Version 3 scope**, needed when the App runs in a client and pages
 must be composed there.
 
-This has a consequence neither roadmap currently reflects: Studio's Gate A criterion 9 and Gate B
-criteria 2, 3, 4 and 9 require Dart today, so as written they block a Version 2 the product deliberately
-scopes without it. Studio's `ST-0` amends that before other work starts. Until it does, every Studio
-step below is nominally blocked behind a criterion the product has decided to defer.
+Studio's earlier Gate A criterion 9 and Gate B criteria 2, 3, 4 and 9 required Dart and therefore
+blocked a Version 2 deliberately scoped without it. Studio's `ST-0` amends those criteria and records
+the deferred native profiles as Version 3 targets. The amendment does not itself accept a gate or
+claim a profile.
 
 ---
 

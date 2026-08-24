@@ -22,6 +22,7 @@ These records capture foundational decisions whose reversal would materially aff
 | [0016](0016-portable-property-schema-profile.md)   | Portable property-schema profile and stable diagnostics        | Proposed |
 | [0017](0017-host-sequence-conformance.md)          | Stateful host obligations use deterministic sequence vectors   | Proposed |
 | [0018](0018-preview-draft-identity-and-markers.md) | Canonical preview digest and deterministic marker preorder     | Proposed |
+| [0019](0019-version-two-web-profile-scope.md)      | Version 2 qualifies the web profile set                        | Proposed |
 | [0020](0020-blueprint-host-session-composition.md) | One headless handle composes resolved Blueprint host sessions  | Proposed |
 | [0021](0021-kind-scoped-composition-registries.md) | Kind-scoped registries for all composition payloads            | Proposed |
 

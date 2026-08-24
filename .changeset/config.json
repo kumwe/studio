@@ -5,7 +5,17 @@
   "bumpVersionsWithWorkspaceProtocolOnly": false,
   "changelog": "@changesets/changelog-github",
   "commit": false,
-  "fixed": [],
+  "fixed": [
+    [
+      "@kumwe/studio-core",
+      "@kumwe/studio-media",
+      "@kumwe/studio-preview",
+      "@kumwe/studio-protocol",
+      "@kumwe/studio-rich-text",
+      "@kumwe/studio",
+      "@kumwe/studio-testkit"
+    ]
+  ],
   "ignore": [],
   "linked": [],
   "privatePackages": {

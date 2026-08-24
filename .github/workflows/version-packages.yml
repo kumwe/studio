@@ -10,6 +10,10 @@ permissions:
   id-token: write
   pull-requests: write
 
+concurrency:
+  group: version-packages-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   version:
     name: Maintain the Changesets release pull request and publish alphas
@@ -57,10 +61,15 @@ jobs:
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           pr-title: 'chore: version Studio packages'
-          publish-script: npx changeset publish
+          publish-script: npm run release:publish
+          version-script: npm run version-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify the complete published release set
+        if: steps.release.outputs.published == 'true'
+        run: npm run release:verify-published
 
       # Runs on every push rather than only after a publish, so drift left by
       # an earlier run is repaired on the next run instead of outliving it.
