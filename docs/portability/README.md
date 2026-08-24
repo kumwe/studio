@@ -2,12 +2,12 @@
 
 Studio is portable at four separate layers. A claim at one layer does not imply the others.
 
-| Layer        | Portable unit                                                                | Proof                                                                           |
-| ------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Artifact     | Models, Blueprints, entries, themes, rich text, media references             | Published language-neutral schemas plus valid/invalid/migration corpus          |
-| Protocol     | Commands, host requests, preview messages, errors and capability negotiation | Canonical serialization and transport-neutral request/result fixtures           |
-| Behaviour    | Validation, commands, history boundaries, migration and diagnostics          | Identical applicable state-transition vectors in TypeScript and Dart            |
-| Presentation | Web Components, Flutter widgets, host renderers                              | Profile-specific UI/rendering conformance; never inferred from protocol support |
+| Layer        | Portable unit                                                                | Proof                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Artifact     | Models, Blueprints, entries, themes, rich text, media references             | Published language-neutral schemas plus valid/invalid/migration corpus                                     |
+| Protocol     | Commands, host requests, preview messages, errors and capability negotiation | Canonical serialization and transport-neutral request/result fixtures                                      |
+| Behaviour    | Validation, commands, history boundaries, migration and diagnostics          | Applicable state-transition vectors in TypeScript for Version 2; Dart parity for Version 3 native profiles |
+| Presentation | Web Components, future Flutter widgets, host renderers                       | Profile-specific UI/rendering conformance; never inferred from protocol support                            |
 
 The TypeScript implementation is the reference implementation, not a second specification. Normative schemas,
 semantics and canonical fixtures outrank generated types and runtime-specific convenience APIs.
@@ -62,13 +62,16 @@ preserve losslessly.
 
 ## SDK policy
 
-First-party bindings are released as a tested set:
+The Version 2 tested set contains:
 
 - TypeScript packages through npm;
-- a generated Dart protocol package through pub.dev;
-- a Dart headless command/host SDK;
-- a Flutter authoring package and reference application; and
 - conformance fixtures consumable without JavaScript tooling at runtime.
+
+Version 3 adds, as a separately qualified target set:
+
+- a generated Dart protocol package through pub.dev;
+- a Dart headless command/host SDK; and
+- a Flutter authoring package and reference application.
 
 Each binding may use idiomatic APIs, but the wire model, state transitions, diagnostics and compatibility
 outcomes remain equivalent. Language-only helpers are non-normative unless promoted through the contract
@@ -85,16 +88,21 @@ decode JSON” is artifact portability, not proof of command or authoring parity
 
 ## Portability qualification
 
-Gate A requires schemas, canonical rules, generated TypeScript/Dart models and shared fixture round-trip.
-Gate B additionally requires:
+Version 2 Gate A requires schemas, canonical rules, generated TypeScript models, and canonical fixture
+round-trip. Version 2 Gate B additionally requires:
 
-1. TypeScript and Dart apply all commands in their supported profile to identical canonical results.
+1. TypeScript applies all commands in its supported profiles to the canonical results.
 2. Migration and error outcomes match on valid, invalid, old-version and malicious fixtures.
-3. npm and pub.dev packages install into clean, unrelated consumers.
-4. Web and native Flutter authoring shells preserve unknown data and negotiate capabilities correctly.
+3. The fixed npm release family installs into clean, unrelated consumers.
+4. The web authoring shell preserves unknown data and negotiates capabilities correctly.
 5. A host unrelated to Kumwe App integrates from public packages and documentation alone.
 6. A non-Twig renderer proves artifact/renderer independence for its declared block/theme profile.
-7. Package/version manifests identify the exact tested cross-runtime set.
+7. The release record identifies the exact tested package set and evidence-backed profile claims.
+
+Version 3 qualification additionally requires TypeScript/Dart parity for the applicable command,
+migration, serialization, and error corpus; clean pub.dev consumers; native Flutter preservation and
+capability negotiation; and the native accessibility/device matrices. Those requirements remain
+mandatory for a native claim and do not block Version 2.
 
 See [`dart-flutter.md`](dart-flutter.md) for the native plan and
 [`../governance/compatibility.md`](../governance/compatibility.md) for evolution rules.

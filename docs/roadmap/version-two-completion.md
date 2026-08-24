@@ -21,9 +21,9 @@ restated twice. Steps are ordered: a later step assumes every earlier one landed
 as a web authoring surface. Dart and Flutter parity is _not_ Version 2 scope: it becomes critical when
 the App runs in a client and pages must be built there, which is Version 3 of the core.
 
-This contradicts Studio's own Gate A criterion 9 and Gate B criteria 2, 3, 4 and 9, all of which
-currently require Dart. **`ST-0` resolves that contradiction before any other work starts**, because
-otherwise every step below is blocked behind a criterion the product deliberately defers.
+The earlier programme contradicted this scope through Gate A criterion 9 and Gate B criteria 2, 3, 4
+and 9, which required Dart. **`ST-0` resolves that contradiction before any other work starts**, so
+later packages are judged against the product profile they actually ship.
 
 ---
 
@@ -46,6 +46,9 @@ order:
 
 ### `ST-0` — Amend the programme for the Version 2 scope decision
 
+**Repository state:** implemented as a proposed programme decision. This does not accept either gate
+or create a profile claim; those remain evidence-review actions.
+
 **Do this first.** Split the Dart obligation out of the Version 2 path so it stops blocking a gate the
 product needs now.
 
@@ -66,6 +69,11 @@ product needs now.
 and the deferral is recorded as a decision rather than an omission.
 
 ### `ST-1` — Publish one coherent, pinnable release set
+
+**Repository state:** the fixed-family configuration, generated record, drift checks, and guarded
+version/publish workflow are implemented. The checked-in record describes the current staggered alpha
+baseline; it is not a publication claim. The first version workflow run must advance all seven packages
+to one coordinate before the publication guard permits a release.
 
 Today the packages carry staggered versions, so a host cannot say "we integrate Studio _x_". Give the
 seven packages a single release coordinate.

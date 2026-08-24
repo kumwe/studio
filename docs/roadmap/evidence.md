@@ -10,8 +10,8 @@ machine-readable manifest records:
 
 - bundle identifier and evidence-schema version;
 - source repository, commit, clean/dirty state, and dependency lockfile checksums;
-- package, protocol, conformance-profile, host-adapter, browser, operating-system, Node, Dart, and Flutter
-  versions applicable to the run;
+- package, protocol, conformance-profile, host-adapter, browser, operating-system, and Node versions applicable
+  to the run, plus Dart and Flutter versions when a Version 3 native profile is under review;
 - command, test identifier, start/end time, exit status, retry count, and runner identity;
 - input fixture checksums and generated artifact checksums;
 - reports, screenshots, videos, traces, logs, coverage, SBOM, provenance, signatures, and performance data;
@@ -25,20 +25,20 @@ silently replace prior evidence.
 
 ## Evidence classes
 
-| Class             | What it proves                                                      | Minimum form                                                                            |
-| ----------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `contract`        | Schemas, types, fixtures, and documented semantics agree            | Meta-validation, generated-model compile, positive/negative vectors, compatibility diff |
-| `unit`            | An isolated invariant holds                                         | Deterministic test result linked to source and fixture                                  |
-| `property-fuzz`   | Bounds and invariants survive generated/malicious input             | Seed, corpus, shrink result, sanitizer/failure evidence                                 |
-| `integration`     | Public ports and real adapters work together                        | Real host adapter, real transport/storage boundary, failure and cleanup proof           |
-| `lifecycle`       | Install/activate/disable/upgrade/rollback/recover preserve rules    | Before/after data, registry generation, diagnostics, checksum, audit trail              |
-| `end-to-end`      | A representative user completes a workflow                          | Browser/Flutter trace, accessible name/focus evidence, network/console report           |
-| `accessibility`   | Automated and human interaction criteria pass                       | Tool report plus keyboard, screen-reader, reflow, contrast, motion, error review        |
-| `security`        | Trust boundaries reject attacks and disclose no secrets             | Threat mapping, negative corpus, static/dynamic/dependency results, reviewer record     |
-| `performance`     | Published budgets hold on named hardware/profile                    | Raw samples, percentile method, warm/cold distinction, budget comparison                |
-| `portability`     | Runtimes interpret the same protocol consistently                   | Shared vectors from TypeScript and Dart, canonical byte comparison, feature negotiation |
-| `release`         | Shipped bits derive from reviewed source                            | Reproducible build result, SBOM, provenance, signatures, registry install proof         |
-| `manual-decision` | A human judgement has been applied where automation is insufficient | Criterion, procedure, observations, reviewer, captured artifact, explicit outcome       |
+| Class             | What it proves                                                      | Minimum form                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `contract`        | Schemas, types, fixtures, and documented semantics agree            | Meta-validation, generated-model compile, positive/negative vectors, compatibility diff                                                         |
+| `unit`            | An isolated invariant holds                                         | Deterministic test result linked to source and fixture                                                                                          |
+| `property-fuzz`   | Bounds and invariants survive generated/malicious input             | Seed, corpus, shrink result, sanitizer/failure evidence                                                                                         |
+| `integration`     | Public ports and real adapters work together                        | Real host adapter, real transport/storage boundary, failure and cleanup proof                                                                   |
+| `lifecycle`       | Install/activate/disable/upgrade/rollback/recover preserve rules    | Before/after data, registry generation, diagnostics, checksum, audit trail                                                                      |
+| `end-to-end`      | A representative user completes a workflow                          | Browser trace for Version 2; Flutter trace for a Version 3 native claim; accessible name/focus evidence and network/console report              |
+| `accessibility`   | Automated and human interaction criteria pass                       | Tool report plus keyboard, screen-reader, reflow, contrast, motion, error review                                                                |
+| `security`        | Trust boundaries reject attacks and disclose no secrets             | Threat mapping, negative corpus, static/dynamic/dependency results, reviewer record                                                             |
+| `performance`     | Published budgets hold on named hardware/profile                    | Raw samples, percentile method, warm/cold distinction, budget comparison                                                                        |
+| `portability`     | A claimed runtime interprets the protocol consistently              | TypeScript canonical replay for Version 2; shared TypeScript/Dart vectors and byte comparison for a Version 3 native claim; feature negotiation |
+| `release`         | Shipped bits derive from reviewed source                            | Reproducible build result, SBOM, provenance, signatures, registry install proof                                                                 |
+| `manual-decision` | A human judgement has been applied where automation is insufficient | Criterion, procedure, observations, reviewer, captured artifact, explicit outcome                                                               |
 
 ## Host profile replay evidence
 

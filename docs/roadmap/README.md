@@ -9,9 +9,10 @@ Studio is a schema-aware composition system, not a browser for writing arbitrary
 host templates. It gives authors a visual canvas while preserving typed content, reusable blueprints,
 host-owned policy, theme-owned design choices, deterministic rendering, and a portable, versioned protocol.
 
-The programme is deliberately larger than an MVP. Gate B represents a useful, supportable first product:
-headless core, Lit authoring shell, generic host adapters, extension and theme integration, media and rich
-text, TypeScript and Dart portability, conformance tooling, and a qualified Kumwe App integration profile.
+The programme is deliberately larger than an MVP. Version 2 Gate B represents a useful, supportable web
+product: headless core, Lit authoring shell, generic host adapters, extension and theme integration, media
+and rich text, TypeScript portability, conformance tooling, and a qualified Kumwe App integration profile.
+Native Dart and Flutter delivery remains a Version 3 programme target and does not block Version 2.
 
 ## Programme invariants
 
@@ -35,8 +36,9 @@ Every work package and gate preserves these rules:
    provider removes its executable contribution without destroying stored documents.
 9. Gate claims require reproducible evidence. Documentation, interfaces, mocks, or a green unit-test lane
    cannot substitute for an integrated runtime proof.
-10. No package or integration is called portable until the TypeScript reference and Dart SDK pass the same
-    canonical fixtures for their supported profile.
+10. No package or integration is called portable beyond the profile it proves. Version 2 requires the
+    TypeScript reference to pass its canonical fixtures; Version 3 Dart/Flutter profiles will additionally
+    require the Dart SDK to pass the same applicable fixtures.
 
 ## Gate meanings
 
@@ -51,7 +53,8 @@ After Gate A:
 - a host may begin durable integration against the frozen release-candidate contract;
 - incompatible changes require the published deprecation and migration process;
 - Kumwe App may add integration seams, database migrations, API endpoints, and contribution declarations;
-- generated TypeScript and Dart models may be consumed by downstream repositories; and
+- generated TypeScript models may be consumed by downstream repositories; generated Dart models join that
+  boundary only when a Version 3 profile is ratified; and
 - integration work must use the conformance kit rather than copy Studio internals.
 
 Before Gate A, host integrations are disposable discovery spikes and must not be merged as production
@@ -63,6 +66,22 @@ Gate B confirms that the Gate A contract is implemented and production-qualified
 build reproducibly, pass their conformance matrices, carry migration evidence, and can be installed,
 upgraded, exercised, and rolled back. Gate B is the point at which the Studio release and a host integration
 may be shipped; it is not merely a feature-complete declaration.
+
+## Version 2 and Version 3 profile scope
+
+The Version 2 web qualification target is exactly
+`studio.profile/engine-core`, `studio.profile/host-baseline`,
+`studio.profile/host-baseline-v2`, `studio.profile/media-policy`,
+`studio.profile/preview-identity-v1`, and `studio.profile/schema-property`, plus
+`studio.profile/renderer-web` and `studio.profile/authoring-web` when their executable assertion sets
+are delivered. A target is not a conformance claim: a release may name one of these profiles in
+`claimedProfiles` only after the evidence model permits that exact claim. The current release record
+claims none.
+
+Version 3 adds the target profiles `studio.profile/engine-dart`,
+`studio.profile/renderer-flutter`, and `studio.profile/authoring-flutter`. Their Dart generation,
+cross-runtime parity, native rendering, Flutter interaction, accessibility, packaging, and environment
+matrices remain mandatory before those profiles can be claimed, but they do not block Version 2 gates.
 
 ## Dependency-ordered delivery map
 
@@ -102,31 +121,31 @@ listed dependency is accepted.
 | `M2-03 Extension and theme contract`     | `M2-01`, `M1-03` | Owner-aware block, field control, inspector, pattern, renderer, enhancement, design-token, recipe, and migration contributions have namespace, version, capability, lifecycle, ordering, collision, trust, and disabled-owner rules.                                                                              |
 | `M2-04 Host and preview contract`        | `M2-01`, `M2-02` | Initialization, capability negotiation, identity, permissions, load/save/publish, optimistic concurrency, preview, render markers, localization, telemetry, network failure, recovery, and teardown are specified without transport assumptions.                                                                  |
 | `M2-05 Media and rich-text contract`     | `M2-01`, `M2-04` | Asset references, upload sessions, progress, cancellation, selection, renditions, focal point, alternative text, decorative state, processing/failure states, and bounded rich-text JSON are specified. Storage and processing remain host responsibilities.                                                      |
-| `M2-06 Portability contract`             | `M2-01`–`M2-05`  | Canonical JSON, numeric/date rules, IDs, ordering, unknown-field handling, feature negotiation, generated-model policy, and TypeScript/Dart profile mappings are fixed. TypeScript and Dart compile and round-trip the same fixture corpus.                                                                       |
+| `M2-06 Portability contract`             | `M2-01`–`M2-05`  | Canonical JSON, numeric/date rules, IDs, ordering, unknown-field handling, feature negotiation, generated-model policy, and the Version 2 TypeScript profile mapping are fixed. TypeScript models compile and round-trip the canonical fixture corpus. Dart mapping and cross-runtime parity belong to Version 3. |
 | `M2-07 Security and privacy contract`    | `M2-03`–`M2-05`  | Threat model and negative fixtures cover stored and reflected injection, unsafe renderers, cross-origin preview, confused-deputy host calls, data leakage, denial-of-service bounds, untrusted packages, media attacks, secrets, and telemetry minimization.                                                      |
 | `M2-08 Gate A review`                    | `M2-01`–`M2-07`  | Every Gate A criterion below has current evidence, two independent reviews, no unresolved critical/high security issue, and a published contract release candidate. Generic-host and Kumwe App integration playbooks validate against the same contract.                                                          |
 
 ### Month 3 — headless implementation and host harnesses
 
-| Package                             | Depends on      | Deliverable and acceptance criteria                                                                                                                                                                                                                                                        |
-| ----------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `M3-01 Deterministic core`          | Gate A          | DOM-free registry, document store, command dispatcher, transactions, selection, history, validation, migrations, canonical serialization, and diagnostics pass unit, property, fuzz, and cross-runtime fixtures.                                                                           |
-| `M3-02 Contribution runtime`        | Gate A, `M3-01` | Contributions activate into an immutable registry generation; duplicates and incompatible owners fail closed; disable/reactivate preserves documents; unresolved nodes remain inspectable; stale generations cannot execute.                                                               |
-| `M3-03 Generic host testbed`        | Gate A, `M3-01` | A framework-neutral reference host supplies identity, policy, persistence, media, preview, localization, and telemetry ports. Disconnect, conflict, permission change, expired session, and partial capability cases are exercised.                                                        |
-| `M3-04 Preview bridge`              | Gate A, `M3-01` | Authenticated preview handshake, origin pinning, protocol-version negotiation, canonical draft identity and marker preorder, exact render-marker mapping, update acknowledgements, error isolation, reload, and teardown work against server-rendered and client-rendered reference hosts. |
-| `M3-05 Kumwe App integration seams` | Gate A          | Kumwe App implements additive draft host ports and API/schema surfaces without replacing current editors. The integration preserves contribution ownership, immutable runtime generations, workflow, revisions, translation, policy, audit, Twig rendering, recovery, and strict CSP.      |
-| `M3-06 Dart headless SDK`           | Gate A, `M3-01` | Generated Dart models plus native command, validation, migration, serialization, and host-port APIs pass the portable profile. Unsupported web-only capabilities are negotiated rather than silently ignored.                                                                              |
+| Package                             | Depends on                  | Deliverable and acceptance criteria                                                                                                                                                                                                                                                        |
+| ----------------------------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `M3-01 Deterministic core`          | Gate A                      | DOM-free registry, document store, command dispatcher, transactions, selection, history, validation, migrations, canonical serialization, and diagnostics pass unit, property, fuzz, and cross-runtime fixtures.                                                                           |
+| `M3-02 Contribution runtime`        | Gate A, `M3-01`             | Contributions activate into an immutable registry generation; duplicates and incompatible owners fail closed; disable/reactivate preserves documents; unresolved nodes remain inspectable; stale generations cannot execute.                                                               |
+| `M3-03 Generic host testbed`        | Gate A, `M3-01`             | A framework-neutral reference host supplies identity, policy, persistence, media, preview, localization, and telemetry ports. Disconnect, conflict, permission change, expired session, and partial capability cases are exercised.                                                        |
+| `M3-04 Preview bridge`              | Gate A, `M3-01`             | Authenticated preview handshake, origin pinning, protocol-version negotiation, canonical draft identity and marker preorder, exact render-marker mapping, update acknowledgements, error isolation, reload, and teardown work against server-rendered and client-rendered reference hosts. |
+| `M3-05 Kumwe App integration seams` | Gate A                      | Kumwe App implements additive draft host ports and API/schema surfaces without replacing current editors. The integration preserves contribution ownership, immutable runtime generations, workflow, revisions, translation, policy, audit, Twig rendering, recovery, and strict CSP.      |
+| `M3-06 Version 3 Dart headless SDK` | Version 3 contract, `M3-01` | Generated Dart models plus native command, validation, migration, serialization, and host-port APIs pass `studio.profile/engine-dart`. Unsupported web-only capabilities are negotiated rather than silently ignored. This package is not a Version 2 dependency.                          |
 
 ### Month 4 — complete authoring experience
 
-| Package                                   | Depends on       | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                                       |
-| ----------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M4-01 Lit application shell`             | `M3-01`, `M3-03` | Palette, canvas, outline, inspector, viewport switcher, breadcrumb, diagnostics, command palette, save state, and recovery surfaces work as composable Web Components with host-controlled branding and localization.                                                                                                     |
-| `M4-02 Layout and responsive composition` | `M3-01`, `M4-01` | Section, stack, grid, columns, slots, ordering, constrained sizing, responsive roles, token recipes, alignment, spacing, visibility, and breakpoint inheritance are editable without storing CSS or viewport-specific HTML. Four-to-two-to-one layout is proven in two unrelated themes.                                  |
-| `M4-03 Blueprint and content modes`       | `M4-01`, `M4-02` | The `model`, `blueprint`, and `content` editing modes, bounded `hybrid` composition, and `read-only` session state preserve their permission and mutation boundaries. Content authors cannot change locked structure; designers cannot bypass schema publication or business-field policy.                                |
-| `M4-04 Bindings and reusable composition` | `M4-02`, `M4-03` | Existing-field binding, governed field creation, collections, references, conditional presentation, slots, nested patterns, global patterns, and detachment are deterministic, migratable, and covered by cycle and missing-source diagnostics.                                                                           |
-| `M4-05 Accessible interaction parity`     | `M4-01`–`M4-04`  | Every drag, resize, reorder, nest, bind, configure, duplicate, and delete operation is achievable by keyboard/outline/inspector. Focus and announcements survive preview reload, undo, validation failure, and remote conflict.                                                                                           |
-| `M4-06 Native Flutter shell`              | `M3-06`, `M4-03` | A Flutter reference application performs the complete semantic authoring command set through native widgets, including outline, inspector, responsive preview controls, media selection, save/conflict recovery, keyboard, touch, and screen-reader paths. It does not embed the Lit application to claim native support. |
+| Package                                   | Depends on       | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `M4-01 Lit application shell`             | `M3-01`, `M3-03` | Palette, canvas, outline, inspector, viewport switcher, breadcrumb, diagnostics, command palette, save state, and recovery surfaces work as composable Web Components with host-controlled branding and localization.                                                                                                               |
+| `M4-02 Layout and responsive composition` | `M3-01`, `M4-01` | Section, stack, grid, columns, slots, ordering, constrained sizing, responsive roles, token recipes, alignment, spacing, visibility, and breakpoint inheritance are editable without storing CSS or viewport-specific HTML. Four-to-two-to-one layout is proven in two unrelated themes.                                            |
+| `M4-03 Blueprint and content modes`       | `M4-01`, `M4-02` | The `model`, `blueprint`, and `content` editing modes, bounded `hybrid` composition, and `read-only` session state preserve their permission and mutation boundaries. Content authors cannot change locked structure; designers cannot bypass schema publication or business-field policy.                                          |
+| `M4-04 Bindings and reusable composition` | `M4-02`, `M4-03` | Existing-field binding, governed field creation, collections, references, conditional presentation, slots, nested patterns, global patterns, and detachment are deterministic, migratable, and covered by cycle and missing-source diagnostics.                                                                                     |
+| `M4-05 Accessible interaction parity`     | `M4-01`–`M4-04`  | Every drag, resize, reorder, nest, bind, configure, duplicate, and delete operation is achievable by keyboard/outline/inspector. Focus and announcements survive preview reload, undo, validation failure, and remote conflict.                                                                                                     |
+| `M4-06 Version 3 native Flutter shell`    | `M3-06`, `M4-03` | A Flutter reference application performs the complete semantic authoring command set through native widgets for `studio.profile/authoring-flutter`, including outline, inspector, responsive preview controls, media selection, save/conflict recovery, keyboard, touch, and screen-reader paths. It is not a Version 2 dependency. |
 
 ### Month 5 — content depth, ecosystem, and host integration
 
@@ -141,14 +160,14 @@ listed dependency is accepted.
 
 ### Month 6 — hardening, qualification, and Gate B
 
-| Package                                           | Depends on                | Deliverable and acceptance criteria                                                                                                                                                                                                                                                     |
-| ------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M6-01 Compatibility and migration qualification` | `M3-01`, `M5-04`–`M5-06`  | Fixtures cover every supported protocol/package version, additive evolution, deprecation diagnostics, blueprint/theme/block migrations, interrupted upgrades, downgrade refusal, and rollback. No published document becomes silently unreadable.                                       |
-| `M6-02 Security and resilience qualification`     | `M5-01`–`M5-06`           | Independent threat review, dependency audit, fuzzing, CSP tests, malicious contribution/media corpus, privilege-reduction tests, rate/size/depth bounds, disconnect/retry, crash recovery, stale-preview, and data-loss drills produce no unresolved critical/high issue.               |
-| `M6-03 Accessibility and UX qualification`        | `M4-05`, `M4-06`, `M5-03` | Web and Flutter supported matrices pass automated and manual keyboard, touch, screen-reader, zoom/reflow, contrast, reduced-motion, localization, error prevention, and authoring assistance checks. Representative workflows are usability-tested and blocking failures are corrected. |
-| `M6-04 Performance qualification`                 | `M5-03`–`M5-06`           | Published budgets are met for package size, startup, interaction latency, preview update, large documents, memory, media workflows, and Flutter/web parity on the supported device matrix. Measurements are reproducible and regressions fail CI.                                       |
-| `M6-05 Release and operations proof`              | `M6-01`–`M6-04`           | Clean builds are byte-verifiable, packages carry provenance/SBOM/signatures, npm and Dart artifacts install in clean consumers, examples deploy, documentation links resolve, observability is actionable, and rollback/recovery drills succeed.                                        |
-| `M6-06 Gate B review`                             | All preceding packages    | All Gate B criteria below carry current evidence and independent approval. The release candidate is installed and upgraded in generic, Kumwe App, web, and Flutter reference profiles; public release notes and support boundaries agree with the artifacts.                            |
+| Package                                           | Depends on               | Deliverable and acceptance criteria                                                                                                                                                                                                                                             |
+| ------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `M6-01 Compatibility and migration qualification` | `M3-01`, `M5-04`–`M5-06` | Fixtures cover every supported protocol/package version, additive evolution, deprecation diagnostics, blueprint/theme/block migrations, interrupted upgrades, downgrade refusal, and rollback. No published document becomes silently unreadable.                               |
+| `M6-02 Security and resilience qualification`     | `M5-01`–`M5-06`          | Independent threat review, dependency audit, fuzzing, CSP tests, malicious contribution/media corpus, privilege-reduction tests, rate/size/depth bounds, disconnect/retry, crash recovery, stale-preview, and data-loss drills produce no unresolved critical/high issue.       |
+| `M6-03 Accessibility and UX qualification`        | `M4-05`, `M5-03`         | The Version 2 web matrix passes automated and manual keyboard, touch, screen-reader, zoom/reflow, contrast, reduced-motion, localization, error prevention, and authoring assistance checks. Representative workflows are usability-tested and blocking failures are corrected. |
+| `M6-04 Performance qualification`                 | `M5-03`–`M5-06`          | Published budgets are met for package size, startup, interaction latency, preview update, large documents, memory, and media workflows on the Version 2 web device matrix. Measurements are reproducible and regressions fail CI.                                               |
+| `M6-05 Release and operations proof`              | `M6-01`–`M6-04`          | Clean builds are byte-verifiable, the fixed seven-package npm family carries provenance/SBOM/signatures, npm artifacts install in clean consumers, examples deploy, documentation links resolve, observability is actionable, and rollback/recovery drills succeed.             |
+| `M6-06 Gate B review`                             | All Version 2 packages   | All Gate B criteria below carry current evidence and independent approval. The release candidate is installed and upgraded in generic-host, Kumwe App, renderer-web, and authoring-web profiles; public release notes and support boundaries agree with the artifacts.          |
 
 ## Gate A acceptance criteria
 
@@ -163,7 +182,7 @@ Gate A passes only when all criteria are met:
 6. Media and rich-text boundaries identify Studio, host, and renderer responsibilities.
 7. Security/privacy threat model and negative fixtures cover every trust boundary.
 8. Errors and diagnostics are stable, localizable, and free of sensitive values.
-9. TypeScript and Dart models compile and round-trip the same canonical corpus.
+9. TypeScript models compile and round-trip the canonical corpus for the Version 2 profile set.
 10. The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
 11. Compatibility, deprecation, migration, and release policies are accepted.
 12. Accessibility and non-drag interaction requirements are executable as conformance assertions.
@@ -176,16 +195,18 @@ Gate B passes only when all criteria are met:
 
 1. Every Gate A public contract is implemented or explicitly excluded from the first supported profile by
    capability negotiation; no implementation silently ignores a declared feature.
-2. Published TypeScript packages and Dart packages install from their registries into clean consumers.
-3. The DOM-free core and Dart SDK pass the same applicable command, migration, and serialization fixtures.
-4. Lit and Flutter shells expose the complete semantic authoring operation set for their supported profile.
+2. The fixed seven-package TypeScript release family installs from npm into clean consumers at one release
+   coordinate.
+3. The DOM-free TypeScript core passes the applicable command, migration, and serialization fixtures.
+4. The Lit shell exposes the complete semantic authoring operation set for
+   `studio.profile/authoring-web`.
 5. Generic and Kumwe App hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
    recovery, and upgrade conformance.
 6. Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.
 7. Extension and theme examples install, activate, disable, reactivate, upgrade, and recover without data
    loss or private API access.
 8. Existing and migrated documents remain readable, diagnosable, and safely renderable.
-9. Web and Flutter accessibility matrices pass automated and manual qualification.
+9. The Version 2 web accessibility matrix passes automated and manual qualification.
 10. Security review, malicious-input corpus, dependency audit, and resilience drills have no unresolved
     critical/high issue.
 11. Performance and package budgets are measured and enforced.
@@ -223,7 +244,8 @@ index. They are never marked accepted merely because a pull request merged.
 ## Change control
 
 - A change to a Gate A public contract follows the compatibility policy and requires an architecture
-  decision record plus updated TypeScript/Dart fixtures.
+  decision record plus updated TypeScript fixtures; Dart fixtures additionally apply when a Version 3
+  profile is affected.
 - A newly discovered requirement enters the earliest work package whose dependencies can support it. It may
   not be hidden inside a later implementation package.
 - Scope may be removed from a release only by publishing the resulting capability/profile boundary and

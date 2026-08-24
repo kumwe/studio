@@ -8,6 +8,20 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Version 2 web scope and coordinated release family (M1-03, M1-05, M2-06)
+
+- Version 2 now qualifies the explicit web profile target set. Dart generation, cross-runtime parity,
+  and native Flutter profiles remain mandatory Version 3 targets instead of unrelated Version 2 gate
+  blockers. ADR 0019 records the scope decision; Gate A and Gate B remain unassessed/blocked, and no
+  profile is claimed without reproduced evidence.
+- The seven public npm packages are one Changesets fixed group. A closed canonical
+  `studio-release.json` records their exact versions, the wire protocol, corpus-manifest digest, and
+  evidence-backed profile identifiers; protocol and testkit ship byte-identical exported copies.
+- Deterministic sync/check/version commands, packaging checks, a publication guard, post-publish npm
+  verification, and regression tests prevent a stale, partial, or staggered family from being
+  published as one Studio release. The initial record describes the existing staggered alpha baseline;
+  the next version run advances the complete family before publication is permitted.
+
 ### Stateful host conformance (M3-03, M2-04)
 
 - `studio.profile/host-baseline-v2` adds nine portable sequence vectors without widening the original

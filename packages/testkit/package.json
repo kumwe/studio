@@ -19,6 +19,7 @@
     "dist",
     "fixtures",
     "invalid",
+    "studio-release.json",
     "vectors"
   ],
   "exports": {
@@ -30,6 +31,7 @@
     "./corpus-manifest.json": "./corpus-manifest.json",
     "./fixtures/*": "./fixtures/*",
     "./invalid/*": "./invalid/*",
+    "./studio-release.json": "./studio-release.json",
     "./vectors/*": "./vectors/*"
   },
   "scripts": {

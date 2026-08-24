@@ -77,7 +77,7 @@ Public contract changes require:
 2. the relevant architecture/security/accessibility/host reviewer when that boundary changes;
 3. schemas, generated types and valid/invalid/migration fixtures in the same change;
 4. deterministic tests at the lowest boundary and conformance tests at the public boundary;
-5. TypeScript/Dart impact and generated-source verification;
+5. TypeScript impact and generated-source verification, plus Dart/Flutter impact when a Version 3 native profile is affected;
 6. changeset and documentation for users, integrators and extension/theme authors; and
 7. a clean compatibility report against every supported release/profile.
 

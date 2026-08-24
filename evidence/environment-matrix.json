@@ -1,8 +1,8 @@
 {
   "contractVersion": "0.1-draft",
   "kind": "environment-matrix",
-  "updated": "2026-08-15",
-  "note": "Draft target matrix for Gate B qualification. An environment listed here is a qualification target, not a support claim; support claims require release evidence per docs/roadmap/evidence.md.",
+  "updated": "2026-08-24",
+  "note": "Draft target matrix for qualification. Browser, npm and host rows are Version 2 targets. The Dart/Flutter row is a Version 3 target and does not block Version 2. An environment listed here is not a support claim; support claims require release evidence per docs/roadmap/evidence.md.",
   "environments": [
     {
       "id": "node-npm-workspace",
@@ -56,7 +56,7 @@
     {
       "id": "dart-flutter",
       "kind": "toolchain",
-      "requirement": "Current supported stable Dart/Flutter line plus the preceding line where language constraints permit",
+      "requirement": "Version 3 target: current supported stable Dart/Flutter line plus the preceding line where language constraints permit; not a Version 2 Gate B requirement",
       "status": "target",
       "coveredBy": []
     },

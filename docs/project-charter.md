@@ -31,7 +31,7 @@ An authorized author can open Studio, place and rearrange blocks, create respons
 5. **Extensions are lifecycle-aware.** Contributions have namespaced identities, owners, versions, capabilities, migrations, and deterministic missing-state behaviour.
 6. **Accessibility is an invariant.** Pointer gestures are optional accelerators. Keyboard, assistive technology, reduced motion, localization, RTL, and non-drag operations are designed from the first contract.
 7. **The host remains authoritative.** Authentication, authorization, workflows, concurrency, audit, persistence, media storage, and publication are not delegated to the editor.
-8. **Portable by construction.** Canonical artifacts use bounded JSON and are verified across generated TypeScript and Dart models.
+8. **Portable by construction.** Canonical artifacts use bounded JSON. Version 2 verifies generated TypeScript models; Version 3 native profiles additionally verify generated Dart models against the same applicable corpus.
 9. **Evidence precedes claims.** A gate, compatibility promise, security property, or conformance statement exists only with reproducible evidence.
 10. **Grand vision, ordered delivery.** The complete system is designed up front, then implemented in dependency order without disguising partial work as a smaller product.
 
@@ -49,4 +49,4 @@ Blueprint mode creates a reusable presentation contract: regions, blocks, bindin
 
 Gate A is reached when the public integration surface is completely declared, portable, reviewed, machine-checkable, and accompanied by conformance fixtures. It allows host teams to integrate against a stable foundation while deeper implementation continues.
 
-Gate B is reached when that declared foundation is implemented, qualified, recoverable, accessible, secure, documented, portable across the required SDKs, and shipped through a reproducible release process. The detailed conditions and current truth live in the roadmap documentation.
+Gate B is reached when that declared foundation is implemented, qualified, recoverable, accessible, secure, documented, portable across the SDKs required by the release's exact profile set, and shipped through a reproducible release process. Version 2 is web-only; Dart/Flutter profiles enter this condition in Version 3. The detailed conditions and current truth live in the roadmap documentation.

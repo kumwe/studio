@@ -184,6 +184,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/studio-config.schema.json"
     },
     {
+      "digest": "sha256-bAbRAM9+nnILrEwdQ1G0BM0hfxbSQyAEZjnOIrEQFoM=",
+      "file": "studio-release.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/studio-release.schema.json"
+    },
+    {
       "digest": "sha256-xzhCb8J2nx+K6kBMciFj1glB4Q6jT8+KUdbUBsNM4h8=",
       "file": "theme.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/theme.schema.json"

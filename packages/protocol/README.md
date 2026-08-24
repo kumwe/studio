@@ -41,3 +41,8 @@ Canonical command vectors and the negative-fixture corpus ship through `@kumwe/s
 The protocol package also exports the single-exchange and ordered host-vector schemas. The sequence
 schema fixes the idempotency scope/preimage and its deterministic clock/render control steps; the
 portable corpora and runner-neutral digest manifest ship through the testkit.
+
+`@kumwe/studio-protocol/studio-release.json` is a byte-identical copy of the canonical workspace
+release record. It binds the exact fixed seven-package family to the wire protocol and testkit corpus
+digest. The publication guard requires all seven versions to equal its `release` coordinate; the
+current pre-version alpha record claims no conformance profiles.

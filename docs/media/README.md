@@ -2,8 +2,9 @@
 
 This document specifies the complete target media authoring experience and its Gate A/Gate B obligations; it
 does not claim that the current alpha package implements every surface. Studio does not become the authoritative
-media service. This division lets Kumwe App solve its current clunky authoring workflow while allowing Studio to work
-with another CMS, DAM, object store, desktop application, or native Flutter host.
+media service. This division lets Kumwe App solve its current clunky Version 2 web authoring workflow while
+allowing Studio to work with another CMS, DAM, object store, or desktop application. Native Flutter hosts are
+Version 3 targets.
 
 ## Ownership decision
 
@@ -148,7 +149,8 @@ formats are deny-by-default.
 
 ## Accessibility requirements
 
-- The browser and native Flutter surfaces provide the same semantic operations without drag/drop.
+- The Version 2 browser surface provides every semantic operation without drag/drop. A Version 3 native Flutter
+  claim must prove the same applicable operation set.
 - Grid/list items expose name, kind, state and selection; multi-select state is announced.
 - Progress is announced without flooding live regions; cancellation remains reachable.
 - Alternative-text guidance distinguishes purpose from filename and permits decorative state only when the
@@ -195,6 +197,8 @@ replacement edits return structured conflicts; last-write-wins is not the defaul
 
 ## Offline and Flutter behaviour
 
+This section defines Version 3 native-profile requirements and does not block Version 2.
+
 Offline media staging is an optional host capability. It requires encrypted local custody, bounded quotas,
 stable staging IDs, cancellation/cleanup, reconnection conflict rules and a prohibition on publication before
 host acceptance. A local file path is never serialized as a portable media reference.
@@ -210,13 +214,14 @@ same accepted reference and processing-state semantics.
 3. Capability negotiation and finite limits cover every optional operation.
 4. Stable identity, version/replacement, permission and reference-impact semantics are declared.
 5. Security/privacy threat fixtures and accessibility requirements are executable.
-6. TypeScript and Dart models round-trip the same corpus.
+6. TypeScript models round-trip the canonical corpus. Version 3 adds Dart parity before a native profile claim.
 7. Generic-host and Kumwe App adapters map every port without leaking storage/runtime internals.
 
 ## Media Gate B criteria
 
-1. Web and Flutter experiences complete browse, upload, process, select, metadata, focal-point, replace and
-   failure/recovery workflows for their declared profiles.
+1. The Version 2 web experience completes browse, upload, process, select, metadata, focal-point, replace and
+   failure/recovery workflows for `studio.profile/authoring-web`. Version 3 separately qualifies the Flutter
+   experience before claiming `studio.profile/authoring-flutter`.
 2. Real host adapters prove streaming, idempotent retry, cancellation, conflict, permission change, quarantine,
    lifecycle and orphan cleanup.
 3. Malicious media corpus, CSP, cross-tenant, URL leakage, quota and resource-exhaustion tests fail closed.
