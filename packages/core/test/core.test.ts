@@ -168,6 +168,25 @@ describe('Studio core', () => {
     expect(history.stateVersion).toBe(3);
   });
 
+  it('rebases current, past, and future snapshots without advancing local state', () => {
+    const history = new StudioHistory(document());
+    history.execute(insert(textNode()));
+    history.execute(insert({ ...textNode(), id: 'text-2' }, 1));
+    expect(history.undo().roots.map((node) => node.id)).toEqual(['text-1']);
+    const stateVersion = history.stateVersion;
+
+    expect(history.rebaseRevision('blueprint-r2').revision).toBe('blueprint-r2');
+    expect(history.stateVersion).toBe(stateVersion);
+    expect(history.canUndo).toBe(true);
+    expect(history.canRedo).toBe(true);
+
+    expect(history.redo()).toMatchObject({ revision: 'blueprint-r2' });
+    expect(history.undo()).toMatchObject({ revision: 'blueprint-r2' });
+    expect(history.undo()).toMatchObject({ revision: 'blueprint-r2', roots: [] });
+    expect(history.redo()).toMatchObject({ revision: 'blueprint-r2' });
+    expect(history.redo()).toMatchObject({ revision: 'blueprint-r2' });
+  });
+
   it('validates registered blocks and canonical field bindings', () => {
     const registry = new BlockRegistry([textBlock]);
     const source = applyCommand(document(), insert(textNode(true)));

@@ -560,6 +560,7 @@ describe('bound host-session persistence', () => {
 
     expect(handle.revision).toBe('late-save.blueprint-r2');
     expect(handle.session.savedRevision).toBe('late-save.blueprint-r2');
+    expect(handle.session.document.revision).toBe('late-save.blueprint-r2');
     expect(handle.session.dirty).toBe(true);
     expect(handle.session.document.roots.map((node) => node.id)).toEqual([
       'node-before-save',
@@ -583,6 +584,7 @@ describe('bound host-session persistence', () => {
     });
     expect(handle.session.dirty).toBe(false);
     expect(handle.session.savedRevision).toBe('late-save.blueprint-r3');
+    expect(handle.session.document.revision).toBe('late-save.blueprint-r3');
   });
 
   it('normalizes an unwrapped adapter exception to a safe internal HostPortFailure', async () => {

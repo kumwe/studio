@@ -82,10 +82,12 @@ obtain an idempotency key, with the following persistence rules:
    `expectedRevision`;
 4. an exact retry of a failed intent reuses its idempotency key, while a changed document, accepted
    revision, locale, protocol version, resource context, generation, or operation receives a new key;
-5. a successful response advances the handle's accepted revision exactly once; and
-6. the `StudioSession` is marked saved only when its state is still the snapshot that completed. Edits
-   made while a save is in flight remain dirty and are saved by a later intent against the newly
-   accepted revision.
+5. a successful response advances the handle's accepted revision exactly once and rebases the
+   revision member of every current, past, and future local snapshot without changing history topology,
+   selection, or local state version; and
+6. the `StudioSession` records the state version captured with the saved snapshot. It becomes clean only
+   when that version is still current. Edits made while a save is in flight remain dirty on the newly
+   accepted base and are saved by a later intent against that revision.
 
 The exact intent comparison uses Studio's canonical JSON profile and the host contract's idempotency
 preimage. A conflict, validation failure, disconnect, or other refusal does not change the local
@@ -114,6 +116,11 @@ Kumwe App and generic hosts can now compose the same deterministic Blueprint loa
 without importing UI code or duplicating envelope, revision, stale-generation, and retry decisions.
 The core remains DOM-free and transport-neutral, and a test host can make every identifier and
 settlement reproducible.
+
+An accepted revision is consequently coherent across the whole bounded local timeline. Undo, redo,
+subsequent expected-revision checks, and exact preview staging do not expose the pre-save revision after
+success, while a late acknowledgement cannot hide newer changes. This is a revision rebase, not a remote
+merge: snapshot content and local state versions are unchanged.
 
 This is deliberately narrower than a complete Studio application. The current handle does not stage
 preview drafts, reconcile recovery data, fabricate missing artifacts, persist Model or Entry history,

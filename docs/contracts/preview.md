@@ -43,6 +43,13 @@ intent aborts every older staging/render attempt, disposes an accepted supersede
 session-unique request ID. Marker authority changes only when the matching latest render resolves. A staging
 or render callback that ignores its abort signal cannot publish a stale marker map.
 
+After a host accepts a save, the shell's `markSaved(revision, stateVersion?)` acknowledgement synchronizes
+its exposed document with the session's rebased revision while retaining the same history and selection.
+That revision-only synchronization is a new preview intent: it aborts or disposes work for the prior
+identity and stages the complete draft again under the exact accepted revision and recomputed digest. A host
+passes the state version captured with the saved snapshot when the acknowledgement can settle after newer
+edits, so those edits remain dirty even though their preview identity uses the newly accepted base.
+
 Reload revokes marker authority, preserves focus and authoring state, awaits the next ready handshake and
 resends the latest complete snapshot. Teardown closes the client and removes the surface without changing the
 document. When any required authority is absent or a request fails, the region remains present with explicit

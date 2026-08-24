@@ -116,8 +116,10 @@ current intent. Each attempt has a new caller-supplied request ID. An exact retr
 reuses its caller-supplied idempotency key; any semantic change to the intent receives a new key. A save
 uses the latest host-accepted revision as `expectedRevision`. If the actor edits while that snapshot is
 in flight, a success advances the handle's accepted revision but does not mark the newer local state
-saved. Conflict or refusal leaves the local document, history, selection, dirty state, and saved
-baseline unchanged.
+saved. The success rebases the revision carried by the current, undo, and redo Blueprint snapshots
+without advancing local state or replacing selection; the saved snapshot's captured `stateVersion`
+decides whether the current state is clean. Conflict or refusal leaves the local document, history,
+selection, dirty state, and saved baseline unchanged.
 
 The optional recovery port remains a raw storage boundary. Composition may invoke `store`, `load`, or
 `discard` with bounded JSON, but it neither synthesizes a recovery format nor applies, merges, or

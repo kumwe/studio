@@ -839,14 +839,19 @@ export class KumweStudioElement extends LitElement {
     return next;
   }
 
-  public markSaved(revision?: Revision): void {
+  /**
+   * Accept a host save acknowledgement without replacing the local session.
+   * Pass the state version captured with the saved snapshot when the host can
+   * settle after newer edits; those edits remain dirty on the accepted base.
+   */
+  public markSaved(revision?: Revision, stateVersion?: number): void {
     const session = this.#session;
     if (session === undefined) {
       return;
     }
-    session.markSaved(revision ?? session.savedRevision);
+    session.markSaved(revision ?? session.savedRevision, stateVersion);
+    this.#assignInternalDocument(session.document);
     this.#syncDirty();
-    this.requestUpdate();
   }
 
   /**

@@ -62,6 +62,11 @@ in bounded chunks and draws selection, hover and semantic drop targets as a CSP-
 is pointer-inert until the author enables `Select and move rendered blocks`, preserving an explicit
 edit/operate boundary for trusted preview controls.
 
+After persistence succeeds, call `studio.markSaved(acceptedRevision, savedStateVersion)`. The optional state
+version is the value captured with the saved snapshot and is required when a save may settle after newer
+edits. The shell rebases the existing session and its complete undo/redo timeline, retains selection, keeps
+newer edits dirty, and supersedes preview work so the host next stages the exact accepted revision and digest.
+
 Pointer reorder/reparent, the selected outline entry's destination selector, and command-palette
 destinations use one candidate set and dispatcher (`reorder-children` within a collection, `move-node`
 between collections). `Escape` and `pointercancel` are exact no-ops. Geometry is volatile: call the public

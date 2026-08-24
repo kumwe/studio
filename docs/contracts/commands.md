@@ -171,6 +171,14 @@ An editable session configures a positive `maxHistoryEntries`; the core retains 
 
 Remote accepted revisions form synchronization boundaries. Undoing across a published revision, model migration, permission change, plugin-generation change, or collaborative merge requires explicit host-supported semantics and cannot be assumed.
 
+A successful save acknowledgement rebases the revision member of the current, undo, and redo
+Blueprint snapshots onto the host-accepted revision without changing their semantic content, history
+topology, selection, or local `stateVersion`. The acknowledgement records the `stateVersion` of the
+snapshot that was saved. When that version is still current the session becomes clean; when newer
+edits exist, the accepted base advances but the current session remains dirty. Undo and redo after
+either case continue to carry the new accepted base revision. A conflict or other refusal never
+performs this rebase.
+
 ## Conflicts
 
 Saving sends an expected host revision. On conflict, the host returns a safe current revision reference and conflict diagnostics. Studio may offer rebase only when every intervening and local command is available and compatible. Otherwise it preserves the local recovery envelope and asks the actor to choose a host-approved reconciliation path.

@@ -1,4 +1,4 @@
-import type { BlueprintCommand, BlueprintDocument } from '@kumwe/studio-protocol';
+import type { BlueprintCommand, BlueprintDocument, Revision } from '@kumwe/studio-protocol';
 import { applyCommand, StudioCommandError } from './commands.js';
 import { cloneContractValue } from './clone.js';
 
@@ -31,6 +31,25 @@ export class StudioHistory {
 
   public get stateVersion(): number {
     return this.#stateVersion;
+  }
+
+  /**
+   * Advances the host-authored revision carried by every local snapshot.
+   *
+   * A successful optimistic save establishes one new base revision for the
+   * complete local timeline. Rebasing the current, past, and future snapshots
+   * keeps later commands and preview staging on that base without fabricating
+   * an edit, changing the history topology, or advancing `stateVersion`.
+   */
+  public rebaseRevision(revision: Revision): BlueprintDocument {
+    const rebase = (document: BlueprintDocument): BlueprintDocument => ({
+      ...document,
+      revision,
+    });
+    this.#current = rebase(this.#current);
+    this.#past = this.#past.map(rebase);
+    this.#future = this.#future.map(rebase);
+    return this.current;
   }
 
   public execute(command: BlueprintCommand): BlueprintDocument {
