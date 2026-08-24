@@ -1,6 +1,8 @@
 import { canonicalStringify, validateExternalUrl } from '@kumwe/studio-core';
 import {
+  HostPortFailure,
   STUDIO_CONTRACT_VERSION,
+  STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
   STUDIO_WIRE_PROTOCOL_VERSION,
   type HostAdapter,
   type HostErrorCategory,
@@ -22,6 +24,7 @@ import {
   type Revision,
   type StableId,
   type StudioArtifact,
+  type StudioDiagnostic,
   type StudioWireProtocolVersion,
   type TelemetryEvent,
 } from '@kumwe/studio-protocol';
@@ -109,13 +112,10 @@ export interface HostRequestContextFixtureOptions {
   sessionGeneration?: Revision;
 }
 
-export class TestbedHostError extends Error {
-  public readonly error: HostPortError;
-
+export class TestbedHostError extends HostPortFailure {
   public constructor(error: HostPortError) {
-    super(error.message.defaultMessage ?? error.message.key);
+    super(error);
     this.name = 'TestbedHostError';
-    this.error = error;
   }
 }
 
@@ -226,6 +226,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     category: HostErrorCategory,
     defaultMessage: string,
     extras: {
+      diagnostics?: StudioDiagnostic[];
       retryAfterMilliseconds?: number;
       retryable?: boolean;
       revision?: Revision;
@@ -239,6 +240,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       kind: 'host-error',
       message: { defaultMessage, key: `studio.testbed/${category}` },
       retryable: extras.retryable ?? (category === 'rate-limited' || category === 'unavailable'),
+      ...(extras.diagnostics === undefined ? {} : { diagnostics: cloneValue(extras.diagnostics) }),
       ...(extras.retryAfterMilliseconds === undefined
         ? {}
         : { retryAfterMilliseconds: extras.retryAfterMilliseconds }),
@@ -250,6 +252,7 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     category: HostErrorCategory,
     defaultMessage: string,
     extras: {
+      diagnostics?: StudioDiagnostic[];
       retryAfterMilliseconds?: number;
       retryable?: boolean;
       revision?: Revision;
@@ -278,7 +281,18 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       fail('incompatible', 'The request protocol version is not supported by this testbed.');
     }
     if (context.sessionGeneration !== currentGeneration()) {
-      fail('invalid-request', 'The session generation is no longer valid.');
+      fail('invalid-request', 'The session generation is no longer valid.', {
+        diagnostics: [
+          {
+            code: STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
+            message: {
+              defaultMessage: 'The request belongs to an obsolete Studio session generation.',
+              key: STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
+            },
+            severity: 'blocking',
+          },
+        ],
+      });
     }
     const expectedOperationId: QualifiedName = `studio.operation/${portName}.${operation}`;
     if (

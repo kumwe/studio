@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HostPortFailure,
+  isHostPortFailure,
   isHostPortError,
   isPreviewMarker,
   isPreviewMessage,
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
+  type HostPortError,
 } from '../src/index.js';
 
 const previewDigest = 'a'.repeat(64);
@@ -177,6 +180,37 @@ describe('isHostPortError', () => {
     const { message, ...withoutMessage } = hostError();
     void message;
     expect(isHostPortError(withoutMessage)).toBe(false);
+  });
+});
+
+describe('HostPortFailure', () => {
+  const error: HostPortError = {
+    category: 'conflict',
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    correlationId: 'requests/host-failure',
+    kind: 'host-error',
+    message: { defaultMessage: 'Another revision was accepted.', key: 'studio.host/conflict' },
+    retryable: false,
+    revision: 'blueprint-r9',
+  };
+
+  it('wraps only the canonical serializable host error', () => {
+    const failure = new HostPortFailure(error);
+
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure.name).toBe('HostPortFailure');
+    expect(failure.message).toBe('Another revision was accepted.');
+    expect(failure.error).toBe(error);
+    expect(isHostPortFailure(failure)).toBe(true);
+  });
+
+  it('rejects malformed errors and does not accept raw error documents', () => {
+    expect(
+      () => new HostPortFailure({ ...error, category: 'exploded' } as unknown as HostPortError),
+    ).toThrow(TypeError);
+    expect(isHostPortFailure(error)).toBe(false);
+    expect(isHostPortFailure(new Error('transport detail'))).toBe(false);
+    expect(isHostPortFailure({ error })).toBe(false);
   });
 });
 

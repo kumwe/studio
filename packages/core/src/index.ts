@@ -27,6 +27,15 @@ export {
 } from './extension-sdk.js';
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
+export {
+  openStudioSession,
+  StudioHostSessionError,
+  type OpenStudioSessionOptions,
+  type StudioHostSessionErrorCode,
+  type StudioHostSessionHandle,
+  type StudioHostSessionIdentifierFactories,
+  type StudioHostSessionRecovery,
+} from './host-session.js';
 export { applyModelCommand } from './model-commands.js';
 export {
   permittedCommandTypes,

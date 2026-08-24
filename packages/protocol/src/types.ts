@@ -6,6 +6,13 @@ export const STUDIO_WIRE_PROTOCOL_VERSION = '0.1.0-draft.2' as const;
 
 export type StudioWireProtocolVersion = typeof STUDIO_WIRE_PROTOCOL_VERSION;
 
+/**
+ * Stable diagnostic carried with the canonical `invalid-request` category
+ * when a host refuses an operation from an obsolete session generation.
+ */
+export const STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE =
+  'studio.host/stale-session-generation' as const;
+
 export type JsonPrimitive = boolean | null | number | string;
 
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];

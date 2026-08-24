@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HostPortFailure,
   STUDIO_CONTRACT_VERSION,
+  STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
+  isHostPortFailure,
   isHostPortError,
   type ArtifactPort,
   type HostErrorCategory,
@@ -310,6 +313,9 @@ describe('Testbed host', () => {
       const error = await expectHostError(operation(), 'invalid-request');
       expect(error.message.defaultMessage).toBe('The session generation is no longer valid.');
       expect(error.retryable).toBe(false);
+      expect(error.diagnostics).toContainEqual(
+        expect.objectContaining({ code: STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE }),
+      );
     }
 
     const explained = await ports.permission.explain(
@@ -895,7 +901,9 @@ describe('Testbed host', () => {
     }
 
     expect(caught).toBeInstanceOf(Error);
+    expect(caught).toBeInstanceOf(HostPortFailure);
     expect(caught).toBeInstanceOf(TestbedHostError);
+    expect(isHostPortFailure(caught)).toBe(true);
     if (caught instanceof TestbedHostError) {
       expect(caught.name).toBe('TestbedHostError');
       expect(isHostPortError(caught.error)).toBe(true);

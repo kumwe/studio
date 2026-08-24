@@ -4,6 +4,7 @@ export {
   isPreviewMessage,
   isPreviewRenderedPayload,
 } from './guards.js';
+export { HostPortFailure, isHostPortFailure } from './host-failure.js';
 export {
   blockDefinitionSchema,
   blueprintSchema,
@@ -42,6 +43,7 @@ export {
 } from './schemas.js';
 export {
   STUDIO_CONTRACT_VERSION,
+  STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
   STUDIO_WIRE_PROTOCOL_VERSION,
   type AddModelFieldCommand,
   type AddModelFieldPayload,
