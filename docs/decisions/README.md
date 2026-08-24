@@ -28,5 +28,6 @@ These records capture foundational decisions whose reversal would materially aff
 | [0022](0022-core-layout-block-family.md)           | Core layout blocks store bounded responsive intent             | Proposed |
 | [0023](0023-shell-preview-surface-binding.md)      | Shell preview binds a host-staged canonical channel            | Proposed |
 | [0024](0024-read-only-model-binding-projection.md) | Host models project into read-only field-binding affordances   | Proposed |
+| [0025](0025-measured-preview-visual-canvas.md)     | Direct manipulation uses measured preview geometry             | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

@@ -25,7 +25,7 @@ const catalog = JSON.parse(canonicalBytes.toString('utf8'));
 if (
   catalog.kind !== 'authoring-message-catalog' ||
   catalog.contractVersion !== '0.1-draft' ||
-  catalog.catalogVersion !== '1.3.0' ||
+  catalog.catalogVersion !== '1.4.0' ||
   catalog.locale !== 'en'
 ) {
   throw new Error('The canonical English authoring catalog has an unexpected identity.');

@@ -61,7 +61,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | ------- | --------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | `M1-04` | evidence-review | Stable criterion registry; strict bundle/gate validator; safe complete bundle lane                     | First real bundle; independent human reproduction and durable retention |
 | `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                                                | Reviewer reproduction; first alpha publish not yet exercised            |
-| `M1-06` | evidence-review | Registry with 25 obligations, zero open; automated WCAG lane                                           | Reviewer reproduction                                                   |
+| `M1-06` | evidence-review | Registry with 30 obligations, zero open; automated WCAG lane                                           | Reviewer reproduction                                                   |
 | `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors                       | Reviewer reproduction; independent cross-runtime profile replay         |
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                                              | Reviewer reproduction                                                   |
 | `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds                                  | Reviewer reproduction                                                   |
@@ -76,19 +76,20 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations                               | Kumwe App's Gate A contribution contract; its host adapter at Gate B    |
 | `M4-02` | active          | Core section/stack/grid/columns, typed recipes/tokens, reference reflow, two-theme semantic resolution | Independent second-renderer replay and reviewer reproduction            |
 | `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                                       | Reviewer reproduction                                                   |
-| `M4-01` | active          | Shell regions plus host-bound preview, two-way marker selection and degraded state                     | Framed-CSP policy; browser-lane replay; reviewer reproduction           |
+| `M4-01` | active          | Shell regions, host-bound preview, measured SVG visual canvas, two-way selection and degraded fallback | Dedicated framed-CSP policy; independent renderer/reviewer reproduction |
 | `M4-04` | active          | Read-only model session; exact field/control projection; portable binding corpus; model-driven shell   | Published Kumwe App AP-2 replay; independent second-host reproduction   |
-| `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                                        | Reviewer reproduction                                                   |
+| `M4-05` | evidence-review | Measured reorder/reparent with identical outline/palette commands; tested no-op cancellation           | Evidence bundle; manual AT/touch/zoom/RTL matrix; reviewer reproduction |
 | `M5-01` | active          | Upload orchestration over the canonical session state machine                                          | Media browser UI; paste/drop capture; real host adapter exercises       |
 | `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | Ratified `engine-dart` profile, generated models, cross-runtime replay  |
 | `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | `M3-06` and native Flutter authoring/renderer profiles                  |
 
 ### Latest state transition
 
-| Package / integration item | Implementation commit                      | Evidence bundle        | New state | Blocking item                                                                                                                                           | Reviewer   |
-| -------------------------- | ------------------------------------------ | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `M4-01` / `ST-4`           | `26359f3d98717450fc083bc2d3d21a762df750e3` | none — not yet created | active    | Reproduce the Playwright accessibility/CSP lane; ratify a dedicated framed authoring policy because the pinned reference CSP retains `frame-src 'none'` | unassigned |
-| `M4-04` / `ST-8`           | `ba7238fa60ab0269cee47264b9b94961c07183ec` | none — not yet created | active    | Replay the published Kumwe App AP-2 session adapter and the portable binding corpus in an independent second host                                       | unassigned |
+| Package / integration item | Implementation commit                      | Evidence bundle        | New state       | Blocking item                                                                                                                                              | Reviewer   |
+| -------------------------- | ------------------------------------------ | ---------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `M4-01` / `ST-4`           | `26359f3d98717450fc083bc2d3d21a762df750e3` | none — not yet created | active          | Reproduce the Playwright accessibility/CSP lane; ratify a dedicated framed authoring policy because the pinned reference CSP retains `frame-src 'none'`    | unassigned |
+| `M4-04` / `ST-8`           | `ba7238fa60ab0269cee47264b9b94961c07183ec` | none — not yet created | active          | Replay the published Kumwe App AP-2 session adapter and the portable binding corpus in an independent second host                                          | unassigned |
+| `M4-05` / `ST-7`           | `84f2907`                                  | none — not yet created | evidence-review | Reproduce the measured-canvas browser lane independently; complete the manual screen-reader, touch, zoom and RTL matrix; pair with a qualified framed host | unassigned |
 
 ## Downstream integration commitments
 

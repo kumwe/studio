@@ -36,6 +36,9 @@ evidence.
 | SR-025 | Authoring chrome passes the automated WCAG 2.1 AA scan                                              | accessibility.md     | e2e/specs/wcag-scan.spec.ts                        |
 | SR-026 | Announcements and focus survive preview renderer reload and teardown                                | accessibility.md     | packages/studio-lit/test/preview-lifecycle.test.ts |
 | SR-027 | Layout size roles are editable and their inheritance provenance is textually perceivable            | keyboard.md          | packages/studio-lit/test/layout-editing.test.ts    |
+| SR-028 | Visual selection, hover and drop geometry comes only from the latest accepted preview measurement   | preview.md           | packages/studio-lit/test/preview-surface.test.ts   |
+| SR-029 | Measured pointer reparenting and the outline path dispatch the identical semantic move command      | keyboard.md          | e2e/specs/visual-canvas.spec.ts                    |
+| SR-030 | Blueprint surfaces expose restore, reparent, inheritance-reset and pattern-application commands     | commands.md          | packages/studio-lit/test/command-surfaces.test.ts  |
 
 ## Manual procedures
 

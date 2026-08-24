@@ -30,6 +30,13 @@ pinned by its `PreviewClient`. An equivalently isolated host mechanism remains c
 section above. Slot contents are presentation only: the shell accepts renderer state exclusively through the
 bound client and never reads, scrapes or mutates the supplied preview DOM.
 
+When a current render also supplies geometry, that same slotted surface is the shell's visual canvas. The
+shell draws a CSP-safe SVG overlay from measured rectangles; it does not create a second renderer or infer
+structure from slotted nodes. The overlay is pointer-inert in operate mode so trusted preview controls remain
+usable. An explicit pressed-state control enters canvas edit mode for selection and direct manipulation.
+Outline and command-palette destinations remain available independently of geometry and dispatch the same
+commands as the overlay.
+
 The shell waits for `ready` before staging or rendering. Synchronous document and viewport changes coalesce at
 one microtask boundary into the last complete snapshot; there is no timer-dependent debounce interval. A new
 intent aborts every older staging/render attempt, disposes an accepted superseded draft, and receives a new
@@ -173,6 +180,19 @@ Measurements are never persisted, never serialized into an artifact, and are sil
 scroll, resize, zoom, or late-loading assets — Studio re-measures instead of caching.
 
 The channel responder does not touch the DOM. The embedding renderer supplies the measurer — a function from marker IDs to raw rectangles and viewport metrics. A responder without a measurer answers measure requests with the qualified error `studio.preview/measure-unavailable`; a responder whose surface has not completed a render answers the same code marked retryable. A throwing or rejecting measurer is answered with `studio.preview/measure-failed`; measurer failure details never cross the channel.
+
+The reference shell requests the complete accepted inventory in sequential chunks of at most 1000 markers
+and projects results from marker IDs back to node IDs. A newer refresh aborts and generation-invalidates the
+older refresh even when both address the same render digest. Render replacement, viewport change, reload,
+error, disposal and teardown clear the overlay. The embedding host invokes the shell's
+`refreshPreviewGeometry()` method after it observes scroll, resize, zoom or late asset settlement; geometry
+failure degrades only the overlay and never revokes a valid render or a non-pointer authoring path.
+
+Placement semantics never come from geometry. The shell derives compatible collections and exact positions
+from the Blueprint, block slot declarations, session permissions, mode policy and hybrid composition bounds,
+then uses measured rectangles only to rank and draw those already-valid candidates. Pointer reordering and
+reparenting therefore dispatch the same `reorder-children` or `move-node` command as their outline and
+keyboard equivalents. `Escape` or `pointercancel` revokes the transient gesture without dispatching.
 
 ## Security policy
 

@@ -244,6 +244,17 @@ dynamic page builder the product is for.
 operations is also achievable by keyboard; the accessibility lane stays at zero violations; cancelled
 drags change nothing.
 
+**Implemented increment (`5da6ef8`).** The bound ST-4 preview is now the visual canvas: accepted markers
+are measured with generation-safe bounded requests, and a CSP-safe SVG overlay supplies selection, hover,
+reorder/reparent targets and live indicators. Pointer and outline/command-palette destinations use the same
+semantic dispatcher; cancellation is a tested no-op. The Blueprint command surface now includes
+`move-node`, `restore-node`, `reset-inherited-property` and host-supplied validated `apply-pattern` paths in
+addition to the previously exposed commands. Unit and Chromium browser assertions cover stale geometry,
+hybrid/cardinality bounds, pointer/keyboard command identity, cancellation and CSP. This repository-verified
+increment does not itself satisfy acceptance: independent evidence review and the manual assistive-
+technology/touch/zoom/RTL matrix remain open, and the reference host still proves the equivalently isolated
+channel rather than the unresolved dedicated framed-authoring CSP policy.
+
 ### `ST-8` — Bind composition to host content types
 
 **Repository state:** implemented as a Studio integration increment. The public host-session consumes

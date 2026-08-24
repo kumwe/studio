@@ -73,6 +73,36 @@ verified inverses, and a theme switch can locate recipe-derived state through th
 
 Other namespaced commands are accepted by the generic envelope only when the active immutable registry supplies their payload schema, reducer contract, permission operation, migration behavior and conformance fixtures. Envelope acceptance alone does not make a command portable or part of Studio core.
 
+## Blueprint shell command coverage
+
+The reference Blueprint shell exposes every canonical command applicable to Blueprint composition. A
+surface is an intent projection only; every row still passes through the same headless session and reducer.
+
+| Command                             | Reference shell path                                                                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `insert-node`                       | Block palette and command palette                                                              |
+| `remove-node`                       | Outline action, Delete key and command palette                                                 |
+| `restore-node`                      | Restore-last-deleted command-palette action backed by a journal bounded to `maxHistoryEntries` |
+| `move-node`                         | Measured canvas reparent, outline destination selector and command-palette destination         |
+| `duplicate-node`                    | Outline action, Ctrl/Meta+D and command palette                                                |
+| `reorder-children`                  | Measured canvas reorder, Alt+Arrow, outline actions/destination selector and command palette   |
+| `set-property` / `unset-property`   | Inspector base and responsive controls                                                         |
+| `reset-inherited-property`          | Inspector responsive-property reset action                                                     |
+| `set-size-role` / `unset-size-role` | Inspector Layout controls                                                                      |
+| `set-binding` / `remove-binding`    | Inspector binding controls                                                                     |
+| `apply-pattern`                     | Host-supplied validated pattern palette and command palette                                    |
+| `batch`                             | Theme recipe selector                                                                          |
+
+The host supplies only active, schema-validated `PatternDocument` contributions. Before dispatch, the shell
+requires exact active block definitions for the complete fragment, allocates a deterministic collision-free
+ID map, and resolves a slot/root destination through current mode and hybrid policy. The restore surface
+records only successful shell deletions, revalidates the recorded subtree and destination against current
+state, and drops entries outside the configured bound. The journal is not persisted or treated as host
+recovery authority.
+
+`set-field-value` and `add-model-field` belong to entry and content-model authoring surfaces respectively;
+they are intentionally not represented as Blueprint controls.
+
 ## Canonical vectors
 
 Every implemented command carries canonical vectors in [`schemas/vectors/command/`](../../schemas/vectors/command/), published verbatim through `@kumwe/studio-testkit` under `vectors/command/`. A vector fixes one initial document, one command, and either the exact expected document or a stable failure code, plus the inverse command for successful transitions. The TypeScript reference replays the whole corpus (`packages/core/test/command-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same results and MUST compute the same inverse commands.
