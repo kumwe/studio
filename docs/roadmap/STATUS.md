@@ -7,20 +7,20 @@ already exist in runtime code. Accepted work is recorded against immutable evide
 
 ## Current position
 
-| Item                              | Status                                                                                                                                                                                         |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Programme phase                   | Months 1–4 running concurrently: foundation completions, contract corpus, headless runtime, authoring shell                                                                                    |
-| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                                                     |
-| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                                                |
-| Published Studio packages         | Seven alpha prereleases on the npm `alpha` dist-tag; none supported, none accepted by evidence review                                                                                          |
-| Declared conformance profiles     | `host-baseline`, additive `host-baseline-v2`, `engine-core`, `media-policy`, `preview-identity-v1`, and `schema-property` declared and executable; renderer and authoring profiles are targets |
-| Version 2 qualification target    | The six executable profiles above plus target `renderer-web` and `authoring-web`; no profile is currently claimed                                                                              |
-| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                   |
-| Release channel                   | `alpha`. Promotion to `beta` needs a profile claim backed by reproduced evidence — see the road to beta below                                                                                  |
-| Supported production hosts        | None                                                                                                                                                                                           |
-| Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                                              |
-| Earliest durable host integration | After Gate A                                                                                                                                                                                   |
-| Current authoritative activity    | Implement the contract corpus, deterministic core, contribution runtime, preview bridge, and authoring shell against the executable check lane; assemble Gate A evidence                       |
+| Item                              | Status                                                                                                                                                                                                                  |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Programme phase                   | Months 1–4 running concurrently: foundation completions, contract corpus, headless runtime, authoring shell                                                                                                             |
+| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                                                                              |
+| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                                                                         |
+| Published Studio packages         | Seven alpha prereleases on the npm `alpha` dist-tag; none supported, none accepted by evidence review                                                                                                                   |
+| Declared conformance profiles     | `host-baseline`, additive `host-baseline-v2`, `engine-core`, `media-policy`, `preview-identity-v1`, `schema-property`, and `binding-projection-v1` declared and executable; renderer and authoring profiles are targets |
+| Version 2 qualification target    | The seven executable profiles above plus target `renderer-web` and `authoring-web`; no profile is currently claimed                                                                                                     |
+| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                            |
+| Release channel                   | `alpha`. Promotion to `beta` needs a profile claim backed by reproduced evidence — see the road to beta below                                                                                                           |
+| Supported production hosts        | None                                                                                                                                                                                                                    |
+| Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                                                                       |
+| Earliest durable host integration | After Gate A                                                                                                                                                                                                            |
+| Current authoritative activity    | Implement the contract corpus, deterministic core, contribution runtime, preview bridge, and authoring shell against the executable check lane; assemble Gate A evidence                                                |
 
 Delivered, repository-verified increments are recorded in [`CHANGELOG.md`](../../CHANGELOG.md) and in the
 implementation board below. A changelog entry means the behaviour exists and passes the check lane on a
@@ -77,6 +77,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M4-02` | active          | Core section/stack/grid/columns, typed recipes/tokens, reference reflow, two-theme semantic resolution | Independent second-renderer replay and reviewer reproduction            |
 | `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                                       | Reviewer reproduction                                                   |
 | `M4-01` | active          | Shell regions plus host-bound preview, two-way marker selection and degraded state                     | Framed-CSP policy; browser-lane replay; reviewer reproduction           |
+| `M4-04` | active          | Read-only model session; exact field/control projection; portable binding corpus; model-driven shell   | Published Kumwe App AP-2 replay; independent second-host reproduction   |
 | `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                                        | Reviewer reproduction                                                   |
 | `M5-01` | active          | Upload orchestration over the canonical session state machine                                          | Media browser UI; paste/drop capture; real host adapter exercises       |
 | `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | Ratified `engine-dart` profile, generated models, cross-runtime replay  |
@@ -87,6 +88,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | Package / integration item | Implementation commit                      | Evidence bundle        | New state | Blocking item                                                                                                                                           | Reviewer   |
 | -------------------------- | ------------------------------------------ | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
 | `M4-01` / `ST-4`           | `26359f3d98717450fc083bc2d3d21a762df750e3` | none — not yet created | active    | Reproduce the Playwright accessibility/CSP lane; ratify a dedicated framed authoring policy because the pinned reference CSP retains `frame-src 'none'` | unassigned |
+| `M4-04` / `ST-8`           | `ba7238fa60ab0269cee47264b9b94961c07183ec` | none — not yet created | active    | Replay the published Kumwe App AP-2 session adapter and the portable binding corpus in an independent second host                                       | unassigned |
 
 ## Downstream integration commitments
 
@@ -119,8 +121,10 @@ until an independent runtime replay and evidence review are recorded. The next a
 order:
 
 1. Independent non-TypeScript replay of `studio.profile/host-baseline-v2` and
-   `studio.profile/schema-property`, followed by immutable evidence review. The host sequence schema
-   now carries every timing/render precondition explicitly; repository verification is not acceptance.
+   `studio.profile/schema-property`, plus independent second-host replay of
+   `studio.profile/binding-projection-v1`, followed by immutable evidence review. The host sequence
+   schema now carries every timing/render precondition explicitly; repository verification is not
+   acceptance.
 2. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
    scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
    authoring path, and a second unrelated theme proven end to end.
@@ -139,9 +143,10 @@ and only the first is now in place:
 1. **A declared, executable profile.** Done for the host boundary:
    [`studio.profile/host-baseline-v2`](../contracts/conformance-profiles.md) adds the stateful sequence
    assertion set without changing `host-baseline`. `engine-core`, `media-policy`, `preview-identity-v1`, and
-   `schema-property` are declared against the command, media, preview-identity, and property-schema
-   corpora. The renderer and authoring profiles remain targets — their assertion sets are not yet
-   executable, so no package may advertise them.
+   `schema-property`, and `binding-projection-v1` are declared against the command, media,
+   preview-identity, property-schema, and read-only model-binding corpora. The renderer and authoring
+   profiles remain targets — their assertion sets are not yet executable, so no package may advertise
+   them.
 2. **Feature-completeness against the profile a package advertises.** The reference host is complete
    against the executable v2 assertion set in the repository lane; the profile documents the two
    idempotency scope collision drills it does not yet prove portably. For an authoring package,
