@@ -71,3 +71,6 @@ that has not passed its conformance suite.
 Before Gate A, integrations are discovery spikes. Gate A permits durable integration against the frozen
 release-candidate boundary. Gate B qualifies the published packages and named host profiles for release. See
 the [delivery programme](../roadmap/README.md).
+
+The cross-repository sequence for the first production integration is in
+[`version-two-joint-plan.md`](version-two-joint-plan.md).
