@@ -9,6 +9,8 @@ import {
 } from 'lit';
 import {
   BlockRegistry,
+  permittedCommandTypes,
+  resolveSessionMode,
   StudioCommandError,
   StudioSession,
   validateBlueprint,
@@ -42,6 +44,8 @@ import type {
   SizeRoleAxis,
   StudioContractVersion,
   StudioDiagnostic,
+  StudioCommand,
+  StudioSessionMode,
   ThemeDesignChoice,
   ThemeDesignControl,
   ThemeViewport,
@@ -547,6 +551,11 @@ export class KumweStudioElement extends LitElement {
     return this.#session?.stateVersion ?? 0;
   }
 
+  /** The single mode resolved from the wire configuration for this session. */
+  public get sessionMode(): StudioSessionMode | undefined {
+    return this.#session?.mode;
+  }
+
   public execute(command: BlueprintCommand): BlueprintDocument {
     if (this.configuration?.session.sessionState === 'read-only') {
       const message = 'The current Studio session is read-only.';
@@ -707,7 +716,7 @@ export class KumweStudioElement extends LitElement {
                 <li>
                   <button
                     type="button"
-                    ?disabled=${readOnly}
+                    ?disabled=${!this.#canInsertDefinition(definition)}
                     @click=${(): void => this.#requestInsert(definition)}
                   >
                     ${referenceText(definition.label)}
@@ -966,7 +975,11 @@ export class KumweStudioElement extends LitElement {
   #deleteNode(node: BlueprintNode): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#canMutateNode(node, 'studio.command/remove-node')
+    ) {
       return;
     }
     const location = findOutlineLocation(document.roots, node.id);
@@ -995,7 +1008,11 @@ export class KumweStudioElement extends LitElement {
   #duplicateNode(node: BlueprintNode): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#canMutateNode(node, 'studio.command/duplicate-node')
+    ) {
       return;
     }
     const idMap = allocateDuplicateIdMap(document.roots, node);
@@ -1062,27 +1079,9 @@ export class KumweStudioElement extends LitElement {
   #insertDefinition(definition: BlockDefinition): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    const destination = this.#insertionDestination(definition);
+    if (session === undefined || document === undefined || destination === undefined) {
       return;
-    }
-    const selected =
-      this.selectedNodeId === undefined
-        ? undefined
-        : findOutlineLocation(document.roots, this.selectedNodeId)?.node;
-    const selectedDefinition = selected === undefined ? undefined : this.#findDefinition(selected);
-    const firstSlot = selectedDefinition?.slots[0];
-    let destination: CommandDestination;
-    if (selected !== undefined && firstSlot !== undefined) {
-      const children = Object.hasOwn(selected.slots, firstSlot.id)
-        ? selected.slots[firstSlot.id]
-        : undefined;
-      destination = {
-        parentNodeId: selected.id,
-        position: children?.length ?? 0,
-        slot: firstSlot.id,
-      };
-    } else {
-      destination = { position: document.roots.length };
     }
     const taken = collectDocumentIds(document.roots);
     const base = definition.type.slice(definition.type.indexOf('/') + 1);
@@ -1122,10 +1121,115 @@ export class KumweStudioElement extends LitElement {
     );
   }
 
+  #canInsertDefinition(definition: BlockDefinition): boolean {
+    return this.#insertionDestination(definition) !== undefined;
+  }
+
+  #canMutateNode(
+    node: BlueprintNode,
+    type:
+      | 'studio.command/duplicate-node'
+      | 'studio.command/remove-node'
+      | 'studio.command/reorder-children',
+  ): boolean {
+    if (!this.#permits(type)) {
+      return false;
+    }
+    const session = this.#session;
+    if (session?.mode !== 'hybrid') {
+      return true;
+    }
+    const document = this.document;
+    if (document === undefined) {
+      return false;
+    }
+    const location = findOutlineLocation(document.roots, node.id);
+    if (
+      location?.parentNodeId === undefined ||
+      location.slot === undefined ||
+      this.#subtreeContainsLockedNode(node)
+    ) {
+      return false;
+    }
+    const parent = findOutlineLocation(document.roots, location.parentNodeId)?.node;
+    if (parent === undefined || !this.#isComposableSlot(parent, location.slot)) {
+      return false;
+    }
+    const allowed =
+      parent.authoring.slots?.[location.slot]?.allowedBlocks ?? parent.authoring.allowedBlocks;
+    return type !== 'studio.command/duplicate-node' || allowed?.includes(node.type) !== false;
+  }
+
+  #insertionDestination(definition: BlockDefinition): CommandDestination | undefined {
+    if (!this.#permits('studio.command/insert-node')) {
+      return undefined;
+    }
+    const document = this.document;
+    if (document === undefined) {
+      return undefined;
+    }
+    const selected =
+      this.selectedNodeId === undefined
+        ? undefined
+        : findOutlineLocation(document.roots, this.selectedNodeId)?.node;
+    const selectedDefinition = selected === undefined ? undefined : this.#findDefinition(selected);
+    if (selected === undefined || selectedDefinition === undefined) {
+      return this.#session?.mode === 'hybrid' ? undefined : { position: document.roots.length };
+    }
+    for (const slot of selectedDefinition.slots) {
+      if (!slot.accepts.types.includes(definition.type)) {
+        continue;
+      }
+      if (this.#session?.mode === 'hybrid') {
+        if (!this.#isComposableSlot(selected, slot.id)) {
+          continue;
+        }
+        const allowed =
+          selected.authoring.slots?.[slot.id]?.allowedBlocks ?? selected.authoring.allowedBlocks;
+        if (allowed?.includes(definition.type) === false) {
+          continue;
+        }
+      }
+      return {
+        parentNodeId: selected.id,
+        position: selected.slots[slot.id]?.length ?? 0,
+        slot: slot.id,
+      };
+    }
+    return this.#session?.mode === 'hybrid' ? undefined : { position: document.roots.length };
+  }
+
+  #isComposableSlot(parent: BlueprintNode, slot: string): boolean {
+    return (
+      parent.authoring.mode === 'structural' || parent.authoring.slots?.[slot]?.composable === true
+    );
+  }
+
+  #subtreeContainsLockedNode(node: BlueprintNode): boolean {
+    const stack = [node];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (current === undefined) {
+        break;
+      }
+      if (current.authoring.mode === 'locked') {
+        return true;
+      }
+      for (const children of Object.values(current.slots)) {
+        stack.push(...children);
+      }
+    }
+    return false;
+  }
+
   #moveNode(node: BlueprintNode, direction: -1 | 1): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#canMutateNode(node, 'studio.command/reorder-children')
+    ) {
       return;
     }
     const location = findOutlineLocation(document.roots, node.id);
@@ -1220,7 +1324,14 @@ export class KumweStudioElement extends LitElement {
     }
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    const dragged =
+      document === undefined ? undefined : findOutlineLocation(document.roots, drag.nodeId)?.node;
+    if (
+      session === undefined ||
+      document === undefined ||
+      dragged === undefined ||
+      !this.#canMutateNode(dragged, 'studio.command/reorder-children')
+    ) {
       return;
     }
     const order = [...drag.order];
@@ -1259,7 +1370,7 @@ export class KumweStudioElement extends LitElement {
     if (
       document === undefined ||
       this.#session === undefined ||
-      this.#isReadOnly() ||
+      !this.#canMutateNode(node, 'studio.command/reorder-children') ||
       event.button !== 0 ||
       this.#drag !== undefined
     ) {
@@ -1490,7 +1601,7 @@ export class KumweStudioElement extends LitElement {
       const last = location.index === location.collection.length - 1;
       entries.push(
         {
-          disabled: readOnly || first,
+          disabled: !this.#canMutateNode(node, 'studio.command/reorder-children') || first,
           id: 'move-up',
           label: this.#text('studio.shell/move-up'),
           run: (): void => {
@@ -1498,7 +1609,7 @@ export class KumweStudioElement extends LitElement {
           },
         },
         {
-          disabled: readOnly || last,
+          disabled: !this.#canMutateNode(node, 'studio.command/reorder-children') || last,
           id: 'move-down',
           label: this.#text('studio.shell/move-down'),
           run: (): void => {
@@ -1506,7 +1617,7 @@ export class KumweStudioElement extends LitElement {
           },
         },
         {
-          disabled: readOnly,
+          disabled: !this.#canMutateNode(node, 'studio.command/duplicate-node'),
           id: 'duplicate',
           label: this.#text('studio.shell/duplicate'),
           run: (): void => {
@@ -1514,7 +1625,7 @@ export class KumweStudioElement extends LitElement {
           },
         },
         {
-          disabled: readOnly,
+          disabled: !this.#canMutateNode(node, 'studio.command/remove-node'),
           id: 'delete',
           label: this.#text('studio.shell/delete'),
           run: (): void => {
@@ -1553,7 +1664,7 @@ export class KumweStudioElement extends LitElement {
     );
     for (const definition of this.configuration?.blockDefinitions ?? []) {
       entries.push({
-        disabled: readOnly,
+        disabled: !this.#canInsertDefinition(definition),
         id: `insert-${definition.type}@${definition.version}`,
         label: this.#text('studio.shell/command-insert', {
           label: referenceText(definition.label),
@@ -1631,6 +1742,9 @@ export class KumweStudioElement extends LitElement {
         sessionGeneration: generation,
         sessionState: this.configuration?.session.sessionState ?? 'editable',
       };
+      if (this.configuration !== undefined) {
+        options.mode = resolveSessionMode(this.configuration.session);
+      }
       const maximumHistoryEntries = this.configuration?.session.limits.maxHistoryEntries;
       if (maximumHistoryEntries !== undefined) {
         options.maximumHistoryEntries = maximumHistoryEntries;
@@ -1641,6 +1755,11 @@ export class KumweStudioElement extends LitElement {
     this.#drag = undefined;
     this.selectedNodeId = undefined;
     this.#syncDirty();
+  }
+
+  #permits(type: StudioCommand['type']): boolean {
+    const session = this.#session;
+    return session !== undefined && permittedCommandTypes(session.mode).has(type);
   }
 
   #releaseDragCapture(drag: CanvasDragState): void {
@@ -1654,7 +1773,11 @@ export class KumweStudioElement extends LitElement {
   #removeBinding(node: BlueprintNode, port: string): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/remove-binding')
+    ) {
       return;
     }
     const command: RemoveBindingCommand = {
@@ -1851,9 +1974,9 @@ export class KumweStudioElement extends LitElement {
   /**
    * The editable inspector: contract facts, then keyboard-complete editors
    * for base properties, bindings, and active-viewport overrides. Tab order
-   * follows the DOM order documented in docs/experience/keyboard.md. In
-   * read-only sessions every control renders disabled and the hint line
-   * states the reason textually.
+   * follows the DOM order documented in docs/experience/keyboard.md. Each
+   * mutating section derives its disabled state from the canonical session
+   * mode; read-only sessions additionally state the reason textually.
    */
   #renderInspector(node: BlueprintNode): TemplateResult {
     const readOnly = this.#isReadOnly();
@@ -1875,10 +1998,10 @@ export class KumweStudioElement extends LitElement {
             </p>`
           : html`<p class="hint">${this.#text('studio.shell/inspector-hint')}</p>`
       }
-      ${this.#renderInspectorProperties(node, readOnly)}
-      ${this.#renderInspectorBindings(node, readOnly)}
-      ${this.#renderInspectorOverrides(node, readOnly)}
-      ${this.#renderInspectorLayout(node, readOnly)}
+      ${this.#renderInspectorProperties(node, !this.#permits('studio.command/set-property'))}
+      ${this.#renderInspectorBindings(node, !this.#permits('studio.command/set-binding'))}
+      ${this.#renderInspectorOverrides(node, !this.#permits('studio.command/set-property'))}
+      ${this.#renderInspectorLayout(node, !this.#permits('studio.command/set-size-role'))}
     `;
   }
 
@@ -2341,7 +2464,7 @@ export class KumweStudioElement extends LitElement {
   #renderOutlineControls(node: BlueprintNode): TemplateResult {
     const location =
       this.document === undefined ? undefined : findOutlineLocation(this.document.roots, node.id);
-    const readOnly = this.#isReadOnly();
+    const reorderDisabled = !this.#canMutateNode(node, 'studio.command/reorder-children');
     const first = location === undefined || location.index === 0;
     const last = location === undefined || location.index === location.collection.length - 1;
     return html`
@@ -2353,7 +2476,7 @@ export class KumweStudioElement extends LitElement {
         <button
           type="button"
           class="outline-move-up"
-          ?disabled=${readOnly || first}
+          ?disabled=${reorderDisabled || first}
           @click=${(): void => {
             this.#moveNode(node, -1);
           }}
@@ -2363,7 +2486,7 @@ export class KumweStudioElement extends LitElement {
         <button
           type="button"
           class="outline-move-down"
-          ?disabled=${readOnly || last}
+          ?disabled=${reorderDisabled || last}
           @click=${(): void => {
             this.#moveNode(node, 1);
           }}
@@ -2373,7 +2496,7 @@ export class KumweStudioElement extends LitElement {
         <button
           type="button"
           class="outline-duplicate"
-          ?disabled=${readOnly}
+          ?disabled=${!this.#canMutateNode(node, 'studio.command/duplicate-node')}
           @click=${(): void => {
             this.#duplicateNode(node);
           }}
@@ -2383,7 +2506,7 @@ export class KumweStudioElement extends LitElement {
         <button
           type="button"
           class="outline-delete"
-          ?disabled=${readOnly}
+          ?disabled=${!this.#canMutateNode(node, 'studio.command/remove-node')}
           @click=${(): void => {
             this.#deleteNode(node);
           }}
@@ -2468,11 +2591,22 @@ export class KumweStudioElement extends LitElement {
   }
 
   #requestInsert(definition: BlockDefinition): void {
+    const destination = this.#insertionDestination(definition);
+    if (destination === undefined) {
+      return;
+    }
+    const detail: StudioInsertRequestDetail = {
+      definition,
+      parentId: destination.parentNodeId ?? null,
+    };
+    if (destination.slot !== undefined) {
+      detail.slot = destination.slot;
+    }
     this.dispatchEvent(
       new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
         bubbles: true,
         composed: true,
-        detail: { definition, parentId: null },
+        detail,
       }),
     );
   }
@@ -2619,7 +2753,7 @@ export class KumweStudioElement extends LitElement {
     if (
       session === undefined ||
       document === undefined ||
-      this.#isReadOnly() ||
+      !this.#permits('studio.command/set-binding') ||
       portInput === null ||
       valueInput === null
     ) {
@@ -2664,7 +2798,11 @@ export class KumweStudioElement extends LitElement {
   ): boolean {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/set-property')
+    ) {
       return false;
     }
     const payload: SetPropertyPayload = { nodeId: node.id, property, value };
@@ -2699,7 +2837,11 @@ export class KumweStudioElement extends LitElement {
   #setSizeRole(node: BlueprintNode, axis: SizeRoleAxis, role: string): boolean {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/set-size-role')
+    ) {
       return false;
     }
     const viewport = this.#sizeRoleTargetViewport();
@@ -2819,7 +2961,11 @@ export class KumweStudioElement extends LitElement {
   ): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/unset-property')
+    ) {
       return;
     }
     const payload: UnsetPropertyPayload = { nodeId: node.id, property };
@@ -2852,7 +2998,11 @@ export class KumweStudioElement extends LitElement {
   #unsetSizeRole(node: BlueprintNode, axis: SizeRoleAxis): void {
     const session = this.#session;
     const document = this.document;
-    if (session === undefined || document === undefined || this.#isReadOnly()) {
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/unset-size-role')
+    ) {
       return;
     }
     const viewport = this.#sizeRoleTargetViewport();

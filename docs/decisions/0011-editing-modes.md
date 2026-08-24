@@ -46,15 +46,17 @@ the same generation, revision, read-only, and mode guards before the pure reduce
 dispatch path bypasses the boundary; their results stay host-owned and are not recorded in
 the Blueprint history, whose undo integration for non-Blueprint artifacts is deferred.
 
-Hybrid is bounded by markers the Blueprint schema already declares — no new flag is
-invented. The blueprint schema's node authoring policy enumerates `locked`, `content`,
-`variant`, `structural`, and `designer`, and the Blueprint contract assigns `structural` the
-entry-author grant to reorder children and insert allowed blocks. Hybrid structure commands
-are therefore in bounds only when every affected collection is a named slot of a node whose
-authoring mode is `structural`; inserted block types must satisfy the governing node's
-`allowedBlocks` when declared; subtrees containing a `locked` node are never inserted,
-removed, moved, or duplicated (reordering around a locked sibling stays legal because
-ordering belongs to the structural parent); and document roots are never in bounds. Batches
+Hybrid is bounded by markers the Blueprint schema already declares. The blueprint schema's
+node authoring policy enumerates `locked`, `content`, `variant`, `structural`, and `designer`,
+and the Blueprint contract assigns `structural` the entry-author grant to reorder children
+and insert allowed blocks. A named slot can also opt into the same bounded composition with
+its `composable` marker without making every slot of its parent structural. Hybrid structure
+commands are therefore in bounds only when every affected collection is a named slot of a
+structural node or carries that per-slot marker; inserted block types must satisfy the
+slot-level `allowedBlocks` list when present and otherwise the governing node's list; subtrees
+containing a `locked` node are never inserted, removed, moved, or duplicated (reordering
+around a locked sibling stays legal because ordering belongs to the structural parent); and
+document roots are never in bounds. Batches
 are validated operation by operation against a sequential trial state, so a later operation
 may compose nodes an earlier one introduced, and one violation rejects the whole batch
 before anything applies. The gate rejects only provable violations: a reference it cannot
@@ -72,11 +74,10 @@ inverse targets exactly the collections and subtrees its forward command proved 
 
 Mode boundaries are now headless invariants with one table to read and one code to handle,
 so shells in any framework render affordances and rejections consistently without policy
-forks, and programmatic dispatch is exactly as bounded as pointer gestures. The costs are an
+forks, and programmatic dispatch is exactly as bounded as pointer gestures. The Lit shell
+uses that table for every mutation control and mirrors the core's structural/per-slot hybrid
+bounds; those disabled controls remain explanation rather than authority. The costs are an
 additive taxonomy entry every conforming implementation must recognize, and a deliberately
-conservative hybrid core: per-slot composition markers beyond the node-level `structural`
-policy, property or variant editing inside structural regions, pattern application in
-hybrid, and hybrid canonical vectors (including the `mode-forbidden` entry in the
-command-vector schema's expected-code enumeration) are deferred to the schema wave rather
-than invented here. Relaxing any of these bounds later is additive; tightening them again
-would be breaking, which is why the core starts closed.
+conservative hybrid core: property or variant editing inside structural regions and pattern
+application in hybrid remain forbidden. Relaxing any of these bounds later is additive;
+tightening them again would be breaking, which is why the core starts closed.

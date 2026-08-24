@@ -93,7 +93,7 @@ Versioned definition artifacts—model, Blueprint, and theme—use locked refere
 
 Configuration is immutable after session compilation, except locale, writing direction, preview viewport, theme preview choice, and user preferences explicitly marked dynamic. A change to editing mode, composition, session state, resource context, permissions, blocks, plugins, resource limits, contract or protocol version, model revision, or trust state requires a new session generation.
 
-The UI MUST NOT infer permission from hidden controls. Every command and host call carries an operation identifier that the core checks against session permissions; the host authorizes independently.
+The UI MUST NOT infer permission from hidden controls. The Lit shell resolves the same flattened mode at session creation and derives each mutating affordance from the core's exported command table; it does not coerce every editable configuration to Blueprint mode. Hybrid insert, remove, duplicate, and reorder affordances are additionally bounded to the same structural or per-slot composable regions as the headless session. Every command and host call still carries an operation identifier that the core checks against session permissions; the host authorizes independently.
 
 ## Resource limits
 
