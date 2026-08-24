@@ -371,6 +371,21 @@ function pointerEvent(
 }
 
 describe('shell preview surface', () => {
+  it('keeps the scrollable preview stage keyboard focusable', async () => {
+    const { element } = await mount();
+    const stage = element.shadowRoot?.querySelector<HTMLElement>('.preview-stage');
+
+    expect(stage).not.toBeNull();
+    if (stage === null || stage === undefined) {
+      throw new Error('Missing preview stage');
+    }
+    expect(stage.tabIndex).toBe(0);
+    expect(getComputedStyle(stage).overflow).toBe('auto');
+    stage.focus();
+    expect(element.shadowRoot?.activeElement).toBe(stage);
+    element.remove();
+  });
+
   it('waits for ready and deterministically coalesces synchronous draft changes', async () => {
     const { client, element, staged } = await mount();
     expect(client.renders).toHaveLength(0);
@@ -724,6 +739,52 @@ describe('shell preview surface', () => {
     await settle(element);
     expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
     expect(commandTypes.at(-1)).toBe('studio.command/move-node');
+    element.remove();
+  });
+
+  it('paints the selected measured region last so nested containers remain directly manipulable', async () => {
+    const client = new FakePreviewClient();
+    const sharedRect = [{ height: 100, width: 300, x: 0, y: 0 }];
+    client.rectsByNode['section-a'] = sharedRect;
+    client.rectsByNode['text-1'] = sharedRect;
+    const { element } = await mount({
+      blockDefinitions: [
+        defineTestBlock({
+          label: 'Section',
+          slots: [
+            {
+              accepts: { types: ['studio.core/text'] },
+              id: 'content',
+              label: { defaultMessage: 'Content', key: 'studio.test/content' },
+              maximum: 20,
+              minimum: 0,
+              ordered: true,
+            },
+          ],
+          type: 'studio.core/section',
+        }),
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      client,
+      roots: [section('section-a', [node('text-1')])],
+    });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, {
+      [marker(digest, 0)]: 'section-a',
+      [marker(digest, 1)]: 'text-1',
+    });
+    await settle(element);
+
+    outlineEntry(element, 'section-a').click();
+    await settle(element);
+
+    const regions = [
+      ...(element.shadowRoot?.querySelectorAll<SVGRectElement>('.preview-canvas-region') ?? []),
+    ];
+    expect(regions.map((region) => region.dataset.nodeId)).toEqual(['text-1', 'section-a']);
+    expect(regions.at(-1)?.dataset.selected).toBe('true');
     element.remove();
   });
 
