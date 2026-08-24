@@ -421,11 +421,12 @@ export class KumweStudioElement extends LitElement {
     .preview-surface-slot {
       display: block;
       max-inline-size: 100%;
-      overflow: auto;
+      overflow: visible;
     }
 
     .preview-stage {
       isolation: isolate;
+      overflow: auto;
       position: relative;
     }
 
@@ -437,10 +438,10 @@ export class KumweStudioElement extends LitElement {
     }
 
     .preview-canvas-overlay {
-      block-size: 100%;
-      inset: 0;
-      inline-size: 100%;
-      overflow: visible;
+      inset-block-start: 0;
+      inset-inline-start: 0;
+      max-inline-size: none;
+      overflow: hidden;
       pointer-events: none;
       position: absolute;
       z-index: 1;
@@ -3947,8 +3948,10 @@ export class KumweStudioElement extends LitElement {
       <svg
         class="preview-canvas-overlay"
         data-interactive=${this.canvasDirectManipulation === true ? 'true' : 'false'}
+        width=${String(geometry.viewport.width)}
+        height=${String(geometry.viewport.height)}
         viewBox=${`0 0 ${geometry.viewport.width} ${geometry.viewport.height}`}
-        preserveAspectRatio="none"
+        preserveAspectRatio="xMinYMin meet"
         aria-hidden="true"
         @pointermove=${(event: PointerEvent): void => {
           this.#onPreviewCanvasPointerMove(event);
