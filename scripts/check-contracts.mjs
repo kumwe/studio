@@ -271,6 +271,7 @@ for (const schema of schemas) {
 }
 
 const schemaByExample = new Map([
+  ['authoring-message-catalog.en.json', 'authoring-message-catalog.schema.json'],
   ['block.grid.example.json', 'block-definition.schema.json'],
   ['block.price.example.json', 'block-definition.schema.json'],
   ['blueprint.product.example.json', 'blueprint.schema.json'],

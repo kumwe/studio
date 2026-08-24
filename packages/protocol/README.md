@@ -20,6 +20,10 @@ design vocabulary, migrations, inspectors, and field adapters retain matching di
 `InspectorContribution` and `FieldAdapterContribution` are declarative data types only—execution
 remains a negotiated host capability.
 
+The authoring message-catalog schema defines versioned locale bundles with closed message entries,
+default text, and explicit named parameters. The canonical English shell catalog is published by
+`@kumwe/studio` and replayed as a byte-identical testkit fixture.
+
 Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its nine
 typed ports sharing one request envelope), the stable host error taxonomy with the
 `isHostPortError` guard, and the JavaScript `HostPortFailure` rejection wrapper with its

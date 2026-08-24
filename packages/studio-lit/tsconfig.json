@@ -6,6 +6,6 @@
     "rootDir": "src",
     "tsBuildInfoFile": "../../.cache/tsbuildinfo/studio-lit.tsbuildinfo"
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.json"],
   "references": [{ "path": "../protocol" }, { "path": "../core" }]
 }

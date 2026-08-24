@@ -10,6 +10,19 @@ Definitions store message references as `{ key, defaultMessage? }`. Keys are nam
 
 Message formatting uses an ICU MessageFormat-compatible vocabulary with named parameters. Plugin parameters are schema-declared. Rich HTML messages are prohibited; structured links or emphasis use typed message parts rendered by trusted UI components.
 
+The Studio authoring shell publishes its canonical English messages as a versioned
+`authoring-message-catalog` JSON artifact. Catalog keys and parameter names are API: removing a key,
+renaming a key, or removing a parameter is breaking. Adding a key or optional translation is
+additive. The shell's own catalog deliberately uses ICU's named-interpolation subset; host and
+plugin bundles may use plural and select forms when the host's negotiated formatter supports them.
+This bounded shell subset keeps the dependency-free fallback deterministic without narrowing the
+host localization contract.
+
+`@kumwe/studio` exports the machine-readable catalog at `./catalogs/en.json` and the typed runtime
+value as `studioMessageCatalog`. The JSON schema and canonical source live with the protocol corpus,
+and the testkit ships the byte-identical fixture. Build checks reject unpublished shell keys,
+undeclared parameters, unsorted keys, or stale copies.
+
 ## Locale negotiation
 
 The host supplies requested locale, fallback chain, writing direction, time zone, calendar, numbering system, hour cycle, optional measurement-system preference, and available bundles. Studio reports the resolved locale and display preferences. Locale or display preferences can change without rebuilding persisted artifacts, but the UI MUST recompute direction, formatting and layout.

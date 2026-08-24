@@ -20,7 +20,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./catalogs/en.json": "./dist/catalogs/en.json"
   },
   "scripts": {
     "build": "tsc -b"
