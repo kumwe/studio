@@ -130,6 +130,10 @@ async function dispatch(vector: HostVector, testbed: TestbedHost): Promise<unkno
       return host.media?.get(argument.assetId as StableId, context);
     case 'media.list':
       return host.media?.list(argument as unknown as MediaQuery, context);
+    case 'model.get':
+      return host.model?.get(argument as never, context);
+    case 'model.list':
+      return host.model?.list(context);
     case 'permission.explain':
       return host.permission?.explain(argument.operation as QualifiedName, context);
     case 'permission.refresh':
@@ -182,6 +186,12 @@ describe('canonical host conformance vectors', () => {
         }
         if (expected.value === 'null') {
           expect(result.value).toBeNull();
+        } else if (expected.value === 'content-model') {
+          expect(result.value).toMatchObject({ kind: 'content-model' });
+        } else if (expected.value === 'content-models') {
+          expect(result.value).toEqual(
+            expect.arrayContaining([expect.objectContaining({ kind: 'content-model' })]),
+          );
         } else if (expected.value !== undefined) {
           expect(result.value).not.toBeNull();
         }

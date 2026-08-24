@@ -60,3 +60,23 @@ directions through the latest accepted marker map. Reload and teardown preserve 
 Without every required capability and binding, the preview region states that it is unavailable and all
 permitted non-preview authoring paths remain usable. Read-only sessions render preview identically while
 mutation controls remain disabled.
+
+## Model-bound fields
+
+When the resolved configuration advertises both model read operations, load the Blueprint's exact locked
+model through the headless host-session seam and pass its detached projection to the shell:
+
+```ts
+const activeModel = await session.models?.get(session.session.document.model);
+studio.contentModel = activeModel?.value;
+```
+
+The inspector then offers only block-port-compatible fields in deterministic authoring order. Choosing a
+field dispatches the canonical `set-binding` command with an `entry-field` path; it never changes the supplied
+model. The selected field's declared built-in control is shown as a non-editing preview. Namespaced controls
+state that a host field-adapter contribution is required rather than falling back to an inferred input.
+
+Model ID/version/revision drift, removed fields and kind/cardinality changes surface through exact
+`studio.binding/*` diagnostics while preserving the stored binding. When model reads are advertised but no
+active projection is supplied, field choices stay disabled and the shell does not reopen its legacy free-form
+JSON binding editor. Read-only sessions show the same projection with every binding mutation disabled.

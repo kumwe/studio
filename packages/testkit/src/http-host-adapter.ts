@@ -2,6 +2,7 @@ import {
   isHostPortError,
   STUDIO_CONTRACT_VERSION,
   type ArtifactReference,
+  type ContentModelDocument,
   type HostAdapter,
   type HostErrorCategory,
   type HostPortError,
@@ -253,6 +254,17 @@ export function createHttpHostAdapter(
         context: HostRequestContext,
       ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
         return call('media', 'upload-status', { assetId }, context);
+      },
+    },
+    model: {
+      get(
+        reference: ArtifactReference,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<ContentModelDocument>> {
+        return call('model', 'get', { reference: asJson(reference) }, context);
+      },
+      list(context: HostRequestContext): Promise<HostPortResult<ContentModelDocument[]>> {
+        return call('model', 'list', {}, context);
       },
     },
     permission: {

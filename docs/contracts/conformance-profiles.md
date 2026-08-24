@@ -21,21 +21,22 @@ implementation that claimed a profile keeps claiming it for the version it passe
 
 ## Declared profiles
 
-| Profile                              | Claimed by                        | Executable assertion set                                      | State                |
-| ------------------------------------ | --------------------------------- | ------------------------------------------------------------- | -------------------- |
-| `studio.profile/host-baseline`       | A host adapter                    | `vectors/host/` replayed through the adapter                  | Declared, executable |
-| `studio.profile/host-baseline-v2`    | A host adapter                    | `host-baseline` plus `vectors/host-sequence/`                 | Declared, executable |
-| `studio.profile/engine-core`         | A protocol engine                 | `vectors/command/` and `vectors/canonical/`                   | Declared, executable |
-| `studio.profile/media-policy`        | A host media pipeline             | `vectors/media/`                                              | Declared, executable |
-| `studio.profile/preview-identity-v1` | A preview client/host             | `vectors/preview/`                                            | Declared, executable |
-| `studio.profile/schema-property`     | A property-schema validator       | `vectors/schema-profile/`                                     | Declared, executable |
-| `studio.profile/renderer-web`        | A trusted renderer                | `conformance/rich-text/` and the preview channel obligations  | Target               |
-| `studio.profile/authoring-web`       | An authoring client               | The interaction requirement registry and accessibility lanes  | Target               |
-| `studio.profile/engine-dart`         | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay | Version 3 target     |
-| `studio.profile/renderer-flutter`    | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions | Version 3 target     |
-| `studio.profile/authoring-flutter`   | A native Flutter authoring client | Version 3 interaction and accessibility assertions            | Version 3 target     |
+| Profile                                | Claimed by                        | Executable assertion set                                      | State                |
+| -------------------------------------- | --------------------------------- | ------------------------------------------------------------- | -------------------- |
+| `studio.profile/host-baseline`         | A host adapter                    | `vectors/host/` replayed through the adapter                  | Declared, executable |
+| `studio.profile/host-baseline-v2`      | A host adapter                    | `host-baseline` plus `vectors/host-sequence/`                 | Declared, executable |
+| `studio.profile/engine-core`           | A protocol engine                 | `vectors/command/` and `vectors/canonical/`                   | Declared, executable |
+| `studio.profile/binding-projection-v1` | A model-binding client or host    | `vectors/binding-projection/`                                 | Declared, executable |
+| `studio.profile/media-policy`          | A host media pipeline             | `vectors/media/`                                              | Declared, executable |
+| `studio.profile/preview-identity-v1`   | A preview client/host             | `vectors/preview/`                                            | Declared, executable |
+| `studio.profile/schema-property`       | A property-schema validator       | `vectors/schema-profile/`                                     | Declared, executable |
+| `studio.profile/renderer-web`          | A trusted renderer                | `conformance/rich-text/` and the preview channel obligations  | Target               |
+| `studio.profile/authoring-web`         | An authoring client               | The interaction requirement registry and accessibility lanes  | Target               |
+| `studio.profile/engine-dart`           | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay | Version 3 target     |
+| `studio.profile/renderer-flutter`      | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions | Version 3 target     |
+| `studio.profile/authoring-flutter`     | A native Flutter authoring client | Version 3 interaction and accessibility assertions            | Version 3 target     |
 
-The Version 2 qualification target comprises the six declared executable profiles plus
+The Version 2 qualification target comprises the seven declared executable profiles plus
 `renderer-web` and `authoring-web` when their assertion sets become executable. The three Dart/Flutter
 profiles are Version 3 targets and do not block Version 2. A target row is not a support or conformance
 claim; the current release record claims no profiles.
@@ -76,6 +77,8 @@ The profile currently asserts:
   generation.
 - **Telemetry discipline.** Primitive-only attributes are accepted; a non-primitive attribute is
   refused, keeping the cardinality discipline enforceable.
+- **Read-only model discovery.** `model.get` resolves an exact content-model coordinate and
+  `model.list` returns authorized model projections without granting a definition mutation path.
 
 The TypeScript reference host in `@kumwe/studio-testkit` claims this profile, proven by
 `packages/testkit/test/host-vectors.test.ts`.
@@ -150,6 +153,28 @@ The canonical corpus matters beyond the engine: every checksum in the contract i
 exactly these bytes, so an implementation that reproduces the corpus computes the same digests as
 every other. That is what makes a host's vendored-corpus integrity check and a stored document's
 round-trip comparison meaningful across languages rather than per-runtime.
+
+## `studio.profile/binding-projection-v1`
+
+The portable assertion set for binding an exact Blueprint revision to an authorized host content model.
+The corpus ships as `vectors/binding-projection/*.json`, conforms to
+[`binding-projection-vector.schema.json`](../../schemas/binding-projection-vector.schema.json), and carries
+complete schema-valid Blueprints, content models and block definitions. Each expected result is normalized to
+stable model/field/port coordinates, declared control IDs, binding outcomes and diagnostic code/severity/
+location. Localized labels, prose and UI markup are deliberately excluded.
+
+The profile asserts exact model ID/version/revision locking; deterministic node preorder and field authoring
+order; field-ID paths including single-object nesting; exact cardinality; the portable `text` and `number`
+kind aliases; collection `itemKind`; omission of authoring-hidden candidates; preservation of existing
+entry-field and non-field bindings; declared authoring controls including namespaced host controls; and
+fail-closed diagnostics for removed fields, changed ports/kinds/cardinality and model-coordinate drift.
+Projection MUST NOT mutate any input or define model/workflow/translation policy.
+
+`@kumwe/studio-testkit` publishes `runBindingProjectionVector` as the TypeScript reference convenience and
+replays the corpus in `packages/testkit/test/binding-projection-vectors.test.ts`. A second host replays the
+same JSON directly; it does not need the TypeScript runner. The corpus proves only projection semantics. It
+does not claim host authorization implementation, entry writes, model-definition mutation, custom control
+implementation, renderer fidelity or independent acceptance evidence.
 
 ## `studio.profile/preview-identity-v1`
 

@@ -32,42 +32,40 @@ claim a profile.
 
 ## Why the order matters
 
-Five of the App's six open packages consume Studio behaviour that does not exist yet. The largest
-single fact in this plan:
+Studio now has the public headless host-session seam from `ST-2`, the host-staged preview binding from
+`ST-4`, core layout blocks from `ST-6`, and the read-only model binding projection from `ST-8`. The remaining
+cross-repository fact is release coordination: the App cannot consume an unpublished Studio workspace, and
+Studio cannot claim the App integration until AP-2 and the real adapter replay the exact published corpus.
 
-> **Nothing in Studio currently calls a host.** The nine ports, twenty-four operations, capability
-> negotiation, the error taxonomy and a reference testbed all exist — but no public API binds a
-> configuration to a `HostAdapter`, and the shell consumes neither. Kumwe App can implement every port
-> perfectly and nothing will connect.
+AP-2 currently projects authorized Content definitions and entries with reversible coordinates, while
+BusinessRecord projection remains explicitly deferred to a separate bounded-context adapter. Studio's
+binding corpus uses the AP-2 coordinate/cardinality/control rules, but repository tests are not a real App
+host-session replay or an accepted profile claim.
 
-That is Studio `ST-2`, and it gates `S-C`, `S-D` and `S-E` on the App side.
-
-The second fact: **Studio renders no preview surface** — zero frames; the shell only announces reload
-and teardown. That gates `S-F`.
-
-The third: **the canvas is a list of label chips**, and no layout blocks exist. That gates `S-G`, because
-an embedded surface declared today would be declared against a shape about to change.
+The remaining visual dependency is `ST-7`: direct manipulation over preview geometry and the complete shell
+command surface. It still gates the final embedded builder journey even though layout and field binding are
+independently executable.
 
 ---
 
 ## Dependency matrix
 
-| App package                      | Needs from Studio                                         | Can start when   |
-| -------------------------------- | --------------------------------------------------------- | ---------------- |
-| `S-B` pin and replay corpus      | `ST-1` release coordinate                                 | `ST-1` published |
-| content-type projection (`AP-2`) | nothing beyond shipped schemas                            | **now**          |
-| `S-C` identity and policy        | `ST-2` host-session binding                               | `ST-2` published |
-| `S-D` persistence                | `ST-2`                                                    | `ST-2` published |
-| `S-E` media                      | `ST-2`                                                    | `ST-2` published |
-| `S-F` preview endpoint           | `ST-4` preview surface                                    | `ST-4` published |
-| `S-G` embedded surface           | `ST-4`, `ST-5` modes, `ST-6` layout blocks, `ST-7` canvas | `ST-7` published |
-| qualification (phase 7)          | `ST-9` message catalogue, `ST-11` ratified contract       | all of the above |
+| App package                      | Needs from Studio                                                             | Can start when          |
+| -------------------------------- | ----------------------------------------------------------------------------- | ----------------------- |
+| `S-B` pin and replay corpus      | `ST-1` release coordinate                                                     | `ST-1` published        |
+| content-type projection (`AP-2`) | binding schema/profile are implemented; consume a published Studio coordinate | Studio release required |
+| `S-C` identity and policy        | `ST-2` host-session binding                                                   | `ST-2` published        |
+| `S-D` persistence                | `ST-2`                                                                        | `ST-2` published        |
+| `S-E` media                      | `ST-2`                                                                        | `ST-2` published        |
+| `S-F` preview endpoint           | `ST-4` preview surface                                                        | `ST-4` published        |
+| `S-G` embedded surface           | `ST-4`, `ST-5` modes, `ST-6` layout blocks, `ST-7` canvas                     | `ST-7` published        |
+| qualification (phase 7)          | `ST-9` message catalogue, `ST-11` ratified contract                           | all of the above        |
 
-| Studio step                   | Needs from Kumwe App                       | Can start when        |
-| ----------------------------- | ------------------------------------------ | --------------------- |
-| `ST-3` all contribution kinds | nothing — the App already declares them    | **now**               |
-| `ST-8` content-type binding   | `AP-2` projection through the `model` port | `AP-2` published      |
-| `ST-11` ratification          | a second reviewer (see below)              | a second human exists |
+| Studio step                   | Needs from Kumwe App                       | Can start when                                                                 |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `ST-3` all contribution kinds | nothing — the App already declares them    | **now**                                                                        |
+| `ST-8` content-type binding   | `AP-2` projection through the `model` port | Implemented in coordinated branches; joint replay still requires both releases |
+| `ST-11` ratification          | a second reviewer (see below)              | a second human exists                                                          |
 
 ---
 

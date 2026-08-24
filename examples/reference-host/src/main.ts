@@ -12,6 +12,7 @@ import {
   type BlockDefinition,
   type BlueprintDocument,
   type BlueprintNode,
+  type ContentModelDocument,
   type ExperimentalShellConfiguration,
 } from '@kumwe/studio-protocol';
 import { createPreviewChannel } from './preview-channel.js';
@@ -69,6 +70,11 @@ const configuration: ExperimentalShellConfiguration = {
           id: 'studio.port/preview',
           operations: ['studio.operation/preview.render', 'studio.operation/preview.cancel'],
           version: '0.1.0',
+        },
+        {
+          id: 'studio.port/model',
+          operations: ['studio.operation/model.get', 'studio.operation/model.list'],
+          version: '1.0.0',
         },
       ],
       protocolVersions: [STUDIO_WIRE_PROTOCOL_VERSION],
@@ -132,12 +138,74 @@ const blueprint: BlueprintDocument = {
   version: '1.0.0',
 };
 
+// A detached, already-authorized model-port projection. The reference host
+// owns this definition; the shell may bind its exact fields but never changes
+// the definition, workflow, translation, or field policy behind it.
+const contentModel: ContentModelDocument = {
+  contractVersion: STUDIO_CONTRACT_VERSION,
+  fields: [
+    {
+      authoring: {
+        control: 'studio.control/single-line-text',
+        order: 0,
+        placeholder: {
+          defaultMessage: 'Entry title',
+          key: 'studio.reference/model-title-placeholder',
+        },
+      },
+      cardinality: 'one',
+      id: 'title',
+      kind: 'string',
+      label: { defaultMessage: 'Title', key: 'studio.reference/model-title' },
+      localized: true,
+      required: true,
+    },
+    {
+      authoring: { control: 'studio.control/select', order: 1 },
+      cardinality: 'one',
+      enumValues: [
+        {
+          label: { defaultMessage: 'Guide', key: 'studio.reference/category-guide' },
+          value: 'guide',
+        },
+        {
+          label: { defaultMessage: 'News', key: 'studio.reference/category-news' },
+          value: 'news',
+        },
+      ],
+      id: 'category',
+      kind: 'enum',
+      label: { defaultMessage: 'Category', key: 'studio.reference/model-category' },
+      localized: false,
+      required: false,
+    },
+    {
+      authoring: { control: 'studio.control/switch', order: 2 },
+      cardinality: 'one',
+      id: 'featured',
+      kind: 'boolean',
+      label: { defaultMessage: 'Featured', key: 'studio.reference/model-featured' },
+      localized: false,
+      required: false,
+    },
+  ],
+  id: blueprint.model.id,
+  kind: 'content-model',
+  label: { defaultMessage: 'Reference content', key: 'studio.reference/model' },
+  owner: { id: 'studio.reference/host', version: '0.1.0' },
+  relationships: [],
+  revision: blueprint.model.revision,
+  status: 'published',
+  version: blueprint.model.version,
+};
+
 const studio = document.querySelector<KumweStudioElement>('kumwe-studio');
 if (studio === null) {
   throw new Error('Reference host is missing its Studio element.');
 }
 
 studio.configuration = configuration;
+studio.contentModel = contentModel;
 studio.document = blueprint;
 
 studio.addEventListener('studio-insert-request', (event: Event) => {
@@ -291,7 +359,18 @@ function defineBlock(
     kind: 'block-definition',
     label: { defaultMessage: label, key: 'studio.reference/block-label' },
     owner: { id: 'studio.reference/blocks', version: '0.1.0' },
-    ports: [],
+    ports:
+      type === 'studio.core/text'
+        ? [
+            {
+              id: 'content',
+              label: { defaultMessage: 'Content', key: 'studio.reference/content-port' },
+              multiple: false,
+              required: false,
+              valueType: 'text',
+            },
+          ]
+        : [],
     propertySchema:
       type === 'studio.core/text'
         ? {

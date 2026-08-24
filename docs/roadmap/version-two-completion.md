@@ -246,6 +246,13 @@ drags change nothing.
 
 ### `ST-8` — Bind composition to host content types
 
+**Repository state:** implemented as a Studio integration increment. The public host-session consumes
+read-only model `list`/`get`; core projects exact locked fields, controls and invalidation diagnostics; the
+shell binds through canonical commands; and `studio.profile/binding-projection-v1` is executable. This is not
+joint acceptance: it still needs a coordinated published Studio release, Kumwe App AP-2 on that coordinate,
+a real adapter/session replay, an independent second-host replay and evidence review. BusinessRecord
+projection remains a separate App adapter rather than an inferred Content mapping.
+
 This is what makes the builder _the App's_ builder rather than a generic one: blocks bind to real
 content, not to invented fields.
 

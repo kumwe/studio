@@ -36,7 +36,7 @@ different artifact kind ([ADR 0020](../decisions/0020-blueprint-host-session-com
 | Port           | Responsibility                                                             |
 | -------------- | -------------------------------------------------------------------------- |
 | `artifact`     | Load, validate, save, version, publish, unpublish and inspect dependencies |
-| `model`        | Discover models/fields and create or migrate authorized model drafts       |
+| `model`        | Discover authorized models and fields through read-only `list` and `get`   |
 | `resource`     | Search and resolve authorized resources and registered queries             |
 | `preview`      | Render, cancel and diagnose authenticated previews                         |
 | `media`        | Browse, upload, process, annotate and select stable media assets           |
@@ -123,6 +123,24 @@ The optional recovery port remains a raw storage boundary. Composition may invok
 `discard` with bounded JSON, but it neither synthesizes a recovery format nor applies, merges, or
 reconciles loaded data. Local handle disposal is idempotent and does not imply a host call: the adapter
 currently declares no session-teardown operation.
+
+The optional model read seam follows the same rule. When `studio.port/model` advertises and implements
+both `studio.operation/model.list` and `studio.operation/model.get`, the Blueprint handle exposes
+`models.list()` and `models.get(reference)`. Omitting either operation, or advertising the port without an
+adapter implementation, disables the whole surface with an information diagnostic; Studio does not pretend
+that a partial model catalog is safe for binding. A caller reference is validated before a request ID is
+allocated. `get` carries the requested ID and semantic version, plus the immutable revision when supplied;
+the returned document must match that coordinate. `list` refuses a malformed document or duplicate exact
+ID/version/revision coordinate and the composed handle normalizes accepted results by ID, version, then
+revision using code-unit order.
+
+Both reads carry the negotiated operation ID, protocol, locale, resource-context key and session generation.
+They return detached `content-model` snapshots validated against the canonical schema. An adapter result
+outside that shape becomes the safe, non-retryable `internal` failure diagnostic
+`studio.host/unexpected-model-result`; private adapter data is not echoed. A stale-generation error
+invalidates the entire composed handle before any later model, recovery or artifact call. These operations
+do not grant or imply model creation, migration, persistence or publication authority
+([ADR 0024](../decisions/0024-read-only-model-binding-projection.md)).
 
 ## Query guarantees
 

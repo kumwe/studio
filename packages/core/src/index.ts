@@ -4,6 +4,14 @@ export {
   type CanonicalSerializationOptions,
 } from './canonical.js';
 export {
+  projectBlueprintFieldBindings,
+  type BlueprintFieldBindingProjection,
+  type FieldBindingCandidate,
+  type FieldBindingPortProjection,
+  type FieldBindingProjectionStatus,
+  type NodeFieldBindingProjection,
+} from './binding-projection.js';
+export {
   applyCommand,
   invertCommand,
   StudioCommandError,
@@ -55,6 +63,7 @@ export {
   type StudioHostSessionErrorCode,
   type StudioHostSessionHandle,
   type StudioHostSessionIdentifierFactories,
+  type StudioHostSessionModels,
   type StudioHostSessionRecovery,
 } from './host-session.js';
 export { applyModelCommand } from './model-commands.js';

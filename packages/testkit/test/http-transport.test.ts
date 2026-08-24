@@ -6,6 +6,7 @@ import {
   isHostPortError,
   type ArtifactReference,
   type BlueprintDocument,
+  type ContentModelDocument,
   type HostErrorCategory,
   type HostPortError,
   type HostPortResult,
@@ -90,6 +91,7 @@ async function startTestbedServer(options: TestbedHostOptions = {}): Promise<Tes
   });
   const localization = definedPort(host.localization);
   const media = definedPort(host.media);
+  const model = definedPort(host.model);
   const permission = definedPort(host.permission);
   const preview = definedPort(host.preview);
   const recovery = definedPort(host.recovery);
@@ -112,6 +114,8 @@ async function startTestbedServer(options: TestbedHostOptions = {}): Promise<Tes
       localization.messages(a.locale as string, a.namespaces as QualifiedName[], c),
     'media/get': (a, c) => media.get(a.assetId as string, c),
     'media/list': (a, c) => media.list(a.query as MediaQuery, c),
+    'model/get': (a, c) => model.get(a.reference as ArtifactReference, c),
+    'model/list': (_a, c) => model.list(c),
     'permission/explain': (a, c) => permission.explain(a.operation as QualifiedName, c),
     'permission/refresh': (a, c) => permission.refresh(c),
     'preview/cancel': (a, c) => preview.cancel(a.draftDigest as string, c),
@@ -304,6 +308,55 @@ function insertCommand(
 }
 
 describe('createHttpHostAdapter over a real node:http transport', () => {
+  it('serializes model get and list through their exact public routes', async () => {
+    const projectedModel: ContentModelDocument = {
+      contractVersion: '0.1-draft',
+      fields: [
+        {
+          cardinality: 'one',
+          id: 'title',
+          kind: 'string',
+          label: { defaultMessage: 'Title', key: 'studio.test/title' },
+          localized: true,
+          required: true,
+        },
+      ],
+      id: 'studio.test/article-model',
+      kind: 'content-model',
+      label: { defaultMessage: 'Article', key: 'studio.test/article-model' },
+      owner: { id: 'studio.test/host', version: '1.0.0' },
+      relationships: [],
+      revision: 'model-r1',
+      status: 'published',
+      version: '1.0.0',
+    };
+    const testbed = await startTestbedServer({ documents: [projectedModel] });
+    try {
+      const adapter = createAdapter(testbed.baseUrl);
+      const context = createHostRequestContextFixture({
+        operationId: 'studio.operation/model.get',
+        sessionGeneration: testbed.controls.sessionGeneration,
+      });
+      const modelPort = definedPort(adapter.model);
+
+      expect(
+        await modelPort.get(
+          {
+            id: projectedModel.id,
+            revision: projectedModel.revision,
+            version: projectedModel.version,
+          },
+          context,
+        ),
+      ).toEqual({ revision: projectedModel.revision, value: projectedModel });
+      expect(
+        await modelPort.list({ ...context, operationId: 'studio.operation/model.list' }),
+      ).toEqual({ value: [projectedModel] });
+    } finally {
+      await testbed.close();
+    }
+  });
+
   it('runs the session lifecycle drill: load, edit, save, conflict, recover', async () => {
     const blueprint = createBlueprintFixture({
       id: 'transport.blueprint',

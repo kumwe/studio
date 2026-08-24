@@ -64,6 +64,42 @@ Existing content types default to the current form path. Enabling Studio creates
 revision and, where structure changes, a new content-type/model revision with an explicit migration plan.
 Studio never silently edits a published JSON Schema because a block was dragged onto the canvas.
 
+### AP-2 content projection coordinate
+
+The current AP-2 implementation supplies the read-only Content half of the model port. It reaches definitions
+through `ContentModelService` and entries through `ContentService`, applies disclosure before projection, and
+validates every result against Studio's vendored schemas. It is not a model mutation or Studio-session
+implementation, and it is not a published Studio release coordinate yet.
+
+| Kumwe App Content fact        | Studio projection                                                                    |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| Content-type UUID             | `content-model:<lowercase UUID>`                                                     |
+| Definition version `N`        | semantic version `0.0.N`                                                             |
+| Immutable definition revision | `content-type-vN`                                                                    |
+| Entry UUID                    | `content-entry:<lowercase UUID>`                                                     |
+| Entry optimistic revision     | `content-entry-vN`                                                                   |
+| Schema property `x`           | field ID `data_x`; the reversible source key remains in an App extension             |
+| Array property                | `kind: collection`, `cardinality: many`, exact `itemKind`                            |
+| Translation group             | `translationOf: content-translation:<UUID>`                                          |
+| Workflow state                | portable lifecycle plus the exact reversible App state in `workflowState`/extensions |
+
+AP-2 declares controls rather than asking Studio to infer them. Its portable controls are
+`studio.control/single-line-text`, `studio.control/switch`, `studio.control/date`,
+`studio.control/date-time`, `studio.control/select` and `studio.control/number`. App-specific controls are
+`kumwe.app/media-reference`, `kumwe.app/email`, `kumwe.app/url`, `kumwe.app/uuid` and
+`kumwe.app/schema-group`. Studio preserves those identifiers exactly; a namespaced control needs the App's
+field-adapter contribution.
+
+`projectBlueprintFieldBindings` consumes that exact coordinate through the read-only host-session model seam.
+It does not inspect the App extension to rediscover storage, and it never writes a Content definition,
+translation group, workflow state or field policy. If an AP-2 model revision removes or changes a bound field,
+the Blueprint binding remains and Studio emits the corresponding stable diagnostic.
+
+BusinessRecord is deliberately not part of AP-2. Its definitions, exact decimal/money/quantity values,
+relationships, computed/encrypted fields and purpose-specific BusinessSecurity projection require a separate
+application adapter. Reusing the Content projector or importing the two bounded contexts into each other is
+not an allowed shortcut.
+
 For business records, the Studio entry is an authorized projection over the application service. Price,
 quantity, tax, status, workflow, approvals and relationships remain in typed relational storage. A Blueprint
 binding stores a stable field reference; save commands invoke Kumwe App use cases and invariants.
@@ -73,7 +109,7 @@ binding stores a stable field reference; save commands invoke Kumwe App use case
 | Studio host area   | Kumwe App implementation responsibility                                                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation          |
-| Models             | Existing immutable content types plus the business-definition runtime; adapters project only protocol-approved field metadata                           |
+| Models             | AP-2 projects existing immutable Content types now; a later separate BusinessRecord adapter applies its own definition and BusinessSecurity rules       |
 | Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                     |
 | Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                     |
 | Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                            |
