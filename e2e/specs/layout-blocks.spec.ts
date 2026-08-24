@@ -3,7 +3,10 @@ import { openShell } from '../support/shell.js';
 
 test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }) => {
   const shell = await openShell(page);
-  const surface = page.getByRole('region', { name: 'Preview' }).locator('.preview-surface');
+  // The host-owned renderer remains a light-DOM slotted surface. Address it
+  // directly instead of assuming the shell's SVG overlay wrapper is a DOM
+  // ancestor across the slot boundary.
+  const surface = page.locator('.preview-surface');
   await expect(surface.locator('.preview-empty')).toBeVisible();
 
   await shell
