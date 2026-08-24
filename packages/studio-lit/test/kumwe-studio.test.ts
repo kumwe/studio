@@ -36,7 +36,9 @@ function structuredRoots(): BlueprintNode[] {
 }
 
 interface MountOptions {
+  composite?: 'hybrid' | 'single';
   definitions?: BlockDefinition[];
+  mode?: 'blueprint' | 'content' | 'model';
   roots?: BlueprintNode[];
   sessionState?: 'editable' | 'read-only';
 }
@@ -49,9 +51,11 @@ async function mountShell(options: MountOptions = {}): Promise<KumweStudioElemen
       defineTestBlock({ label: 'Section', type: 'studio.core/section' }),
       defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
     ],
-    session: createStudioConfigurationFixture(
-      options.sessionState === undefined ? {} : { sessionState: options.sessionState },
-    ),
+    session: createStudioConfigurationFixture({
+      composite: options.composite ?? 'single',
+      mode: options.mode ?? 'blueprint',
+      sessionState: options.sessionState ?? 'editable',
+    }),
   };
   element.document = createBlueprintFixture({ roots: options.roots ?? [] });
   document.body.append(element);
@@ -121,6 +125,91 @@ function insertTextCommand(
 }
 
 describe('kumwe-studio element', () => {
+  it('resolves every wire mode instead of flattening editable sessions to Blueprint mode', async () => {
+    for (const expected of ['blueprint', 'content', 'model'] as const) {
+      const element = await mountShell({ mode: expected, roots: structuredRoots() });
+      expect(element.sessionMode).toBe(expected);
+      const paletteButtons = [
+        ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.palette button') ?? []),
+      ];
+      expect(paletteButtons.every((button) => button.disabled)).toBe(expected !== 'blueprint');
+      element.remove();
+    }
+
+    const readOnly = await mountShell({ mode: 'blueprint', sessionState: 'read-only' });
+    expect(readOnly.sessionMode).toBe('read-only');
+    readOnly.remove();
+
+    const hybrid = await mountShell({ composite: 'hybrid', mode: 'content' });
+    expect(hybrid.sessionMode).toBe('hybrid');
+    hybrid.remove();
+  });
+
+  it('derives disabled Blueprint affordances from the canonical mode table', async () => {
+    for (const mode of ['content', 'model'] as const) {
+      const element = await mountShell({ mode, roots: structuredRoots() });
+      await selectNode(element, 'text-1');
+      expect(controlButton(element, 'outline-move-up').disabled).toBe(true);
+      expect(controlButton(element, 'outline-move-down').disabled).toBe(true);
+      expect(controlButton(element, 'outline-duplicate').disabled).toBe(true);
+      expect(controlButton(element, 'outline-delete').disabled).toBe(true);
+      expect(() => element.execute(insertTextCommand(element, `${mode}-forbidden`))).toThrow(
+        expect.objectContaining({ code: 'mode-forbidden' }) as Error,
+      );
+      expect(element.document?.roots).toEqual(structuredRoots());
+      element.remove();
+    }
+  });
+
+  it('bounds hybrid structure controls to declared composable slots', async () => {
+    const roots = structuredRoots();
+    const section = roots[1];
+    if (section === undefined) {
+      throw new Error('fixture requires a section root');
+    }
+    section.authoring = { mode: 'structural' };
+    const element = await mountShell({
+      composite: 'hybrid',
+      definitions: [
+        defineTestBlock({
+          label: 'Section',
+          slots: [
+            {
+              accepts: { types: ['studio.core/text'] },
+              id: 'content',
+              label: { defaultMessage: 'Content', key: 'studio.test/content' },
+              maximum: 100,
+              minimum: 0,
+              ordered: true,
+            },
+          ],
+          type: 'studio.core/section',
+        }),
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      mode: 'content',
+      roots,
+    });
+
+    await selectNode(element, 'section-1');
+    expect(controlButton(element, 'outline-delete').disabled).toBe(true);
+    const paletteButtons = [
+      ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.palette button') ?? []),
+    ];
+    expect(paletteButtons.find((button) => button.textContent?.includes('Text'))?.disabled).toBe(
+      false,
+    );
+
+    await selectNode(element, 'text-1');
+    expect(controlButton(element, 'outline-move-down').disabled).toBe(false);
+    expect(controlButton(element, 'outline-delete').disabled).toBe(false);
+    const inspectorInputs = [
+      ...(element.shadowRoot?.querySelectorAll<HTMLInputElement>('.inspector input') ?? []),
+    ];
+    expect(inspectorInputs.every((input) => input.disabled)).toBe(true);
+    element.remove();
+  });
+
   it('renders a palette and applies canonical commands', async () => {
     const element = await mountShell({
       definitions: [defineTestBlock({ label: 'Text', type: 'studio.core/text' })],
