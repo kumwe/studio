@@ -841,6 +841,29 @@ export class KumweStudioElement extends LitElement {
   }
 
   /**
+   * Select one host-known document node, or clear selection after a host-owned interaction.
+   *
+   * Hosts that allocate node identifiers execute the accepted command through `execute()` and then
+   * use this seam to give palette insertion the same Inspector, outline and preview-selection parity
+   * as commands Studio can construct locally. Invalid identifiers are refused by the core session.
+   */
+  public selectNode(nodeId: NodeId | undefined): void {
+    const session = this.#session;
+    if (session === undefined) {
+      throw new Error('Load a blueprint document before selecting a node.');
+    }
+    if (nodeId === undefined) {
+      session.clearSelection();
+      this.selectedNodeId = undefined;
+      this.#previewSurface?.selectNode(undefined);
+      return;
+    }
+    session.select([nodeId]);
+    this.selectedNodeId = nodeId;
+    this.#previewSurface?.selectNode(nodeId);
+  }
+
+  /**
    * Accept a host save acknowledgement without replacing the local session.
    * Pass the state version captured with the saved snapshot when the host can
    * settle after newer edits; those edits remain dirty on the accepted base.

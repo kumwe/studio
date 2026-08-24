@@ -223,6 +223,25 @@ describe('kumwe-studio element', () => {
     element.remove();
   });
 
+  it('lets a host select its assigned node after executing an insertion command', async () => {
+    const element = await mountShell({
+      definitions: [defineTestBlock({ label: 'Text', type: 'studio.core/text' })],
+    });
+
+    element.execute(insertTextCommand(element, 'host-text'));
+    element.selectNode('host-text');
+    await element.updateComplete;
+
+    expect(outlineEntry(element, 'host-text').getAttribute('aria-pressed')).toBe('true');
+    element.selectNode(undefined);
+    await element.updateComplete;
+    expect(outlineEntry(element, 'host-text').getAttribute('aria-pressed')).toBe('false');
+    expect(() => element.selectNode('missing-node')).toThrow(
+      'Node missing-node cannot be selected because it is not in the document.',
+    );
+    element.remove();
+  });
+
   it('renders the outline tree and marks unresolved blocks', async () => {
     const element = await mountShell({ roots: structuredRoots() });
 

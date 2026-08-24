@@ -123,6 +123,11 @@ binding stores a stable field reference; save commands invoke Kumwe App use case
 | Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                 |
 | API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                       |
 
+When the App owns identifier allocation for a `studio-insert-request`, it executes the resulting canonical
+command and calls the shell's public `selectNode()` seam with the accepted node identifier. That keeps the
+Inspector, outline, keyboard focus model and preview selection aligned with Studio-owned insert commands;
+the host does not query or mutate the shell's shadow DOM.
+
 ## Template and design-profile integration
 
 Kumwe App templates contribute a versioned Studio design profile that extends the KIS/template contract with:
