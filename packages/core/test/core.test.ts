@@ -202,6 +202,28 @@ describe('Studio core', () => {
     expect(diagnostic?.location?.nodeId).toBe('text-1');
   });
 
+  it('validates every responsive viewport as an effective block property object', () => {
+    const registry = new BlockRegistry([textBlock]);
+    const valid = applyCommand(
+      document(),
+      insert({ ...textNode(), responsive: { text: { compact: 'Short' } } }),
+    );
+    const invalid = applyCommand(
+      document(),
+      insert({ ...textNode(), responsive: { text: { compact: 42 } } }),
+    );
+
+    expect(validateBlueprint(valid, registry).valid).toBe(true);
+    const result = validateBlueprint(invalid, registry);
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'studio.validation/block-properties-schema-type',
+        location: { jsonPointer: '/responsive/text/compact', nodeId: 'text-1' },
+      }),
+    );
+  });
+
   it('scopes compiled property schemas to the registry that admitted them', () => {
     const numberBlock: BlockDefinition = {
       ...textBlock,
