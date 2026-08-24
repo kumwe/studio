@@ -9,7 +9,9 @@
     "compatibilityStatement",
     "decidedAt",
     "decision",
-    "evidenceBundleId",
+    "evidenceSchemaVersion",
+    "criteria",
+    "evidenceBundleIds",
     "excludedProfiles",
     "gate",
     "reviewers",
@@ -21,6 +23,7 @@
   "properties": {
     "artifactHashes": {
       "type": "object",
+      "minProperties": 1,
       "maxProperties": 2000,
       "propertyNames": { "$ref": "#/$defs/repositoryRelativePath" },
       "additionalProperties": { "$ref": "#/$defs/sha256Integrity" }
@@ -32,11 +35,23 @@
     },
     "decidedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
     "decision": { "enum": ["pass", "fail"] },
-    "evidenceBundleId": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
-      "maxLength": 120
+    "evidenceSchemaVersion": { "const": "0.1-draft" },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["criterionId", "evidenceBundleIds", "outcome"],
+        "properties": {
+          "criterionId": { "$ref": "#/$defs/stableId" },
+          "evidenceBundleIds": { "$ref": "#/$defs/bundleIdList" },
+          "outcome": { "enum": ["met", "not-met", "not-assessed"] }
+        }
+      }
     },
+    "evidenceBundleIds": { "$ref": "#/$defs/bundleIdList" },
     "excludedProfiles": { "$ref": "#/$defs/profileList" },
     "gate": { "enum": ["A", "B"] },
     "reviewers": {
@@ -44,14 +59,16 @@
       "minItems": 2,
       "maxItems": 20,
       "uniqueItems": true,
-      "items": { "$ref": "#/$defs/identity" }
+      "items": { "$ref": "#/$defs/gateReviewer" }
     },
     "signOff": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["accessibility", "security"],
+      "required": ["accessibility", "compatibility", "dataIntegrity", "security"],
       "properties": {
         "accessibility": { "$ref": "#/$defs/identity" },
+        "compatibility": { "$ref": "#/$defs/identity" },
+        "dataIntegrity": { "$ref": "#/$defs/identity" },
         "security": { "$ref": "#/$defs/identity" }
       }
     },
@@ -81,6 +98,35 @@
     }
   },
   "$defs": {
+    "bundleIdList": {
+      "type": "array",
+      "maxItems": 500,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+        "maxLength": 120
+      }
+    },
+    "gateReviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "independent", "kind", "roles"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "independent": { "type": "boolean" },
+        "kind": { "const": "human" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["general", "accessibility", "compatibility", "data-integrity", "security"]
+          }
+        }
+      }
+    },
     "identity": {
       "type": "string",
       "minLength": 1,
@@ -93,7 +139,7 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?![\\s\\S])",
+        "pattern": "^studio\\.profile/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?![\\s\\S])",
         "maxLength": 160
       }
     },

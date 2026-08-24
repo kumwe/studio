@@ -1,0 +1,180 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "gate-criterion-registry",
+  "profileVocabulary": [
+    "studio.profile/engine-core",
+    "studio.profile/host-baseline",
+    "studio.profile/host-baseline-v2",
+    "studio.profile/media-policy",
+    "studio.profile/preview-identity-v1",
+    "studio.profile/schema-property",
+    "studio.profile/renderer-web",
+    "studio.profile/authoring-web"
+  ],
+  "gates": {
+    "A": [
+      {
+        "id": "gate-a/01-artifact-vocabulary",
+        "summary": "Public artifact vocabulary and ownership are unambiguous.",
+        "evidenceClasses": ["contract", "manual-decision"]
+      },
+      {
+        "id": "gate-a/02-protocol-schemas",
+        "summary": "Protocol schemas are versioned, closed where required, bounded, and meta-validated.",
+        "evidenceClasses": ["contract", "security"]
+      },
+      {
+        "id": "gate-a/03-deterministic-commands",
+        "summary": "Command semantics and canonical fixtures are deterministic.",
+        "evidenceClasses": ["contract", "property-fuzz"]
+      },
+      {
+        "id": "gate-a/04-extension-theme-lifecycle",
+        "summary": "Extension and theme ownership, lifecycle, collision, migration, and fallback rules are complete.",
+        "evidenceClasses": ["contract", "lifecycle"]
+      },
+      {
+        "id": "gate-a/05-host-ports-negotiation",
+        "summary": "Host ports and capability negotiation cover all declared host responsibilities.",
+        "evidenceClasses": ["contract", "integration"]
+      },
+      {
+        "id": "gate-a/06-media-rich-text-boundaries",
+        "summary": "Media and rich-text boundaries identify Studio, host, and renderer responsibilities.",
+        "evidenceClasses": ["contract", "integration"]
+      },
+      {
+        "id": "gate-a/07-threat-model",
+        "summary": "The security and privacy threat model and negative fixtures cover every trust boundary.",
+        "evidenceClasses": ["security", "property-fuzz"]
+      },
+      {
+        "id": "gate-a/08-errors-diagnostics",
+        "summary": "Errors and diagnostics are stable, localizable, and free of sensitive values.",
+        "evidenceClasses": ["contract", "security"]
+      },
+      {
+        "id": "gate-a/09-typescript-corpus",
+        "summary": "TypeScript models compile and round-trip the canonical corpus for the Version 2 profile set.",
+        "evidenceClasses": ["contract", "portability"]
+      },
+      {
+        "id": "gate-a/10-host-playbooks",
+        "summary": "Generic-host and Kumwe App playbooks map every required host responsibility to a public port.",
+        "evidenceClasses": ["integration", "manual-decision"]
+      },
+      {
+        "id": "gate-a/11-evolution-release-policy",
+        "summary": "Compatibility, deprecation, migration, and release policies are accepted.",
+        "evidenceClasses": ["contract", "manual-decision"]
+      },
+      {
+        "id": "gate-a/12-accessible-interactions",
+        "summary": "Accessibility and non-drag interaction requirements are executable as conformance assertions.",
+        "evidenceClasses": ["accessibility", "contract"]
+      },
+      {
+        "id": "gate-a/13-reproducible-evidence",
+        "summary": "Gate evidence is reproducible from a clean checkout and independently reviewed.",
+        "evidenceClasses": ["release", "manual-decision"]
+      },
+      {
+        "id": "gate-a/14-no-high-risk-contradiction",
+        "summary": "No unresolved critical or high-risk contradiction remains in a public contract.",
+        "evidenceClasses": ["security", "manual-decision"]
+      }
+    ],
+    "B": [
+      {
+        "id": "gate-b/01-contract-implementation",
+        "summary": "Every Gate A public contract is implemented or explicitly excluded through capability negotiation.",
+        "evidenceClasses": ["contract", "integration"]
+      },
+      {
+        "id": "gate-b/02-coordinated-npm-release",
+        "summary": "The fixed seven-package TypeScript release family installs from npm at one release coordinate.",
+        "evidenceClasses": ["release"]
+      },
+      {
+        "id": "gate-b/03-dom-free-core",
+        "summary": "The DOM-free TypeScript core passes applicable command, migration, and serialization fixtures.",
+        "evidenceClasses": ["unit", "property-fuzz", "portability"]
+      },
+      {
+        "id": "gate-b/04-web-authoring-operations",
+        "summary": "The Lit shell exposes the complete semantic authoring operation set for the authoring-web profile.",
+        "evidenceClasses": ["end-to-end", "accessibility"]
+      },
+      {
+        "id": "gate-b/05-host-conformance",
+        "summary": "Generic and Kumwe App hosts pass all required conformance and recovery behaviours.",
+        "evidenceClasses": ["integration", "lifecycle"]
+      },
+      {
+        "id": "gate-b/06-public-rendering-boundary",
+        "summary": "Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.",
+        "evidenceClasses": ["integration", "security"]
+      },
+      {
+        "id": "gate-b/07-extension-theme-examples",
+        "summary": "Extension and theme examples survive their complete lifecycle without private APIs or data loss.",
+        "evidenceClasses": ["lifecycle", "integration"]
+      },
+      {
+        "id": "gate-b/08-document-compatibility",
+        "summary": "Existing and migrated documents remain readable, diagnosable, and safely renderable.",
+        "evidenceClasses": ["lifecycle", "integration"]
+      },
+      {
+        "id": "gate-b/09-web-accessibility",
+        "summary": "The Version 2 web accessibility matrix passes automated and manual qualification.",
+        "evidenceClasses": ["accessibility", "end-to-end"]
+      },
+      {
+        "id": "gate-b/10-security-resilience",
+        "summary": "Security and resilience qualification has no unresolved critical or high issue.",
+        "evidenceClasses": ["security", "property-fuzz"]
+      },
+      {
+        "id": "gate-b/11-performance-budgets",
+        "summary": "Performance and package budgets are measured and enforced.",
+        "evidenceClasses": ["performance"]
+      },
+      {
+        "id": "gate-b/12-deterministic-builds",
+        "summary": "Builds, generated sources, fixtures, and release archives are deterministic or have verified nondeterminism.",
+        "evidenceClasses": ["release"]
+      },
+      {
+        "id": "gate-b/13-release-materials",
+        "summary": "SBOM, provenance, signatures, checksums, notes, support matrix, and recovery guide are published.",
+        "evidenceClasses": ["release", "manual-decision"]
+      },
+      {
+        "id": "gate-b/14-clean-room-host",
+        "summary": "A clean-room external-host integration succeeds using documentation and public packages alone.",
+        "evidenceClasses": ["integration", "end-to-end"]
+      },
+      {
+        "id": "gate-b/15-kumwe-app-vertical",
+        "summary": "The Kumwe App vertical slice proves every declared integration responsibility.",
+        "evidenceClasses": ["integration", "end-to-end"]
+      },
+      {
+        "id": "gate-b/16-upgrade-recovery",
+        "summary": "Rollback and interrupted-upgrade drills preserve authoritative data and expose recovery.",
+        "evidenceClasses": ["lifecycle", "integration"]
+      },
+      {
+        "id": "gate-b/17-candidate-evidence",
+        "summary": "All required evidence is attached to the exact release-candidate commit and remains fresh.",
+        "evidenceClasses": ["release"]
+      },
+      {
+        "id": "gate-b/18-independent-approval",
+        "summary": "Independent reviewers approve without waiving a mandatory domain criterion.",
+        "evidenceClasses": ["manual-decision"]
+      }
+    ]
+  }
+}

@@ -7,8 +7,8 @@ on:
         description: Exact 40-character commit SHA of the accepted candidate
         required: true
         type: string
-      evidence_bundle_id:
-        description: Proposed Gate B evidence bundle identifier
+      gate_record_sha:
+        description: Exact later commit containing the proposed Gate B record and bundles
         required: true
         type: string
 
@@ -22,9 +22,20 @@ permissions:
 jobs:
   verify:
     name: Exercise the draft Gate B readiness guard
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
+      - name: Validate immutable commit inputs
+        shell: bash
+        env:
+          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
+          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$STUDIO_RELEASE_CANDIDATE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$STUDIO_GATE_RECORD_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$STUDIO_GATE_RECORD_COMMIT" != "$STUDIO_RELEASE_CANDIDATE_SHA" ]]
+
       - name: Check out exact candidate
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,20 +43,23 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.candidate_sha }}
 
-      - name: Check out later draft Gate B record
+      - name: Check out immutable later draft Gate B evidence
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: .release-evidence
           persist-credentials: false
-          ref: main
-          sparse-checkout: evidence/gates/gate-b.json
-          sparse-checkout-cone-mode: false
+          fetch-depth: 0
+          ref: ${{ inputs.gate_record_sha }}
+          sparse-checkout: evidence
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           cache: npm
           node-version: 24
+
+      - name: Pin npm declared by the repository
+        run: npm install --global npm@11.9.0
 
       - name: Install locked dependencies
         run: npm ci
@@ -54,10 +68,11 @@ jobs:
         run: npm run release:readiness
         env:
           STUDIO_GATE_B_RECORD: .release-evidence/evidence/gates/gate-b.json
-          STUDIO_GATE_B_EVIDENCE_ID: ${{ inputs.evidence_bundle_id }}
+          STUDIO_GATE_EVIDENCE_ROOT: .release-evidence
+          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
 
       - name: Confirm publication remains disabled
         run: |
-          echo "Registry publication is disabled until M1-04 implements and qualifies the release evidence system."
+          echo "Registry publication is disabled until Gate B is accepted and ST-11 explicitly enables trusted publication."
           test -z "$(node -p 'require("./package.json").scripts.release ?? ""')"

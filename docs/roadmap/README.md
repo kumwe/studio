@@ -173,53 +173,53 @@ listed dependency is accepted.
 
 Gate A passes only when all criteria are met:
 
-1. Public artifact vocabulary and ownership are unambiguous.
-2. Protocol schemas are versioned, closed where required, bounded, and meta-validated.
-3. Command semantics and canonical fixtures are deterministic.
-4. Extension and theme ownership, lifecycle, collision, migration, and fallback rules are complete.
-5. Host ports and capability negotiation cover identity, policy, persistence, preview, render, media,
+1. **`gate-a/01-artifact-vocabulary`** — Public artifact vocabulary and ownership are unambiguous.
+2. **`gate-a/02-protocol-schemas`** — Protocol schemas are versioned, closed where required, bounded, and meta-validated.
+3. **`gate-a/03-deterministic-commands`** — Command semantics and canonical fixtures are deterministic.
+4. **`gate-a/04-extension-theme-lifecycle`** — Extension and theme ownership, lifecycle, collision, migration, and fallback rules are complete.
+5. **`gate-a/05-host-ports-negotiation`** — Host ports and capability negotiation cover identity, policy, persistence, preview, render, media,
    localization, telemetry, concurrency, recovery, and teardown.
-6. Media and rich-text boundaries identify Studio, host, and renderer responsibilities.
-7. Security/privacy threat model and negative fixtures cover every trust boundary.
-8. Errors and diagnostics are stable, localizable, and free of sensitive values.
-9. TypeScript models compile and round-trip the canonical corpus for the Version 2 profile set.
-10. The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
-11. Compatibility, deprecation, migration, and release policies are accepted.
-12. Accessibility and non-drag interaction requirements are executable as conformance assertions.
-13. Gate evidence is reproducible from a clean checkout and independently reviewed.
-14. No unresolved critical or high-risk contradiction remains in a public contract.
+6. **`gate-a/06-media-rich-text-boundaries`** — Media and rich-text boundaries identify Studio, host, and renderer responsibilities.
+7. **`gate-a/07-threat-model`** — Security/privacy threat model and negative fixtures cover every trust boundary.
+8. **`gate-a/08-errors-diagnostics`** — Errors and diagnostics are stable, localizable, and free of sensitive values.
+9. **`gate-a/09-typescript-corpus`** — TypeScript models compile and round-trip the canonical corpus for the Version 2 profile set.
+10. **`gate-a/10-host-playbooks`** — The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
+11. **`gate-a/11-evolution-release-policy`** — Compatibility, deprecation, migration, and release policies are accepted.
+12. **`gate-a/12-accessible-interactions`** — Accessibility and non-drag interaction requirements are executable as conformance assertions.
+13. **`gate-a/13-reproducible-evidence`** — Gate evidence is reproducible from a clean checkout and independently reviewed.
+14. **`gate-a/14-no-high-risk-contradiction`** — No unresolved critical or high-risk contradiction remains in a public contract.
 
 ## Gate B acceptance criteria
 
 Gate B passes only when all criteria are met:
 
-1. Every Gate A public contract is implemented or explicitly excluded from the first supported profile by
+1. **`gate-b/01-contract-implementation`** — Every Gate A public contract is implemented or explicitly excluded from the first supported profile by
    capability negotiation; no implementation silently ignores a declared feature.
-2. The fixed seven-package TypeScript release family installs from npm into clean consumers at one release
+2. **`gate-b/02-coordinated-npm-release`** — The fixed seven-package TypeScript release family installs from npm into clean consumers at one release
    coordinate.
-3. The DOM-free TypeScript core passes the applicable command, migration, and serialization fixtures.
-4. The Lit shell exposes the complete semantic authoring operation set for
+3. **`gate-b/03-dom-free-core`** — The DOM-free TypeScript core passes the applicable command, migration, and serialization fixtures.
+4. **`gate-b/04-web-authoring-operations`** — The Lit shell exposes the complete semantic authoring operation set for
    `studio.profile/authoring-web`.
-5. Generic and Kumwe App hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
+5. **`gate-b/05-host-conformance`** — Generic and Kumwe App hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
    recovery, and upgrade conformance.
-6. Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.
-7. Extension and theme examples install, activate, disable, reactivate, upgrade, and recover without data
+6. **`gate-b/06-public-rendering-boundary`** — Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.
+7. **`gate-b/07-extension-theme-examples`** — Extension and theme examples install, activate, disable, reactivate, upgrade, and recover without data
    loss or private API access.
-8. Existing and migrated documents remain readable, diagnosable, and safely renderable.
-9. The Version 2 web accessibility matrix passes automated and manual qualification.
-10. Security review, malicious-input corpus, dependency audit, and resilience drills have no unresolved
+8. **`gate-b/08-document-compatibility`** — Existing and migrated documents remain readable, diagnosable, and safely renderable.
+9. **`gate-b/09-web-accessibility`** — The Version 2 web accessibility matrix passes automated and manual qualification.
+10. **`gate-b/10-security-resilience`** — Security review, malicious-input corpus, dependency audit, and resilience drills have no unresolved
     critical/high issue.
-11. Performance and package budgets are measured and enforced.
-12. Builds, generated sources, fixtures, and release archives are deterministic or carry a documented,
+11. **`gate-b/11-performance-budgets`** — Performance and package budgets are measured and enforced.
+12. **`gate-b/12-deterministic-builds`** — Builds, generated sources, fixtures, and release archives are deterministic or carry a documented,
     verified source of nondeterminism.
-13. SBOM, provenance, signatures, checksums, release notes, support matrix, and recovery guide are published.
-14. A clean-room external-host integration succeeds using documentation and public packages alone.
-15. The Kumwe App vertical slice proves content, business-field, template, extension, media, translation,
+13. **`gate-b/13-release-materials`** — SBOM, provenance, signatures, checksums, release notes, support matrix, and recovery guide are published.
+14. **`gate-b/14-clean-room-host`** — A clean-room external-host integration succeeds using documentation and public packages alone.
+15. **`gate-b/15-kumwe-app-vertical`** — The Kumwe App vertical slice proves content, business-field, template, extension, media, translation,
     workflow, revision, authorization, audit, API, and Twig-rendering integration.
-16. Rollback and interrupted-upgrade drills preserve authoritative host data and expose actionable recovery.
-17. All required evidence is attached to the exact release-candidate commit and remains within freshness
+16. **`gate-b/16-upgrade-recovery`** — Rollback and interrupted-upgrade drills preserve authoritative host data and expose actionable recovery.
+17. **`gate-b/17-candidate-evidence`** — All required evidence is attached to the exact release-candidate commit and remains within freshness
     limits.
-18. Independent gate reviewers approve the release without waiving a mandatory security, accessibility,
+18. **`gate-b/18-independent-approval`** — Independent gate reviewers approve the release without waiving a mandatory security, accessibility,
     data-integrity, or compatibility criterion.
 
 ## Status and evidence workflow

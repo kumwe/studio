@@ -13,11 +13,12 @@
   "criteria": [
     {
       "class": "contract",
-      "criterionId": "M2-01/schema-meta-validation",
+      "criterionId": "gate-a/02-protocol-schemas",
       "outcome": "positive"
     }
   ],
   "environment": {
+    "browser": "Chromium-141.0.7390.37",
     "node": "24.6.0",
     "npm": "11.9.0",
     "os": "linux-x64",
@@ -29,15 +30,13 @@
   "inputFixtureChecksums": {
     "schemas/examples/blueprint.product.example.json": "sha256-44WcjExiOB1vO/vsBwu3IDywZxeiIIE+5y5G42HpQtk="
   },
+  "profiles": [],
   "redaction": {
     "declared": true,
     "statement": "This sample bundle contains no credential, personal data, customer content, or privileged preview token."
   },
   "review": {
-    "freshnessExpiresAt": "2026-09-14T00:00:00Z",
-    "reproduced": false,
-    "reviewedAt": "2026-08-15T12:00:00Z",
-    "reviewer": "sample-reviewer"
+    "status": "pending"
   },
   "runs": [
     {

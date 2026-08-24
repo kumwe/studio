@@ -1,54 +1,109 @@
 name: Evidence bundle
 
-# Produces one evidence bundle for a work package on an independent runner and
-# uploads it as an artifact. This is deliberately not an acceptance step: the
-# evidence model requires a human to reproduce the run and record the review
-# block, and states that reading a CI badge is not reproduction. What this lane
-# gives a reviewer is a bundle produced somewhere other than their own machine,
-# to compare against the one they produce themselves.
+# Produces a pending evidence bundle for an exact candidate on an independent
+# runner. It does not reproduce evidence, record a human review, assess a gate,
+# or create a support/profile claim.
 
 on:
   workflow_dispatch:
     inputs:
-      work_package:
-        description: The work package the bundle is evidence for (for example M2-01).
+      candidate_sha:
+        description: Exact lowercase 40-character commit SHA to exercise.
         required: true
         type: string
-      bundle_id:
-        description: Optional explicit bundle identifier. Defaults to <package>-<short commit>.
+      work_package:
+        description: Work package identifier (for example M2-01 or ST-10).
+        required: true
+        type: string
+      criteria:
+        description: Comma-separated stable criterion IDs from evidence/gate-criteria.json.
+        required: true
+        type: string
+      profiles:
+        description: Optional comma-separated Version 2 profile identifiers exercised by this lane.
         required: false
         type: string
+
+concurrency:
+  group: evidence-bundle-${{ inputs.candidate_sha }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
   bundle:
-    name: Produce evidence bundle
-    runs-on: ubuntu-latest
+    name: Produce pending evidence bundle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v7
+      - name: Validate dispatch inputs before checkout
+        shell: bash
+        env:
+          EVIDENCE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EVIDENCE_CRITERIA: ${{ inputs.criteria }}
+          EVIDENCE_PROFILES: ${{ inputs.profiles }}
+          EVIDENCE_WORK_PACKAGE: ${{ inputs.work_package }}
+        run: |
+          set -euo pipefail
+          [[ "$EVIDENCE_CANDIDATE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$EVIDENCE_WORK_PACKAGE" =~ ^(M[1-6]-[0-9]{2}|ST-([0-9]|1[01]))$ ]]
+          [[ "$EVIDENCE_CRITERIA" =~ ^gate-[ab]/[a-z0-9-]+(,gate-[ab]/[a-z0-9-]+)*$ ]]
+          if [[ -n "$EVIDENCE_PROFILES" ]]; then
+            [[ "$EVIDENCE_PROFILES" =~ ^studio\.profile/[a-z0-9.-]+(,studio\.profile/[a-z0-9.-]+)*$ ]]
+          fi
+
+      - name: Check out exact candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha }}
 
-      - uses: actions/setup-node@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
           cache: npm
+          node-version: 24
 
-      - run: npm ci
+      - name: Pin npm declared by the repository
+        run: npm install --global npm@11.9.0
 
-      - name: Produce the bundle
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install locked Playwright Chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Produce the pending bundle
+        id: bundle
+        shell: bash
+        env:
+          EVIDENCE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EVIDENCE_CRITERIA: ${{ inputs.criteria }}
+          EVIDENCE_PROFILES: ${{ inputs.profiles }}
+          EVIDENCE_RUN_ATTEMPT: ${{ github.run_attempt }}
+          EVIDENCE_RUN_ID: ${{ github.run_id }}
+          EVIDENCE_WORK_PACKAGE: ${{ inputs.work_package }}
         run: |
-          node scripts/create-evidence-bundle.mjs \
-            --package '${{ inputs.work_package }}' \
-            ${{ inputs.bundle_id && format('--id ''{0}''', inputs.bundle_id) || '' }} \
-            --runner 'github-actions/${{ github.run_id }}'
+          set -euo pipefail
+          bundle_id="${EVIDENCE_WORK_PACKAGE}-${EVIDENCE_CANDIDATE_SHA:0:12}-gha-${EVIDENCE_RUN_ID}-${EVIDENCE_RUN_ATTEMPT}"
+          arguments=(
+            --candidate "$EVIDENCE_CANDIDATE_SHA"
+            --criteria "$EVIDENCE_CRITERIA"
+            --id "$bundle_id"
+            --package "$EVIDENCE_WORK_PACKAGE"
+            --runner "github-actions/${EVIDENCE_RUN_ID}/${EVIDENCE_RUN_ATTEMPT}"
+          )
+          if [[ -n "$EVIDENCE_PROFILES" ]]; then
+            arguments+=(--profiles "$EVIDENCE_PROFILES")
+          fi
+          node scripts/create-evidence-bundle.mjs "${arguments[@]}"
 
-      - name: Upload the bundle
-        uses: actions/upload-artifact@v7
+      - name: Upload only the generated pending bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: evidence-${{ inputs.work_package }}-${{ github.sha }}
-          path: evidence/bundles/
+          name: evidence-${{ inputs.work_package }}-${{ inputs.candidate_sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.bundle.outputs.bundle_path }}
           if-no-files-found: error
           retention-days: 90
