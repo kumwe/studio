@@ -13,6 +13,10 @@
       "defaultMessage": "Set the {port} binding",
       "parameters": ["port"]
     },
+    "studio.shell/announce-canvas-mode": {
+      "defaultMessage": "Canvas mode: {state}",
+      "parameters": ["state"]
+    },
     "studio.shell/announce-command-failed": {
       "defaultMessage": "Command failed: {message}",
       "parameters": ["message"]
@@ -49,6 +53,10 @@
       "defaultMessage": "Inserted {label}",
       "parameters": ["label"]
     },
+    "studio.shell/announce-inheritance-reset": {
+      "defaultMessage": "Reset every responsive override for {property}; all viewports now inherit the base value",
+      "parameters": ["property"]
+    },
     "studio.shell/announce-invalid-value": {
       "defaultMessage": "The {label} value is not valid JSON. Nothing was changed.",
       "parameters": ["label"]
@@ -60,6 +68,10 @@
     "studio.shell/announce-moved-up": {
       "defaultMessage": "Moved {label} up",
       "parameters": ["label"]
+    },
+    "studio.shell/announce-moved-to": {
+      "defaultMessage": "Moved {label} to {destination}",
+      "parameters": ["destination", "label"]
     },
     "studio.shell/announce-name-required": {
       "defaultMessage": "Enter a name before applying the change.",
@@ -89,6 +101,10 @@
       "defaultMessage": "Unset {property}",
       "parameters": ["property"]
     },
+    "studio.shell/announce-pattern-applied": {
+      "defaultMessage": "Applied the {pattern} pattern",
+      "parameters": ["pattern"]
+    },
     "studio.shell/announce-recipe-applied": {
       "defaultMessage": "Applied the {recipe} recipe",
       "parameters": ["recipe"]
@@ -96,6 +112,10 @@
     "studio.shell/announce-redid": {
       "defaultMessage": "Redid change",
       "parameters": []
+    },
+    "studio.shell/announce-restored": {
+      "defaultMessage": "Restored {label} block",
+      "parameters": ["label"]
     },
     "studio.shell/announce-selection-cleared": {
       "defaultMessage": "Selection cleared",
@@ -141,17 +161,37 @@
       "defaultMessage": "Choose a block to begin composing.",
       "parameters": []
     },
+    "studio.shell/canvas-edit-toggle": {
+      "defaultMessage": "Select and move rendered blocks",
+      "parameters": []
+    },
     "studio.shell/canvas-label": {
       "defaultMessage": "Blueprint structure",
+      "parameters": []
+    },
+    "studio.shell/canvas-mode-editing": {
+      "defaultMessage": "selecting and moving blocks",
+      "parameters": []
+    },
+    "studio.shell/canvas-mode-interacting": {
+      "defaultMessage": "interacting with the rendered preview",
       "parameters": []
     },
     "studio.shell/command-clear-selection": {
       "defaultMessage": "Clear selection",
       "parameters": []
     },
+    "studio.shell/command-apply-pattern": {
+      "defaultMessage": "Apply pattern {pattern}",
+      "parameters": ["pattern"]
+    },
     "studio.shell/command-insert": {
       "defaultMessage": "Insert {label}",
       "parameters": ["label"]
+    },
+    "studio.shell/command-move-to": {
+      "defaultMessage": "Move to {destination}",
+      "parameters": ["destination"]
     },
     "studio.shell/command-palette-empty": {
       "defaultMessage": "No commands match the filter.",
@@ -179,6 +219,10 @@
     },
     "studio.shell/delete": {
       "defaultMessage": "Delete",
+      "parameters": []
+    },
+    "studio.shell/document-roots": {
+      "defaultMessage": "document roots",
       "parameters": []
     },
     "studio.shell/diagnostics-empty": {
@@ -445,6 +489,10 @@
       "defaultMessage": "Remove the {property} override for the {viewport} viewport",
       "parameters": ["property", "viewport"]
     },
+    "studio.shell/inspector-reset-inheritance": {
+      "defaultMessage": "Reset all viewport overrides",
+      "parameters": []
+    },
     "studio.shell/inspector-set-binding": {
       "defaultMessage": "Set binding",
       "parameters": []
@@ -464,6 +512,22 @@
     "studio.shell/move-down": {
       "defaultMessage": "Move down",
       "parameters": []
+    },
+    "studio.shell/move-destination-label": {
+      "defaultMessage": "Move block to another position or slot",
+      "parameters": []
+    },
+    "studio.shell/move-destination-option": {
+      "defaultMessage": "{collection}, position {position} of {count}",
+      "parameters": ["collection", "count", "position"]
+    },
+    "studio.shell/move-destination-placeholder": {
+      "defaultMessage": "Choose a destination",
+      "parameters": []
+    },
+    "studio.shell/move-slot-collection": {
+      "defaultMessage": "{parent}: {slot} slot",
+      "parameters": ["parent", "slot"]
     },
     "studio.shell/move-up": {
       "defaultMessage": "Move up",
@@ -491,6 +555,10 @@
     },
     "studio.shell/palette-label": {
       "defaultMessage": "Block palette",
+      "parameters": []
+    },
+    "studio.shell/patterns-heading": {
+      "defaultMessage": "Patterns",
       "parameters": []
     },
     "studio.shell/preview-closed": {
@@ -527,6 +595,10 @@
     },
     "studio.shell/redo": {
       "defaultMessage": "Redo",
+      "parameters": []
+    },
+    "studio.shell/restore-last-deleted": {
+      "defaultMessage": "Restore last deleted block",
       "parameters": []
     },
     "studio.shell/save-state-saved": {
@@ -568,6 +640,10 @@
     "studio.shell/viewport-label": {
       "defaultMessage": "Preview width",
       "parameters": []
+    },
+    "studio.shell/visual-drop-target": {
+      "defaultMessage": "Moving {label} to {destination}",
+      "parameters": ["destination", "label"]
     }
   }
 }

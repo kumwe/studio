@@ -3,6 +3,7 @@ import {
   html,
   LitElement,
   nothing,
+  svg,
   type CSSResult,
   type PropertyValues,
   type TemplateResult,
@@ -27,6 +28,7 @@ import {
 } from '@kumwe/studio-core';
 import type {
   BlockDefinition,
+  ApplyPatternCommand,
   BlueprintCommand,
   BlueprintDocument,
   BlueprintNode,
@@ -39,13 +41,18 @@ import type {
   InsertNodeCommand,
   JsonValue,
   MessageReference,
+  MoveNodeCommand,
   NodeId,
+  PatternDocument,
+  PreviewMarkerRect,
   PreviewMessage,
   QualifiedName,
   RemoveBindingCommand,
   RemoveNodeCommand,
   ReorderChildrenCommand,
   ReorderChildrenPayload,
+  ResetInheritedPropertyCommand,
+  RestoreNodeCommand,
   Revision,
   SetBindingCommand,
   SetPropertyCommand,
@@ -76,6 +83,7 @@ import {
 import {
   StudioPreviewSurface,
   type StudioPreviewBinding,
+  type StudioPreviewGeometry,
   type StudioPreviewState,
 } from './preview-surface.js';
 
@@ -128,14 +136,54 @@ interface CanvasDragState {
   targetIndex: number;
 }
 
+interface RemovedNodeRecord {
+  destination: CommandDestination;
+  label: string;
+  node: BlueprintNode;
+}
+
+interface MoveDestinationOption {
+  destination: CommandDestination;
+  id: string;
+  label: string;
+  order?: NodeId[];
+}
+
+interface MoveCollection {
+  collection: readonly BlueprintNode[];
+  label: string;
+  parentNodeId?: NodeId;
+  slot?: string;
+}
+
+interface CanvasDropTarget extends MoveDestinationOption {
+  distanceX: number;
+  distanceY: number;
+  indicator: PreviewMarkerRect;
+}
+
+interface PreviewCanvasDragState {
+  active: boolean;
+  capture?: Element;
+  label: string;
+  nodeId: NodeId;
+  originX: number;
+  originY: number;
+  pointerId: number;
+  target?: CanvasDropTarget;
+}
+
 export class KumweStudioElement extends LitElement {
   public static override properties = {
     announcement: { attribute: false, state: true },
+    canvasDirectManipulation: { attribute: false, state: true },
+    canvasGeometry: { attribute: false, state: true },
     configuration: { attribute: false },
     contentModel: { attribute: false },
     designControls: { attribute: false },
     document: { attribute: false },
     messages: { attribute: false },
+    patterns: { attribute: false },
     paletteFilter: { attribute: false, state: true },
     paletteOpen: { attribute: false, state: true },
     previewBinding: { attribute: false },
@@ -316,6 +364,21 @@ export class KumweStudioElement extends LitElement {
       padding: 0.375rem 0.5rem;
     }
 
+    .outline-move-destination-label {
+      display: grid;
+      flex-basis: 100%;
+      font-size: 0.75rem;
+      gap: 0.25rem;
+    }
+
+    .outline-move-destination {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      font: inherit;
+      min-inline-size: 0;
+      padding: 0.375rem 0.5rem;
+    }
+
     .viewport-switcher {
       display: flex;
       flex-wrap: wrap;
@@ -352,11 +415,75 @@ export class KumweStudioElement extends LitElement {
       overflow: auto;
     }
 
+    .preview-stage {
+      isolation: isolate;
+      position: relative;
+    }
+
     .preview-surface-slot::slotted(iframe) {
       border: 0;
       display: block;
       inline-size: 100%;
       min-block-size: 20rem;
+    }
+
+    .preview-canvas-overlay {
+      block-size: 100%;
+      inset: 0;
+      inline-size: 100%;
+      overflow: visible;
+      pointer-events: none;
+      position: absolute;
+      z-index: 1;
+    }
+
+    .preview-canvas-region {
+      fill: transparent;
+      pointer-events: all;
+      stroke: transparent;
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .preview-canvas-overlay[data-interactive='false'] .preview-canvas-region {
+      pointer-events: none;
+    }
+
+    .preview-canvas-overlay[data-interactive='true'] {
+      pointer-events: auto;
+    }
+
+    .canvas-edit-toggle {
+      margin-bottom: 0.625rem;
+    }
+
+    .preview-canvas-region[data-hovered='true'] {
+      fill: color-mix(in srgb, var(--studio-primary), transparent 92%);
+      stroke: color-mix(in srgb, var(--studio-primary), transparent 35%);
+    }
+
+    .preview-canvas-region[data-selected='true'] {
+      fill: color-mix(in srgb, var(--studio-primary), transparent 88%);
+      stroke: var(--studio-primary);
+      stroke-width: 3;
+    }
+
+    .preview-canvas-drop-indicator {
+      fill: color-mix(in srgb, var(--studio-primary), transparent 72%);
+      pointer-events: none;
+      stroke: var(--studio-primary);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .preview-canvas-status {
+      background: white;
+      border: 1px dashed var(--studio-primary);
+      border-radius: 0.375rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      margin: 0.5rem 0 0;
+      padding: 0.375rem 0.5rem;
     }
 
     .breadcrumb ol {
@@ -611,10 +738,13 @@ export class KumweStudioElement extends LitElement {
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
   declare public messages: StudioMessageOverrides | undefined;
+  declare public patterns: PatternDocument[] | undefined;
   declare public theme: ThemeDocument | undefined;
   declare public previewBinding: StudioPreviewBinding | undefined;
   declare public viewports: ThemeViewport[] | undefined;
   declare protected announcement: string | undefined;
+  declare protected canvasDirectManipulation: boolean | undefined;
+  declare protected canvasGeometry: StudioPreviewGeometry | undefined;
   declare protected paletteFilter: string | undefined;
   declare protected paletteOpen: boolean | undefined;
   declare protected previewState: StudioPreviewState | 'unavailable' | undefined;
@@ -626,15 +756,28 @@ export class KumweStudioElement extends LitElement {
   #bindingProjection: BlueprintFieldBindingProjection | undefined;
   #diagnostics: StudioDiagnostic[] = [];
   #drag: CanvasDragState | undefined;
+  #hoveredPreviewNodeId: NodeId | undefined;
   #internalDocumentUpdate = false;
   #lastDirty = false;
   #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
   #pendingPaletteFocus = false;
+  readonly #onDocumentKeydown = (event: KeyboardEvent): void => {
+    if (
+      event.key === 'Escape' &&
+      (this.#drag !== undefined || this.#previewDrag !== undefined) &&
+      this.#cancelDrag()
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
   readonly #pendingPreviewAnnouncements: string[] = [];
   #activePreviewBinding: StudioPreviewBinding | undefined;
   #previewBindingGeneration: Revision | undefined;
   #previewSurface: StudioPreviewSurface | undefined;
+  #previewDrag: PreviewCanvasDragState | undefined;
+  readonly #removedNodes: RemovedNodeRecord[] = [];
   #registry: BlockRegistry | undefined;
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
@@ -698,6 +841,14 @@ export class KumweStudioElement extends LitElement {
   }
 
   /**
+   * Ask the bound preview channel to refresh volatile marker geometry after
+   * a host-observed resize, scroll, zoom or late-loading asset settlement.
+   */
+  public refreshPreviewGeometry(): void {
+    this.#previewSurface?.refreshGeometry();
+  }
+
+  /**
    * Closes the bound preview channel without changing authoring state or
    * focus. A later preview session requires a fresh binding.
    */
@@ -710,8 +861,14 @@ export class KumweStudioElement extends LitElement {
   }
 
   public override disconnectedCallback(): void {
+    this.ownerDocument.removeEventListener('keydown', this.#onDocumentKeydown, true);
     this.teardownPreview('studio.preview/surface-disconnected');
     super.disconnectedCallback();
+  }
+
+  public override connectedCallback(): void {
+    super.connectedCallback();
+    this.ownerDocument.addEventListener('keydown', this.#onDocumentKeydown, true);
   }
 
   /**
@@ -865,6 +1022,32 @@ export class KumweStudioElement extends LitElement {
               `,
             )}
           </ul>
+          ${
+            (this.patterns?.length ?? 0) === 0
+              ? nothing
+              : html`
+                  <h2 class="pattern-heading">${this.#text('studio.shell/patterns-heading')}</h2>
+                  <ul class="palette pattern-palette">
+                    ${this.patterns?.map(
+                      (pattern) => html`
+                        <li>
+                          <button
+                            type="button"
+                            class="pattern-apply"
+                            data-pattern-id=${pattern.id}
+                            ?disabled=${this.#patternDestination(pattern) === undefined}
+                            @click=${(): void => {
+                              this.#applyPattern(pattern);
+                            }}
+                          >
+                            ${referenceText(pattern.label)}
+                          </button>
+                        </li>
+                      `,
+                    )}
+                  </ul>
+                `
+          }
         </aside>
 
         <main
@@ -917,9 +1100,11 @@ export class KumweStudioElement extends LitElement {
           ${
             roots.length === 0
               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
-              : html`<ul class="tree">
-                  ${roots.map((node) => this.#renderCanvasNode(node))}
-                </ul>`
+              : this.#previewCapabilityAvailable() && this.previewBinding !== undefined
+                ? nothing
+                : html`<ul class="tree structural-canvas-fallback">
+                    ${roots.map((node) => this.#renderCanvasNode(node))}
+                  </ul>`
           }
         </main>
 
@@ -1060,6 +1245,16 @@ export class KumweStudioElement extends LitElement {
    * consume the Escape key only when it cancelled something.
    */
   #cancelDrag(): boolean {
+    const previewDrag = this.#previewDrag;
+    if (previewDrag !== undefined) {
+      this.#previewDrag = undefined;
+      this.#releasePreviewDragCapture(previewDrag);
+      if (previewDrag.active) {
+        this.#announce('studio.shell/announce-drag-cancelled', { label: previewDrag.label });
+      }
+      this.requestUpdate();
+      return true;
+    }
     const drag = this.#drag;
     if (drag === undefined) {
       return false;
@@ -1130,12 +1325,23 @@ export class KumweStudioElement extends LitElement {
       location.index > 0 ? location.collection[location.index - 1]?.id : undefined;
     const parentId = location.parentNodeId;
     const label = this.#nodeLabel(node);
+    const destination: CommandDestination = { position: location.index };
+    if (location.parentNodeId !== undefined && location.slot !== undefined) {
+      destination.parentNodeId = location.parentNodeId;
+      destination.slot = location.slot;
+    }
+    const removedNode = structuredClone(location.node);
     const command: RemoveNodeCommand = {
       ...this.#commandEnvelope(document, session),
       payload: { nodeId: node.id },
       type: 'studio.command/remove-node',
     };
     if (this.#runShellCommand(command)) {
+      this.#removedNodes.push({ destination, label, node: removedNode });
+      const maximumHistoryEntries = this.configuration?.session.limits.maxHistoryEntries ?? 100;
+      if (this.#removedNodes.length > maximumHistoryEntries) {
+        this.#removedNodes.splice(0, this.#removedNodes.length - maximumHistoryEntries);
+      }
       const focusTarget = previousSiblingId ?? parentId ?? this.document?.roots[0]?.id;
       if (focusTarget !== undefined) {
         this.#selectNode(focusTarget);
@@ -1143,6 +1349,103 @@ export class KumweStudioElement extends LitElement {
       }
       this.#announce('studio.shell/announce-deleted', { label });
     }
+  }
+
+  #restoreLastNode(): void {
+    const session = this.#session;
+    const document = this.document;
+    const record = this.#lastRestorableNode();
+    const destination = record === undefined ? undefined : this.#restoreDestination(record);
+    if (
+      session === undefined ||
+      document === undefined ||
+      record === undefined ||
+      destination === undefined ||
+      !this.#permits('studio.command/restore-node')
+    ) {
+      return;
+    }
+    const command: RestoreNodeCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: {
+        destination,
+        node: structuredClone(record.node),
+      },
+      type: 'studio.command/restore-node',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#removedNodes.splice(this.#removedNodes.lastIndexOf(record), 1);
+      this.#selectNode(record.node.id);
+      this.#pendingFocusNodeId = record.node.id;
+      this.#announce('studio.shell/announce-restored', { label: record.label });
+    }
+  }
+
+  #lastRestorableNode(): RemovedNodeRecord | undefined {
+    const document = this.document;
+    if (document === undefined) {
+      return undefined;
+    }
+    const ids = collectDocumentIds(document.roots);
+    for (let index = this.#removedNodes.length - 1; index >= 0; index -= 1) {
+      const record = this.#removedNodes[index];
+      if (
+        record === undefined ||
+        [...collectDocumentIds([record.node])].some((id) => ids.has(id))
+      ) {
+        continue;
+      }
+      if (this.#restoreDestination(record) === undefined) {
+        continue;
+      }
+      return record;
+    }
+    return undefined;
+  }
+
+  #restoreDestination(record: RemovedNodeRecord): CommandDestination | undefined {
+    const document = this.document;
+    if (document === undefined) {
+      return undefined;
+    }
+    const parentId = record.destination.parentNodeId;
+    if (parentId === undefined) {
+      if (this.#session?.mode === 'hybrid') {
+        return undefined;
+      }
+      return { position: Math.min(record.destination.position, document.roots.length) };
+    }
+    const slotName = record.destination.slot;
+    const parent = findOutlineLocation(document.roots, parentId)?.node;
+    const declared = this.#findDefinition(parent ?? record.node)?.slots.find(
+      (slot) => slot.id === slotName,
+    );
+    if (
+      parent === undefined ||
+      slotName === undefined ||
+      declared?.accepts.types.includes(record.node.type) !== true
+    ) {
+      return undefined;
+    }
+    const children = parent.slots[slotName] ?? [];
+    if (children.length >= declared.maximum) {
+      return undefined;
+    }
+    if (this.#session?.mode === 'hybrid') {
+      const allowed =
+        parent.authoring.slots?.[slotName]?.allowedBlocks ?? parent.authoring.allowedBlocks;
+      if (
+        !this.#isComposableSlot(parent, slotName) ||
+        allowed?.includes(record.node.type) === false
+      ) {
+        return undefined;
+      }
+    }
+    return {
+      parentNodeId: parentId,
+      position: Math.min(record.destination.position, children.length),
+      slot: slotName,
+    };
   }
 
   #duplicateNode(node: BlueprintNode): void {
@@ -1404,6 +1707,200 @@ export class KumweStudioElement extends LitElement {
         direction === -1 ? 'studio.shell/announce-moved-up' : 'studio.shell/announce-moved-down',
         { label: this.#nodeLabel(node) },
       );
+    }
+  }
+
+  #moveDestinations(node: BlueprintNode): MoveDestinationOption[] {
+    const document = this.document;
+    const source =
+      document === undefined ? undefined : findOutlineLocation(document.roots, node.id);
+    if (
+      document === undefined ||
+      source === undefined ||
+      !this.#permits('studio.command/move-node')
+    ) {
+      return [];
+    }
+    const destinations: MoveDestinationOption[] = [];
+    for (const target of this.#moveCollections(node)) {
+      const sameCollection =
+        source.parentNodeId === target.parentNodeId && source.slot === target.slot;
+      const collection = target.collection.filter((candidate) => candidate.id !== node.id);
+      for (let position = 0; position <= collection.length; position += 1) {
+        if (sameCollection && position === source.index) {
+          continue;
+        }
+        const destination: CommandDestination = { position };
+        if (target.parentNodeId !== undefined && target.slot !== undefined) {
+          destination.parentNodeId = target.parentNodeId;
+          destination.slot = target.slot;
+        }
+        if (!this.#canMoveNodeTo(node, destination)) {
+          continue;
+        }
+        const option: MoveDestinationOption = {
+          destination,
+          id: `${target.parentNodeId ?? 'document'}--${target.slot ?? 'roots'}--${position}`,
+          label: this.#text('studio.shell/move-destination-option', {
+            collection: target.label,
+            count: String(collection.length + 1),
+            position: String(position + 1),
+          }),
+        };
+        if (sameCollection) {
+          const order = collection.map((candidate) => candidate.id);
+          order.splice(position, 0, node.id);
+          option.order = order;
+        }
+        destinations.push(option);
+      }
+    }
+    return destinations;
+  }
+
+  #moveCollections(node: BlueprintNode): MoveCollection[] {
+    const document = this.document;
+    if (document === undefined) {
+      return [];
+    }
+    const collections: MoveCollection[] = [
+      { collection: document.roots, label: this.#text('studio.shell/document-roots') },
+    ];
+    const stack = [...document.roots];
+    while (stack.length > 0) {
+      const parent = stack.shift();
+      if (parent === undefined) {
+        break;
+      }
+      const definition = this.#findDefinition(parent);
+      for (const children of Object.values(parent.slots)) {
+        stack.push(...children);
+      }
+      for (const slot of definition?.slots ?? []) {
+        if (!slot.accepts.types.includes(node.type)) {
+          continue;
+        }
+        collections.push({
+          collection: parent.slots[slot.id] ?? [],
+          label: this.#text('studio.shell/move-slot-collection', {
+            parent: `${this.#nodeLabel(parent)} (${parent.id})`,
+            slot: referenceText(slot.label),
+          }),
+          parentNodeId: parent.id,
+          slot: slot.id,
+        });
+      }
+    }
+    return collections;
+  }
+
+  #canMoveNodeTo(node: BlueprintNode, destination: CommandDestination): boolean {
+    const document = this.document;
+    const source =
+      document === undefined ? undefined : findOutlineLocation(document.roots, node.id);
+    if (
+      document === undefined ||
+      source === undefined ||
+      !this.#permits('studio.command/move-node')
+    ) {
+      return false;
+    }
+    const parentId = destination.parentNodeId;
+    if (
+      parentId === node.id ||
+      (parentId !== undefined && findAncestry([node], parentId).length > 0)
+    ) {
+      return false;
+    }
+    const sameCollection =
+      source.parentNodeId === destination.parentNodeId && source.slot === destination.slot;
+    if (!sameCollection && source.parentNodeId !== undefined && source.slot !== undefined) {
+      const sourceParent = findOutlineLocation(document.roots, source.parentNodeId)?.node;
+      const sourceSlot = this.#findDefinition(sourceParent ?? node)?.slots.find(
+        (candidate) => candidate.id === source.slot,
+      );
+      if (
+        sourceParent === undefined ||
+        sourceSlot === undefined ||
+        source.collection.length - 1 < sourceSlot.minimum
+      ) {
+        return false;
+      }
+    }
+    if (parentId === undefined) {
+      const postMoveLength = document.roots.length - (source.parentNodeId === undefined ? 1 : 0);
+      return this.#session?.mode !== 'hybrid' && destination.position <= postMoveLength;
+    }
+    if (destination.slot === undefined) {
+      return false;
+    }
+    const parent = findOutlineLocation(document.roots, parentId)?.node;
+    const definition = parent === undefined ? undefined : this.#findDefinition(parent);
+    const slot = definition?.slots.find((candidate) => candidate.id === destination.slot);
+    if (parent === undefined || slot?.accepts.types.includes(node.type) !== true) {
+      return false;
+    }
+    const children = parent.slots[destination.slot] ?? [];
+    const postMoveLength = children.length - (sameCollection ? 1 : 0);
+    if (destination.position > postMoveLength || postMoveLength + 1 > slot.maximum) {
+      return false;
+    }
+    if (this.#session?.mode !== 'hybrid') {
+      return true;
+    }
+    if (
+      source.parentNodeId === undefined ||
+      source.slot === undefined ||
+      this.#subtreeContainsLockedNode(node) ||
+      !this.#isComposableSlot(parent, destination.slot)
+    ) {
+      return false;
+    }
+    const sourceParent = findOutlineLocation(document.roots, source.parentNodeId)?.node;
+    if (sourceParent === undefined || !this.#isComposableSlot(sourceParent, source.slot)) {
+      return false;
+    }
+    const allowed =
+      parent.authoring.slots?.[destination.slot]?.allowedBlocks ?? parent.authoring.allowedBlocks;
+    return allowed?.includes(node.type) !== false;
+  }
+
+  #moveNodeToOption(node: BlueprintNode, option: MoveDestinationOption): void {
+    const session = this.#session;
+    const document = this.document;
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#canMoveNodeTo(node, option.destination)
+    ) {
+      return;
+    }
+    let command: MoveNodeCommand | ReorderChildrenCommand;
+    if (option.order === undefined) {
+      command = {
+        ...this.#commandEnvelope(document, session),
+        payload: { destination: structuredClone(option.destination), nodeId: node.id },
+        type: 'studio.command/move-node',
+      };
+    } else {
+      const payload: ReorderChildrenPayload = { order: [...option.order] };
+      if (option.destination.parentNodeId !== undefined && option.destination.slot !== undefined) {
+        payload.parentNodeId = option.destination.parentNodeId;
+        payload.slot = option.destination.slot;
+      }
+      command = {
+        ...this.#commandEnvelope(document, session),
+        payload,
+        type: 'studio.command/reorder-children',
+      };
+    }
+    if (this.#runShellCommand(command)) {
+      this.#selectNode(node.id);
+      this.#pendingFocusNodeId = node.id;
+      this.#announce('studio.shell/announce-moved-to', {
+        destination: option.label,
+        label: this.#nodeLabel(node),
+      });
     }
   }
 
@@ -1775,6 +2272,115 @@ export class KumweStudioElement extends LitElement {
     });
   }
 
+  #applyPattern(pattern: PatternDocument): void {
+    const session = this.#session;
+    const document = this.document;
+    const destination = this.#patternDestination(pattern);
+    if (session === undefined || document === undefined || destination === undefined) {
+      return;
+    }
+    const command: ApplyPatternCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: {
+        destination,
+        idMap: this.#allocatePatternIdMap(pattern),
+        nodes: structuredClone(pattern.roots),
+        pattern: { id: pattern.id, revision: pattern.revision, version: pattern.version },
+      },
+      type: 'studio.command/apply-pattern',
+    };
+    if (this.#runShellCommand(command)) {
+      const first = command.payload.idMap[pattern.roots[0]?.id ?? ''];
+      if (first !== undefined) {
+        this.#selectNode(first);
+        this.#pendingFocusNodeId = first;
+      }
+      this.#announce('studio.shell/announce-pattern-applied', {
+        pattern: referenceText(pattern.label),
+      });
+    }
+  }
+
+  #allocatePatternIdMap(pattern: PatternDocument): Record<NodeId, NodeId> {
+    const taken = collectDocumentIds(this.document?.roots ?? []);
+    const idMap: Record<NodeId, NodeId> = {};
+    const queue = [...pattern.roots];
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === undefined) {
+        break;
+      }
+      let counter = 1;
+      let candidate = `${current.id}-pattern-${counter}`;
+      while (taken.has(candidate)) {
+        counter += 1;
+        candidate = `${current.id}-pattern-${counter}`;
+      }
+      taken.add(candidate);
+      Object.defineProperty(idMap, current.id, {
+        configurable: true,
+        enumerable: true,
+        value: candidate,
+        writable: true,
+      });
+      for (const children of Object.values(current.slots)) {
+        queue.push(...children);
+      }
+    }
+    return idMap;
+  }
+
+  #patternDestination(pattern: PatternDocument): CommandDestination | undefined {
+    if (!this.#permits('studio.command/apply-pattern') || pattern.roots.length === 0) {
+      return undefined;
+    }
+    const definitions = this.configuration?.blockDefinitions ?? [];
+    const pending = [...pattern.roots];
+    while (pending.length > 0) {
+      const node = pending.pop();
+      if (
+        node === undefined ||
+        !definitions.some(
+          (definition) => definition.type === node.type && definition.version === node.version,
+        )
+      ) {
+        return undefined;
+      }
+      for (const children of Object.values(node.slots)) {
+        pending.push(...children);
+      }
+    }
+    const document = this.document;
+    if (document === undefined) {
+      return undefined;
+    }
+    const selected =
+      this.selectedNodeId === undefined
+        ? undefined
+        : findOutlineLocation(document.roots, this.selectedNodeId)?.node;
+    const selectedDefinition = selected === undefined ? undefined : this.#findDefinition(selected);
+    if (selected !== undefined && selectedDefinition !== undefined) {
+      for (const slot of selectedDefinition.slots) {
+        const children = selected.slots[slot.id] ?? [];
+        if (
+          pattern.roots.every((root) => slot.accepts.types.includes(root.type)) &&
+          children.length + pattern.roots.length <= slot.maximum &&
+          (this.#session?.mode !== 'hybrid' ||
+            (this.#isComposableSlot(selected, slot.id) &&
+              pattern.roots.every((root) => {
+                const allowed =
+                  selected.authoring.slots?.[slot.id]?.allowedBlocks ??
+                  selected.authoring.allowedBlocks;
+                return allowed?.includes(root.type) !== false;
+              })))
+        ) {
+          return { parentNodeId: selected.id, position: children.length, slot: slot.id };
+        }
+      }
+    }
+    return this.#session?.mode === 'hybrid' ? undefined : { position: document.roots.length };
+  }
+
   /**
    * The executable command list for the palette. Selection-scoped structural
    * entries reuse the outline's dispatch paths and its exact disabled rules;
@@ -1828,8 +2434,31 @@ export class KumweStudioElement extends LitElement {
           },
         },
       );
+      for (const destination of this.#moveDestinations(node)) {
+        entries.push({
+          disabled: false,
+          id: `move-to-${destination.id}`,
+          label: this.#text('studio.shell/command-move-to', {
+            destination: destination.label,
+          }),
+          run: (): void => {
+            this.#moveNodeToOption(node, destination);
+          },
+        });
+      }
     }
     entries.push(
+      {
+        disabled:
+          readOnly ||
+          !this.#permits('studio.command/restore-node') ||
+          this.#lastRestorableNode() === undefined,
+        id: 'restore-last-deleted',
+        label: this.#text('studio.shell/restore-last-deleted'),
+        run: (): void => {
+          this.#restoreLastNode();
+        },
+      },
       {
         disabled: readOnly || session?.canUndo !== true,
         id: 'undo',
@@ -1867,6 +2496,18 @@ export class KumweStudioElement extends LitElement {
         }),
         run: (): void => {
           this.#insertDefinition(definition);
+        },
+      });
+    }
+    for (const pattern of this.patterns ?? []) {
+      entries.push({
+        disabled: this.#patternDestination(pattern) === undefined,
+        id: `apply-pattern-${pattern.id}`,
+        label: this.#text('studio.shell/command-apply-pattern', {
+          pattern: referenceText(pattern.label),
+        }),
+        run: (): void => {
+          this.#applyPattern(pattern);
         },
       });
     }
@@ -1984,6 +2625,27 @@ export class KumweStudioElement extends LitElement {
     };
     if (this.#runShellCommand(command)) {
       this.#announce('studio.shell/announce-binding-removed', { port });
+    }
+  }
+
+  #resetInheritedProperty(node: BlueprintNode, property: string): void {
+    const session = this.#session;
+    const document = this.document;
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/reset-inherited-property') ||
+      Object.keys(node.responsive?.[property] ?? {}).length === 0
+    ) {
+      return;
+    }
+    const command: ResetInheritedPropertyCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { nodeId: node.id, property },
+      type: 'studio.command/reset-inherited-property',
+    };
+    if (this.#runShellCommand(command)) {
+      this.#announce('studio.shell/announce-inheritance-reset', { property });
     }
   }
 
@@ -2747,6 +3409,21 @@ export class KumweStudioElement extends LitElement {
                                 value: JSON.stringify(base),
                               })}
                             </span>
+                            <button
+                              type="button"
+                              class="inspector-inheritance-reset"
+                              data-property=${property}
+                              ?disabled=${
+                                readOnly ||
+                                !this.#permits('studio.command/reset-inherited-property') ||
+                                Object.keys(node.responsive?.[property] ?? {}).length === 0
+                              }
+                              @click=${(): void => {
+                                this.#resetInheritedProperty(node, property);
+                              }}
+                            >
+                              ${this.#text('studio.shell/inspector-reset-inheritance')}
+                            </button>
                           </li>
                         `
                       : html`
@@ -2792,6 +3469,20 @@ export class KumweStudioElement extends LitElement {
                               }}
                             >
                               ${this.#text('studio.shell/inspector-remove-override')}
+                            </button>
+                            <button
+                              type="button"
+                              class="inspector-inheritance-reset"
+                              data-property=${property}
+                              ?disabled=${
+                                readOnly ||
+                                !this.#permits('studio.command/reset-inherited-property')
+                              }
+                              @click=${(): void => {
+                                this.#resetInheritedProperty(node, property);
+                              }}
+                            >
+                              ${this.#text('studio.shell/inspector-reset-inheritance')}
                             </button>
                           </li>
                         `,
@@ -3035,6 +3726,7 @@ export class KumweStudioElement extends LitElement {
     const reorderDisabled = !this.#canMutateNode(node, 'studio.command/reorder-children');
     const first = location === undefined || location.index === 0;
     const last = location === undefined || location.index === location.collection.length - 1;
+    const destinations = this.#moveDestinations(node);
     return html`
       <div
         class="outline-controls"
@@ -3081,6 +3773,33 @@ export class KumweStudioElement extends LitElement {
         >
           ${this.#text('studio.shell/delete')}
         </button>
+        <label class="outline-move-destination-label">
+          <span>${this.#text('studio.shell/move-destination-label')}</span>
+          <select
+            class="outline-move-destination"
+            ?disabled=${destinations.length === 0}
+            @change=${(event: Event): void => {
+              const target = event.currentTarget;
+              if (!(target instanceof HTMLSelectElement)) {
+                return;
+              }
+              const option = destinations.find((candidate) => candidate.id === target.value);
+              if (option !== undefined) {
+                this.#moveNodeToOption(node, option);
+              }
+              target.value = '';
+            }}
+          >
+            <option value="" selected disabled>
+              ${this.#text('studio.shell/move-destination-placeholder')}
+            </option>
+            ${destinations.map(
+              (destination) => html`
+                <option value=${destination.id}>${destination.label}</option>
+              `,
+            )}
+          </select>
+        </label>
       </div>
     `;
   }
@@ -3155,12 +3874,349 @@ export class KumweStudioElement extends LitElement {
         <h2>${this.#text('studio.shell/preview-heading')}</h2>
         <p class="preview-status">${this.#text(statusKey)}</p>
         ${
+          available && state === 'current' && this.canvasGeometry !== undefined
+            ? html`
+                <button
+                  type="button"
+                  class="canvas-edit-toggle"
+                  aria-pressed=${this.canvasDirectManipulation === true ? 'true' : 'false'}
+                  @click=${(): void => {
+                    this.canvasDirectManipulation = this.canvasDirectManipulation !== true;
+                    if (!this.canvasDirectManipulation && this.#previewDrag !== undefined) {
+                      this.#cancelDrag();
+                    }
+                    this.#announce('studio.shell/announce-canvas-mode', {
+                      state: this.#text(
+                        this.canvasDirectManipulation
+                          ? 'studio.shell/canvas-mode-editing'
+                          : 'studio.shell/canvas-mode-interacting',
+                      ),
+                    });
+                  }}
+                >
+                  ${this.#text('studio.shell/canvas-edit-toggle')}
+                </button>
+              `
+            : nothing
+        }
+        ${
           available && state !== 'closed'
-            ? html`<slot class="preview-surface-slot" name="preview"></slot>`
+            ? html`
+                <div class="preview-stage">
+                  <slot
+                    class="preview-surface-slot"
+                    name="preview"
+                    @slotchange=${(): void => {
+                      queueMicrotask(() => {
+                        this.refreshPreviewGeometry();
+                      });
+                    }}
+                  ></slot>
+                  ${this.#renderPreviewCanvasOverlay()}
+                </div>
+                ${this.#renderPreviewCanvasStatus()}
+              `
             : nothing
         }
       </section>
     `;
+  }
+
+  #renderPreviewCanvasOverlay(): TemplateResult | typeof nothing {
+    const geometry = this.canvasGeometry;
+    if (geometry === undefined || geometry.viewport.width <= 0 || geometry.viewport.height <= 0) {
+      return nothing;
+    }
+    const indicator =
+      this.#previewDrag?.active === true ? this.#previewDrag.target?.indicator : undefined;
+    return html`
+      <svg
+        class="preview-canvas-overlay"
+        data-interactive=${this.canvasDirectManipulation === true ? 'true' : 'false'}
+        viewBox=${`0 0 ${geometry.viewport.width} ${geometry.viewport.height}`}
+        preserveAspectRatio="none"
+        aria-hidden="true"
+        @pointermove=${(event: PointerEvent): void => {
+          this.#onPreviewCanvasPointerMove(event);
+        }}
+        @pointerup=${(event: PointerEvent): void => {
+          this.#onPreviewCanvasPointerUp(event);
+        }}
+        @pointercancel=${(event: PointerEvent): void => {
+          this.#onPreviewCanvasPointerCancel(event);
+        }}
+      >
+        ${Object.entries(geometry.measurements).flatMap(([nodeId, rects]) =>
+          rects.map(
+            (rect, index) => svg`
+              <rect
+                class="preview-canvas-region"
+                data-node-id=${nodeId}
+                data-rect-index=${String(index)}
+                data-hovered=${this.#hoveredPreviewNodeId === nodeId ? 'true' : 'false'}
+                data-selected=${this.selectedNodeId === nodeId ? 'true' : 'false'}
+                x=${String(rect.x)}
+                y=${String(rect.y)}
+                width=${String(rect.width)}
+                height=${String(rect.height)}
+                @pointerenter=${(): void => {
+                  this.#hoveredPreviewNodeId = nodeId;
+                  this.requestUpdate();
+                }}
+                @pointerleave=${(): void => {
+                  if (this.#hoveredPreviewNodeId === nodeId) {
+                    this.#hoveredPreviewNodeId = undefined;
+                    this.requestUpdate();
+                  }
+                }}
+                @pointerdown=${(event: PointerEvent): void => {
+                  this.#onPreviewCanvasPointerDown(event, nodeId);
+                }}
+              ></rect>
+            `,
+          ),
+        )}
+        ${
+          indicator === undefined
+            ? nothing
+            : svg`
+                <rect
+                  class="preview-canvas-drop-indicator"
+                  x=${String(indicator.x)}
+                  y=${String(indicator.y)}
+                  width=${String(indicator.width)}
+                  height=${String(indicator.height)}
+                ></rect>
+              `
+        }
+      </svg>
+    `;
+  }
+
+  #renderPreviewCanvasStatus(): TemplateResult | typeof nothing {
+    const drag = this.#previewDrag;
+    if (drag?.active !== true || drag.target === undefined) {
+      return nothing;
+    }
+    return html`
+      <p class="preview-canvas-status">
+        ${this.#text('studio.shell/visual-drop-target', {
+          destination: drag.target.label,
+          label: drag.label,
+        })}
+      </p>
+    `;
+  }
+
+  #onPreviewCanvasPointerDown(event: PointerEvent, nodeId: NodeId): void {
+    if (
+      this.canvasDirectManipulation !== true ||
+      event.button !== 0 ||
+      this.#previewDrag !== undefined
+    ) {
+      return;
+    }
+    const document = this.document;
+    const node =
+      document === undefined ? undefined : findOutlineLocation(document.roots, nodeId)?.node;
+    if (node === undefined) {
+      return;
+    }
+    this.#selectNode(nodeId);
+    const destinations = this.#moveDestinations(node);
+    if (destinations.length === 0) {
+      return;
+    }
+    const drag: PreviewCanvasDragState = {
+      active: false,
+      label: this.#nodeLabel(node),
+      nodeId,
+      originX: event.clientX,
+      originY: event.clientY,
+      pointerId: event.pointerId,
+    };
+    const target = event.currentTarget;
+    if (target instanceof Element) {
+      drag.capture = target;
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch {
+        // Capture is progressive; the overlay-level handlers remain active.
+      }
+    }
+    this.#previewDrag = drag;
+  }
+
+  #onPreviewCanvasPointerMove(event: PointerEvent): void {
+    const drag = this.#previewDrag;
+    if (drag?.pointerId !== event.pointerId) {
+      return;
+    }
+    if (
+      !drag.active &&
+      Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY) < 4
+    ) {
+      return;
+    }
+    drag.active = true;
+    const point = this.#previewCanvasPoint(event);
+    const document = this.document;
+    const node =
+      document === undefined ? undefined : findOutlineLocation(document.roots, drag.nodeId)?.node;
+    if (point !== undefined && node !== undefined) {
+      const target = this.#resolvePreviewDropTarget(node, point.x, point.y);
+      if (target === undefined) {
+        delete drag.target;
+      } else {
+        drag.target = target;
+      }
+    }
+    this.requestUpdate();
+  }
+
+  #onPreviewCanvasPointerUp(event: PointerEvent): void {
+    const drag = this.#previewDrag;
+    if (drag?.pointerId !== event.pointerId) {
+      return;
+    }
+    this.#previewDrag = undefined;
+    this.#releasePreviewDragCapture(drag);
+    this.requestUpdate();
+    if (!drag.active) {
+      this.#selectNode(drag.nodeId);
+      return;
+    }
+    const document = this.document;
+    const node =
+      document === undefined ? undefined : findOutlineLocation(document.roots, drag.nodeId)?.node;
+    if (node === undefined || drag.target === undefined) {
+      this.#announce('studio.shell/announce-drag-cancelled', { label: drag.label });
+      return;
+    }
+    this.#moveNodeToOption(node, drag.target);
+  }
+
+  #onPreviewCanvasPointerCancel(event: PointerEvent): void {
+    if (this.#previewDrag?.pointerId === event.pointerId) {
+      this.#cancelDrag();
+    }
+  }
+
+  #releasePreviewDragCapture(drag: PreviewCanvasDragState): void {
+    try {
+      if (drag.capture?.hasPointerCapture(drag.pointerId) === true) {
+        drag.capture.releasePointerCapture(drag.pointerId);
+      }
+    } catch {
+      // The capture may already have been revoked by disconnection.
+    }
+  }
+
+  #previewCanvasPoint(event: PointerEvent): { x: number; y: number } | undefined {
+    const geometry = this.canvasGeometry;
+    const target = event.currentTarget;
+    if (geometry === undefined || !(target instanceof SVGElement)) {
+      return undefined;
+    }
+    const svg = target instanceof SVGSVGElement ? target : target.ownerSVGElement;
+    if (svg === null) {
+      return undefined;
+    }
+    const bounds = svg.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      return { x: event.clientX, y: event.clientY };
+    }
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * geometry.viewport.width,
+      y: ((event.clientY - bounds.top) / bounds.height) * geometry.viewport.height,
+    };
+  }
+
+  #resolvePreviewDropTarget(
+    node: BlueprintNode,
+    x: number,
+    y: number,
+  ): CanvasDropTarget | undefined {
+    const targets = this.#previewDropTargets(node);
+    let chosen: CanvasDropTarget | undefined;
+    let distance = Number.POSITIVE_INFINITY;
+    for (const target of targets) {
+      const current = Math.hypot(target.distanceX - x, target.distanceY - y);
+      if (current < distance) {
+        chosen = target;
+        distance = current;
+      }
+    }
+    return chosen;
+  }
+
+  #previewDropTargets(node: BlueprintNode): CanvasDropTarget[] {
+    const geometry = this.canvasGeometry;
+    const document = this.document;
+    if (geometry === undefined || document === undefined) {
+      return [];
+    }
+    const options = this.#moveDestinations(node);
+    const collections = this.#moveCollections(node);
+    const targets: CanvasDropTarget[] = [];
+    for (const option of options) {
+      const collection = collections.find(
+        (candidate) =>
+          candidate.parentNodeId === option.destination.parentNodeId &&
+          candidate.slot === option.destination.slot,
+      );
+      if (collection === undefined) {
+        continue;
+      }
+      const children = collection.collection.filter((candidate) => candidate.id !== node.id);
+      const childRects = children.map((child) =>
+        boundingPreviewRect(geometry.measurements[child.id] ?? []),
+      );
+      if (
+        childRects.every((rect): rect is PreviewMarkerRect => rect !== undefined) &&
+        childRects.length > 0
+      ) {
+        const target = collectionPositionTarget(childRects, option.destination.position);
+        targets.push({
+          ...option,
+          distanceX: target.x + target.width / 2,
+          distanceY: target.y + target.height / 2,
+          indicator: target,
+        });
+        continue;
+      }
+      if (children.length !== 0 || collection.parentNodeId === undefined) {
+        continue;
+      }
+      const parentRect = boundingPreviewRect(geometry.measurements[collection.parentNodeId] ?? []);
+      if (parentRect === undefined) {
+        continue;
+      }
+      const parent = findOutlineLocation(document.roots, collection.parentNodeId)?.node;
+      const slots =
+        this.#findDefinition(parent ?? node)?.slots.filter((slot) => {
+          const entries = parent?.slots[slot.id] ?? [];
+          return entries.length === 0 && slot.accepts.types.includes(node.type);
+        }) ?? [];
+      const slotIndex = Math.max(
+        0,
+        slots.findIndex((slot) => slot.id === collection.slot),
+      );
+      const bandHeight = parentRect.height / Math.max(1, slots.length);
+      const indicator: PreviewMarkerRect = {
+        height: Math.max(4, bandHeight - 8),
+        width: Math.max(4, parentRect.width - 8),
+        x: parentRect.x + 4,
+        y: parentRect.y + slotIndex * bandHeight + 4,
+      };
+      targets.push({
+        ...option,
+        distanceX: indicator.x + indicator.width / 2,
+        distanceY: indicator.y + indicator.height / 2,
+        indicator,
+      });
+    }
+    return targets;
   }
 
   #renderViewportSwitcher(): TemplateResult | typeof nothing {
@@ -3386,6 +4442,7 @@ export class KumweStudioElement extends LitElement {
       this.#activePreviewBinding = undefined;
       this.#previewBindingGeneration = undefined;
       this.previewState = 'unavailable';
+      this.canvasGeometry = undefined;
       return;
     }
     if (
@@ -3402,6 +4459,15 @@ export class KumweStudioElement extends LitElement {
       onActivated: (nodeId): void => {
         this.#selectNode(nodeId, false);
         this.requestUpdate();
+      },
+      onGeometry: (geometry): void => {
+        this.canvasGeometry = geometry;
+        if (geometry === undefined) {
+          this.#hoveredPreviewNodeId = undefined;
+          if (this.#previewDrag !== undefined) {
+            this.#cancelDrag();
+          }
+        }
       },
       onMessage: (message): void => {
         this.notifyPreviewMessage(message);
@@ -3827,6 +4893,68 @@ function diagnosticText(entry: StudioDiagnostic): string {
     text = text.replaceAll(`{${name}}`, String(value));
   }
   return text;
+}
+
+function boundingPreviewRect(rects: readonly PreviewMarkerRect[]): PreviewMarkerRect | undefined {
+  const visible = rects.filter((rect) => rect.width > 0 && rect.height > 0);
+  const first = visible[0];
+  if (first === undefined) {
+    return undefined;
+  }
+  let left = first.x;
+  let top = first.y;
+  let right = first.x + first.width;
+  let bottom = first.y + first.height;
+  for (const rect of visible.slice(1)) {
+    left = Math.min(left, rect.x);
+    top = Math.min(top, rect.y);
+    right = Math.max(right, rect.x + rect.width);
+    bottom = Math.max(bottom, rect.y + rect.height);
+  }
+  return { height: bottom - top, width: right - left, x: left, y: top };
+}
+
+/** A CSP-safe SVG indicator for one ordered insertion boundary. */
+function collectionPositionTarget(
+  rects: readonly PreviewMarkerRect[],
+  position: number,
+): PreviewMarkerRect {
+  const first = rects[0];
+  const last = rects.at(-1);
+  if (first === undefined || last === undefined) {
+    return { height: 4, width: 4, x: 0, y: 0 };
+  }
+  const bounds = boundingPreviewRect(rects) ?? first;
+  const xSpread = Math.abs(last.x + last.width / 2 - (first.x + first.width / 2));
+  const ySpread = Math.abs(last.y + last.height / 2 - (first.y + first.height / 2));
+  const before = rects[Math.max(0, position - 1)] ?? first;
+  const after = rects[Math.min(rects.length - 1, position)] ?? last;
+  if (xSpread > ySpread) {
+    const boundary =
+      position === 0
+        ? first.x
+        : position >= rects.length
+          ? last.x + last.width
+          : (before.x + before.width + after.x) / 2;
+    return {
+      height: Math.max(4, bounds.height),
+      width: 4,
+      x: boundary - 2,
+      y: bounds.y,
+    };
+  }
+  const boundary =
+    position === 0
+      ? first.y
+      : position >= rects.length
+        ? last.y + last.height
+        : (before.y + before.height + after.y) / 2;
+  return {
+    height: 4,
+    width: Math.max(4, bounds.width),
+    x: bounds.x,
+    y: boundary - 2,
+  };
 }
 
 function isSizeRoleIdentifier(text: string): boolean {

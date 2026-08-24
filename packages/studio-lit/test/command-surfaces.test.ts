@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { BlockType, BlueprintDocument, BlueprintNode } from '@kumwe/studio-protocol';
+import {
+  STUDIO_CONTRACT_VERSION,
+  type BlockType,
+  type BlueprintDocument,
+  type BlueprintNode,
+  type PatternDocument,
+} from '@kumwe/studio-protocol';
 import {
   createBlueprintFixture,
   createStudioConfigurationFixture,
@@ -37,6 +43,8 @@ function dragRoots(): BlueprintNode[] {
 }
 
 interface MountOptions {
+  maxHistoryEntries?: number;
+  minimumChildren?: number;
   roots?: BlueprintNode[];
   sessionState?: 'editable' | 'read-only';
 }
@@ -44,6 +52,12 @@ interface MountOptions {
 async function mountShell(options: MountOptions = {}): Promise<KumweStudioElement> {
   defineKumweStudio();
   const element = new KumweStudioElement();
+  const session = createStudioConfigurationFixture(
+    options.sessionState === undefined ? {} : { sessionState: options.sessionState },
+  );
+  if (options.maxHistoryEntries !== undefined) {
+    session.limits.maxHistoryEntries = options.maxHistoryEntries;
+  }
   element.configuration = {
     blockDefinitions: [
       defineTestBlock({
@@ -54,7 +68,7 @@ async function mountShell(options: MountOptions = {}): Promise<KumweStudioElemen
             id: 'content',
             label: { defaultMessage: 'Content', key: 'studio.test/slot-content' },
             maximum: 100,
-            minimum: 0,
+            minimum: options.minimumChildren ?? 0,
             ordered: true,
           },
         ],
@@ -62,9 +76,7 @@ async function mountShell(options: MountOptions = {}): Promise<KumweStudioElemen
       }),
       defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
     ],
-    session: createStudioConfigurationFixture(
-      options.sessionState === undefined ? {} : { sessionState: options.sessionState },
-    ),
+    session,
   };
   element.document = createBlueprintFixture({ roots: options.roots ?? [] });
   document.body.append(element);
@@ -222,6 +234,7 @@ describe('command palette', () => {
       'move-down',
       'duplicate',
       'delete',
+      'restore-last-deleted',
       'undo',
       'redo',
       'clear-selection',
@@ -355,6 +368,116 @@ describe('command palette', () => {
     expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('false');
     expect(liveRegionText(element)).toContain('Selection cleared');
     expect(element.document).toEqual(before);
+    element.remove();
+  });
+
+  it('dispatches first-class restore-node for the last deleted subtree', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const commands: string[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const command = (event as CustomEvent<{ command: { type: string } | null }>).detail.command;
+      if (command !== null) {
+        commands.push(command.type);
+      }
+    });
+    await selectNode(element, 'text-1');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.outline-delete')?.click();
+    await element.updateComplete;
+    expect(commands.at(-1)).toBe('studio.command/remove-node');
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual(['text-2']);
+
+    toggleButton(element).click();
+    await element.updateComplete;
+    const restore = commandEntry(element, 'restore-last-deleted');
+    expect(restore.disabled).toBe(false);
+    restore.click();
+    await element.updateComplete;
+
+    expect(commands.at(-1)).toBe('studio.command/restore-node');
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual([
+      'text-1',
+      'text-2',
+    ]);
+    expect(liveRegionText(element)).toContain('Restored Text block');
+    element.remove();
+  });
+
+  it('bounds the restore journal to the configured session history limit', async () => {
+    const element = await mountShell({ maxHistoryEntries: 1, roots: paletteRoots() });
+
+    await selectNode(element, 'text-1');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.outline-delete')?.click();
+    await element.updateComplete;
+    await selectNode(element, 'text-2');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.outline-delete')?.click();
+    await element.updateComplete;
+
+    toggleButton(element).click();
+    await element.updateComplete;
+    commandEntry(element, 'restore-last-deleted').click();
+    await element.updateComplete;
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual(['text-2']);
+
+    toggleButton(element).click();
+    await element.updateComplete;
+    expect(commandEntry(element, 'restore-last-deleted').disabled).toBe(true);
+    element.remove();
+  });
+
+  it('applies a validated pattern through the canonical apply-pattern command', async () => {
+    const element = await mountShell({ roots: [] });
+    const pattern: PatternDocument = {
+      blockDependencies: [],
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: 'studio.test/hero-pattern',
+      kind: 'pattern',
+      label: { defaultMessage: 'Hero', key: 'studio.test/hero-pattern' },
+      owner: { id: 'studio.test/suite', version: '1.0.0' },
+      revision: 'hero-r1',
+      roots: [blueprintNode('hero-text', 'studio.core/text')],
+      version: '1.0.0',
+    };
+    let commandType: string | undefined;
+    element.addEventListener('studio-document-change', (event) => {
+      commandType = (event as CustomEvent<{ command: { type: string } | null }>).detail.command
+        ?.type;
+    });
+    element.patterns = [pattern];
+    await element.updateComplete;
+    const apply = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '.pattern-apply[data-pattern-id="studio.test/hero-pattern"]',
+    );
+    expect(apply?.disabled).toBe(false);
+    apply?.click();
+    await element.updateComplete;
+
+    expect(commandType).toBe('studio.command/apply-pattern');
+    expect(element.document?.roots[0]?.id).toBe('hero-text-pattern-1');
+    expect(element.document?.roots[0]?.extensions?.['studio.pattern/source']).toEqual({
+      id: 'studio.test/hero-pattern',
+      revision: 'hero-r1',
+      version: '1.0.0',
+    });
+    expect(liveRegionText(element)).toContain('Applied the Hero pattern');
+    element.remove();
+  });
+
+  it('does not offer a reparent target that would violate the source slot minimum', async () => {
+    const element = await mountShell({
+      minimumChildren: 1,
+      roots: [
+        blueprintNode('section-1', 'studio.core/section', [
+          blueprintNode('text-1', 'studio.core/text'),
+        ]),
+        blueprintNode('section-2', 'studio.core/section'),
+      ],
+    });
+    await selectNode(element, 'text-1');
+
+    const destination = element.shadowRoot?.querySelector<HTMLSelectElement>(
+      '.outline-move-destination',
+    );
+    expect(destination?.disabled).toBe(true);
     element.remove();
   });
 });
