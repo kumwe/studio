@@ -9,9 +9,9 @@ import {
 describe('authoring message catalog', () => {
   it('publishes the complete canonical English catalog', () => {
     expect(studioMessageCatalog.kind).toBe('authoring-message-catalog');
-    expect(studioMessageCatalog.catalogVersion).toBe('1.0.0');
+    expect(studioMessageCatalog.catalogVersion).toBe('1.1.0');
     expect(studioMessageCatalog.locale).toBe('en');
-    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(112);
+    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(119);
     expect(Object.keys(studioMessages)).toEqual(Object.keys(studioMessageCatalog.messages));
   });
 

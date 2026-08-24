@@ -30,6 +30,25 @@ export {
 export { applyEntryCommand } from './entry-commands.js';
 export { StudioHistory } from './history.js';
 export {
+  CORE_LAYOUT_BLOCK_TYPES,
+  CORE_LAYOUT_THEME_CONTROLS,
+  CoreLayoutError,
+  coreLayoutInitialProperties,
+  createCoreLayoutBlockDefinitions,
+  isCoreLayoutBlockType,
+  resolveCoreLayoutIntent,
+  type CoreLayoutAlignment,
+  type CoreLayoutBlockDefinitionOptions,
+  type CoreLayoutBlockType,
+  type CoreLayoutCollapse,
+  type CoreLayoutDirection,
+  type CoreLayoutErrorCode,
+  type CoreLayoutIntent,
+  type CoreLayoutPropertyResolution,
+  type CoreLayoutSpacing,
+  type CoreLayoutVisibility,
+} from './layout.js';
+export {
   openStudioSession,
   StudioHostSessionError,
   type OpenStudioSessionOptions,

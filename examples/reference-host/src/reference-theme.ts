@@ -1,4 +1,7 @@
+import { CORE_LAYOUT_BLOCK_TYPES, CORE_LAYOUT_THEME_CONTROLS } from '@kumwe/studio-core';
 import { STUDIO_CONTRACT_VERSION, type ThemeDocument } from '@kumwe/studio-protocol';
+
+const REFERENCE_RENDERER = 'studio.renderer/reference' as const;
 
 /**
  * The theme document the reference host locks in its demo blueprint
@@ -9,11 +12,86 @@ import { STUDIO_CONTRACT_VERSION, type ThemeDocument } from '@kumwe/studio-proto
  */
 export const referenceTheme: ThemeDocument = {
   blockSupport: [
-    { renderer: 'studio.renderer/reference', type: 'studio.core/section', versions: '^1.0.0' },
-    { renderer: 'studio.renderer/reference', type: 'studio.core/text', versions: '^1.0.0' },
+    ...Object.values(CORE_LAYOUT_BLOCK_TYPES).map((type) => ({
+      renderer: REFERENCE_RENDERER,
+      type,
+      versions: '^1.0.0',
+    })),
+    { renderer: REFERENCE_RENDERER, type: 'studio.core/text', versions: '^1.0.0' },
   ],
   contractVersion: STUDIO_CONTRACT_VERSION,
   designControls: [
+    {
+      choices: [
+        { id: 'start', label: { defaultMessage: 'Start', key: 'studio.reference/align-start' } },
+        { id: 'center', label: { defaultMessage: 'Centre', key: 'studio.reference/align-center' } },
+        { id: 'end', label: { defaultMessage: 'End', key: 'studio.reference/align-end' } },
+        {
+          id: 'stretch',
+          label: { defaultMessage: 'Stretch', key: 'studio.reference/align-stretch' },
+        },
+      ],
+      id: CORE_LAYOUT_THEME_CONTROLS.alignment,
+      kind: 'enum',
+      label: { defaultMessage: 'Layout alignment', key: 'studio.reference/layout-alignment' },
+    },
+    {
+      choices: [
+        { id: 'none', label: { defaultMessage: 'None', key: 'studio.reference/spacing-none' } },
+        {
+          id: 'compact',
+          label: { defaultMessage: 'Compact', key: 'studio.reference/spacing-compact' },
+        },
+        {
+          id: 'comfortable',
+          label: { defaultMessage: 'Comfortable', key: 'studio.reference/spacing-comfortable' },
+        },
+        {
+          id: 'spacious',
+          label: { defaultMessage: 'Spacious', key: 'studio.reference/spacing-spacious' },
+        },
+      ],
+      id: CORE_LAYOUT_THEME_CONTROLS.spacing,
+      kind: 'spacing-role',
+      label: { defaultMessage: 'Layout spacing', key: 'studio.reference/layout-spacing' },
+    },
+    {
+      choices: [
+        { id: 'visible', label: { defaultMessage: 'Visible', key: 'studio.reference/visible' } },
+        { id: 'hidden', label: { defaultMessage: 'Hidden', key: 'studio.reference/hidden' } },
+      ],
+      id: CORE_LAYOUT_THEME_CONTROLS.visibility,
+      kind: 'enum',
+      label: { defaultMessage: 'Viewport visibility', key: 'studio.reference/visibility' },
+    },
+    {
+      choices: [
+        {
+          id: 'block',
+          label: { defaultMessage: 'Block', key: 'studio.reference/direction-block' },
+        },
+        {
+          id: 'inline',
+          label: { defaultMessage: 'Inline', key: 'studio.reference/direction-inline' },
+        },
+      ],
+      id: CORE_LAYOUT_THEME_CONTROLS.direction,
+      kind: 'enum',
+      label: { defaultMessage: 'Stack direction', key: 'studio.reference/layout-direction' },
+    },
+    {
+      choices: [
+        {
+          id: 'preserve',
+          label: { defaultMessage: 'Preserve', key: 'studio.reference/collapse-preserve' },
+        },
+        { id: 'wrap', label: { defaultMessage: 'Wrap', key: 'studio.reference/collapse-wrap' } },
+        { id: 'stack', label: { defaultMessage: 'Stack', key: 'studio.reference/collapse-stack' } },
+      ],
+      id: CORE_LAYOUT_THEME_CONTROLS.collapse,
+      kind: 'enum',
+      label: { defaultMessage: 'Collapse behaviour', key: 'studio.reference/layout-collapse' },
+    },
     {
       choices: [
         { id: 'cozy', label: { defaultMessage: 'Cozy', key: 'studio.reference/gap-cozy' } },
@@ -59,11 +137,23 @@ export const referenceTheme: ThemeDocument = {
       id: 'section-card',
       label: { defaultMessage: 'Section card', key: 'studio.reference/section-card' },
     },
+    {
+      blockType: CORE_LAYOUT_BLOCK_TYPES.grid,
+      designValues: { alignment: 'stretch', collapse: 'stack', spacing: 'comfortable' },
+      id: 'responsive-grid',
+      label: { defaultMessage: 'Responsive grid', key: 'studio.reference/responsive-grid' },
+    },
+    {
+      blockType: CORE_LAYOUT_BLOCK_TYPES.stack,
+      designValues: { alignment: 'stretch', direction: 'block', spacing: 'compact' },
+      id: 'content-stack',
+      label: { defaultMessage: 'Content stack', key: 'studio.reference/content-stack' },
+    },
   ],
   renderers: [
     {
       exactPreview: false,
-      id: 'studio.renderer/reference',
+      id: REFERENCE_RENDERER,
       surfaces: ['preview'],
       version: '0.1.0',
     },

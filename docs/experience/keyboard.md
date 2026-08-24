@@ -51,14 +51,13 @@ region.
 
 The inspector edits the selected node without leaving the keyboard. Every value input holds the
 JSON serialization of its property, binding, or override, and every control is a native input,
-select, or button, so `Tab` moves through them in one documented order: base property rows (value
-input, then its `Unset` button), the add-property row (name, value, `Add property`), binding rows
-(one `Remove` button per port), the set-binding form (port, value, `Set binding`), then — when
-the host supplies viewports — the responsive rows for the active viewport (an editable value
-input and `Remove` button per overridden property; inherited values are text only) and the
-add-override form (name, value, `Add override`), and finally the Layout section (per axis, the
-role control and then its `Remove` button). In read-only sessions every editing control is
-disabled and the inspector states the reason textually.
+select, or button, so `Tab` moves through them in one documented order: the recipe selector when
+the active theme offers a matching recipe; declared Design token selectors and their `Remove`
+buttons; base property rows (value input, then `Unset`); the add-property row (name, value,
+`Add property`); binding rows (one `Remove` button per port); the set-binding form (port, value,
+`Set binding`); then — when the host supplies viewports — the responsive rows for the active
+viewport and the add-override form; and finally the Layout size-role section. In read-only or
+mode-incompatible sessions the corresponding controls are disabled.
 
 Every responsive value carries its provenance as text, never as color or position alone: an
 override row states `Overridden for the {viewport} viewport: {value}`, a property the active
@@ -80,6 +79,16 @@ the polite live region announces the invalid value and the text stays in the inp
 correction. A command the session rejects as stale, conflicting, or read-only is announced with
 recovery guidance, focus stays on the triggering control, and the inputs revert to the document's
 committed values.
+
+### Design tokens and recipes
+
+The Design section is present when the selected block names controls supplied by the active
+`ThemeDocument`. Each native selector contains only the theme's declared choices. On the base viewport
+it dispatches `set-property` for the base token; on another viewport it dispatches the same command with
+that viewport, and the adjacent text states whether the value is inherited or overridden. `Remove`
+dispatches the matching `unset-property`. A recipe selector is present only for recipes targeting the
+selected block. Choosing one expands the recipe through the core's deterministic operation generator and
+dispatches one atomic `batch`; it never mutates styles outside the command history.
 
 ### Layout size roles
 
@@ -123,6 +132,7 @@ nothing; the text stays in the input for correction.
 These interactions are executable assertions in
 `packages/studio-lit/test/kumwe-studio.test.ts`,
 `packages/studio-lit/test/command-surfaces.test.ts`,
+`packages/studio-lit/test/layout-blocks.test.ts`,
 `packages/studio-lit/test/inspector.test.ts`, and
 `packages/studio-lit/test/layout-editing.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
