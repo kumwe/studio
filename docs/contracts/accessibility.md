@@ -80,6 +80,20 @@ reload, teardown or failed render never moves focus.
 
 Theme preview controls expose viewport role and dimensions textually. Responsive state is not conveyed only through visual width.
 
+The measured visual canvas has an explicit edit/operate boundary. Its overlay is pointer-inert by default,
+so preview links and controls keep their trusted renderer behavior. Edit mode is exposed by a native
+pressed-state button and renders hover, selection and drop state with both shape/outline and textual status;
+the SVG geometry itself is presentation-only to assistive technology. The semantic outline remains the
+accessible canvas and enumerates the identical valid destinations in a native selector. The command palette
+provides the same destination actions, so reordering and reparenting never require coordinate perception or
+dragging.
+
+Pointer movement uses an activation threshold and capture has two no-op cancellation paths:
+`pointercancel` and document-level `Escape`. A cancelled gesture dispatches no command. Preview geometry
+loss removes only the visual enhancement; selection, outline, inspector, validation and permitted commands
+remain reachable. Automated keyboard/WCAG/CSP checks are release regressions, while the screen-reader,
+touch, zoom, forced-color and RTL procedures in the evidence matrix remain mandatory manual qualification.
+
 ## Localization and disability intersections
 
 The UI supports right-to-left direction, speech input, magnification, high-contrast/forced-color modes, increased text spacing, non-Latin input and locale changes. Shortcut design avoids collisions and supports remapping where platform conventions require it.

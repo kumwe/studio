@@ -30,6 +30,13 @@ Commands identify artifact version, target node or field, operation, arguments, 
 
 Every placement operation resolves to `parent slot + ordered position`. Pointer drag, keyboard move mode, Outline buttons, and host automation issue the same command form. Valid targets come from block slot constraints, policy, and compatibility; visual geometry cannot create an otherwise invalid tree.
 
+In the reference web shell, an accepted preview marker map is measured through the canonical channel and
+projected as a CSP-safe SVG overlay. Geometry ranks insertion boundaries for the already-valid destination
+set; it never supplies node identity, slot compatibility, permission or mode authority. Reorder destinations
+dispatch `reorder-children`, cross-collection destinations dispatch `move-node`, and the outline selector and
+command palette call the same dispatcher as pointer drag. An explicit edit/operate toggle keeps the overlay
+from intercepting trusted preview interaction by default.
+
 Keyboard movement must support:
 
 - select and enter move mode;
@@ -37,6 +44,11 @@ Keyboard movement must support:
 - move before, after, or into a compatible slot;
 - cancel without mutation;
 - announce the result and new position.
+
+The outline destination selector is the reference shell's discoverable keyboard move mode: it enumerates
+every compatible root/slot position with parent identity and exact ordinal. `Escape` or `pointercancel`
+cancels an active pointer gesture without a command; the structural fallback canvas retains equivalent
+same-collection controls when preview geometry is unavailable.
 
 ## Sizing and responsive intent
 

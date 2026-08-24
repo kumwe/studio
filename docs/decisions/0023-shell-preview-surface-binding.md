@@ -50,7 +50,8 @@ for its dedicated authoring response; this ADR does not silently relax the canon
 Browser hosts have one public end-to-end composition seam without moving staging or rendering authority into
 Studio. Preview behavior is deterministic and independently testable, the shell no longer observes its own
 shadow DOM to infer selection, and read-only sessions receive the same visual projection without gaining a
-mutation path.
+mutation path. [ADR 0025](0025-measured-preview-visual-canvas.md) builds direct manipulation on this seam by
+measuring accepted markers; it does not widen the binding or make slotted DOM authoritative.
 
 The binding is browser-specific composition, not a language-neutral serialized contract. Flutter and other
 clients continue to implement the protocol against their native transport. Host code must construct and own

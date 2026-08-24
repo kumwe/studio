@@ -51,5 +51,6 @@ control and choice omissions are errors rather than visual guesses. The same res
 independently owned themes, and the reference web renderer is exercised under the pinned CSP.
 
 This decision does not make a DOM renderer authoritative, standardize CSS, or permit arbitrary positioning.
-Direct manipulation, geometry-driven reparenting, and the second independent renderer evidence remain
-separate authoring and qualification work.
+Direct manipulation and geometry-driven reparenting are governed separately by
+[ADR 0025](0025-measured-preview-visual-canvas.md); the second independent renderer remains qualification
+work.

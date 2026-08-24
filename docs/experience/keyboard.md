@@ -7,15 +7,16 @@ does not depend on this document.
 
 ## Outline
 
-| Keys                    | Operation                                                            |
-| ----------------------- | -------------------------------------------------------------------- |
-| `Tab`                   | Enter and leave the outline region in document order                 |
-| `Arrow Up / Arrow Down` | Move focus between outline entries                                   |
-| `Enter` / `Space`       | Select the focused entry                                             |
-| `Alt+Arrow Up`          | Move the focused node earlier in its collection (`reorder-children`) |
-| `Alt+Arrow Down`        | Move the focused node later in its collection (`reorder-children`)   |
-| `Ctrl+D` / `Meta+D`     | Duplicate the focused node (`duplicate-node`)                        |
-| `Delete`                | Delete the focused node (`remove-node`)                              |
+| Keys                    | Operation                                                                |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `Tab`                   | Enter and leave the outline region in document order                     |
+| `Arrow Up / Arrow Down` | Move focus between outline entries                                       |
+| `Enter` / `Space`       | Select the focused entry                                                 |
+| `Alt+Arrow Up`          | Move the focused node earlier in its collection (`reorder-children`)     |
+| `Alt+Arrow Down`        | Move the focused node later in its collection (`reorder-children`)       |
+| `Ctrl+D` / `Meta+D`     | Duplicate the focused node (`duplicate-node`)                            |
+| `Delete`                | Delete the focused node (`remove-node`)                                  |
+| Destination selector    | Move to any valid root/slot position (`move-node` or `reorder-children`) |
 
 After a deletion, focus moves to the previous sibling entry, then the parent, then the first
 entry; after duplication, focus moves to the copy. The polite live region announces every outcome,
@@ -37,15 +38,27 @@ substring match on the localized entry label.
 | `Enter`             | Run the focused result; from the input, run the first enabled result |
 | `Escape`            | Close the palette and return focus to the invoking element           |
 
-## Canvas pointer drag
+## Visual canvas direct manipulation
 
-Dragging a canvas chip with the pointer is a pure enhancement over the paths above (SR-017): it
-dispatches the same `reorder-children` command as `Alt+Arrow`, adds no capability the outline
-lacks, and is inert in read-only sessions. A drag reorders only within the chip's own collection —
-cross-slot reparenting stays on the outline and palette paths in this pass. While dragging, a
-textual drop-position indicator names the target position; `Escape` or `pointercancel` abandons
-the drag with no document change. Drops and cancellations are announced through the polite live
-region.
+The current host-rendered preview is the visual canvas when measured geometry is available. Its
+`Select and move rendered blocks` pressed-state control creates an explicit edit/operate boundary:
+operate mode leaves trusted preview links and controls reachable; edit mode exposes measured selection,
+hover and drop regions. A pointer press selects. Movement of at least four CSS pixels begins a drag;
+same-collection destinations dispatch `reorder-children`, while cross-root or cross-slot destinations
+dispatch `move-node`.
+
+Dragging is a pure enhancement (SR-017). The selected outline entry exposes a native destination selector
+containing every valid root/slot position, and the command palette exposes the same destinations. All three
+paths use the same candidate set and semantic dispatcher. Candidate labels name the parent node ID as well
+as the slot and exact position, so no spatial inference is required. Slot accepts/cardinality, source-slot
+minimums, session permissions, modes, locked subtrees and hybrid composition boundaries remove invalid
+choices before geometry is considered.
+
+The SVG drop indicator is paired with a textual status naming the destination. `Escape` is captured for an
+active drag even if pointer capture or rerender changed focus; `pointercancel` has the same effect. Either
+path releases capture, announces cancellation and dispatches no command. Read-only and mode-forbidden
+sessions expose no move target. The structural chip canvas retains its tested same-collection drag only as
+the degraded fallback when no bound preview is available.
 
 ## Inspector
 
@@ -83,6 +96,19 @@ the polite live region announces the invalid value and the text stays in the inp
 correction. A command the session rejects as stale, conflicting, or read-only is announced with
 recovery guidance, focus stays on the triggering control, and the inputs revert to the document's
 committed values.
+
+Each property with responsive overrides also has a `Reset inheritance` button. It dispatches the
+top-level `reset-inherited-property` command, removes every viewport override for that property, leaves the
+base value untouched, and announces the result. It is disabled when no override exists or the session mode
+forbids the command.
+
+## Patterns and restoration
+
+Hosts may supply active, validated patterns. Each appears as a real button in the block palette and command
+palette; activating it dispatches `apply-pattern` after the shell resolves a valid destination and complete
+ID map. `Restore last deleted block` dispatches `restore-node` for the newest currently valid entry in the
+bounded shell restore journal. Both controls are keyboard-native, obey the same mode/read-only rules as
+their commands, and announce success through the polite live region.
 
 ### Design tokens and recipes
 
@@ -141,6 +167,8 @@ These interactions are executable assertions in
 `packages/studio-lit/test/model-bindings.test.ts`,
 `packages/studio-lit/test/layout-editing.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
-cancellation, inspector editing with its Tab order and conflict recovery, size-role editing with
-its inheritance provenance, and the documented focus targets are all verified there. A change to
-this table without a matching assertion change is a contract violation.
+cancellation, measured reparenting parity, inspector editing with its Tab order and conflict recovery,
+inheritance reset, size-role editing with its provenance, pattern/restoration surfaces, and the documented
+focus targets are all verified there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
+real SVG hit target, pointer/keyboard `move-node` identity, cancelled-drag no-op and zero CSP violations. A
+change to this table without a matching assertion change is a contract violation.

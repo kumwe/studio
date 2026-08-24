@@ -2,8 +2,9 @@
 
 Status: pre-Gate-A foundation alpha. The shell demonstrates contract integration and is not a finished UX.
 
-The Lit Web Component authoring shell for Studio. It renders a block palette, structural canvas,
-selection inspector, command history, and a host-rendered preview region. Persistence, authenticated
+The Lit Web Component authoring shell for Studio. It renders a block/pattern palette, measured visual
+canvas with a structural fallback, semantic outline, selection inspector, command history, and a
+host-rendered preview region. Persistence, authenticated
 draft staging, renderer routing, media, permissions, and the preview sandbox remain the embedding host's
 responsibility.
 
@@ -56,10 +57,26 @@ treats a digest as authorization.
 
 The shell waits for `studio.preview/ready`, coalesces synchronous changes, stages and renders the exact latest
 snapshot, aborts and disposes superseded work, drives semantic viewports, and maps selection in both
-directions through the latest accepted marker map. Reload and teardown preserve authoring focus and state.
-Without every required capability and binding, the preview region states that it is unavailable and all
-permitted non-preview authoring paths remain usable. Read-only sessions render preview identically while
-mutation controls remain disabled.
+directions through the latest accepted marker map. It then measures that map through the canonical channel
+in bounded chunks and draws selection, hover and semantic drop targets as a CSP-safe SVG overlay. The overlay
+is pointer-inert until the author enables `Select and move rendered blocks`, preserving an explicit
+edit/operate boundary for trusted preview controls.
+
+Pointer reorder/reparent, the selected outline entry's destination selector, and command-palette
+destinations use one candidate set and dispatcher (`reorder-children` within a collection, `move-node`
+between collections). `Escape` and `pointercancel` are exact no-ops. Geometry is volatile: call the public
+`refreshPreviewGeometry()` method after the embedding host observes preview scroll, resize, zoom, or late
+asset settlement. A newer measurement generation wins even for the same render digest.
+
+Hosts may assign active, schema-validated `PatternDocument[]` through the `patterns` property; applying one
+uses the canonical `apply-pattern` command after exact definition/destination checks and deterministic ID
+allocation. The inspector exposes `reset-inherited-property`, and successful shell deletions can be restored
+through `restore-node` from an in-memory journal bounded by the session's `maxHistoryEntries`.
+
+Reload and teardown preserve authoring focus and state. Without every required capability and binding, the
+preview region states that it is unavailable and all permitted non-preview authoring paths remain usable
+through the structural fallback, outline, inspector and palette. Read-only sessions render preview
+identically while mutation controls remain disabled.
 
 ## Model-bound fields
 
