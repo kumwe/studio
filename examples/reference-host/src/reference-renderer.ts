@@ -15,6 +15,7 @@ import type {
   BlueprintDocument,
   BlueprintNode,
   NodeId,
+  PreviewActivatedPayload,
   PreviewMarkerRect,
   PreviewRenderedPayload,
   PreviewRenderPayload,
@@ -96,6 +97,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     theme.recipes.map((recipe) => [recipe.blockType, recipe.designValues]),
   );
   let markerByNode = new Map<NodeId, StableId>();
+  let currentDraftDigest: string | undefined;
   let selectedNodeId: NodeId | undefined;
 
   async function render(
@@ -123,6 +125,7 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
       throw new Error('The renderer marker map does not match canonical Blueprint preorder.');
     }
     markerByNode = result.markerByNode;
+    currentDraftDigest = payload.draftDigest;
     if (selectedNodeId !== undefined) {
       highlight(selectedNodeId);
     }
@@ -379,6 +382,39 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
         .querySelector(`[data-selected="true"]`)
         ?.scrollIntoView({ behavior: 'auto', block: 'nearest' });
     }
+  });
+  host.onDispose((payload) => {
+    if (payload.draftDigest !== undefined && payload.draftDigest !== currentDraftDigest) {
+      return;
+    }
+    currentDraftDigest = undefined;
+    markerByNode = new Map();
+    surface.replaceChildren();
+  });
+
+  const announceInteraction = (
+    event: Event,
+    interaction: PreviewActivatedPayload['interaction'],
+  ): void => {
+    if (!event.isTrusted) {
+      return;
+    }
+    const origin = event.target;
+    const marked = origin instanceof Element ? origin.closest<HTMLElement>('[data-marker]') : null;
+    const marker = marked?.dataset.marker;
+    if (marker === undefined || !surface.contains(marked)) {
+      return;
+    }
+    host.announceActivation({ interaction, marker });
+  };
+  surface.addEventListener('click', (event) => {
+    announceInteraction(event, 'activate');
+  });
+  surface.addEventListener('contextmenu', (event) => {
+    announceInteraction(event, 'context-menu');
+  });
+  surface.addEventListener('focusin', (event) => {
+    announceInteraction(event, 'focus');
   });
   return host;
 }

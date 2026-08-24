@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.1.0",
+  "catalogVersion": "1.2.0",
   "locale": "en",
   "messages": {
     "studio.shell/announce-binding-removed": {
@@ -435,6 +435,38 @@
     },
     "studio.shell/palette-label": {
       "defaultMessage": "Block palette",
+      "parameters": []
+    },
+    "studio.shell/preview-closed": {
+      "defaultMessage": "Preview is disconnected. Editing remains available.",
+      "parameters": []
+    },
+    "studio.shell/preview-connecting": {
+      "defaultMessage": "Preview is connecting.",
+      "parameters": []
+    },
+    "studio.shell/preview-current": {
+      "defaultMessage": "Preview is current.",
+      "parameters": []
+    },
+    "studio.shell/preview-heading": {
+      "defaultMessage": "Preview",
+      "parameters": []
+    },
+    "studio.shell/preview-label": {
+      "defaultMessage": "Rendered preview",
+      "parameters": []
+    },
+    "studio.shell/preview-rendering": {
+      "defaultMessage": "Preview is updating.",
+      "parameters": []
+    },
+    "studio.shell/preview-stale": {
+      "defaultMessage": "Preview is stale. Editing remains available.",
+      "parameters": []
+    },
+    "studio.shell/preview-unavailable": {
+      "defaultMessage": "Preview is unavailable for this session. Editing remains available.",
       "parameters": []
     },
     "studio.shell/redo": {

@@ -64,7 +64,13 @@ const configuration: ExperimentalShellConfiguration = {
       contractVersion: STUDIO_CONTRACT_VERSION,
       host: { generation: 'host-r1', id: 'studio.reference/host', version: '0.1.0' },
       kind: 'host-capabilities',
-      ports: [],
+      ports: [
+        {
+          id: 'studio.port/preview',
+          operations: ['studio.operation/preview.render', 'studio.operation/preview.cancel'],
+          version: '0.1.0',
+        },
+      ],
       protocolVersions: [STUDIO_WIRE_PROTOCOL_VERSION],
     },
     limits: {
@@ -198,12 +204,7 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
 // frameless page), with origin pinning, channel id, session generation, and
 // sequence filtering fully engaged on both sides.
 
-// Narrowed aliases: hoisted function declarations below cannot rely on the
-// module-level null checks, so they close over these non-null bindings.
-const shellElement: KumweStudioElement = studio;
 const previewSurface = requirePaneElement('.preview-surface');
-const previewStatus = requirePaneElement('.preview-status');
-const previewSelection = requirePaneElement('.preview-selection');
 
 studio.theme = referenceTheme;
 
@@ -232,146 +233,16 @@ const previewClient = new PreviewClient({
   target: channel.studioEndpoint,
   targetOrigin: pageOrigin,
 });
-previewClient.onMessage((message) => {
-  // Reload and teardown reach the shell's live region through its canonical
-  // preview-message entry point; everything else is host-side plumbing.
-  studio.notifyPreviewMessage(message);
-});
-
-let latestMarkerMap: Record<string, string> = {};
-let selectedNodeId: string | undefined;
-let measureSerial = 0;
-let renderSerial = 0;
-let renderChain: Promise<void> = Promise.resolve();
-
-rendererHost.announce();
-void previewClient.ready().then(
-  (ready) => {
-    previewStatus.textContent =
-      `Preview renderer ${ready.renderer} is ready ` +
-      `(viewports: ${ready.viewports.join(', ')}).`;
-    scheduleRender();
-  },
-  () => {
-    previewStatus.textContent = 'Preview is disconnected.';
-  },
-);
-
-studio.addEventListener('studio-document-change', () => {
-  scheduleRender();
-});
-studio.addEventListener('studio-viewport-change', () => {
-  scheduleRender();
-});
-
-// The shell keeps selection internal, so the host reads it the way assistive
-// technology does: from the outline's rendered aria-pressed state. Selection
-// then flows to the renderer through the canonical studio.preview/select
-// message and comes back as marker-map plus measured geometry.
-const selectionObserver = new MutationObserver(() => {
-  syncSelectionFromShell();
-});
-if (studio.shadowRoot !== null) {
-  selectionObserver.observe(studio.shadowRoot, {
-    attributeFilter: ['aria-pressed'],
-    attributes: true,
-    childList: true,
-    subtree: true,
-  });
-}
-
-/** Serializes renders so a draft digest is never concurrently pending twice. */
-function scheduleRender(): void {
-  renderChain = renderChain.then(() => performRender());
-}
-
-async function performRender(): Promise<void> {
-  const draft = shellElement.document;
-  const viewport = shellElement.activeViewport?.id;
-  if (draft === undefined || viewport === undefined) {
-    return;
-  }
-  try {
+studio.previewBinding = {
+  client: previewClient,
+  async stage(draft, options) {
+    options.signal.throwIfAborted();
     const staged = await draftStore.stage(draft);
-    renderSerial += 1;
-    const rendered = await previewClient.render({
-      artifactId: staged.artifactId,
-      draftDigest: staged.draftDigest,
-      draftRevision: staged.draftRevision,
-      requestId: `renders/reference-${renderSerial}`,
-      viewport,
-    });
-    latestMarkerMap = rendered.markerMap;
-    previewStatus.textContent =
-      `Preview: studio.renderer/reference rendered ${rendered.markers.length} ` +
-      `region(s) at the ${viewport} viewport.`;
-    await syncSelectedRegion();
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('superseded')) {
-      return;
-    }
-    // Degraded mode: authoring continues; the preview is marked, not hidden.
-    previewStatus.textContent = 'Preview is unavailable.';
-  }
-}
-
-function markerForNode(nodeId: string): string | undefined {
-  for (const [marker, mapped] of Object.entries(latestMarkerMap)) {
-    if (mapped === nodeId) {
-      return marker;
-    }
-  }
-  return undefined;
-}
-
-function syncSelectionFromShell(): void {
-  const pressed = shellElement.shadowRoot?.querySelector<HTMLElement>(
-    '.outline-entry[aria-pressed="true"], .canvas-chip[aria-pressed="true"]',
-  );
-  const nodeId = pressed?.dataset.nodeId;
-  if (nodeId === selectedNodeId) {
-    return;
-  }
-  selectedNodeId = nodeId;
-  void syncSelectedRegion();
-}
-
-async function syncSelectedRegion(): Promise<void> {
-  const nodeId = selectedNodeId;
-  if (nodeId === undefined) {
-    previewSelection.textContent = 'No block is selected.';
-    return;
-  }
-  const marker = markerForNode(nodeId);
-  if (marker === undefined) {
-    previewSelection.textContent = 'The selected block has no rendered region yet.';
-    return;
-  }
-  measureSerial += 1;
-  const requestId = `measures/selection-${measureSerial}`;
-  try {
-    previewClient.select({ nodeId, reveal: true });
-    const outcome = await previewClient.measure({ markers: [marker], requestId });
-    if (nodeId !== selectedNodeId) {
-      return;
-    }
-    if (outcome.status === 'measured') {
-      const rect = outcome.geometry.measurements[marker]?.[0];
-      previewSelection.textContent =
-        rect === undefined
-          ? `Selected marker ${marker} for node ${nodeId}; its geometry is unknown.`
-          : `Selected marker ${marker} for node ${nodeId} — ` +
-            `${Math.round(rect.width)}×${Math.round(rect.height)} CSS px at ` +
-            `(${Math.round(rect.x)}, ${Math.round(rect.y)}).`;
-    } else {
-      previewSelection.textContent =
-        `Selected marker ${marker} for node ${nodeId}; ` +
-        `geometry is stale until the next render completes.`;
-    }
-  } catch {
-    previewSelection.textContent = `Selected marker ${marker} for node ${nodeId}.`;
-  }
-}
+    options.signal.throwIfAborted();
+    return staged;
+  },
+};
+rendererHost.announce();
 
 function requirePaneElement(selector: string): HTMLElement {
   const element = document.querySelector<HTMLElement>(selector);

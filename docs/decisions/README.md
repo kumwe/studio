@@ -26,5 +26,6 @@ These records capture foundational decisions whose reversal would materially aff
 | [0020](0020-blueprint-host-session-composition.md) | One headless handle composes resolved Blueprint host sessions  | Proposed |
 | [0021](0021-kind-scoped-composition-registries.md) | Kind-scoped registries for all composition payloads            | Proposed |
 | [0022](0022-core-layout-block-family.md)           | Core layout blocks store bounded responsive intent             | Proposed |
+| [0023](0023-shell-preview-surface-binding.md)      | Shell preview binds a host-staged canonical channel            | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

@@ -10,6 +10,14 @@ The block palette includes Studio's canonical section, stack, grid, and columns 
 nodes store one semantic column count plus viewport overrides, and the bundled renderer demonstrates the
 same nested composition reflowing one, two, and four columns without document-authored CSS or markup.
 
+The renderer surface is now slotted into the shell and the shell owns ready/render ordering, deterministic
+coalescing, viewport changes and two-way marker selection through `StudioPreviewBinding`. This harness uses a
+real `MessageChannel`, the preview contract's equivalently isolated mechanism, because its deliberately pinned
+reference CSP contains `frame-src 'none'`. It therefore proves the surface/controller integration without
+claiming the framed deployment path. A production host that supplies an iframe must reconcile its dedicated
+authoring response policy and sandbox with the security contract before claiming that profile; this example
+does not weaken the pinned policy to simulate it.
+
 From the repository root:
 
 ```bash

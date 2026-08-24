@@ -14,6 +14,34 @@ Browser preview uses a sandboxed iframe and an origin-checked `postMessage` chan
 
 Wildcard target origins are prohibited outside isolated local development explicitly marked non-production.
 
+### Authoring-shell binding
+
+The browser shell consumes preview only when all three authorities agree: resolved session policy has
+`preview.enabled`, the negotiated `studio.port/preview` advertises both
+`studio.operation/preview.render` and `studio.operation/preview.cancel`, and the embedding host supplies a
+`StudioPreviewBinding`. The binding transfers one session-bound `PreviewClient` to the shell and supplies a
+host-owned `stage(draft, { signal })` callback. Staging validates, authorizes and stores the exact complete
+draft and returns only its artifact ID, host revision and canonical digest. The callback does not move
+persistence, authorization, credentials, grants or renderer routing into the shell.
+
+The host supplies the visual surface through the shell's `preview` slot. A browser host normally supplies a
+same-origin, descriptively titled, minimally sandboxed frame whose `contentWindow` is the target already
+pinned by its `PreviewClient`. An equivalently isolated host mechanism remains conforming under the Channel
+section above. Slot contents are presentation only: the shell accepts renderer state exclusively through the
+bound client and never reads, scrapes or mutates the supplied preview DOM.
+
+The shell waits for `ready` before staging or rendering. Synchronous document and viewport changes coalesce at
+one microtask boundary into the last complete snapshot; there is no timer-dependent debounce interval. A new
+intent aborts every older staging/render attempt, disposes an accepted superseded draft, and receives a new
+session-unique request ID. Marker authority changes only when the matching latest render resolves. A staging
+or render callback that ignores its abort signal cannot publish a stale marker map.
+
+Reload revokes marker authority, preserves focus and authoring state, awaits the next ready handshake and
+resends the latest complete snapshot. Teardown closes the client and removes the surface without changing the
+document. When any required authority is absent or a request fails, the region remains present with explicit
+unavailable, stale or disconnected text while outline, palette, inspector, commands, validation and save
+remain governed solely by their normal session policy.
+
 ## Message families
 
 The `0.1-draft` canonical schema defines these message payloads:
