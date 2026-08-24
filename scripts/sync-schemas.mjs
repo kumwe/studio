@@ -6,6 +6,11 @@ const sourceDirectory = new URL('../schemas/', import.meta.url);
 const targetDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
 const exampleDirectory = new URL('../schemas/examples/', import.meta.url);
 const fixtureDirectory = new URL('../packages/testkit/fixtures/', import.meta.url);
+const englishMessageCatalog = new URL(
+  '../schemas/examples/authoring-message-catalog.en.json',
+  import.meta.url,
+);
+const studioCatalogDirectory = new URL('../packages/studio-lit/src/catalogs/', import.meta.url);
 const vectorDirectory = new URL('../schemas/vectors/command/', import.meta.url);
 const vectorTargetDirectory = new URL('../packages/testkit/vectors/command/', import.meta.url);
 const mediaVectorDirectory = new URL('../schemas/vectors/media/', import.meta.url);
@@ -44,6 +49,7 @@ await rm(targetDirectory, { force: true, recursive: true });
 await mkdir(targetDirectory, { recursive: true });
 await rm(fixtureDirectory, { force: true, recursive: true });
 await mkdir(fixtureDirectory, { recursive: true });
+await mkdir(studioCatalogDirectory, { recursive: true });
 await rm(new URL('../packages/testkit/vectors/', import.meta.url), {
   force: true,
   recursive: true,
@@ -74,6 +80,8 @@ for (const entry of await readdir(exampleDirectory, { withFileTypes: true })) {
     await cp(new URL(entry.name, exampleDirectory), new URL(entry.name, fixtureDirectory));
   }
 }
+
+await cp(englishMessageCatalog, new URL('en.json', studioCatalogDirectory));
 
 for (const entry of await readdir(vectorDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.json')) {

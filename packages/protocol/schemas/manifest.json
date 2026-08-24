@@ -4,6 +4,11 @@
   "kind": "schema-manifest",
   "schemas": [
     {
+      "digest": "sha256-WvSNMOQ3OZWs7ZKBCCRRwLtw5byZBtn6Rwvxz74vfAY=",
+      "file": "authoring-message-catalog.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json"
+    },
+    {
       "digest": "sha256-sx4nxAo1fq7Mjp2J3gfsIWRq9vD6nkDDrc1PtWLzfNE=",
       "file": "block-definition.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/block-definition.schema.json"

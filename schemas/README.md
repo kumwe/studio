@@ -6,7 +6,9 @@ This directory is the canonical source for Studio's language-neutral artifact an
 
 Files copied into `packages/protocol`, generated language packages, documentation sites, release archives, or schema registries are generated artifacts. They MUST be byte-identical to, or reproducibly generated from, the files here. A package-local schema MUST NOT be edited independently.
 
-The current alpha synchronizer copies canonical schemas and fixtures, compares them byte-for-byte, and runs strict schema/example validation. It does not generate TypeScript or Dart bindings or publish a schema manifest. The Gate A release workflow must:
+The current alpha synchronizer copies canonical schemas and fixtures, publishes a digest manifest,
+compares generated copies byte-for-byte, and runs strict schema/example validation. It does not yet
+generate complete TypeScript or Dart bindings. The Gate A release workflow must:
 
 1. validate every canonical schema against its declared meta-schema;
 2. validate all examples and conformance fixtures;
@@ -19,25 +21,26 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 
 ## Schemas
 
-| File                                                                     | Contract                                                 |
-| ------------------------------------------------------------------------ | -------------------------------------------------------- |
-| [`common.schema.json`](common.schema.json)                               | Shared identifiers, references, messages and diagnostics |
-| [`studio-config.schema.json`](studio-config.schema.json)                 | Resolved serializable session configuration              |
-| [`content-model.schema.json`](content-model.schema.json)                 | Portable content-model definition                        |
-| [`entry.schema.json`](entry.schema.json)                                 | Typed-model entry envelope and values                    |
-| [`blueprint.schema.json`](blueprint.schema.json)                         | Composition tree, bindings and dependency locks          |
-| [`theme.schema.json`](theme.schema.json)                                 | Theme design profile and renderer compatibility          |
-| [`block-definition.schema.json`](block-definition.schema.json)           | Block properties, slots, ports and authoring metadata    |
-| [`plugin-manifest.schema.json`](plugin-manifest.schema.json)             | Declarative plugin inventory and requirements            |
-| [`schema-profile.schema.json`](schema-profile.schema.json)               | Admitted property-schema meta-schema                     |
-| [`schema-profile-vector.schema.json`](schema-profile-vector.schema.json) | Portable property-schema conformance vectors             |
-| [`host-capabilities.schema.json`](host-capabilities.schema.json)         | Host port and limit negotiation                          |
-| [`host-sequence-vector.schema.json`](host-sequence-vector.schema.json)   | Ordered stateful host conformance exchanges              |
-| [`command.schema.json`](command.schema.json)                             | Persistent authoring command envelopes                   |
-| [`preview-message.schema.json`](preview-message.schema.json)             | Isolated preview channel messages                        |
-| [`preview-vector.schema.json`](preview-vector.schema.json)               | Portable render, draft-digest and marker assertions      |
-| [`media-asset.schema.json`](media-asset.schema.json)                     | Host-owned media catalogue projection                    |
-| [`media-reference.schema.json`](media-reference.schema.json)             | Small usage-specific media value persisted in artifacts  |
+| File                                                                             | Contract                                                 |
+| -------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [`common.schema.json`](common.schema.json)                                       | Shared identifiers, references, messages and diagnostics |
+| [`authoring-message-catalog.schema.json`](authoring-message-catalog.schema.json) | Versioned shell locale catalog and named parameters      |
+| [`studio-config.schema.json`](studio-config.schema.json)                         | Resolved serializable session configuration              |
+| [`content-model.schema.json`](content-model.schema.json)                         | Portable content-model definition                        |
+| [`entry.schema.json`](entry.schema.json)                                         | Typed-model entry envelope and values                    |
+| [`blueprint.schema.json`](blueprint.schema.json)                                 | Composition tree, bindings and dependency locks          |
+| [`theme.schema.json`](theme.schema.json)                                         | Theme design profile and renderer compatibility          |
+| [`block-definition.schema.json`](block-definition.schema.json)                   | Block properties, slots, ports and authoring metadata    |
+| [`plugin-manifest.schema.json`](plugin-manifest.schema.json)                     | Declarative plugin inventory and requirements            |
+| [`schema-profile.schema.json`](schema-profile.schema.json)                       | Admitted property-schema meta-schema                     |
+| [`schema-profile-vector.schema.json`](schema-profile-vector.schema.json)         | Portable property-schema conformance vectors             |
+| [`host-capabilities.schema.json`](host-capabilities.schema.json)                 | Host port and limit negotiation                          |
+| [`host-sequence-vector.schema.json`](host-sequence-vector.schema.json)           | Ordered stateful host conformance exchanges              |
+| [`command.schema.json`](command.schema.json)                                     | Persistent authoring command envelopes                   |
+| [`preview-message.schema.json`](preview-message.schema.json)                     | Isolated preview channel messages                        |
+| [`preview-vector.schema.json`](preview-vector.schema.json)                       | Portable render, draft-digest and marker assertions      |
+| [`media-asset.schema.json`](media-asset.schema.json)                             | Host-owned media catalogue projection                    |
+| [`media-reference.schema.json`](media-reference.schema.json)                     | Small usage-specific media value persisted in artifacts  |
 
 ## Validation scope
 

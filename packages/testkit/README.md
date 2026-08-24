@@ -13,6 +13,10 @@ canonical valid examples, including separate MediaAsset and persisted MediaRefer
 is no aggregate runtime `fixtures` export. The helpers do not depend on Vitest or another test runner,
 so consumers may call the current assertion from any JavaScript test environment.
 
+`fixtures/authoring-message-catalog.en.json` is the byte-identical canonical English shell catalog.
+It lets hosts validate localization imports and parameter declarations without importing the Lit
+runtime. Its schema ships with `@kumwe/studio-protocol`.
+
 ## Host testbed
 
 `createTestbedHost(options)` builds a deterministic, fully in-memory `HostAdapter` reference host

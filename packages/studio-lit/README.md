@@ -14,3 +14,12 @@ headless session's fail-closed mode and hybrid-boundary guards.
 
 Importing the package has no registration side effect. Call `defineKumweStudio()` once, then use the
 `<kumwe-studio>` custom element or register the class under a host-specific tag.
+
+## Localization
+
+The shell exports `studioMessageCatalog`, `studioMessages`, `messageText`, and their associated
+types. The canonical, versioned English catalog is also available as
+`@kumwe/studio/catalogs/en.json`. Hosts can supply typed message overrides without persisting
+translated labels in Studio documents. Each catalog entry declares the named parameters its text
+uses; the default formatter implements deterministic named interpolation and leaves missing values
+visible.

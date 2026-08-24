@@ -15,8 +15,11 @@ export {
 } from './kumwe-studio.js';
 export {
   messageText,
+  studioMessageCatalog,
   studioMessages,
   type StudioMessage,
+  type StudioMessageCatalog,
+  type StudioMessageCatalogEntry,
   type StudioMessageKey,
   type StudioMessageOverrides,
 } from './messages.js';

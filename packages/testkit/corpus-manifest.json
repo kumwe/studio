@@ -4,6 +4,10 @@
     {
       "files": [
         {
+          "digest": "sha256-nIrSaAmpCSgX28HPMANZqkctEKbxBGdB84+Ghss4N5g=",
+          "file": "authoring-message-catalog.en.json"
+        },
+        {
           "digest": "sha256-VPvgjeVcou8k/vGgrFXfMOx2ureah7+HADcuV1ze8To=",
           "file": "block.grid.example.json"
         },
