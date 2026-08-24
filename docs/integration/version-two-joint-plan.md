@@ -33,18 +33,22 @@ claim a profile.
 ## Why the order matters
 
 Studio now has the public headless host-session seam from `ST-2`, the host-staged preview binding from
-`ST-4`, core layout blocks from `ST-6`, and the read-only model binding projection from `ST-8`. The remaining
-cross-repository fact is release coordination: the App cannot consume an unpublished Studio workspace, and
-Studio cannot claim the App integration until AP-2 and the real adapter replay the exact published corpus.
+`ST-4`, core layout blocks from `ST-6`, the measured visual canvas from `ST-7`, and the read-only model binding
+projection from `ST-8`. The remaining cross-repository fact is release coordination: the App cannot consume
+an unpublished Studio workspace, and Studio cannot claim the App integration until AP-2 and the real adapter
+replay the exact published corpus.
 
 AP-2 currently projects authorized Content definitions and entries with reversible coordinates, while
 BusinessRecord projection remains explicitly deferred to a separate bounded-context adapter. Studio's
 binding corpus uses the AP-2 coordinate/cardinality/control rules, but repository tests are not a real App
 host-session replay or an accepted profile claim.
 
-The remaining visual dependency is `ST-7`: direct manipulation over preview geometry and the complete shell
-command surface. It still gates the final embedded builder journey even though layout and field binding are
-independently executable.
+`ST-7` is now present as a repository-verified implementation increment: direct manipulation resolves through
+preview geometry, pointer and keyboard paths share the same semantic command dispatcher, and the Blueprint
+command surface is complete. It therefore no longer blocks implementation of the App's embedded builder.
+What remains is the coordinated App adapter/session replay at one release coordinate and the independent and
+manual qualification named by the evidence model; those obligations still gate acceptance of the final
+embedded-builder journey.
 
 ---
 
