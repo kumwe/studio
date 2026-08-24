@@ -430,6 +430,11 @@ export class KumweStudioElement extends LitElement {
       position: relative;
     }
 
+    .preview-stage:focus-visible {
+      outline: 0.1875rem solid color-mix(in srgb, var(--studio-primary), transparent 55%);
+      outline-offset: 0.125rem;
+    }
+
     .preview-surface-slot::slotted(iframe) {
       border: 0;
       display: block;
@@ -798,7 +803,10 @@ export class KumweStudioElement extends LitElement {
       return undefined;
     }
     const chosen = ordered.find((viewport) => viewport.id === this.#activeViewportId);
-    return chosen ?? ordered.find((viewport) => viewport.base) ?? ordered[0];
+    const initial = ordered.find(
+      (viewport) => viewport.id === this.configuration?.session.preview.initialViewport,
+    );
+    return chosen ?? initial ?? ordered.find((viewport) => viewport.base) ?? ordered[0];
   }
 
   public get stateVersion(): number {
@@ -3940,7 +3948,7 @@ export class KumweStudioElement extends LitElement {
         ${
           available && state !== 'closed'
             ? html`
-                <div class="preview-stage">
+                <div class="preview-stage" tabindex="0">
                   <slot
                     class="preview-surface-slot"
                     name="preview"
@@ -3967,6 +3975,11 @@ export class KumweStudioElement extends LitElement {
     }
     const indicator =
       this.#previewDrag?.active === true ? this.#previewDrag.target?.indicator : undefined;
+    const measurements = Object.entries(geometry.measurements).sort(([left], [right]) => {
+      const leftSelected = left === this.selectedNodeId ? 1 : 0;
+      const rightSelected = right === this.selectedNodeId ? 1 : 0;
+      return leftSelected - rightSelected;
+    });
     return html`
       <svg
         class="preview-canvas-overlay"
@@ -3986,7 +3999,7 @@ export class KumweStudioElement extends LitElement {
           this.#onPreviewCanvasPointerCancel(event);
         }}
       >
-        ${Object.entries(geometry.measurements).flatMap(([nodeId, rects]) =>
+        ${measurements.flatMap(([nodeId, rects]) =>
           rects.map(
             (rect, index) => svg`
               <rect

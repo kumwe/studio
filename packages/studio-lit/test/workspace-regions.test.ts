@@ -73,6 +73,7 @@ function themeViewports(): ThemeViewport[] {
 
 interface MountOptions {
   blockLocks?: BlueprintBlockLock[];
+  initialViewport?: ThemeViewport['id'];
   roots?: BlueprintNode[];
   viewports?: ThemeViewport[];
 }
@@ -80,6 +81,10 @@ interface MountOptions {
 async function mountShell(options: MountOptions = {}): Promise<KumweStudioElement> {
   defineKumweStudio();
   const element = new KumweStudioElement();
+  const session = createStudioConfigurationFixture();
+  if (options.initialViewport !== undefined) {
+    session.preview.initialViewport = options.initialViewport;
+  }
   element.configuration = {
     blockDefinitions: [
       defineTestBlock({
@@ -98,7 +103,7 @@ async function mountShell(options: MountOptions = {}): Promise<KumweStudioElemen
       }),
       defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
     ],
-    session: createStudioConfigurationFixture(),
+    session,
   };
   const fixtureOptions: { blockLocks?: BlueprintBlockLock[]; roots: BlueprintNode[] } = {
     roots: options.roots ?? [],
@@ -191,6 +196,31 @@ describe('viewport switcher', () => {
     expect(viewportButton(element, 'medium').getAttribute('aria-pressed')).toBe('true');
     expect(viewportButton(element, 'wide').getAttribute('aria-pressed')).toBe('false');
     expect(viewportButton(element, 'narrow').getAttribute('aria-pressed')).toBe('false');
+    expect(canvas(element).getAttribute('data-viewport')).toBe('medium');
+    element.remove();
+  });
+
+  it('honors a configured initial viewport before falling back to the base viewport', async () => {
+    const element = await mountShell({
+      initialViewport: 'wide',
+      viewports: themeViewports(),
+    });
+
+    expect(element.activeViewport?.id).toBe('wide');
+    expect(viewportButton(element, 'wide').getAttribute('aria-pressed')).toBe('true');
+    expect(viewportButton(element, 'medium').getAttribute('aria-pressed')).toBe('false');
+    expect(canvas(element).getAttribute('data-viewport')).toBe('wide');
+    element.remove();
+  });
+
+  it('falls back to the base viewport when the configured initial viewport is unavailable', async () => {
+    const element = await mountShell({
+      initialViewport: 'unavailable',
+      viewports: themeViewports(),
+    });
+
+    expect(element.activeViewport?.id).toBe('medium');
+    expect(viewportButton(element, 'medium').getAttribute('aria-pressed')).toBe('true');
     expect(canvas(element).getAttribute('data-viewport')).toBe('medium');
     element.remove();
   });
