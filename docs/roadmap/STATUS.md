@@ -76,11 +76,17 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations                               | Kumwe App's Gate A contribution contract; its host adapter at Gate B    |
 | `M4-02` | active          | Core section/stack/grid/columns, typed recipes/tokens, reference reflow, two-theme semantic resolution | Independent second-renderer replay and reviewer reproduction            |
 | `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                                       | Reviewer reproduction                                                   |
-| `M4-01` | evidence-review | All specified regions: outline, viewports, breadcrumb, palette, drag                                   | Reviewer reproduction                                                   |
+| `M4-01` | active          | Shell regions plus host-bound preview, two-way marker selection and degraded state                     | Framed-CSP policy; browser-lane replay; reviewer reproduction           |
 | `M4-05` | evidence-review | Full keyboard parity, announcements survive conflict and reload                                        | Reviewer reproduction                                                   |
 | `M5-01` | active          | Upload orchestration over the canonical session state machine                                          | Media browser UI; paste/drop capture; real host adapter exercises       |
 | `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | Ratified `engine-dart` profile, generated models, cross-runtime replay  |
 | `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | `M3-06` and native Flutter authoring/renderer profiles                  |
+
+### Latest state transition
+
+| Package / integration item | Implementation commit                      | Evidence bundle        | New state | Blocking item                                                                                                                                           | Reviewer   |
+| -------------------------- | ------------------------------------------ | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `M4-01` / `ST-4`           | `26359f3d98717450fc083bc2d3d21a762df750e3` | none — not yet created | active    | Reproduce the Playwright accessibility/CSP lane; ratify a dedicated framed authoring policy because the pinned reference CSP retains `frame-src 'none'` | unassigned |
 
 ## Downstream integration commitments
 
