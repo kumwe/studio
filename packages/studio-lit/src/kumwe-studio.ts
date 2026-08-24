@@ -217,6 +217,7 @@ export class KumweStudioElement extends LitElement {
     .panel,
     .canvas {
       border: 1px solid var(--studio-border);
+      min-inline-size: 0;
       padding: 1rem;
     }
 
@@ -292,7 +293,10 @@ export class KumweStudioElement extends LitElement {
     .command-palette input {
       border: 1px solid var(--studio-border);
       border-radius: 0.375rem;
+      box-sizing: border-box;
       font: inherit;
+      inline-size: 100%;
+      min-inline-size: 0;
       padding: 0.5rem 0.625rem;
     }
 
@@ -341,6 +345,7 @@ export class KumweStudioElement extends LitElement {
       color: #5d6671;
       font-size: 0.75rem;
       margin: 0 0 0.75rem;
+      overflow-wrap: anywhere;
     }
 
     .unresolved {
@@ -369,12 +374,16 @@ export class KumweStudioElement extends LitElement {
       flex-basis: 100%;
       font-size: 0.75rem;
       gap: 0.25rem;
+      min-inline-size: 0;
     }
 
     .outline-move-destination {
       border: 1px solid var(--studio-border);
       border-radius: 0.375rem;
+      box-sizing: border-box;
       font: inherit;
+      inline-size: 100%;
+      max-inline-size: 100%;
       min-inline-size: 0;
       padding: 0.375rem 0.5rem;
     }
