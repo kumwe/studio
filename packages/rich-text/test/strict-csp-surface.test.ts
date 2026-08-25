@@ -1,0 +1,129 @@
+import { describe, expect, it } from 'vitest';
+import {
+  StudioRichTextEditorFactory,
+  StudioStrictCspRichTextSurfaceAdapter,
+  type StudioRichTextDocument,
+} from '../src/index.js';
+
+const INITIAL: StudioRichTextDocument = {
+  content: [
+    {
+      content: [{ text: 'Strict content', type: 'text' }],
+      type: 'paragraph',
+    },
+  ],
+  type: 'doc',
+};
+
+describe('Studio strict-CSP rich-text surface', () => {
+  it('authors every first-party block without creating style or HTML-string sinks', async () => {
+    const holder = document.createElement('div');
+    document.body.append(holder);
+    const styleCount = document.head.querySelectorAll('style').length;
+    const changes: StudioRichTextDocument[] = [];
+    const editor = await new StudioRichTextEditorFactory(
+      new StudioStrictCspRichTextSurfaceAdapter(),
+    ).create({
+      holder,
+      onChange: (change) => {
+        if (change.valid) changes.push(change.value);
+      },
+      value: INITIAL,
+    });
+
+    const paragraph = holder.querySelector<HTMLElement>('[aria-label="Paragraph"]');
+    const text = paragraph?.firstChild;
+    if (paragraph === null || paragraph === undefined || text === null || text === undefined) {
+      throw new Error('Missing editable strict rich-text paragraph.');
+    }
+    const range = document.createRange();
+    range.selectNodeContents(text);
+    const selection = globalThis.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    holder.querySelector<HTMLButtonElement>('[aria-label="Bold selected text"]')?.click();
+    expect((await editor.save()).content[0]?.content?.[0]?.marks).toEqual([{ type: 'bold' }]);
+
+    for (const type of [
+      'callout',
+      'checklist',
+      'code',
+      'delimiter',
+      'header',
+      'list',
+      'quote',
+      'table',
+    ]) {
+      const select = holder.querySelector<HTMLSelectElement>('[aria-label="Rich text block type"]');
+      const add = holder.querySelector<HTMLButtonElement>('[aria-label="Add rich text block"]');
+      if (select === null || add === null) throw new Error('Missing strict rich-text toolbar.');
+      select.value = type;
+      add.click();
+    }
+
+    const value = await editor.save();
+    expect(value.content.map((node) => node.type)).toEqual([
+      'paragraph',
+      'callout',
+      'checklist',
+      'codeBlock',
+      'horizontalRule',
+      'heading',
+      'bulletList',
+      'blockquote',
+      'table',
+    ]);
+    expect(changes).toHaveLength(9);
+    expect(holder.querySelector('[data-studio-rich-text-surface="strict-csp"]')).not.toBeNull();
+    expect(holder.querySelector('style,script,[style]')).toBeNull();
+    expect(document.head.querySelectorAll('style')).toHaveLength(styleCount);
+
+    holder.querySelector<HTMLButtonElement>('[aria-label="Move block down"]')?.click();
+    expect((await editor.save()).content.slice(0, 2).map((node) => node.type)).toEqual([
+      'callout',
+      'paragraph',
+    ]);
+    holder.querySelector<HTMLButtonElement>('[aria-label="Remove block"]')?.click();
+    expect((await editor.save()).content[0]?.type).toBe('paragraph');
+
+    await editor.replace(INITIAL);
+    expect(await editor.save()).toEqual(INITIAL);
+    editor.focus();
+    expect(holder.contains(document.activeElement)).toBe(true);
+    editor.destroy();
+    expect(holder.childElementCount).toBe(0);
+    holder.remove();
+  });
+
+  it('keeps host-resolved content inspectable and immutable', async () => {
+    const holder = document.createElement('div');
+    document.body.append(holder);
+    const editor = await new StudioRichTextEditorFactory(
+      new StudioStrictCspRichTextSurfaceAdapter(),
+    ).create({
+      binding: {
+        onError: 'error',
+        onNull: 'empty',
+        source: { key: 'host/current-entry', kind: 'context-value' },
+        transforms: [],
+      },
+      holder,
+      value: INITIAL,
+    });
+
+    expect(editor.readOnly).toBe(true);
+    expect(holder.querySelector('[aria-label="Add rich text block"]')).toBeNull();
+    expect(holder.querySelector('[aria-label="Remove block"]')).toBeNull();
+    expect(holder.querySelector('[contenteditable="true"]')).toBeNull();
+    expect(
+      [
+        ...holder.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+          'input,select,textarea',
+        ),
+      ].every((control) => control.disabled),
+    ).toBe(true);
+    expect(await editor.save()).toEqual(INITIAL);
+    editor.destroy();
+    holder.remove();
+  });
+});

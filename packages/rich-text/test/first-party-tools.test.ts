@@ -108,12 +108,20 @@ describe('first-party Editor.js tool boundary', () => {
     const listRoot = list.render();
     listRoot.querySelector<HTMLButtonElement>('[aria-label="Add list item"]')?.click();
     expect(list.save().node.content).toHaveLength(2);
+    listRoot.querySelectorAll<HTMLButtonElement>('[aria-label="Indent item"]')[1]?.click();
+    expect(list.save().node.content?.[0]?.content?.[1]?.type).toBe('bulletList');
+    expect(listRoot.querySelector('[data-studio-depth="1"]')?.getAttribute('aria-level')).toBe('2');
+    expect(listRoot.querySelector('[style]')).toBeNull();
 
     const checklist = new StudioChecklistTool({});
     const checklistRoot = checklist.render();
     checklistRoot.querySelector<HTMLButtonElement>('[aria-label="Add checklist item"]')?.click();
-    checklistRoot.querySelector<HTMLButtonElement>('[aria-label="Indent item"]')?.click();
+    checklistRoot.querySelectorAll<HTMLButtonElement>('[aria-label="Indent item"]')[1]?.click();
     expect(checklist.save().node.content).toHaveLength(2);
+    expect(checklistRoot.querySelector('[data-studio-depth="1"]')?.getAttribute('aria-level')).toBe(
+      '2',
+    );
+    expect(checklistRoot.querySelector('[style]')).toBeNull();
 
     const table = new StudioTableTool({});
     const tableRoot = table.render();

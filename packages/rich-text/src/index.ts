@@ -10,6 +10,7 @@ export {
   type StudioRichTextSurfaceAdapter,
   type StudioRichTextSurfaceOptions,
 } from './studio-rich-text-editor.js';
+export { StudioStrictCspRichTextSurfaceAdapter } from './strict-csp-surface.js';
 export {
   exportStudioMarkdown,
   importStudioMarkdown,
