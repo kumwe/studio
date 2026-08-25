@@ -11,16 +11,16 @@ test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }
 
   await shell
     .getByRole('complementary', { name: 'Block palette' })
-    .getByRole('button', { name: 'Grid' })
+    .getByRole('button', { name: 'Grid', exact: true })
     .click();
   await shell
     .getByRole('complementary', { name: 'Outline' })
-    .getByRole('button', { name: 'Grid' })
+    .getByRole('button', { name: 'Grid', exact: true })
     .click();
   for (let index = 0; index < 4; index += 1) {
     await shell
       .getByRole('complementary', { name: 'Block palette' })
-      .getByRole('button', { name: 'Stack' })
+      .getByRole('button', { name: 'Stack', exact: true })
       .click();
   }
 

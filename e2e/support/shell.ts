@@ -10,6 +10,7 @@ export async function openShell(page: Page): Promise<Locator> {
   await expect(
     shell.getByRole('complementary', { name: 'Block palette' }).getByRole('button', {
       name: 'Section',
+      exact: true,
     }),
   ).toBeVisible();
   // Mutation-focused specs start from the explicit blank-page action. The
@@ -30,11 +31,12 @@ export async function openShell(page: Page): Promise<Locator> {
 export async function populateShell(page: Page, shell: Locator): Promise<void> {
   await shell
     .getByRole('complementary', { name: 'Block palette' })
-    .getByRole('button', { name: 'Section' })
+    .getByRole('button', { name: 'Section', exact: true })
     .click();
   const outlineEntry = shell
     .getByRole('complementary', { name: 'Outline' })
-    .getByRole('button', { name: 'Section' });
+    .getByRole('button', { name: 'Section', exact: true })
+    .last();
   await outlineEntry.click();
   await expect(shell.getByRole('complementary', { name: 'Inspector' })).toContainText('Identifier');
   await page.keyboard.press('Control+k');

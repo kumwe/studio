@@ -82,6 +82,7 @@ test('the chrome completes an authoring pass under the pinned policy without vio
   await expect(
     shell.getByRole('complementary', { name: 'Block palette' }).getByRole('button', {
       name: 'Section',
+      exact: true,
     }),
   ).toBeVisible();
   await populateShell(page, shell);

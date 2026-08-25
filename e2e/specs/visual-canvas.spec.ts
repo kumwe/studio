@@ -38,32 +38,32 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
   const outline = shell.getByRole('complementary', { name: 'Outline' });
   const preview = page.locator('.preview-surface');
 
-  await blocks.getByRole('button', { name: 'Section' }).click();
+  await blocks.getByRole('button', { name: 'Section', exact: true }).click();
   await expect(preview.locator('[data-studio-block="section"]')).toHaveCount(1);
-  await blocks.getByRole('button', { name: 'Section' }).click();
+  await blocks.getByRole('button', { name: 'Section', exact: true }).click();
   await expect(preview.locator('[data-studio-block="section"]')).toHaveCount(2);
 
   const sections = outline.locator('button.outline-entry', { hasText: 'Section' });
   const secondSectionId = await sections.nth(1).getAttribute('data-node-id');
   expect(secondSectionId).not.toBeNull();
   await sections.nth(0).click();
-  await blocks.getByRole('button', { name: 'Rich text' }).click();
+  await blocks.getByRole('button', { name: 'Divider', exact: true }).click();
   await expect(
     preview
       .locator('[data-studio-block="section"]')
       .nth(0)
-      .locator('[data-studio-block="rich-text"]'),
+      .locator('[data-studio-block="divider"]'),
   ).toHaveCount(1);
 
-  const textOutline = outline.locator('button.outline-entry', { hasText: 'Rich text' });
-  const textId = await textOutline.getAttribute('data-node-id');
-  expect(textId).not.toBeNull();
+  const contentOutline = outline.getByRole('button', { name: 'Divider', exact: true });
+  const contentId = await contentOutline.getAttribute('data-node-id');
+  expect(contentId).not.toBeNull();
   const editToggle = shell.getByRole('button', { name: 'Select and move rendered blocks' });
   await expect(editToggle).toBeVisible();
   await editToggle.click();
   await expect(editToggle).toHaveAttribute('aria-pressed', 'true');
 
-  const source = shell.locator(`.preview-canvas-region[data-node-id="${textId ?? ''}"]`).first();
+  const source = shell.locator(`.preview-canvas-region[data-node-id="${contentId ?? ''}"]`).first();
   const target = preview.locator('[data-studio-block="section"]').nth(1);
   await expect(source).toHaveCount(1);
   expect(Number(await source.getAttribute('width'))).toBeGreaterThan(0);
@@ -71,7 +71,7 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
   const overlayBox = await shell.locator('.preview-canvas-overlay').boundingBox();
   expect(overlayBox).not.toBeNull();
   expect(overlayBox?.height ?? 0).toBeGreaterThan(0);
-  const sourceBox = await preview.locator('[data-studio-block="rich-text"]').boundingBox();
+  const sourceBox = await preview.locator('[data-studio-block="divider"]').boundingBox();
   const targetBox = await target.boundingBox();
   expect(sourceBox).not.toBeNull();
   expect(targetBox).not.toBeNull();
@@ -106,7 +106,7 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
     preview
       .locator('[data-studio-block="section"]')
       .nth(0)
-      .locator('[data-studio-block="rich-text"]'),
+      .locator('[data-studio-block="divider"]'),
   ).toHaveCount(1);
   expect(await page.evaluate(() => window.__studioCanvasCommands?.length ?? 0)).toBe(commandCount);
 
@@ -118,7 +118,7 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
     preview
       .locator('[data-studio-block="section"]')
       .nth(1)
-      .locator('[data-studio-block="rich-text"]'),
+      .locator('[data-studio-block="divider"]'),
   ).toHaveCount(1);
   expect(await page.evaluate(() => window.__studioCanvasCommands?.at(-1))).toBe(
     'studio.command/move-node',
@@ -129,9 +129,9 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
     preview
       .locator('[data-studio-block="section"]')
       .nth(0)
-      .locator('[data-studio-block="rich-text"]'),
+      .locator('[data-studio-block="divider"]'),
   ).toHaveCount(1);
-  await textOutline.click();
+  await contentOutline.click();
   const destination = shell.locator('select.outline-move-destination');
   const options = destination.locator('option');
   let optionValue: string | null = null;
@@ -148,7 +148,7 @@ test('measured visual drag reparents, cancels cleanly, and has the same keyboard
     preview
       .locator('[data-studio-block="section"]')
       .nth(1)
-      .locator('[data-studio-block="rich-text"]'),
+      .locator('[data-studio-block="divider"]'),
   ).toHaveCount(1);
   expect(await page.evaluate(() => window.__studioCanvasCommands?.at(-1))).toBe(
     'studio.command/move-node',
