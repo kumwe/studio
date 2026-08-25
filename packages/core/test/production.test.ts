@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { STUDIO_CONTRACT_VERSION, type BlueprintDocument } from '@kumwe/studio-protocol';
+import { Ajv2020 } from 'ajv/dist/2020.js';
+import {
+  protocolSchemas,
+  STUDIO_CONTRACT_VERSION,
+  type BlueprintDocument,
+} from '@kumwe/studio-protocol';
 import {
   BlockRegistry,
   CORE_PRODUCTION_BLOCK_TYPES,
@@ -14,6 +19,21 @@ import {
 
 describe('production block catalog', () => {
   const definitions = createCoreProductionBlockDefinitions();
+
+  it('admits every definition through the canonical block-definition schema', () => {
+    const ajv = new Ajv2020({ allErrors: true, strict: true });
+    for (const schema of protocolSchemas) ajv.addSchema(schema);
+    const validate = ajv.getSchema(
+      'https://schemas.kumwe.org/studio/v1/block-definition.schema.json',
+    );
+    expect(validate).toBeDefined();
+    for (const definition of definitions) {
+      expect(
+        validate?.(definition),
+        `${definition.type}: ${ajv.errorsText(validate?.errors)}`,
+      ).toBe(true);
+    }
+  });
 
   it('ships exactly 45 unique, schema-profile-valid first-party definitions', () => {
     expect(definitions).toHaveLength(45);

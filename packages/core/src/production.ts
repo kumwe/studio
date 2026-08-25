@@ -229,12 +229,12 @@ const textPort = (id: LocalName, required = false): BlockPortDefinition => ({
 });
 
 const numberPort = (id: LocalName, required = false): BlockPortDefinition => ({
-  authoring: { control: 'studio.control/number' },
+  authoring: { control: 'studio.control/integer' },
   id,
   label: message(`port-${id}`, title(id)),
   multiple: false,
   required,
-  valueType: 'number',
+  valueType: 'integer',
 });
 
 const richTextPort = (id = 'content'): BlockPortDefinition => ({
@@ -293,9 +293,9 @@ const PRESENTATION_PROPERTY_SCHEMA = presentationPropertySchema();
 const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object.freeze({
   accordion: {
     accessibility: 'composite',
-    controls: { allowMultiple: 'studio.control/switch' },
-    defaults: { allowMultiple: false },
-    properties: { allowMultiple: booleanSchema() },
+    controls: { 'allow-multiple': 'studio.control/switch' },
+    defaults: { 'allow-multiple': false },
+    properties: { 'allow-multiple': booleanSchema() },
     slots: [{ accepts: [CORE_PRODUCTION_BLOCK_TYPES.accordionItem], id: 'items', maximum: 50 }],
   },
   accordionItem: {
@@ -382,11 +382,11 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     accessibility: 'text',
     controls: {
       language: 'studio.control/single-line-text',
-      showLineNumbers: 'studio.control/switch',
+      'show-line-numbers': 'studio.control/switch',
     },
-    defaults: { language: 'text', showLineNumbers: false },
+    defaults: { language: 'text', 'show-line-numbers': false },
     ports: [sourcePort('studio.source/code')],
-    properties: { language: stringSchema(100), showLineNumbers: booleanSchema() },
+    properties: { language: stringSchema(100), 'show-line-numbers': booleanSchema() },
   },
   contentCollection: {
     accessibility: 'data-display',
@@ -409,13 +409,13 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     accessibility: 'data-display',
     controls: {
       display: 'studio.control/select',
-      expiredBehavior: 'studio.control/select',
+      'expired-behavior': 'studio.control/select',
     },
-    defaults: { display: 'detailed', expiredBehavior: 'zero' },
-    ports: [textPort('target', true), textPort('completionMessage')],
+    defaults: { display: 'detailed', 'expired-behavior': 'zero' },
+    ports: [textPort('target', true), textPort('completion-message')],
     properties: {
       display: enumSchema('compact', 'detailed'),
-      expiredBehavior: enumSchema('hide', 'message', 'zero'),
+      'expired-behavior': enumSchema('hide', 'message', 'zero'),
     },
   },
   cover: {
@@ -451,7 +451,7 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     accessibility: 'interactive',
     controls: { modal: 'studio.control/switch', presentation: 'studio.control/select' },
     defaults: { modal: true, presentation: 'modal' },
-    ports: [textPort('triggerLabel', true), textPort('title', true)],
+    ports: [textPort('trigger-label', true), textPort('title', true)],
     properties: {
       modal: booleanSchema(),
       presentation: enumSchema('modal', 'offcanvas', 'overlay'),
@@ -484,10 +484,10 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
   },
   embed: {
     accessibility: 'media',
-    controls: { aspectRatio: 'studio.control/select' },
-    defaults: { aspectRatio: '16:9' },
+    controls: { 'aspect-ratio': 'studio.control/select' },
+    defaults: { 'aspect-ratio': '16:9' },
     ports: [resourcePort('resource', false)],
-    properties: { aspectRatio: enumSchema('1:1', '4:3', '16:9', '21:9') },
+    properties: { 'aspect-ratio': enumSchema('1:1', '4:3', '16:9', '21:9') },
   },
   gallery: {
     accessibility: 'composite',
@@ -517,7 +517,7 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     accessibility: 'media',
     controls: { decorative: 'studio.control/switch', name: 'studio.control/single-line-text' },
     defaults: { decorative: true, name: 'symbol' },
-    ports: [textPort('alternativeText')],
+    ports: [textPort('alternative-text')],
     properties: { decorative: booleanSchema(), name: stringSchema(200) },
   },
   image: {
@@ -539,10 +539,10 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
   },
   math: {
     accessibility: 'text',
-    controls: { displayMode: 'studio.control/switch' },
-    defaults: { displayMode: true },
+    controls: { 'display-mode': 'studio.control/switch' },
+    defaults: { 'display-mode': true },
     ports: [sourcePort('studio.source/latex')],
-    properties: { displayMode: booleanSchema() },
+    properties: { 'display-mode': booleanSchema() },
   },
   money: {
     accessibility: 'data-display',
@@ -601,14 +601,14 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
   popover: {
     accessibility: 'interactive',
     controls: {
-      dismissOnBlur: 'studio.control/switch',
+      'dismiss-on-blur': 'studio.control/switch',
       placement: 'studio.control/select',
       presentation: 'studio.control/select',
     },
-    defaults: { dismissOnBlur: true, placement: 'auto', presentation: 'popover' },
-    ports: [textPort('triggerLabel', true), textPort('title')],
+    defaults: { 'dismiss-on-blur': true, placement: 'auto', presentation: 'popover' },
+    ports: [textPort('trigger-label', true), textPort('title')],
     properties: {
-      dismissOnBlur: booleanSchema(),
+      'dismiss-on-blur': booleanSchema(),
       placement: enumSchema('auto', 'bottom', 'left', 'right', 'top'),
       presentation: enumSchema('dropbar', 'dropdown', 'popover', 'tooltip'),
     },
@@ -630,11 +630,11 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     accessibility: 'interactive',
     controls: {
       action: 'studio.control/single-line-text',
-      queryParameter: 'studio.control/single-line-text',
+      'query-parameter': 'studio.control/single-line-text',
     },
-    defaults: { action: '', queryParameter: 'q' },
+    defaults: { action: '', 'query-parameter': 'q' },
     ports: [textPort('label'), textPort('placeholder')],
-    properties: { action: stringSchema(2_048), queryParameter: stringSchema(100) },
+    properties: { action: stringSchema(2_048), 'query-parameter': stringSchema(100) },
   },
   spinner: {
     accessibility: 'data-display',
