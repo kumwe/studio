@@ -60,13 +60,29 @@ emits `studio-scoped-style-change` with `{ nodeId, value }`, and the host may
 apply that structured sheet as trusted renderer context. It is never written to
 the Blueprint.
 
-Drawing and table are complete first-party value editors. Drawing offers a
-native SVG pointer surface plus labelled coordinates and keyboard actions; it
-emits only canonical vector strokes and alternative text. Table offers labelled
-caption, heading, cell, row, and column controls over the canonical text-only
-table document. Both honor read-only bindings and route every accepted commit
-through the registry's `onChange`, so shell command history provides undo/redo.
-Neither control persists DOM, SVG, HTML, canvas commands, or executable source.
+## Resource browser
+
+Resource-valued ports use Studio's own browser rather than a raw binding JSON
+input. Make it available only with the negotiated resource search capability,
+then adapt the session's detached result value to the host-neutral service:
+
+```ts
+const resources = session.resources;
+if (resources !== undefined) {
+  studio.resourceSearchService = {
+    resourceTypes: authorizedResourceTypes,
+    search: async (query) => (await resources.search(query)).value,
+  };
+}
+```
+
+The browser supports explicit and debounced search, cancellation, pagination,
+retry, empty states, and keyboard selection. Studio's first-party content
+reference/collection ports are intentionally inspect-only because they declare
+`authoring.readOnly: true`. An extension port that omits that flag may select,
+replace, or clear only a canonical `resource-reference` binding. Non-resource
+dynamic sources remain read-only, and adapter errors or private entity data are
+never surfaced.
 
 ## Localization
 
