@@ -19,6 +19,7 @@ import {
   createStudioStandaloneSetup,
   defineKumweStudio,
   KumweStudioElement,
+  type StudioResourceSearchService,
 } from '../src/index.js';
 
 vi.mock('@editorjs/editorjs', () => ({
@@ -102,6 +103,30 @@ async function select(element: KumweStudioElement, nodeId: string): Promise<void
   await element.authoringReady;
 }
 
+async function mountResourceShell(
+  node: BlueprintNode,
+  definition: BlockDefinition,
+  resourceSearchService: StudioResourceSearchService,
+): Promise<KumweStudioElement> {
+  defineKumweStudio();
+  const element = new KumweStudioElement();
+  const session = createStudioConfigurationFixture();
+  session.hostCapabilities.ports = [
+    {
+      id: 'studio.port/resource',
+      operations: ['studio.operation/resource.search'],
+      version: '1.0.0',
+    },
+  ];
+  element.configuration = { blockDefinitions: [definition], session };
+  element.document = createBlueprintFixture({ roots: [node] });
+  element.resourceSearchService = resourceSearchService;
+  document.body.append(element);
+  await element.updateComplete;
+  await select(element, node.id);
+  return element;
+}
+
 describe('Studio shell authoring-control lifecycle', () => {
   it('owns the first-party catalog and exposes an append-only standalone bootstrap', async () => {
     const element = await mount([]);
@@ -145,13 +170,7 @@ describe('Studio shell authoring-control lifecycle', () => {
     const money = productionNode('money', 'studio.core/money', {
       amount: staticBinding({ amount: '19.95', currency: 'NAD' }),
     });
-    const drawing = productionNode('drawing', 'studio.core/drawing', {
-      drawing: staticBinding({ alt: 'Diagram', height: 100, strokes: [], width: 100 }),
-    });
-    const table = productionNode('table', 'studio.core/table', {
-      table: staticBinding({ columns: ['Name'], rows: [['First']] }),
-    });
-    const element = await mount([richText, source, chart, money, drawing, table]);
+    const element = await mount([richText, source, chart, money]);
 
     await select(element, 'rich');
     expect(element.shadowRoot?.querySelector('.fake-editorjs-runtime')).not.toBeNull();
@@ -176,56 +195,6 @@ describe('Studio shell authoring-control lifecycle', () => {
       element.shadowRoot?.querySelector<HTMLInputElement>('[aria-label="Exact decimal amount"]')
         ?.value,
     ).toBe('19.95');
-
-    await select(element, 'drawing');
-    const drawingCanvas = element.shadowRoot?.querySelector<SVGSVGElement>(
-      'svg[aria-label="Diagram"]',
-    );
-    if (drawingCanvas === null || drawingCanvas === undefined) {
-      throw new Error('Missing drawing canvas.');
-    }
-    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
-    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }));
-    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
-    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
-    await element.updateComplete;
-    await element.authoringReady;
-    expect(
-      element.document?.roots.find((node) => node.id === 'drawing')?.bindings.drawing?.source,
-    ).toMatchObject({
-      kind: 'static-value',
-      value: {
-        strokes: [
-          {
-            points: [
-              { x: 0, y: 0 },
-              { x: 1, y: 0 },
-            ],
-          },
-        ],
-      },
-    });
-    element.undo();
-    await element.updateComplete;
-    expect(
-      element.document?.roots.find((node) => node.id === 'drawing')?.bindings.drawing?.source,
-    ).toMatchObject({ kind: 'static-value', value: { strokes: [] } });
-
-    await select(element, 'table');
-    element.shadowRoot?.querySelector<HTMLButtonElement>('[aria-label="Add table row"]')?.click();
-    await element.updateComplete;
-    await element.authoringReady;
-    expect(
-      element.document?.roots.find((node) => node.id === 'table')?.bindings.table?.source,
-    ).toEqual({
-      kind: 'static-value',
-      value: { columns: ['Name'], rows: [['First'], ['']] },
-    });
-    element.undo();
-    await element.updateComplete;
-    expect(
-      element.document?.roots.find((node) => node.id === 'table')?.bindings.table?.source,
-    ).toEqual({ kind: 'static-value', value: { columns: ['Name'], rows: [['First']] } });
   });
 
   it('mounts governed property controls, forwards read-only state and surfaces failures', async () => {
@@ -286,5 +255,179 @@ describe('Studio shell authoring-control lifecycle', () => {
       },
     ]);
     expect(element.document?.roots.find((node) => node.id === 'scoped')?.properties).toEqual({});
+  });
+
+  it('binds an opt-in resource port through the live shell without raw binding JSON', async () => {
+    const definition: BlockDefinition = {
+      ...defineTestBlock({ label: 'Related content', type: 'host.content/reference' }),
+      ports: [
+        {
+          authoring: {},
+          id: 'item',
+          label: { defaultMessage: 'Content item', key: 'host.content/item' },
+          multiple: false,
+          required: true,
+          valueType: 'resource',
+        },
+      ],
+    };
+    const node: BlueprintNode = {
+      authoring: { mode: 'content' },
+      bindings: {},
+      id: 'related-content',
+      properties: {},
+      slots: {},
+      type: definition.type,
+      version: definition.version,
+    };
+    const element = await mountResourceShell(node, definition, {
+      resourceTypes: [
+        {
+          id: 'kumwe.app/content-entry',
+          label: { defaultMessage: 'Content entries', key: 'kumwe.app/content-entries' },
+        },
+      ],
+      search: () =>
+        Promise.resolve({
+          items: [
+            {
+              id: 'content-entry:release-notes',
+              label: { defaultMessage: 'Release notes', key: 'kumwe.app/resource-label' },
+              resourceType: 'kumwe.app/content-entry',
+            },
+          ],
+        }),
+    });
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[aria-label="Search resources"]')
+      ?.click();
+    await vi.waitFor(() =>
+      expect(element.shadowRoot?.textContent).toContain('1 authorized resource shown.'),
+    );
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[aria-label="Select Release notes"]')
+      ?.click();
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(element.document?.roots[0]?.bindings.item).toEqual({
+      onError: 'error',
+      onNull: 'empty',
+      source: {
+        id: 'content-entry:release-notes',
+        kind: 'resource-reference',
+        resourceType: 'kumwe.app/content-entry',
+      },
+      transforms: [],
+    });
+    expect(element.shadowRoot?.querySelector('.inspector-binding-value-input')).toBeNull();
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[aria-label="Clear selected resource"]')
+      ?.click();
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(element.document?.roots[0]?.bindings.item).toBeUndefined();
+  });
+
+  it('browses first-party read-only resource ports without offering replacement', async () => {
+    const definition = createCoreProductionBlockDefinitions().find(
+      (candidate) => candidate.type === 'studio.core/content-reference',
+    );
+    if (definition === undefined) throw new Error('Missing content-reference definition.');
+    const node = productionNode('content-reference', definition.type, {
+      item: {
+        onError: 'error',
+        onNull: 'empty',
+        source: {
+          id: 'content-entry:existing',
+          kind: 'resource-reference',
+          resourceType: 'kumwe.app/content-entry',
+        },
+        transforms: [],
+      },
+    });
+    const element = await mountResourceShell(node, definition, {
+      resourceTypes: [
+        {
+          id: 'kumwe.app/content-entry',
+          label: { defaultMessage: 'Content entries', key: 'kumwe.app/content-entries' },
+        },
+      ],
+      search: () =>
+        Promise.resolve({
+          items: [
+            {
+              id: 'content-entry:replacement',
+              label: { defaultMessage: 'Replacement', key: 'kumwe.app/resource-label' },
+              resourceType: 'kumwe.app/content-entry',
+            },
+          ],
+        }),
+    });
+
+    expect(element.shadowRoot?.textContent).toContain('Selection is read-only');
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('[aria-label="Search resources"]')
+      ?.click();
+    await vi.waitFor(() => expect(element.shadowRoot?.textContent).toContain('Replacement'));
+    expect(element.shadowRoot?.querySelector('[aria-label="Select Replacement"]')).toBeNull();
+    expect(
+      element.shadowRoot?.querySelector<HTMLButtonElement>('[aria-label="Clear selected resource"]')
+        ?.disabled,
+    ).toBe(true);
+    expect(element.document?.roots[0]?.bindings.item?.source).toEqual({
+      id: 'content-entry:existing',
+      kind: 'resource-reference',
+      resourceType: 'kumwe.app/content-entry',
+    });
+  });
+
+  it('does not call an injected browser without negotiated resource authority', async () => {
+    const definition: BlockDefinition = {
+      ...defineTestBlock({ label: 'Related content', type: 'host.content/unavailable-reference' }),
+      ports: [
+        {
+          authoring: {},
+          id: 'item',
+          label: { defaultMessage: 'Content item', key: 'host.content/item' },
+          multiple: false,
+          required: true,
+          valueType: 'resource',
+        },
+      ],
+    };
+    const node: BlueprintNode = {
+      authoring: { mode: 'content' },
+      bindings: {},
+      id: 'unavailable-reference',
+      properties: {},
+      slots: {},
+      type: definition.type,
+      version: definition.version,
+    };
+    const search = vi.fn<StudioResourceSearchService['search']>();
+    const element = await mount([node], [definition]);
+    element.resourceSearchService = {
+      resourceTypes: [
+        {
+          id: 'kumwe.app/content-entry',
+          label: { defaultMessage: 'Content entries', key: 'kumwe.app/content-entries' },
+        },
+      ],
+      search,
+    };
+    await element.updateComplete;
+    await select(element, node.id);
+
+    expect(
+      element.shadowRoot
+        ?.querySelector('.resource-browser-unavailable')
+        ?.textContent?.replace(/\s+/gu, ' ')
+        .trim(),
+    ).toBe('Resource browsing is unavailable in this session.');
+    expect(element.shadowRoot?.querySelector('[aria-label="Search resources"]')).toBeNull();
+    expect(element.shadowRoot?.querySelector('.inspector-binding-value-input')).toBeNull();
+    expect(search).not.toHaveBeenCalled();
   });
 });

@@ -19,14 +19,12 @@ The registered identifiers in this release family are:
 - `studio.control/drawing`
 - `studio.control/money`
 - `studio.control/scoped-css`
-- `studio.control/table`
 
 Profiles are closed. Rich text accepts only the named profiles exported by
 `@kumwe/studio-rich-text`. Source accepts `studio.source/code`,
-`studio.source/latex`, or `studio.source/mermaid`; drawing and table accept only
-`studio.drawing/canonical` and `studio.table/canonical` when a profile is
-declared. Source canonical value remains plain bounded text and its mode comes
-only from the profile. Unknown control or profile input fails closed.
+`studio.source/latex`, or `studio.source/mermaid`; its canonical value remains
+plain bounded text and its mode comes only from the profile. Unknown control or
+profile input fails closed.
 
 ## Shell discovery and lifecycle
 
@@ -76,38 +74,52 @@ decimal string and an uppercase three-letter currency without a binary-float
 conversion. Invalid transient input preserves and reports the last valid
 canonical value.
 
-The drawing control is a native SVG value editor. Pointer strokes and its
-labelled point-coordinate/keyboard path both produce only bounded canonical
-points, color tokens, and stroke widths. The SVG is a disposable view; SVG
-markup, canvas commands, scripts, and data URLs never become values. Alternative
-text and dimensions retain their protocol ceilings. Committing or removing a
-stroke calls `onChange` with one detached canonical document, so the shell's
-ordinary command history owns undo and redo. Pointer cancellation and Escape
-discard only the uncommitted stroke.
-
-The table control edits the canonical caption, column headings, and text cells
-through a labelled native table. It preserves exact row/column parity, the
-50-column and 1000-row ceilings, and the text-length bounds. Add/remove actions
-are explicit and keyboard-operable. It never parses or persists HTML table
-markup. Every accepted cell or structural edit calls `onChange`, so the shell's
-canonical history remains the only undo authority.
-
 `studio.control/scoped-css` is a trusted host styling control, not a Blueprint
 field. It parses only named node parts and the renderer's fixed property/value
 ceiling into `StudioScopedStyleSheet`. Selectors, at-rules, URLs, active values,
 and arbitrary declarations are rejected before compilation. Portable persisted
 appearance remains semantic design intent governed by the theme contract.
 
-Media controls use the same registry identifiers but require dedicated
-Studio-owned services over host ports. Media persists only canonical
-references; asset bytes and delivery URLs remain host-owned. Drawing and table
-are dependency-free first-party value editors and persist only their bounded
-canonical documents.
+Media and drawing controls use the same registry identifiers but require their
+dedicated Studio-owned services. Media persists only canonical references;
+asset bytes and delivery URLs remain host-owned. Drawing persists only the
+bounded canonical vector document and never SVG, canvas commands, or data URLs.
 
 ## Binding and accessibility rules
 
-Only a `static-value` binding is mutable. Entry, context, resource, and query
-bindings are read-only regardless of a host's requested option. Every guided
-operation has a labelled native control and a keyboard path. Read-only controls
-remain inspectable, previews are opt-in, destructive actions are explicit, and
-invalid input never replaces the last valid value.
+Within `StudioAuthoringControlRegistry`, only a `static-value` binding is
+mutable. Entry, context, resource, and query bindings are read-only regardless
+of a host's requested option. The dedicated resource-binding browser described
+below is the sole opt-in exception and never mounts through that value-control
+registry. Every guided operation has a labelled native control and a keyboard
+path. Read-only controls remain inspectable, previews are opt-in, destructive
+actions are explicit, and invalid input never replaces the last valid value.
+
+## Resource discovery and opt-in selection
+
+A port with `valueType: resource` is never edited through the legacy raw JSON
+binding field. When the resolved session advertises
+`studio.port/resource` with `studio.operation/resource.search` and the host
+injects `StudioResourceSearchService`, the shell mounts Studio's accessible
+resource browser. The service supplies an allowlisted, labelled resource-type
+inventory and accepts bounded `ResourceSearchQuery` values plus an abort
+signal. Results remain protocol `ResourceSearchPage` values; database objects,
+transport types, Core classes, URLs, and credentials do not cross this seam.
+
+Search may be submitted explicitly or after a bounded debounce. A newer search
+aborts and supersedes the earlier request. The browser exposes searching,
+cancelled, empty, failed/retry, and paginated states through labelled native
+controls and polite status regions. Adapter errors are not rendered. Every
+result is revalidated for its requested qualified resource type, stable ID,
+bounded message reference, uniqueness, page limit, and opaque cursor before it
+is shown.
+
+The first-party `content-reference` and `content-collection` ports deliberately
+declare `authoring.readOnly: true` under ADR 0026. Their browser therefore
+supports authorized discovery and inspection but never offers Select, Replace,
+Clear, or binding removal. A host extension may explicitly opt a resource port
+into selection by omitting that flag. Only then may the browser create, replace,
+or clear a binding, and the only emitted source is
+`{ kind: 'resource-reference', id, resourceType }`, wrapped by the shell in the
+canonical empty-transform binding policy. A query, context, entry-field, or
+other non-resource source remains inspect-only even on an opt-in port.

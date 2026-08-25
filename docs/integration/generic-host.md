@@ -70,6 +70,22 @@ transport permits it, and an idempotency key for retryable mutation. Sensitive c
 transport; they are never serialized into Studio configuration, documents, command history, diagnostics,
 recovery envelopes, preview messages, or telemetry.
 
+### Bind resource discovery
+
+Advertise `studio.port/resource` and `studio.operation/resource.search` only
+when the current session has a policy-filtered implementation. Adapt its
+detached page value to `StudioResourceSearchService`, and supply a finite list
+of resource types that the actor may browse. The browser passes an abort signal;
+an adapter that cannot cancel transport work must still ignore superseded
+results.
+
+The service returns stable IDs and message references, not entities, database
+coordinates, result totals, media URLs, or arbitrary metadata. Studio validates
+each page and displays only safe labels. First-party content resource ports are
+inspect-only. A host-contributed block must deliberately omit
+`authoring.readOnly: true` before Studio can select or clear its canonical
+`resource-reference`; every other binding source remains read-only.
+
 ## 4. Preserve artifact separation
 
 The host persists separate identities and revisions for:

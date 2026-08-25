@@ -24,6 +24,15 @@ export {
   type StudioSourcePreviewValue,
 } from './authoring-controls.js';
 export type { StudioMediaAuthoringServices } from './media-authoring-control.js';
+export {
+  isStudioResourceReference,
+  mountStudioResourceBindingControl,
+  type StudioResourceBindingChange,
+  type StudioResourceBindingControlHandle,
+  type StudioResourceBindingControlOptions,
+  type StudioResourceSearchService,
+  type StudioResourceTypeOption,
+} from './resource-authoring-control.js';
 
 export function defineKumweStudio(tagName = 'kumwe-studio'): void {
   if (customElements.get(tagName) === undefined) {
