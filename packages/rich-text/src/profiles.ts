@@ -3,6 +3,14 @@ import type { StudioRichTextProfile } from './index.js';
 export type StudioRichTextProfileId =
   'studio.rich-text/documentation' | 'studio.rich-text/marketing' | 'studio.rich-text/portable';
 
+/** Page controls whose authored content is provided by the Studio rich-text boundary. */
+export type StudioRichTextContainerType =
+  | 'studio.core/accordion-item'
+  | 'studio.core/dialog'
+  | 'studio.core/notice'
+  | 'studio.core/popover'
+  | 'studio.core/tab';
+
 const PORTABLE_NODES = Object.freeze([
   'blockquote',
   'bulletList',
@@ -83,4 +91,24 @@ export function resolveRichTextProfile(
     throw new TypeError(`Unknown Studio rich-text profile "${id}".`);
   }
   return resolved;
+}
+
+/**
+ * Select the closed profile used for prose nested in first-party interactive
+ * page controls. Unknown runtime input fails closed instead of silently
+ * widening the editor grammar.
+ */
+export function resolveContainerRichTextProfile(
+  containerType: StudioRichTextContainerType,
+): StudioRichTextProfileId {
+  switch (containerType) {
+    case 'studio.core/accordion-item':
+    case 'studio.core/dialog':
+    case 'studio.core/notice':
+    case 'studio.core/popover':
+    case 'studio.core/tab':
+      return 'studio.rich-text/marketing';
+    default:
+      throw new TypeError(`Unknown Studio rich-text container "${String(containerType)}".`);
+  }
 }
