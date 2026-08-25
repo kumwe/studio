@@ -37,6 +37,7 @@ export type StudioWebEnhancement =
       scope: string;
       target: string;
     }
+  | { kind: 'navigation'; nodeId: string; scope: string }
   | { kind: 'diagram'; nodeId: string; scope: string; source: string }
   | { kind: 'dialog'; modal: boolean; nodeId: string; scope: string }
   | { kind: 'math'; displayMode: boolean; nodeId: string; scope: string; source: string }

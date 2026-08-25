@@ -200,7 +200,7 @@ async function renderType(
     case CORE_PRODUCTION_BLOCK_TYPES.label:
       return label(node, state);
     case CORE_PRODUCTION_BLOCK_TYPES.navigation:
-      return navigation(node, state);
+      return navigation(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.navigationItem:
       return navigationItem(node, state);
     case CORE_PRODUCTION_BLOCK_TYPES.progress:
@@ -339,7 +339,7 @@ async function math(
   state: RenderState,
 ): Promise<string> {
   const sourceValue = stringValue(await bindingValue(node, 'source', state));
-  const displayMode = node.properties.displayMode !== false;
+  const displayMode = node.properties['display-mode'] !== false;
   state.enhancements.push({
     displayMode,
     kind: 'math',
@@ -365,7 +365,7 @@ async function dialog(
   scope: string,
   state: RenderState,
 ): Promise<string> {
-  const trigger = stringValue(await bindingValue(node, 'triggerLabel', state)) || 'Open dialog';
+  const trigger = stringValue(await bindingValue(node, 'trigger-label', state)) || 'Open dialog';
   const title = stringValue(await bindingValue(node, 'title', state)) || 'Dialog';
   const modal = node.properties.modal !== false;
   const candidatePresentation = stringProperty(node.properties.presentation, '');
@@ -552,7 +552,7 @@ async function popover(
   scope: string,
   state: RenderState,
 ): Promise<string> {
-  const trigger = stringValue(await bindingValue(node, 'triggerLabel', state)) || 'Show details';
+  const trigger = stringValue(await bindingValue(node, 'trigger-label', state)) || 'Show details';
   const title = stringValue(await bindingValue(node, 'title', state));
   const candidate = typeof node.properties.placement === 'string' ? node.properties.placement : '';
   const placement = ['auto', 'bottom', 'left', 'right', 'top'].includes(candidate)
@@ -566,7 +566,7 @@ async function popover(
       ? candidatePresentation
       : 'popover';
   state.enhancements.push({
-    dismissOnBlur: node.properties.dismissOnBlur !== false,
+    dismissOnBlur: node.properties['dismiss-on-blur'] !== false,
     kind: 'popover',
     nodeId: node.id,
     presentation,
@@ -598,12 +598,12 @@ async function countdown(
   const timestamp = Date.parse(target);
   if (!Number.isFinite(timestamp)) return '<span role="status">Countdown unavailable</span>';
   const targetIso = new Date(timestamp).toISOString();
-  const completionMessage = stringValue(await bindingValue(node, 'completionMessage', state));
+  const completionMessage = stringValue(await bindingValue(node, 'completion-message', state));
   const display = node.properties.display === 'compact' ? 'compact' : 'detailed';
   const expiredBehavior = ['hide', 'message', 'zero'].includes(
-    stringProperty(node.properties.expiredBehavior, ''),
+    stringProperty(node.properties['expired-behavior'], ''),
   )
-    ? (stringProperty(node.properties.expiredBehavior, '') as 'hide' | 'message' | 'zero')
+    ? (stringProperty(node.properties['expired-behavior'], '') as 'hide' | 'message' | 'zero')
     : 'zero';
   state.enhancements.push({
     completionMessage,
@@ -669,7 +669,7 @@ async function icon(node: Readonly<BlueprintNode>, state: RenderState): Promise<
     ? candidate
     : 'symbol';
   const decorative = node.properties.decorative !== false;
-  const alternative = stringValue(await bindingValue(node, 'alternativeText', state)) || 'Icon';
+  const alternative = stringValue(await bindingValue(node, 'alternative-text', state)) || 'Icon';
   return `<span data-studio-icon="${escapeAttribute(name)}" aria-hidden="true"></span>${decorative ? '' : `<span class="studio-visually-hidden">${escapeHtml(alternative)}</span>`}`;
 }
 
@@ -677,7 +677,11 @@ async function label(node: Readonly<BlueprintNode>, state: RenderState): Promise
   return `<span data-studio-label data-studio-tone="${toneProperty(node.properties.tone)}">${escapeHtml(stringValue(await bindingValue(node, 'text', state)))}</span>`;
 }
 
-async function navigation(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+async function navigation(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
   const candidate = stringProperty(node.properties.presentation, '');
   const presentation = [
     'breadcrumbs',
@@ -695,6 +699,9 @@ async function navigation(node: Readonly<BlueprintNode>, state: RenderState): Pr
   const items = await Promise.all(
     (node.slots.items ?? []).map((item) => navigationItem(item, state)),
   );
+  if ((node.slots.items ?? []).some((item) => (item.slots.children ?? []).length > 0)) {
+    state.enhancements.push({ kind: 'navigation', nodeId: node.id, scope });
+  }
   return `<nav data-studio-navigation="${presentation}" aria-label="${escapeAttribute(accessibleLabel)}"><ul>${items.join('')}</ul></nav>`;
 }
 
@@ -708,7 +715,7 @@ async function navigationItem(node: Readonly<BlueprintNode>, state: RenderState)
   const childItems = await Promise.all(
     (node.slots.children ?? []).map((item) => navigationItem(item, state)),
   );
-  return `<li data-studio-navigation-item data-studio-node="${escapeAttribute(node.id)}">${labelMarkup}${childItems.length === 0 ? '' : `<ul>${childItems.join('')}</ul>`}</li>`;
+  return `<li data-studio-navigation-item data-studio-node="${escapeAttribute(node.id)}">${labelMarkup}${childItems.length === 0 ? '' : `<button type="button" data-studio-navigation-toggle aria-label="Toggle ${escapeAttribute(labelValue)} navigation">Expand</button><ul data-studio-navigation-children>${childItems.join('')}</ul>`}</li>`;
 }
 
 async function progress(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -724,7 +731,7 @@ async function progress(node: Readonly<BlueprintNode>, state: RenderState): Prom
 
 async function search(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
   const action = safeUrl(stringProperty(node.properties.action, ''));
-  const candidate = stringProperty(node.properties.queryParameter, 'q');
+  const candidate = stringProperty(node.properties['query-parameter'], 'q');
   const parameter = /^[A-Za-z][A-Za-z0-9_-]{0,99}$/u.test(candidate) ? candidate : 'q';
   const labelValue = stringValue(await bindingValue(node, 'label', state)) || 'Search';
   const placeholder = stringValue(await bindingValue(node, 'placeholder', state));

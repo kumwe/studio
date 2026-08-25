@@ -177,7 +177,7 @@ describe('semantic web renderer', () => {
     const dialog = node(
       'dialog',
       CORE_PRODUCTION_BLOCK_TYPES.dialog,
-      { title: 'Delete item', triggerLabel: 'Review deletion' },
+      { title: 'Delete item', 'trigger-label': 'Review deletion' },
       {
         content: [node('dialog-copy', CORE_PRODUCTION_BLOCK_TYPES.richText, { content: richText })],
       },
@@ -185,7 +185,7 @@ describe('semantic web renderer', () => {
     const popover = node(
       'popover',
       CORE_PRODUCTION_BLOCK_TYPES.popover,
-      { title: 'More information', triggerLabel: 'Learn more' },
+      { title: 'More information', 'trigger-label': 'Learn more' },
       {
         content: [
           node('popover-copy', CORE_PRODUCTION_BLOCK_TYPES.richText, { content: richText }),
@@ -256,7 +256,7 @@ describe('semantic web renderer', () => {
       table: { columns: ['Name'], rows: [['<safe>']] },
     });
     const searchNode = node('search', CORE_PRODUCTION_BLOCK_TYPES.search, { label: 'Find' });
-    searchNode.properties = { action: 'javascript:alert(1)', queryParameter: 'query' };
+    searchNode.properties = { action: 'javascript:alert(1)', 'query-parameter': 'query' };
     const progressNode = node('progress', CORE_PRODUCTION_BLOCK_TYPES.progress, {
       label: 'Complete',
       value: 75,

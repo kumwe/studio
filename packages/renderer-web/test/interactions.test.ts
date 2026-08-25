@@ -43,7 +43,7 @@ describe('trusted progressive interaction controller', () => {
         node(
           'dialog',
           CORE_PRODUCTION_BLOCK_TYPES.dialog,
-          { title: 'Settings', triggerLabel: 'Open settings' },
+          { title: 'Settings', 'trigger-label': 'Open settings' },
           { content: [] },
         ),
       ],
@@ -80,7 +80,7 @@ describe('trusted progressive interaction controller', () => {
         node(
           'popover',
           CORE_PRODUCTION_BLOCK_TYPES.popover,
-          { triggerLabel: 'Help' },
+          { 'trigger-label': 'Help' },
           { content: [] },
         ),
         node(
@@ -146,9 +146,9 @@ describe('trusted progressive interaction controller', () => {
       const countdown = node(
         'countdown',
         CORE_PRODUCTION_BLOCK_TYPES.countdown,
-        { completionMessage: 'Finished', target: '2030-01-01T00:00:01.000Z' },
+        { 'completion-message': 'Finished', target: '2030-01-01T00:00:01.000Z' },
         {},
-        { display: 'compact', expiredBehavior: 'message' },
+        { display: 'compact', 'expired-behavior': 'message' },
       );
       const result = await renderStudioWeb({ roots: [countdown] });
       const host = document.createElement('div');

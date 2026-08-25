@@ -40,6 +40,9 @@ export async function enhanceStudioWeb(
       case 'lightbox':
         disposers.push(enhanceLightbox(container));
         break;
+      case 'navigation':
+        disposers.push(enhanceNavigation(container));
+        break;
       case 'slideshow':
         disposers.push(enhanceSlideshow(container, enhancement));
         break;
@@ -406,6 +409,43 @@ function enhanceLightbox(container: HTMLElement): () => void {
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
     if (dialog.open) closeDialog();
     dialog.remove();
+  };
+}
+
+function enhanceNavigation(container: HTMLElement): () => void {
+  const toggles = [
+    ...container.querySelectorAll<HTMLButtonElement>('[data-studio-navigation-toggle]'),
+  ];
+  const listeners: { listener: EventListener; target: EventTarget; type: string }[] = [];
+  for (const toggle of toggles) {
+    const item = toggle.closest<HTMLElement>('[data-studio-navigation-item]');
+    const children = item?.querySelector<HTMLElement>(':scope > [data-studio-navigation-children]');
+    if (item === null || children === undefined || children === null) continue;
+    children.hidden = true;
+    toggle.setAttribute('aria-expanded', 'false');
+    listen(listeners, toggle, 'click', () => {
+      children.hidden = !children.hidden;
+      toggle.setAttribute('aria-expanded', String(!children.hidden));
+    });
+    listen(listeners, item, 'keydown', (event) => {
+      if (event instanceof KeyboardEvent && event.key === 'Escape' && !children.hidden) {
+        event.preventDefault();
+        children.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.focus();
+      }
+    });
+  }
+  return () => {
+    listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+    for (const toggle of toggles) {
+      toggle.removeAttribute('aria-expanded');
+      const item = toggle.closest<HTMLElement>('[data-studio-navigation-item]');
+      const children = item?.querySelector<HTMLElement>(
+        ':scope > [data-studio-navigation-children]',
+      );
+      if (children !== undefined && children !== null) children.hidden = false;
+    }
   };
 }
 
