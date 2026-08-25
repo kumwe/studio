@@ -6,6 +6,7 @@ import {
   createCoreProductionBlockDefinitions,
   createCoreProductionPatterns,
   isCoreProductionBlockType,
+  validateBlueprint,
 } from '@kumwe/studio-core';
 import { PreviewClient } from '@kumwe/studio-preview';
 import {
@@ -34,6 +35,7 @@ defineKumweStudio();
 
 const blocks: BlockDefinition[] = createCoreProductionBlockDefinitions();
 const blockRegistry = new BlockRegistry(blocks);
+const browserDraftKey = 'studio.reference/draft-v1';
 
 const configuration: ExperimentalShellConfiguration = {
   blockDefinitions: blocks,
@@ -211,6 +213,35 @@ requireButton('.reference-new').addEventListener('click', () => {
 requireButton('.reference-demo').addEventListener('click', () => {
   studio.document = structuredClone(blueprint);
 });
+requireButton('.reference-save').addEventListener('click', () => {
+  const current = studio.document;
+  if (current === undefined || !validateBlueprint(current, blockRegistry).valid) {
+    announceReferenceSession('The current draft is invalid and was not saved.', true);
+    return;
+  }
+  localStorage.setItem(browserDraftKey, JSON.stringify(current));
+  announceReferenceSession('Browser draft saved.');
+});
+requireButton('.reference-reload').addEventListener('click', () => {
+  const serialized = localStorage.getItem(browserDraftKey);
+  if (serialized === null) {
+    announceReferenceSession('No browser draft has been saved.', true);
+    return;
+  }
+  try {
+    const candidate = JSON.parse(serialized) as BlueprintDocument;
+    if (!validateBlueprint(candidate, blockRegistry).valid) {
+      throw new Error('The saved draft no longer validates against this catalog.');
+    }
+    studio.document = structuredClone(candidate);
+    announceReferenceSession('Browser draft reloaded.');
+  } catch (error) {
+    announceReferenceSession(
+      error instanceof Error ? error.message : 'The browser draft could not be reloaded.',
+      true,
+    );
+  }
+});
 
 studio.addEventListener('studio-insert-request', (event: Event) => {
   const customEvent = event as CustomEvent<{
@@ -325,6 +356,12 @@ function requireButton(selector: string): HTMLButtonElement {
   const element = document.querySelector<HTMLButtonElement>(selector);
   if (element === null) throw new Error(`Reference host is missing control ${selector}.`);
   return element;
+}
+
+function announceReferenceSession(message: string, error = false): void {
+  const status = requirePaneElement('.reference-session-status');
+  status.setAttribute('role', error ? 'alert' : 'status');
+  status.textContent = message;
 }
 
 function findNode(nodes: readonly BlueprintNode[], id: string): BlueprintNode | undefined {

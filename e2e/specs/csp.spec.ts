@@ -13,19 +13,20 @@ import { openShell, populateShell } from '../support/shell.js';
  * Core validation is interpreted (packages/core/src/profile-validator.ts),
  * so the policy carries the contract's `default-src 'none'; script-src
  * 'self'` baseline with no 'unsafe-eval', and Trusted Types is enforced with
- * `lit-html` as the only allowed policy (Lit parses its static template
- * strings through it; the shell itself creates no other policy).
+ * two allowlisted policies: `lit-html` parses the shell's static templates,
+ * while `studio-renderer` accepts only output returned directly by the
+ * production escaping/sanitization renderer.
  */
 const PINNED_POLICY = [
   "default-src 'none'",
   "script-src 'self'",
   "require-trusted-types-for 'script'",
-  'trusted-types lit-html',
-  "style-src 'self'",
+  'trusted-types lit-html studio-renderer',
+  "style-src 'self' 'nonce-studio-reference-style-v1'",
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
-  "media-src 'none'",
+  "media-src 'self'",
   "worker-src 'none'",
   "frame-src 'none'",
   "manifest-src 'none'",
@@ -109,8 +110,7 @@ test('the chrome completes an authoring pass under the pinned policy without vio
   // failed under it.
 
   // Negative control for Trusted Types: a raw string written to a governed
-  // sink must be refused and reported, because only the `lit-html` policy
-  // exists and no default policy is registered.
+  // sink must be refused and reported, because no default policy exists.
   const rawSinkRefused = await page.evaluate(() => {
     try {
       document.createElement('div').innerHTML = '<img alt="">';
@@ -122,7 +122,8 @@ test('the chrome completes an authoring pass under the pinned policy without vio
   expect(rawSinkRefused).toBe(true);
 
   // A page script also cannot mint itself an escape hatch: the policy list
-  // admits `lit-html` only, so creating any other policy is refused.
+  // admits exactly the two application policies, so creating any other
+  // policy is refused.
   const roguePolicyRefused = await page.evaluate(() => {
     const factory = (
       window as unknown as {

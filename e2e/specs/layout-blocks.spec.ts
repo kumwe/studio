@@ -24,18 +24,17 @@ test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }
       .click();
   }
 
-  const grid = surface.locator('.preview-grid-block');
-  const slot = grid.locator(':scope > .preview-slot');
-  await expect(slot.locator(':scope > .preview-stack')).toHaveCount(4);
+  const grid = surface.locator('[data-studio-block="grid"]');
+  const layout = grid.locator(':scope > [data-studio-layout="grid"]');
+  await expect(layout.locator(':scope > [data-studio-block="stack"]')).toHaveCount(4);
 
   const renderedColumns = async (): Promise<number> =>
-    slot.evaluate((element) => {
+    layout.evaluate((element) => {
       const tracks = getComputedStyle(element).gridTemplateColumns.trim();
       return tracks === '' || tracks === 'none' ? 0 : tracks.split(/\s+/u).length;
     });
 
   await expect(surface).toHaveAttribute('data-preview-viewport', 'compact');
-  await expect(grid).toHaveAttribute('data-layout-columns', '1');
   expect(await renderedColumns()).toBe(1);
 
   await shell
@@ -43,7 +42,6 @@ test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }
     .getByRole('button', { name: 'Medium' })
     .click();
   await expect(surface).toHaveAttribute('data-preview-viewport', 'medium');
-  await expect(grid).toHaveAttribute('data-layout-columns', '2');
   expect(await renderedColumns()).toBe(2);
 
   await shell
@@ -51,7 +49,6 @@ test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }
     .getByRole('button', { name: 'Expanded' })
     .click();
   await expect(surface).toHaveAttribute('data-preview-viewport', 'expanded');
-  await expect(grid).toHaveAttribute('data-layout-columns', '4');
   expect(await renderedColumns()).toBe(4);
 
   const persisted = await shell.evaluate((element) => {

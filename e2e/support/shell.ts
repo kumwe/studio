@@ -12,6 +12,11 @@ export async function openShell(page: Page): Promise<Locator> {
       name: 'Section',
     }),
   ).toBeVisible();
+  // Mutation-focused specs start from the explicit blank-page action. The
+  // default route remains the representative 45-block production page for
+  // demo and delivery coverage.
+  await page.locator('.reference-new').click();
+  await expect(page.locator('.preview-surface .preview-empty')).toBeVisible();
   return shell;
 }
 
