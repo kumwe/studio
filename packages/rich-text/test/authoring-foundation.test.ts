@@ -20,12 +20,11 @@ const INITIAL: StudioRichTextDocument = {
 };
 
 class TestSurface implements StudioRichTextSurface {
+  public readonly options: StudioRichTextSurfaceOptions;
   public value: unknown;
 
-  public constructor(
-    value: StudioRichTextDocument,
-    readonly options: StudioRichTextSurfaceOptions,
-  ) {
+  public constructor(value: StudioRichTextDocument, options: StudioRichTextSurfaceOptions) {
+    this.options = options;
     this.value = structuredClone(value);
   }
 
