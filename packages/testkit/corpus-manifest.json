@@ -1172,16 +1172,36 @@
     {
       "files": [
         {
-          "digest": "sha256-gYLt/6rwo8QRm+guMxuJtgzLQT/goMKgO7dR4MU9Q2o=",
+          "digest": "sha256-um5bUbyx+OjtIAus2YHG00cP/2zSjS3JTCdfnsFOpfw=",
+          "file": "blob-default-deny.json"
+        },
+        {
+          "digest": "sha256-Oehibv24K+zMZTUR12Ixfzb6F8FByn66QJtPrd3nXbI=",
           "file": "chart-fallback.json"
         },
         {
-          "digest": "sha256-qAfGHi8c1LZTzhFKSqmt3iOg8WWbTY3/2IvE7Bkbs7U=",
+          "digest": "sha256-krLoaThBgvfJZZspN3eznM2InlMA+WwsStDAGUl3sQ4=",
+          "file": "complete-catalog.json"
+        },
+        {
+          "digest": "sha256-7lirFue9gaXchg9DzSllFjDp9p4dcW/C4M3+iEdORRQ=",
           "file": "escaped-heading.json"
         },
         {
-          "digest": "sha256-BTMCmdYmoICp1BsMRA/XucTXs/hUY1DZGrPHa6vocdY=",
+          "digest": "sha256-4KMn5HGQ7zXvdy6IUbpywBRIxXf+IyKl8IYWid/6Wg4=",
+          "file": "interactive-behaviors.json"
+        },
+        {
+          "digest": "sha256-dgJ3SWlGYPHLQtp1WXgmiWlwE35LitFsrQOgvYw3aqM=",
+          "file": "presentation-capabilities.json"
+        },
+        {
+          "digest": "sha256-mSB0xRbCvWVb1QmcjjKcZEhXibjbr+5Xxg1FKIIkMrk=",
           "file": "responsive-grid.json"
+        },
+        {
+          "digest": "sha256-e4Y140UiCb3kabaYhc5QzNFvOzCrLpE3RSSXf2c9x8E=",
+          "file": "security-fallbacks.json"
         }
       ],
       "group": "renderer-web-conformance",

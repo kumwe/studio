@@ -1,5 +1,11 @@
 {
   "id": "renderer-web/escaped-heading",
+  "coverage": {
+    "blockTypes": ["studio.core/heading"],
+    "behaviors": [],
+    "presentation": [],
+    "security": ["escaped-text"]
+  },
   "roots": [
     {
       "authoring": { "mode": "content" },

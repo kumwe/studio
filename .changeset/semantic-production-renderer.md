@@ -13,3 +13,6 @@ spacing, sizing, positioning, printing, scrolling, markers, and reduced-motion-a
 Add consolidated article, cover, badge/label, icon, navigation, description-list, countdown,
 divider, progress, search, spinner, and canonical table families plus lightbox, offcanvas, overlay,
 dropdown, tooltip, and explicit blob-media preview behavior.
+Publish an exhaustive, language-neutral renderer corpus spanning all 45 blocks, progressive
+behaviors, presentation capabilities, and security fallbacks so browser and server adapters replay
+one semantic contract.

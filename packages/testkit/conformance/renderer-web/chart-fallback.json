@@ -1,5 +1,11 @@
 {
   "id": "renderer-web/chart-fallback",
+  "coverage": {
+    "blockTypes": ["studio.core/chart"],
+    "behaviors": [],
+    "presentation": [],
+    "security": ["typed-data-fallback"]
+  },
   "roots": [
     {
       "authoring": { "mode": "content" },

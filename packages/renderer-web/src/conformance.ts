@@ -19,8 +19,17 @@ export interface RendererWebVectorExpectation {
   htmlExcludes: string[];
 }
 
+export interface RendererWebVectorCoverage {
+  behaviors: string[];
+  blockTypes: string[];
+  presentation: string[];
+  security: string[];
+}
+
 export interface RendererWebVector {
   bindings: RendererWebVectorBinding[];
+  context?: { allowBlobMedia?: boolean };
+  coverage: RendererWebVectorCoverage;
   expect: RendererWebVectorExpectation;
   id: string;
   media: RendererWebVectorMedia[];
@@ -44,6 +53,9 @@ export async function runRendererWebVector(
   const output = await renderStudioWeb(
     { roots: vector.roots },
     {
+      ...(vector.context?.allowBlobMedia === undefined
+        ? {}
+        : { allowBlobMedia: vector.context.allowBlobMedia }),
       resolveBinding: (node, port) => bindingMap.get(`${node.id}\u0000${port}`),
       resolveMedia: (reference) => {
         const resolved = mediaMap.get(reference.assetId);

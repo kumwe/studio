@@ -354,7 +354,88 @@ const validateRendererWebVector = getCanonicalValidator('renderer-web-vector.sch
 if (rendererWebConformanceFiles.length === 0) {
   throw new Error('The canonical renderer-web conformance corpus is empty.');
 }
+const expectedRendererWebBlockTypes = [
+  'studio.core/accordion',
+  'studio.core/accordion-item',
+  'studio.core/article',
+  'studio.core/attachment',
+  'studio.core/audio',
+  'studio.core/badge',
+  'studio.core/call-to-action',
+  'studio.core/callout',
+  'studio.core/card',
+  'studio.core/chart',
+  'studio.core/code',
+  'studio.core/columns',
+  'studio.core/content-collection',
+  'studio.core/content-reference',
+  'studio.core/countdown',
+  'studio.core/cover',
+  'studio.core/description-item',
+  'studio.core/description-list',
+  'studio.core/diagram',
+  'studio.core/dialog',
+  'studio.core/divider',
+  'studio.core/drawing',
+  'studio.core/embed',
+  'studio.core/gallery',
+  'studio.core/grid',
+  'studio.core/heading',
+  'studio.core/icon',
+  'studio.core/image',
+  'studio.core/label',
+  'studio.core/math',
+  'studio.core/money',
+  'studio.core/navigation',
+  'studio.core/navigation-item',
+  'studio.core/notice',
+  'studio.core/popover',
+  'studio.core/progress',
+  'studio.core/rich-text',
+  'studio.core/search',
+  'studio.core/section',
+  'studio.core/spinner',
+  'studio.core/stack',
+  'studio.core/tab',
+  'studio.core/table',
+  'studio.core/tabs',
+  'studio.core/video',
+];
+const expectedRendererWebBehaviors = [
+  'accordion-native',
+  'countdown',
+  'dialog',
+  'lightbox',
+  'navigation-disclosure',
+  'notice-dismiss',
+  'popover',
+  'slideshow',
+  'tabs',
+];
+const expectedRendererWebPresentation = [
+  'alignment',
+  'inverse',
+  'markers',
+  'motion',
+  'position',
+  'print',
+  'responsive-visibility',
+  'scrolling',
+  'sizing',
+  'spacing',
+];
+const expectedRendererWebSecurity = [
+  'active-media-deny',
+  'blob-default-deny',
+  'escaped-text',
+  'safe-url-deny',
+  'typed-data-fallback',
+];
 const rendererWebVectorIdentifiers = new Set();
+const coveredRendererWebBlockTypes = new Set();
+const coveredRendererWebBehaviors = new Set();
+const coveredRendererWebPresentation = new Set();
+const coveredRendererWebSecurity = new Set();
 for (const vectorFile of rendererWebConformanceFiles) {
   const vector = JSON.parse(
     await readFile(new URL(vectorFile, rootRendererWebConformanceDirectory), 'utf8'),
@@ -369,7 +450,43 @@ for (const vectorFile of rendererWebConformanceFiles) {
     throw new Error(`Renderer-web vector identifier ${vector.id} is duplicated.`);
   }
   rendererWebVectorIdentifiers.add(vector.id);
+  const nodeTypes = new Set();
+  const visitNode = (node) => {
+    nodeTypes.add(node.type);
+    for (const slot of Object.values(node.slots)) for (const child of slot) visitNode(child);
+  };
+  for (const root of vector.roots) visitNode(root);
+  for (const type of vector.coverage.blockTypes) {
+    if (!nodeTypes.has(type)) {
+      throw new Error(`${vectorFile} claims coverage for absent block type ${type}.`);
+    }
+    coveredRendererWebBlockTypes.add(type);
+  }
+  for (const behavior of vector.coverage.behaviors) coveredRendererWebBehaviors.add(behavior);
+  for (const capability of vector.coverage.presentation)
+    coveredRendererWebPresentation.add(capability);
+  for (const fallback of vector.coverage.security) coveredRendererWebSecurity.add(fallback);
 }
+assertExactSet(
+  'Renderer-web block coverage',
+  expectedRendererWebBlockTypes,
+  coveredRendererWebBlockTypes,
+);
+assertExactSet(
+  'Renderer-web behavior coverage',
+  expectedRendererWebBehaviors,
+  coveredRendererWebBehaviors,
+);
+assertExactSet(
+  'Renderer-web presentation coverage',
+  expectedRendererWebPresentation,
+  coveredRendererWebPresentation,
+);
+assertExactSet(
+  'Renderer-web security coverage',
+  expectedRendererWebSecurity,
+  coveredRendererWebSecurity,
+);
 
 const schemaByExample = new Map([
   ['authoring-message-catalog.en.json', 'authoring-message-catalog.schema.json'],
@@ -1488,6 +1605,16 @@ function assertSameNames(label, expected, actual) {
   if (JSON.stringify(expected) !== JSON.stringify(actual)) {
     throw new Error(
       `${label} differ: expected ${expected.join(', ')}, received ${actual.join(', ')}`,
+    );
+  }
+}
+
+function assertExactSet(label, expected, actual) {
+  const expectedValues = [...new Set(expected)].sort();
+  const actualValues = [...actual].sort();
+  if (JSON.stringify(expectedValues) !== JSON.stringify(actualValues)) {
+    throw new Error(
+      `${label} differs: expected ${expectedValues.join(', ')}, received ${actualValues.join(', ')}`,
     );
   }
 }

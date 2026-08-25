@@ -45,3 +45,9 @@ The package does not parse arbitrary HTML. A host or authoring adapter must conv
 HTML into `SafeMarkupFragment`, whose tags and attributes are rechecked and escaped on output. Scoped
 style overrides are likewise structured host input, property/value allowlisted, node-bounded, and
 rendered under the host's CSP nonce. Authored JavaScript is never accepted.
+
+The eight canonical JSON vectors in `schemas/conformance/renderer-web` are the portable contract for
+all 45 block types, every Studio-owned progressive behavior and presentation capability, and the
+security fallbacks. Browser and server renderers must replay the same corpus. This prevents a
+PHP/Twig host, for example, from re-inventing Studio semantics while still allowing it to use native
+templates and caching internally.
