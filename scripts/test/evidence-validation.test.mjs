@@ -183,7 +183,15 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
 
   const releaseWorkflow = await readFile(`${repositoryRoot}/.github/workflows/release.yml`, 'utf8');
   assert.match(releaseWorkflow, /ref: \$\{\{ inputs\.gate_record_sha \}\}/u);
-  assert.match(releaseWorkflow, /sparse-checkout: evidence/u);
+  assert.match(releaseWorkflow, /path: \.release-evidence/u);
+  assert.doesNotMatch(releaseWorkflow, /sparse-checkout:/u);
+  assert.match(releaseWorkflow, /environment: studio-\$\{\{ inputs\.channel \}\}/u);
+  assert.match(releaseWorkflow, /NPM_CONFIG_PROVENANCE: 'true'/u);
+  assert.doesNotMatch(
+    releaseWorkflow.split('\n  publish:')[0],
+    /NPM_TOKEN|NODE_AUTH_TOKEN/u,
+    'plan and preparation must never receive npm credentials',
+  );
 
   const setupAction = await readFile(
     `${repositoryRoot}/.github/actions/setup-studio/action.yml`,

@@ -3,6 +3,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
+import { classifyReleaseVersion } from './release-policy.mjs';
+
 const execFileAsync = promisify(execFile);
 
 const packagesDirectory = new URL('../packages/', import.meta.url);
@@ -38,8 +40,10 @@ for (const packageName of packageNames) {
   if (packageLicense !== rootLicense) {
     throw new Error(`${manifest.name ?? packageName} does not carry the canonical license text.`);
   }
-  if (typeof manifest.version !== 'string' || !manifest.version.includes('-')) {
-    throw new Error(`${manifest.name ?? packageName} must remain a prerelease before Gate B.`);
+  if (classifyReleaseVersion(manifest.version) === undefined) {
+    throw new Error(
+      `${manifest.name ?? packageName} must use a governed numeric alpha, rc, or stable coordinate.`,
+    );
   }
   // Provenance-signed publishes verify repository.url against the repository
   // named in the signed build environment; an absent or mismatched field is

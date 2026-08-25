@@ -9,6 +9,7 @@ export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   'package-lock.json',
   'packages/protocol/schemas/manifest.json',
   'packages/testkit/corpus-manifest.json',
+  'release-profile-claims.json',
   'studio-release.json',
 ]);
 

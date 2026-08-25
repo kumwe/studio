@@ -53,6 +53,34 @@ describe('release plan inspection', () => {
 
     await assert.rejects(inspectReleasePlan(root), /mode must be "pre" or "exit"/u);
   });
+
+  it('pauses cleanly while the governed RC train is active', async () => {
+    const root = await fixture({
+      changesets: ['fix.md'],
+      preState: { mode: 'pre', tag: 'rc' },
+    });
+    const plan = await inspectReleasePlan(root);
+    assert.equal(plan.operation, 'inactive');
+    assert.equal(plan.channel, 'rc');
+  });
+
+  it('opens the next alpha train when a post-stable Changeset arrives', async () => {
+    const root = await fixture({ changesets: ['next.md'], preState: undefined });
+    assert.deepEqual(await inspectReleasePlan(root), {
+      channel: 'alpha',
+      hasPendingChangesets: true,
+      operation: 'version',
+      pendingChangesets: ['next'],
+      preMode: 'enter',
+    });
+  });
+
+  it('is inactive after stable while there is no release intent', async () => {
+    const root = await fixture({ changesets: [], preState: undefined });
+    const plan = await inspectReleasePlan(root);
+    assert.equal(plan.operation, 'inactive');
+    assert.equal(plan.preMode, 'none');
+  });
 });
 
 async function fixture({ changesets, preState }) {
@@ -60,7 +88,9 @@ async function fixture({ changesets, preState }) {
   temporaryDirectories.push(directory);
   const root = pathToFileURL(`${directory}/`);
   await mkdir(new URL('.changeset/', root), { recursive: true });
-  await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
+  if (preState !== undefined) {
+    await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
+  }
   await Promise.all(
     changesets.map((name) => writeFile(new URL(`.changeset/${name}`, root), 'fixture\n')),
   );

@@ -71,13 +71,14 @@ registry configuration, and optional Chromium setup. A workflow must not duplica
 `npm run verify` is the contributor gate. It runs the repository check followed by the Chromium accessibility
 and production-browser lane.
 
-| Command                | What it proves                                                                                                                                 |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run doctor`       | Toolchain, full Git history, locked install, and browser availability                                                                          |
-| `npm run check`        | Formatting, lint, TypeScript, boundaries/contracts/evidence/security/release drift, unit/property/Node tests, and production build             |
-| `npm run check:a11y`   | CSP, production page, preview/render, responsive layout, measured canvas, keyboard parity, RTL/touch, reduced motion, reflow, and axe journeys |
-| `npm run verify`       | The complete local contributor gate: `check` plus `check:a11y`                                                                                 |
-| `npm run release:plan` | Whether the alpha train will maintain a version PR or publish a consumed coordinated release                                                   |
+| Command                          | What it proves                                                                                                                                 |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run doctor`                 | Toolchain, full Git history, locked install, and browser availability                                                                          |
+| `npm run check`                  | Formatting, lint, TypeScript, boundaries/contracts/evidence/security/release drift, unit/property/Node tests, and production build             |
+| `npm run check:a11y`             | CSP, production page, preview/render, responsive layout, measured canvas, keyboard parity, RTL/touch, reduced motion, reflow, and axe journeys |
+| `npm run verify`                 | The complete local contributor gate: `check` plus `check:a11y`                                                                                 |
+| `npm run release:plan`           | Whether alpha will version, publish, pause for RC, or wait to open the next post-stable train                                                  |
+| `npm run release:promotion-plan` | Validates and classifies the manual RC/stable operation selected through `PROMOTION_*` environment inputs                                      |
 
 Passing tests proves repository behavior; it does not by itself claim a conformance profile or pass Gate A/B.
 Accepted gate status lives only in `docs/roadmap/STATUS.md` and requires immutable reproduced evidence and the
@@ -96,10 +97,10 @@ flowchart TD
     C --> D["Merge generated version PR"]
     D --> E["Publish and verify alpha.N"]
     E --> F["Pin exact family in hosts"]
-    F --> G["Reproduce profile evidence"]
-    G --> H["Prepare immutable beta or rc PR"]
-    H --> I["Protected prerelease publication"]
-    I --> J["Gate B-qualified stable"]
+    F --> G["Prepare immutable rc.1 PR"]
+    G --> H["Reproduce and accept Gate A evidence"]
+    H --> I["Protected RC publication"]
+    I --> J["Gate B-qualified stable PR and publication"]
 ```
 
 1. Normal merges accumulate Changesets on `main`.
@@ -112,16 +113,60 @@ flowchart TD
    branch `main` with the exact current 40-character `main` SHA. A stale SHA or another branch fails closed.
 5. Hosts pin that exact release and verify `studio-release.json` plus the corpus digest before integration
    qualification.
-6. Beta/RC preparation is an explicit whole-family promotion PR after the required profile evidence. It never
-   edits eight manifests by hand or reuses the alpha publisher. The first intended RC coordinate is
-   `0.1.0-rc.1`; changing only the Changesets tag is forbidden because it would carry the alpha counter forward.
-7. Prerelease publication uses a protected exact-candidate/evidence workflow and a channel-specific npm tag.
-   Stable uses the same line only after Gate B accepts the exact candidate.
+6. **Governed RC and stable promotion** is the only manual promotion entry point. RC preparation generates a
+   reviewable PR for all eight packages. The explicit numeric transform makes `0.1.0-alpha.9` become
+   `0.1.0-rc.1`; changing only the Changesets tag is forbidden because that would produce `rc.10`.
+7. **Evidence bundle** is supporting machinery, never a publisher. Generate bundles against the merged,
+   immutable RC candidate; reproduce them independently; commit the accepted records in a later commit; and
+   update `docs/roadmap/STATUS.md` only through the documented human review process.
+8. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
+   revalidates Gate A, the candidate/evidence ancestry, profile claims, current `main`, all eight package pins,
+   npm provenance, the `rc` tag, and the GitHub release before using `NPM_TOKEN`.
+9. A release-blocking RC correction carries non-empty, patch-only Changesets. Dispatching the same workflow
+   with `channel` `rc` and no evidence SHAs creates the next generated coordinate (`rc.1` to `rc.2`). Feature,
+   minor, and major work returns to the next alpha train. The corrected candidate needs fresh evidence; an RC
+   is never overwritten.
+10. Gate B qualifies the published RC. The promotion workflow first verifies Gate A and Gate B and creates the
+    deterministic stable metadata PR, then a second exact-SHA dispatch publishes from its merged commit through
+    the protected `studio-stable` environment and the npm `latest` tag.
+11. Stable removes Changesets prerelease state. The alpha workflow then waits without error; the first later
+    feature Changeset enters a fresh alpha train automatically, so release development does not dead-end. The
+    Changeset selects the next semantic base (`0.1.0` plus a patch Changeset becomes `0.1.1-alpha.0`), and later
+    version PRs on that train advance the numeric `alpha.N` counter.
 
-At present the alpha publisher is implemented. The evidence bundle and Gate B readiness workflows are
-qualification tools, not publishers. The protected RC/stable publisher remains disabled until its evidence,
-integrity, provenance, reviewer, and recovery guards are implemented and accepted; no contributor may work
-around that boundary with `npm publish`.
+### Promotion dispatch contract
+
+| Intent                      | `expected_main_sha`                                        | `channel` | `profiles`                                    | `candidate_sha` / `gate_record_sha`             |
+| --------------------------- | ---------------------------------------------------------- | --------- | --------------------------------------------- | ----------------------------------------------- |
+| Prepare `rc.1`              | Exact current alpha `main`                                 | `rc`      | Non-empty comma-separated executable profiles | Both empty                                      |
+| Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                         | Both empty                                      |
+| Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                         | Exact RC candidate, then later evidence commit  |
+| Prepare stable              | Exact current RC `main` containing accepted Gate A and B   | `stable`  | Empty                                         | Gate B-qualified RC, then later evidence commit |
+| Publish stable              | Exact merged stable-promotion commit at `main`             | `stable`  | Empty                                         | Gate B-qualified RC, then its evidence commit   |
+
+`profiles` accepts only these currently declared executable Version 2 IDs:
+`studio.profile/binding-projection-v1`, `studio.profile/engine-core`,
+`studio.profile/host-baseline`, `studio.profile/host-baseline-v2`,
+`studio.profile/media-policy`, `studio.profile/preview-identity-v1`,
+`studio.profile/renderer-web`, and `studio.profile/schema-property`. A whole-family RC may propose all eight as
+one comma-separated value, but every listed profile must later appear in reproduced evidence and exactly match
+the passing gate record. `studio.profile/authoring-web` is still a target and is rejected.
+
+The repository currently records Gate A as **Not assessed** and Gate B as **Blocked**. Therefore the promotion
+workflow is implemented but correctly refuses RC or stable publication today. Do not add placeholder claims,
+sample bundles, or invented gate records to make it pass.
+
+Preparation never receives npm credentials. Publication is retry-safe: already-published packages are left in
+place, all eight coordinates are rechecked, distribution tags are reconciled, and an existing GitHub release
+must resolve to the same source commit. After rotating `NPM_TOKEN`, repeat the publish dispatch with the same
+candidate/evidence pair and the exact current `main` SHA. If `main` moved, review the new head and dispatch with
+that exact SHA; stale or cross-branch recovery fails closed.
+
+Repository administrators must configure `studio-rc` and `studio-stable` as protected GitHub environments with
+required maintainers/reviewers and deployment restricted to `main`. `NPM_TOKEN` must be scoped for publish and
+dist-tag operations on `@kumwe`, and must never be exposed to pull requests or preparation jobs. Keep branch
+protection on promotion PRs; the environment approval is an additional publication authorization, not a
+substitute for review, evidence, or Gate A/B.
 
 ## Pull-request checklist
 

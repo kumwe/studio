@@ -1,0 +1,98 @@
+import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterEach, describe, it } from 'node:test';
+
+import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { inspectPromotionPlan } from '../promotion-plan.mjs';
+
+const profile = 'studio.profile/engine-core';
+const temporaryDirectories = [];
+
+afterEach(async () => {
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true })),
+  );
+});
+
+describe('promotion plan', () => {
+  it('prepares the first RC from alpha with explicit claims', async () => {
+    const root = await fixture('0.1.0-alpha.9', { mode: 'pre', tag: 'alpha' });
+    const plan = await inspectPromotionPlan(root, { channel: 'rc', profiles: profile });
+    assert.equal(plan.operation, 'prepare');
+    assert.equal(plan.targetVersion, '0.1.0-rc.1');
+    assert.deepEqual(plan.profiles, [profile]);
+  });
+
+  it('prepares an RC correction through pending Changesets', async () => {
+    const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' }, ['fix.md']);
+    const plan = await inspectPromotionPlan(root, { channel: 'rc' });
+    assert.equal(plan.operation, 'correct');
+    assert.equal(plan.targetVersion, '0.1.0-rc.2');
+    assert.deepEqual(plan.profiles, [profile]);
+  });
+
+  it('rejects feature-sized changes in the immutable RC correction lane', async () => {
+    const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' }, ['feature.md']);
+    await writeFile(
+      new URL('.changeset/feature.md', root),
+      '---\n"@kumwe/studio-core": minor\n---\n\nfeature\n',
+    );
+    await assert.rejects(inspectPromotionPlan(root, { channel: 'rc' }), /patch-only Changesets/u);
+  });
+
+  it('publishes an immutable RC only with later evidence', async () => {
+    const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
+    const plan = await inspectPromotionPlan(root, {
+      candidateSha: 'a'.repeat(40),
+      channel: 'rc',
+      evidenceSha: 'b'.repeat(40),
+    });
+    assert.equal(plan.operation, 'publish');
+  });
+
+  it('prepares stable only from a qualified RC and preserves claims', async () => {
+    const root = await fixture('0.1.0-rc.2', { mode: 'pre', tag: 'rc' });
+    const plan = await inspectPromotionPlan(root, {
+      candidateSha: 'a'.repeat(40),
+      channel: 'stable',
+      evidenceSha: 'b'.repeat(40),
+    });
+    assert.equal(plan.operation, 'prepare');
+    assert.equal(plan.targetVersion, '0.1.0');
+    assert.deepEqual(plan.profiles, [profile]);
+  });
+});
+
+async function fixture(version, preState, changesets = []) {
+  const directory = await mkdtemp(join(tmpdir(), 'studio-promotion-plan-'));
+  temporaryDirectories.push(directory);
+  const root = pathToFileURL(`${directory}/`);
+  await mkdir(new URL('.changeset/', root), { recursive: true });
+  await writeFile(new URL('.changeset/README.md', root), 'fixture\n');
+  if (preState !== undefined) {
+    await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
+  }
+  await Promise.all(
+    changesets.map((name) =>
+      writeFile(
+        new URL(`.changeset/${name}`, root),
+        '---\n"@kumwe/studio-core": patch\n---\n\nfixture\n',
+      ),
+    ),
+  );
+  const claimedProfiles = version.includes('-alpha.') ? [] : [profile];
+  await writeFile(
+    new URL('studio-release.json', root),
+    `${JSON.stringify({
+      claimedProfiles,
+      packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
+      release: version,
+    })}\n`,
+  );
+  return root;
+}

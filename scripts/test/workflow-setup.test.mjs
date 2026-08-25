@@ -6,7 +6,7 @@ import test from 'node:test';
 const workflows = new Map([
   ['ci.yml', 2],
   ['evidence-bundle.yml', 1],
-  ['release.yml', 1],
+  ['release.yml', 3],
   ['version-packages.yml', 1],
 ]);
 const workflowRoot = fileURLToPath(new URL('../../.github/workflows/', import.meta.url));

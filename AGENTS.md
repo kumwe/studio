@@ -52,6 +52,11 @@ Run the one repository verification entry point before requesting review:
 npm run verify
 ```
 
+Release work follows the same single lifecycle: automatic coordinated alpha increments, the manual governed
+RC/stable workflow, and evidence bundles used only as supporting qualification records. The exact inputs,
+correction path, next-alpha behavior, and recovery rules are in `CONTRIBUTING.md`; do not invent another
+publisher or hand-edit any member of the eight-package version family.
+
 Do not bypass checks, rewrite generated output by hand, weaken a schema to accept an unexplained fixture, or describe planned work as implemented.
 
 ## Dependency policy

@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   version:
-    name: Maintain the alpha version PR or publish its merged coordinate
+    name: Maintain alpha, publish it, or pause outside the alpha train
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -65,11 +65,16 @@ jobs:
         shell: bash
         env:
           RELEASE_CHANNEL: ${{ steps.plan.outputs.channel }}
+          RELEASE_OPERATION: ${{ steps.plan.outputs.operation }}
           RELEASE_PRE_MODE: ${{ steps.plan.outputs.pre_mode }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_CHANNEL" == "alpha" ]]
-          [[ "$RELEASE_PRE_MODE" == "pre" ]]
+          if [[ "$RELEASE_OPERATION" == "inactive" ]]; then
+            echo "Alpha train is paused while RC is active, or idle until the next post-stable Changeset."
+          else
+            [[ "$RELEASE_CHANNEL" == "alpha" ]]
+            [[ "$RELEASE_PRE_MODE" == "pre" || "$RELEASE_PRE_MODE" == "enter" ]]
+          fi
 
       # Authenticate only on the actual publish path. This lets a missing or
       # rotated token fail publication clearly without blocking creation of the
@@ -90,6 +95,7 @@ jobs:
       # alpha coordinate. Beta, RC, and stable promotion cannot pass this path.
       - name: Create or update version pull request, or publish
         id: release
+        if: steps.plan.outputs.operation != 'inactive'
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           pr-title: 'chore: version Studio packages'

@@ -18,25 +18,27 @@ readiness for the whole product.
 Gate A normally publishes a contract release candidate, not a stable production package. The first stable
 release is impossible before Gate B.
 
-The `alpha` channel is live: the release train publishes the workspace packages to the `alpha` distribution
-tag with provenance on every merge to the default branch, and no `alpha` publish carries a support or
-compatibility claim. Publication on the `beta`, `rc`, and stable channels remains disabled until `M1-04` is
-accepted, qualifying the candidate evidence manifest, protected evidence retrieval, signature and freshness
-verification, artifact hashes, reviewer-independence policy, and channel-specific npm tags. A prerelease
-version in a local manifest is scaffolding and MUST NOT be published manually around that control. The
-release-readiness workflow cannot publish or authenticate to a registry, and passing it is not Gate A or
-Gate B evidence.
+The `alpha` channel is live: the release train versions merged Changesets and publishes the coordinated
+workspace packages to the `alpha` distribution tag with provenance. No `alpha` carries a support or
+compatibility claim. The single manual **Governed RC and stable promotion** workflow implements preparation
+and protected publication, but it fails closed until the exact candidate has accepted, independently
+reproduced evidence, immutable artifact hashes, required human review, and an authoritative passing gate in
+`docs/roadmap/STATUS.md`. The `beta` channel has no automated publisher. A local prerelease version is
+scaffolding and MUST NOT be published manually around these controls.
 
-The current integration candidate introduces `@kumwe/studio-renderer-web` as the eighth package and carries
-the code, changesets, release-record schema, pack checks, notices, and verifier needed for the complete family.
-Its checked-in `studio-release.json` is still the staggered alpha baseline, not proof that those exact eight
-versions are available from npm. After merge, the normal Changesets version workflow must advance all eight
-manifests to one new coordinate and the protected publish workflow must verify every registry artifact before
-Kumwe App or another deployable host updates its pin.
+The **Evidence bundle** workflow only creates pending qualification material. It cannot publish, make a gate
+decision, or authenticate to npm. Gate A is currently not assessed and Gate B is blocked, so neither RC nor
+stable publication can pass today; this is the intended result until real evidence is accepted.
 
-Promotion from `alpha` to `beta` additionally requires a declared, executable conformance profile the
-candidate is feature-complete against, claimed with reproduced evidence. The profiles and their assertion
-sets are in [conformance profiles](../contracts/conformance-profiles.md).
+The checked-in `studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
+one alpha version. That record is not proof that the packages are available from npm. Every publisher verifies
+all eight exact registry versions; RC/stable additionally verify registry integrity, provenance, the channel
+tag, and a source-bound GitHub release before Kumwe App or another deployable host updates its pin.
+
+Conceptual `beta` qualification requires a declared, executable conformance profile the candidate is
+feature-complete against, claimed with reproduced evidence. It does not add a second release route: the
+automated lifecycle advances from `alpha` to the stricter governed `rc` channel. The profiles and their
+assertion sets are in [conformance profiles](../contracts/conformance-profiles.md).
 
 “Release-candidate implementation” may describe a proposed immutable source tree under evaluation. It does
 not mean the npm `rc` channel has opened. An `rc` publication is allowed only after every advertised profile
@@ -51,10 +53,12 @@ records the release version, exact package versions, wire protocol version, corp
 profiles backed by acceptable evidence. The current pre-version alpha baseline claims no profiles.
 
 The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
-fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The version
-command runs Changesets first, regenerates the record, and requires every package version to equal its release
-coordinate. Publication runs the same strict check and a post-publication registry lookup of all eight exact
-versions. Therefore a partial or staggered set cannot be treated as a Studio release.
+fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The alpha
+version command runs Changesets first and regenerates the record. Explicit promotion generation transforms all
+manifests, internal dependency pins, the lockfile, changelogs, prerelease state, profile claims, and all three
+record copies together. The first transition resets `alpha.N` to `rc.1`; a correction Changeset creates
+`rc.N+1`; Gate B promotion removes the suffix without changing runtime code. Post-stable Changesets
+automatically enter a new alpha train. Therefore a partial or staggered set cannot be treated as a release.
 
 Qualification evidence associated with the release record additionally records:
 
@@ -92,6 +96,11 @@ builds.
 
 If a fix is required, create a new commit, versioned candidate, manifest and affected evidence. A mutable
 “latest RC” is not review evidence.
+
+The exact operator inputs, preparation/publication split, and retry procedure are normative operational
+instructions in [`CONTRIBUTING.md`](../../CONTRIBUTING.md). Preparation creates a reviewed PR and never receives
+npm credentials. Publication occurs only after merge in the protected `studio-rc` or `studio-stable`
+environment, revalidates current `main`, and is idempotent after a partial registry publish or token rotation.
 
 ## Publication
 
