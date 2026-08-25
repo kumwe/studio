@@ -4,16 +4,22 @@
 
 Package: `@kumwe/studio`
 
-Production closure SHA-256: `b26681eae2a592bad8d9b95b2e21a70ce0258b36f3a2bfcb1ffc0eb2a967dce6`
+Production closure SHA-256: `2bc88ae552ce1fff7e1699eda3497ffec759549ed433361774115e863585cacb`
 
 The following packages are present in this package's lock-derived production dependency closure.
 They retain their own copyright and license terms.
 
 | Package | Version | Declared license | License text SHA-256 | Evidence source |
 | --- | --- | --- | --- | --- |
+| @editorjs/caret | 1.1.0 | MIT | [`5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1`](third-party-licenses/editorjs__caret-1.1.0.txt) | [curated upstream source](https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE) |
+| @editorjs/dom | 1.1.0 | MIT | [`5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1`](third-party-licenses/editorjs__dom-1.1.0.txt) | [curated upstream source](https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE) |
+| @editorjs/editorjs | 2.31.6 | Apache-2.0 | [`b946f387bbb7de6843c0db34f87a8956f229d220b3bf81b16b8425788cacf3ed`](third-party-licenses/editorjs__editorjs-2.31.6.txt) | [curated upstream source](https://github.com/codex-team/editor.js/blob/v2.31.6/LICENSE) |
+| @editorjs/helpers | 1.2.2 | MIT | [`5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1`](third-party-licenses/editorjs__helpers-1.2.2.txt) | [curated upstream source](https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE) |
 | @lit-labs/ssr-dom-shim | 1.6.0 | BSD-3-Clause | [`2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75`](third-party-licenses/lit-labs__ssr-dom-shim-1.6.0.txt) | [curated upstream source](https://github.com/lit/lit/blob/%40lit-labs/ssr-dom-shim%401.6.0/LICENSE) |
 | @lit/reactive-element | 2.1.2 | BSD-3-Clause | [`2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75`](third-party-licenses/lit__reactive-element-2.1.2.txt) | installed package archive |
 | @types/trusted-types | 2.0.7 | MIT | [`c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383`](third-party-licenses/types__trusted-types-2.0.7.txt) | installed package archive |
+| codex-notifier | 1.1.2 | MIT | [`698022d282ae51ef05451e18cda80381aa74c6a8bb19b4ee4565b1926d36e08a`](third-party-licenses/codex-notifier-1.1.2.txt) | [curated upstream source](https://github.com/codex-team/js-notifier/blob/d000792c90bbde682d438b3554f3b9c8f6ddcb95/LICENSE) |
+| codex-tooltip | 1.0.6 | MIT | [`4350bad7723eb798e1b61d8bb006dbdba611d64257b711f81bc9dc737e82b69f`](third-party-licenses/codex-tooltip-1.0.6.txt) | [curated upstream source](https://github.com/codex-team/codex.tooltips/blob/c1d3798621189ede6aaa66765acd5901b5310275/LICENSE) |
 | lit-element | 4.2.2 | BSD-3-Clause | [`2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75`](third-party-licenses/lit-element-4.2.2.txt) | installed package archive |
 | lit-html | 3.3.3 | BSD-3-Clause | [`2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75`](third-party-licenses/lit-html-3.3.3.txt) | installed package archive |
 | lit | 3.3.3 | BSD-3-Clause | [`2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75`](third-party-licenses/lit-3.3.3.txt) | installed package archive |
