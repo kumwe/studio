@@ -5746,6 +5746,8 @@ function defaultAuthoringControlValue(control: StudioAuthoringControlId): unknow
       return undefined;
     case 'studio.control/scoped-css':
       return { rules: [] };
+    case 'studio.control/table':
+      return { columns: ['Column 1'], rows: [['']] };
   }
 }
 
