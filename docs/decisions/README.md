@@ -31,6 +31,7 @@ These records capture foundational decisions whose reversal would materially aff
 | [0025](0025-measured-preview-visual-canvas.md)     | Direct manipulation uses measured preview geometry             | Proposed |
 | [0026](0026-production-block-catalog.md)           | Studio owns a portable production block catalog                | Proposed |
 | [0027](0027-studio-owned-rich-text-authoring.md)   | Studio owns Editor.js behind canonical rich-text profiles      | Proposed |
+| [0028](0028-portable-semantic-web-renderer.md)     | One portable semantic web renderer with optional adapters      | Proposed |
 | [0034](0034-editorjs-private-authoring-adapter.md) | Editor.js stays behind Studio's canonical authoring boundary   | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

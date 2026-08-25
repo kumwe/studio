@@ -69,6 +69,11 @@ export {
   type CoreProductionBlockType,
 } from './production.js';
 export {
+  parseStudioChartSpec,
+  parseStudioDrawingDocument,
+  parseStudioMoneyValue,
+} from './production-values.js';
+export {
   openStudioSession,
   StudioHostSessionError,
   type OpenStudioSessionOptions,

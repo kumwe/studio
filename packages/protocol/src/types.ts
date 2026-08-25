@@ -298,6 +298,44 @@ export interface BlockDefinition {
   version: SemanticVersion;
 }
 
+/** Canonical, renderer-neutral chart data. It carries no Chart.js configuration. */
+export interface StudioChartDataset {
+  label: string;
+  values: number[];
+}
+
+export interface StudioChartSpec {
+  datasets: StudioChartDataset[];
+  labels: string[];
+  title?: string;
+  type: 'bar' | 'doughnut' | 'line' | 'pie';
+}
+
+export interface StudioDrawingPoint {
+  x: number;
+  y: number;
+}
+
+export interface StudioDrawingStroke {
+  color: string;
+  points: StudioDrawingPoint[];
+  width: number;
+}
+
+/** Bounded vector drawing data; never an SVG or canvas command stream. */
+export interface StudioDrawingDocument {
+  alt: string;
+  height: number;
+  strokes: StudioDrawingStroke[];
+  width: number;
+}
+
+/** Decimal money uses a string so persistence never rounds through a binary float. */
+export interface StudioMoneyValue {
+  amount: string;
+  currency: string;
+}
+
 export interface HostPortCapability {
   id: QualifiedName;
   operations: QualifiedName[];

@@ -52,6 +52,14 @@ const conformanceTargetDirectory = new URL(
   '../packages/testkit/conformance/rich-text/',
   import.meta.url,
 );
+const rendererWebConformanceDirectory = new URL(
+  '../schemas/conformance/renderer-web/',
+  import.meta.url,
+);
+const rendererWebConformanceTargetDirectory = new URL(
+  '../packages/testkit/conformance/renderer-web/',
+  import.meta.url,
+);
 
 await rm(targetDirectory, { force: true, recursive: true });
 await mkdir(targetDirectory, { recursive: true });
@@ -77,6 +85,7 @@ await rm(new URL('../packages/testkit/conformance/', import.meta.url), {
   recursive: true,
 });
 await mkdir(conformanceTargetDirectory, { recursive: true });
+await mkdir(rendererWebConformanceTargetDirectory, { recursive: true });
 
 for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.schema.json')) {
@@ -176,6 +185,15 @@ for (const entry of await readdir(conformanceDirectory, { withFileTypes: true })
   }
 }
 
+for (const entry of await readdir(rendererWebConformanceDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, rendererWebConformanceDirectory),
+      new URL(entry.name, rendererWebConformanceTargetDirectory),
+    );
+  }
+}
+
 const copied = (await readdir(targetDirectory)).filter((name) => name.endsWith('.schema.json'));
 if (copied.length === 0) {
   throw new Error(`No schemas were copied to ${join(targetDirectory.pathname)}.`);
@@ -263,6 +281,14 @@ if (conformance.length === 0) {
     `No renderer-conformance fixtures were copied to ${join(conformanceTargetDirectory.pathname)}.`,
   );
 }
+const rendererWebConformance = (await readdir(rendererWebConformanceTargetDirectory)).filter(
+  (name) => name.endsWith('.json'),
+);
+if (rendererWebConformance.length === 0) {
+  throw new Error(
+    `No renderer-web conformance fixtures were copied to ${join(rendererWebConformanceTargetDirectory.pathname)}.`,
+  );
+}
 
 const manifestEntries = [];
 for (const name of copied.sort()) {
@@ -323,6 +349,11 @@ const corpusGroups = [
     directory: conformanceTargetDirectory,
     name: 'rich-text-conformance',
     path: 'conformance/rich-text',
+  },
+  {
+    directory: rendererWebConformanceTargetDirectory,
+    name: 'renderer-web-conformance',
+    path: 'conformance/renderer-web',
   },
 ];
 const corpusEntries = [];

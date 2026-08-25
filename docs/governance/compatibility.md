@@ -25,7 +25,7 @@ the first stable release.
 | Conformance profile version   | Exact assertions required to claim a host/client/renderer profile, declared in [conformance profiles](../contracts/conformance-profiles.md) |
 | Studio release coordinate     | One fixed npm-family version whose generated record names exact packages, wire protocol, corpus digest, and claimed profiles                |
 
-These values are explicit and must not be guessed from one another. All seven Version 2 packages share the
+These values are explicit and must not be guessed from one another. All eight Version 2 packages share the
 Studio release coordinate while still declaring their supported schema epochs, document contract revisions,
 and wire-protocol ranges. The generated release record identifies the exact set. A future Dart package version
 does not follow from the npm coordinate unless a Version 3 record explicitly binds it.

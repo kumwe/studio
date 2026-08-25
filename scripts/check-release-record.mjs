@@ -52,7 +52,7 @@ if (
   !sameMembers(fixedGroups[0], STUDIO_RELEASE_PACKAGE_NAMES)
 ) {
   throw new Error(
-    'Changesets must contain exactly one fixed group with all seven Studio packages.',
+    'Changesets must contain exactly one fixed group with all eight Studio packages.',
   );
 }
 
@@ -76,7 +76,7 @@ const coordinated = STUDIO_RELEASE_PACKAGE_NAMES.every(
   (name) => expectedRecord.packages[name] === expectedRecord.release,
 );
 console.log(
-  `Studio release record verified: ${expectedRecord.release}, seven packages, ` +
+  `Studio release record verified: ${expectedRecord.release}, eight packages, ` +
     `${coordinated ? 'coordinated' : 'staggered pre-version baseline'}, ` +
     `${expectedRecord.claimedProfiles.length} claimed profiles.`,
 );

@@ -7,11 +7,12 @@
     "@kumwe/studio-media": "0.1.0-alpha.7",
     "@kumwe/studio-preview": "0.1.0-alpha.6",
     "@kumwe/studio-protocol": "0.1.0-alpha.6",
+    "@kumwe/studio-renderer-web": "0.1.0-alpha.8",
     "@kumwe/studio-rich-text": "0.1.0-alpha.6",
     "@kumwe/studio": "0.1.0-alpha.8",
     "@kumwe/studio-testkit": "0.1.0-alpha.8"
   },
   "protocolVersion": "0.1.0-draft.2",
-  "corpusManifestDigest": "sha256-MG2XAmnhYl02ChdT3D893H6Y9psQAmAZreI4J6kf2U4=",
+  "corpusManifestDigest": "sha256-HzAp/sE7y+sTAiWOglPDeLQkPLswJlU/db46AlQ9+Dc=",
   "claimedProfiles": []
 }

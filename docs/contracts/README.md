@@ -18,6 +18,7 @@ This directory contains the normative contracts between Studio core, user interf
 - [Preview](preview.md)
 - [Media](media.md)
 - [Rich text](rich-text.md)
+- [Semantic web renderer](renderer-web.md)
 - [Localization](localization.md)
 - [Versioning and migrations](versioning-and-migrations.md)
 - [Extension lifecycle](extension-lifecycle.md)

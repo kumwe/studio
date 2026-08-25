@@ -1,6 +1,6 @@
 # Release policy
 
-Studio Version 2 releases a coordinated, verified family of seven npm packages with language-neutral
+Studio Version 2 releases a coordinated, verified family of eight npm packages with language-neutral
 schemas/fixtures, examples, documentation, and a canonical release record. Version 3 may add a separately
 qualified Dart/Flutter set. Publishing one package does not imply Gate A/B, a profile claim, or production
 readiness for the whole product.
@@ -33,7 +33,7 @@ sets are in [conformance profiles](../contracts/conformance-profiles.md).
 
 ## Release unit and record
 
-The seven npm packages are one Changesets fixed group and advance to the same semantic version. The
+The eight npm packages are one Changesets fixed group and advance to the same semantic version. The
 repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
 into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
 records the release version, exact package versions, wire protocol version, corpus-manifest digest, and only
@@ -42,7 +42,7 @@ profiles backed by acceptable evidence. The current pre-version alpha baseline c
 The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
 fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The version
 command runs Changesets first, regenerates the record, and requires every package version to equal its release
-coordinate. Publication runs the same strict check and a post-publication registry lookup of all seven exact
+coordinate. Publication runs the same strict check and a post-publication registry lookup of all eight exact
 versions. Therefore a partial or staggered set cannot be treated as a Studio release.
 
 Qualification evidence associated with the release record additionally records:

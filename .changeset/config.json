@@ -11,6 +11,7 @@
       "@kumwe/studio-media",
       "@kumwe/studio-preview",
       "@kumwe/studio-protocol",
+      "@kumwe/studio-renderer-web",
       "@kumwe/studio-rich-text",
       "@kumwe/studio",
       "@kumwe/studio-testkit"

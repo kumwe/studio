@@ -1094,6 +1094,18 @@
           "file": "rich-text.unknown-mark.json"
         },
         {
+          "digest": "sha256-w3ZWv4DbsOsPn/99raEr4O1LHinoK5V2AePlIpHtqr8=",
+          "file": "studio-chart.script-config.json"
+        },
+        {
+          "digest": "sha256-m1+/TT3sDNebrcKQjKgnD3VMBZuu0gA5IpPtnvD4N94=",
+          "file": "studio-drawing.svg-payload.json"
+        },
+        {
+          "digest": "sha256-AOCJqRUU3tCVqzkXelDsDeR9kxRTVPbSrenbf0FPEzE=",
+          "file": "studio-money.float.json"
+        },
+        {
           "digest": "sha256-ip22Uidj7KWI9kqcBbB5YphmBjcUSFyJ0hvO28V6I9w=",
           "file": "theme.unknown-member.json"
         }
@@ -1138,6 +1150,24 @@
       ],
       "group": "rich-text-conformance",
       "path": "conformance/rich-text"
+    },
+    {
+      "files": [
+        {
+          "digest": "sha256-gYLt/6rwo8QRm+guMxuJtgzLQT/goMKgO7dR4MU9Q2o=",
+          "file": "chart-fallback.json"
+        },
+        {
+          "digest": "sha256-qAfGHi8c1LZTzhFKSqmt3iOg8WWbTY3/2IvE7Bkbs7U=",
+          "file": "escaped-heading.json"
+        },
+        {
+          "digest": "sha256-BTMCmdYmoICp1BsMRA/XucTXs/hUY1DZGrPHa6vocdY=",
+          "file": "responsive-grid.json"
+        }
+      ],
+      "group": "renderer-web-conformance",
+      "path": "conformance/renderer-web"
     }
   ],
   "kind": "corpus-manifest"
