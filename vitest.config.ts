@@ -21,7 +21,7 @@ export default defineConfig({
       reporter: ['text', 'html'],
     },
     environment: 'happy-dom',
-    include: ['packages/*/test/**/*.test.ts'],
+    include: ['packages/*/test/**/*.test.ts', 'examples/*/test/**/*.test.ts'],
   },
 });
 

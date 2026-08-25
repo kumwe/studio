@@ -14,6 +14,27 @@ body > header {
   max-width: 90rem;
 }
 
+.reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.reference-actions button {
+  background: #fff;
+  border: 1px solid #9fa9b8;
+  border-radius: 0.375rem;
+  color: #17233f;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.625rem 0.875rem;
+}
+
+.reference-actions button:focus-visible {
+  outline: 0.1875rem solid #3157d5;
+  outline-offset: 0.125rem;
+}
+
 .eyebrow {
   color: #3157d5;
   font-size: 0.75rem;
@@ -35,6 +56,60 @@ kumwe-studio {
   overflow: hidden;
 }
 
+.reference-authoring {
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
+  margin: 1.5rem auto 0;
+  max-width: 86rem;
+  padding: 2rem;
+}
+
+.reference-authoring-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+}
+
+.reference-authoring-grid > section {
+  border: 1px solid #d7dce2;
+  border-radius: 0.5rem;
+  min-inline-size: 0;
+  padding: 1rem;
+}
+
+.reference-authoring :is(input, select, textarea, button) {
+  box-sizing: border-box;
+  font: inherit;
+  max-inline-size: 100%;
+}
+
+.reference-authoring input,
+.reference-authoring select,
+.reference-authoring textarea {
+  border: 1px solid #8995a5;
+  border-radius: 0.25rem;
+  display: block;
+  inline-size: 100%;
+  margin-block: 0.375rem;
+  padding: 0.5rem;
+}
+
+.reference-authoring button {
+  background: #fff;
+  border: 1px solid #8995a5;
+  border-radius: 0.25rem;
+  color: inherit;
+  cursor: pointer;
+  margin: 0.25rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.reference-authoring :is(input, select, textarea, button):focus-visible {
+  outline: 0.1875rem solid #3157d5;
+  outline-offset: 0.125rem;
+}
+
 /* The shell-owned renderer surface. Layout-affecting values arrive
    exclusively as custom properties (--theme-* from the theme document,
    --preview-columns from the active viewport), so this stylesheet stays a
@@ -42,7 +117,94 @@ kumwe-studio {
 .preview-surface {
   border: 1px solid #d7dce2;
   border-radius: 0.5rem;
+  margin-inline: auto;
+  max-inline-size: 100%;
+  overflow: auto;
   padding: var(--theme-block-gap, 0.75rem);
+}
+
+.preview-surface[data-preview-viewport='compact'] {
+  inline-size: min(100%, 25rem);
+}
+
+.preview-surface[data-preview-viewport='medium'] {
+  inline-size: min(100%, 48rem);
+}
+
+.preview-surface[data-preview-viewport='expanded'] {
+  inline-size: min(100%, 75rem);
+}
+
+.preview-rendered-page {
+  --studio-space: clamp(0.75rem, 2vw, 1.5rem);
+  color: #17233f;
+  display: grid;
+  gap: var(--studio-space);
+}
+
+.preview-rendered-page [data-studio-block] {
+  border-radius: 0.625rem;
+}
+
+.preview-rendered-page > [data-studio-block] {
+  background: #fff;
+  border: 1px solid #d7dce2;
+  padding: clamp(0.75rem, 2.5vw, 1.5rem);
+}
+
+.preview-rendered-page [data-studio-block='section'] {
+  background: linear-gradient(145deg, #f5f8ff, #fff);
+}
+
+.preview-rendered-page [data-studio-block='card'],
+.preview-rendered-page [data-studio-block='callout'],
+.preview-rendered-page [data-studio-block='content-reference'],
+.preview-rendered-page [data-studio-block='money'] {
+  border: 1px solid #d7dce2;
+  padding: 0.875rem;
+}
+
+.preview-rendered-page [data-studio-part='heading'] {
+  margin-block: 0 0.5rem;
+}
+
+.preview-rendered-page [data-studio-part='action'] a {
+  color: #2449ba;
+  font-weight: 700;
+}
+
+.preview-rendered-page [data-studio-part='media'] {
+  border-radius: 0.5rem;
+  inline-size: 100%;
+}
+
+.preview-rendered-page [data-studio-chart-visual] + table,
+.preview-rendered-page pre {
+  font-size: 0.8rem;
+  max-inline-size: 100%;
+  overflow: auto;
+}
+
+.preview-rendered-page [data-studio-tab-list] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-block-end: 0.75rem;
+}
+
+.preview-rendered-page [data-studio-tab-list] button {
+  background: #fff;
+  border: 1px solid #aeb7c5;
+  border-radius: 0.375rem;
+  color: inherit;
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+}
+
+.preview-rendered-page [data-studio-tab-list] button[aria-selected='true'] {
+  background: #3157d5;
+  border-color: #3157d5;
+  color: #fff;
 }
 
 .preview-grid {

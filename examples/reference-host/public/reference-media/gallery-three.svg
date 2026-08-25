@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Responsive delivery">
+  <rect width="1280" height="720" fill="#e8fbf4" />
+  <g fill="none" stroke="#087f5b" stroke-width="22"><rect x="120" y="110" width="720" height="500" rx="30" /><rect x="900" y="245" width="260" height="365" rx="30" /><path d="M235 220h490M235 300h310M235 400h220M490 400h235M235 500h490M955 340h150M955 420h150M955 500h100" stroke-linecap="round" /></g>
+</svg>

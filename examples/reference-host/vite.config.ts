@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 /**
@@ -15,19 +16,18 @@ import { defineConfig } from 'vite';
  *   compilation (eval, Function) are all refused. Core validation is
  *   interpreted (packages/core/src/profile-validator.ts), so the shell needs
  *   no 'unsafe-eval'.
- * - require-trusted-types-for 'script' + trusted-types lit-html: every
- *   HTML/script sink takes a typed value. `lit-html` is the only policy the
- *   shell creates (Lit parses its static template strings through it);
- *   nothing else writes to a governed sink.
- * - style-src 'self': the host stylesheet is a bundled asset and the Lit
- *   shell adopts constructed stylesheets, so inline styles stay refused.
+ * - require-trusted-types-for 'script' + the exact lit-html/studio-renderer
+ *   policy list: every HTML/script sink takes a typed value. The renderer
+ *   policy receives only escaped output from `renderStudioWeb`.
+ * - style-src 'self' plus one pinned nonce: bundled host styles remain the
+ *   default; the semantic renderer may emit its deterministic scoped sheet.
  * - img-src 'self' data:: bundled assets plus data: icon payloads; no remote
  *   image hosts.
  * - font-src/connect-src 'self': system-ui fonts and same-origin fetches
  *   only.
- * - media-src/worker-src/frame-src/manifest-src/object-src 'none': the shell
- *   embeds no media, workers, frames, manifests, or plugin documents
- *   (explicit even though default-src already refuses them).
+ * - media-src 'self': reference audio/video assets are host-resolved. Workers,
+ *   frames, manifests, plugin documents, and arbitrary media origins remain
+ *   refused.
  * - frame-ancestors 'self' keeps the chrome out of foreign frames; base-uri
  *   and form-action 'none' close base hijacking and form exfiltration.
  */
@@ -35,12 +35,12 @@ export const contentSecurityPolicy = [
   "default-src 'none'",
   "script-src 'self'",
   "require-trusted-types-for 'script'",
-  'trusted-types lit-html',
-  "style-src 'self'",
+  'trusted-types lit-html studio-renderer',
+  "style-src 'self' 'nonce-studio-reference-style-v1'",
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
-  "media-src 'none'",
+  "media-src 'self'",
   "worker-src 'none'",
   "frame-src 'none'",
   "manifest-src 'none'",
@@ -51,9 +51,27 @@ export const contentSecurityPolicy = [
 ].join('; ');
 
 export default defineConfig({
+  // The reference host is a workspace integration harness, so it always
+  // exercises the source in this checkout rather than a stale package link
+  // left by another worktree or a globally cached install.
+  resolve: {
+    alias: {
+      '@kumwe/studio': source('studio-lit'),
+      '@kumwe/studio-core': source('core'),
+      '@kumwe/studio-media': source('media'),
+      '@kumwe/studio-preview': source('preview'),
+      '@kumwe/studio-protocol': source('protocol'),
+      '@kumwe/studio-renderer-web': source('renderer-web'),
+      '@kumwe/studio-rich-text': source('rich-text'),
+    },
+  },
   preview: {
     headers: {
       'Content-Security-Policy': contentSecurityPolicy,
     },
   },
 });
+
+function source(packageDirectory: string): string {
+  return fileURLToPath(new URL(`../../packages/${packageDirectory}/src/index.ts`, import.meta.url));
+}

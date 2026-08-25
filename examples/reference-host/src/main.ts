@@ -1,9 +1,11 @@
 import { defineKumweStudio, type KumweStudioElement } from '@kumwe/studio';
 import {
   BlockRegistry,
-  coreLayoutInitialProperties,
-  createCoreLayoutBlockDefinitions,
-  isCoreLayoutBlockType,
+  CORE_PRODUCTION_BLOCK_TYPES,
+  coreProductionInitialProperties,
+  createCoreProductionBlockDefinitions,
+  createCoreProductionPatterns,
+  isCoreProductionBlockType,
 } from '@kumwe/studio-core';
 import { PreviewClient } from '@kumwe/studio-preview';
 import {
@@ -16,22 +18,21 @@ import {
   type ExperimentalShellConfiguration,
 } from '@kumwe/studio-protocol';
 import { createPreviewChannel } from './preview-channel.js';
+import { mountReferenceAuthoringControls } from './reference-authoring.js';
+import { createBlankReferenceBlueprint, createReferenceBlueprint } from './reference-content.js';
 import { ReferenceDraftStore } from './reference-draft-store.js';
 import { connectReferenceRenderer } from './reference-renderer.js';
+import {
+  referenceScopedStyles,
+  resolveReferenceBinding,
+  resolveReferenceMedia,
+} from './reference-resources.js';
 import { referenceTheme } from './reference-theme.js';
 import './style.css';
 
 defineKumweStudio();
 
-const blocks: BlockDefinition[] = [
-  ...createCoreLayoutBlockDefinitions({
-    acceptedChildTypes: ['studio.core/text'],
-    rendererRequirements: [
-      { capability: 'studio.renderer/reference', surface: 'preview', versions: '^0.1.0' },
-    ],
-  }),
-  defineBlock('studio.core/text', 'Text'),
-];
+const blocks: BlockDefinition[] = createCoreProductionBlockDefinitions();
 const blockRegistry = new BlockRegistry(blocks);
 
 const configuration: ExperimentalShellConfiguration = {
@@ -121,22 +122,7 @@ const configuration: ExperimentalShellConfiguration = {
   },
 };
 
-const blueprint: BlueprintDocument = {
-  contractVersion: STUDIO_CONTRACT_VERSION,
-  dependencyLock: {
-    blocks: configuration.session.blocks,
-    theme: { id: 'studio.reference/theme', revision: 'theme-r1', version: '1.0.0' },
-  },
-  id: 'reference.home',
-  kind: 'blueprint',
-  label: { defaultMessage: 'Reference home', key: 'studio.reference/home' },
-  model: { id: 'studio.reference/model', revision: 'model-r1', version: '1.0.0' },
-  owner: { id: 'studio.reference/host', version: '0.1.0' },
-  revision: 'blueprint-r1',
-  roots: [],
-  status: 'draft',
-  version: '1.0.0',
-};
+const blueprint: BlueprintDocument = createReferenceBlueprint(blocks);
 
 // A detached, already-authorized model-port projection. The reference host
 // owns this definition; the shell may bind its exact fields but never changes
@@ -207,6 +193,24 @@ if (studio === null) {
 studio.configuration = configuration;
 studio.contentModel = contentModel;
 studio.document = blueprint;
+studio.patterns = createCoreProductionPatterns();
+
+void mountReferenceAuthoringControls(studio, requirePaneElement('.reference-authoring')).catch(
+  (error: unknown) => {
+    const status = requirePaneElement('.reference-authoring-status');
+    status.setAttribute('role', 'alert');
+    status.textContent = `Authoring controls are unavailable: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
+  },
+);
+
+requireButton('.reference-new').addEventListener('click', () => {
+  studio.document = createBlankReferenceBlueprint(blueprint);
+});
+requireButton('.reference-demo').addEventListener('click', () => {
+  studio.document = structuredClone(blueprint);
+});
 
 studio.addEventListener('studio-insert-request', (event: Event) => {
   const customEvent = event as CustomEvent<{
@@ -215,26 +219,20 @@ studio.addEventListener('studio-insert-request', (event: Event) => {
     slot?: string;
   }>;
   const definition = customEvent.detail.definition;
-  const layoutType = isCoreLayoutBlockType(definition.type) ? definition.type : undefined;
+  if (!isCoreProductionBlockType(definition.type)) {
+    throw new Error(`Reference host cannot insert unknown production block ${definition.type}.`);
+  }
+  const type = definition.type;
   const node: BlueprintNode = {
-    authoring: { mode: layoutType === undefined ? 'designer' : 'structural' },
+    authoring: { mode: definition.slots.length === 0 ? 'content' : 'structural' },
     bindings: {},
     id: crypto.randomUUID(),
-    properties:
-      definition.type === 'studio.core/text'
-        ? { text: 'Editable text' }
-        : layoutType === undefined
-          ? {}
-          : coreLayoutInitialProperties(layoutType),
-    ...(definition.type === 'studio.core/grid' || definition.type === 'studio.core/columns'
+    properties: coreProductionInitialProperties(type),
+    ...(type === CORE_PRODUCTION_BLOCK_TYPES.grid || type === CORE_PRODUCTION_BLOCK_TYPES.columns
       ? { responsive: { columns: { expanded: 4, medium: 2 } } }
       : {}),
-    // A named inline size role, not CSS: the reference renderer maps it to a
-    // column span at the active viewport, so a quarter block reflows
-    // four-to-two-to-one across the expanded/medium/compact switcher.
-    sizeRoles: { inline: layoutType === undefined ? 'half' : 'quarter' },
     slots: Object.fromEntries(definition.slots.map((slot) => [slot.id, []])),
-    type: definition.type,
+    type,
     version: definition.version,
   };
   studio.execute({
@@ -288,7 +286,10 @@ const rendererHost = connectReferenceRenderer({
   channelId: previewChannelId,
   endpoint: channel.rendererEndpoint,
   origin: pageOrigin,
+  resolveBinding: resolveReferenceBinding,
   resolveDraft: (payload) => draftStore.resolve(payload),
+  resolveMedia: resolveReferenceMedia,
+  scopedStyles: referenceScopedStyles,
   sessionGeneration,
   surface: previewSurface,
   theme: referenceTheme,
@@ -320,6 +321,12 @@ function requirePaneElement(selector: string): HTMLElement {
   return element;
 }
 
+function requireButton(selector: string): HTMLButtonElement {
+  const element = document.querySelector<HTMLButtonElement>(selector);
+  if (element === null) throw new Error(`Reference host is missing control ${selector}.`);
+  return element;
+}
+
 function findNode(nodes: readonly BlueprintNode[], id: string): BlueprintNode | undefined {
   const stack = [...nodes];
   while (stack.length > 0) {
@@ -335,58 +342,4 @@ function findNode(nodes: readonly BlueprintNode[], id: string): BlueprintNode | 
     }
   }
   return undefined;
-}
-
-function defineBlock(
-  type: BlockDefinition['type'],
-  label: string,
-  slots: BlockDefinition['slots'] = [],
-): BlockDefinition {
-  return {
-    accessibility: {
-      accessibleName: 'not-applicable',
-      category: type === 'studio.core/text' ? 'text' : 'structural',
-      keyboard: {
-        defaultMessage: 'Use the outline controls to position this block.',
-        key: 'studio.reference/block-keyboard',
-      },
-      outputChecks: ['studio.check/reading-order'],
-      reducedMotion: 'not-applicable',
-    },
-    category: type === 'studio.core/text' ? 'studio.category/content' : 'studio.category/layout',
-    contractVersion: STUDIO_CONTRACT_VERSION,
-    editingModes: ['blueprint', 'content'],
-    kind: 'block-definition',
-    label: { defaultMessage: label, key: 'studio.reference/block-label' },
-    owner: { id: 'studio.reference/blocks', version: '0.1.0' },
-    ports:
-      type === 'studio.core/text'
-        ? [
-            {
-              id: 'content',
-              label: { defaultMessage: 'Content', key: 'studio.reference/content-port' },
-              multiple: false,
-              required: false,
-              valueType: 'text',
-            },
-          ]
-        : [],
-    propertySchema:
-      type === 'studio.core/text'
-        ? {
-            additionalProperties: false,
-            properties: { text: { maxLength: 10_000, type: 'string' } },
-            required: ['text'],
-            type: 'object',
-          }
-        : { additionalProperties: false, type: 'object' },
-    rendererRequirements: [
-      { capability: 'studio.renderer/reference', surface: 'preview', versions: '^0.1.0' },
-    ],
-    revision: `${type.replace('/', '-')}-r1`,
-    slots,
-    themeControls: [],
-    type,
-    version: '1.0.0',
-  };
 }

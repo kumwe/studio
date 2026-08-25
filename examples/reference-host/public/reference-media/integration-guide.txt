@@ -1,0 +1,5 @@
+Kumwe Studio reference integration guide
+
+Hosts provide capabilities, resolve resources and media, persist canonical
+documents, and deliver output through a compatible renderer. Hosts never
+depend on Editor.js or another private Studio implementation type.
