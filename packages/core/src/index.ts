@@ -77,6 +77,7 @@ export {
 } from './production-values.js';
 export {
   openStudioSession,
+  STUDIO_RESOURCE_SEARCH_LIMITS,
   StudioHostSessionError,
   type OpenStudioSessionOptions,
   type StudioHostSessionErrorCode,
@@ -84,6 +85,7 @@ export {
   type StudioHostSessionIdentifierFactories,
   type StudioHostSessionModels,
   type StudioHostSessionRecovery,
+  type StudioHostSessionResources,
 } from './host-session.js';
 export { applyModelCommand } from './model-commands.js';
 export {

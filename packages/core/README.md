@@ -16,8 +16,8 @@ The implemented surface covers:
 - `StudioSession` — bounded history behind fail-closed session guards (read-only state, session
   generation, expected revision), dirty tracking, and a validated selection model;
 - `openStudioSession` — capability-negotiated Blueprint loading and a headless host-session handle for
-  serialized optimistic saves, raw optional recovery-port access, read-only model `list`/`get`,
-  stale-generation invalidation, and local idempotent disposal;
+  serialized optimistic saves, raw optional recovery-port access, read-only model `list`/`get`, bounded
+  resource search, stale-generation invalidation, and local idempotent disposal;
 - `projectBlueprintFieldBindings` — an immutable exact-model projection of compatible block-port field
   candidates, declared authoring controls and stable invalid-binding diagnostics;
 - `ContributionRuntime` — owner-aware, transactional, schema-validated activation of block,
@@ -77,3 +77,10 @@ leave the boundary; stale generation invalidates the whole handle. The surface i
 Pass an authorized active model to `projectBlueprintFieldBindings(blueprint, model, definitions)` to derive
 portable candidates and diagnostics without changing any input. See
 [ADR 0024](../../docs/decisions/0024-read-only-model-binding-projection.md).
+
+`StudioHostSessionHandle.resources` is present only when the negotiated resource port advertises
+`studio.operation/resource.search` and the adapter implements it. `search` validates and clones bounded
+queries before allocating a request, then accepts only detached pages whose stable, unique hit IDs and
+qualified message references match the requested resource type. Malformed adapter output becomes a safe
+`studio.host/unexpected-resource-result` failure. This is a read-only discovery surface: hosts still own
+authorization and resolution, and first-party dynamic resource/query bindings remain read-only in Studio.

@@ -144,6 +144,23 @@ invalidates the entire composed handle before any later model, recovery or artif
 do not grant or imply model creation, migration, persistence or publication authority
 ([ADR 0024](../decisions/0024-read-only-model-binding-projection.md)).
 
+The resource seam is independently optional. When `studio.port/resource`,
+`studio.operation/resource.search`, and the adapter implementation agree, the Blueprint handle exposes
+`resources.search(query)`. This read does not grant resource mutation or turn host-resolved dynamic
+bindings into Studio-owned values. Each query is cloned after exact validation: `resourceType` is a
+canonical qualified name, `limit` is a safe integer from 1 through 100, `cursor` is an optional non-empty
+opaque string of at most 500 code units, and `search` is an optional string of at most 500 code units.
+Invalid caller input fails locally before allocating a request ID or calling the adapter.
+
+A successful resource page has no more items than the requested limit. Every item has an exact canonical
+shape, a stable ID, a qualified message key with an optional non-empty default message of at most 500 code
+units, and the exact requested resource type. Duplicate IDs, cross-type hits, unknown members, malformed or
+empty next cursors, and invalid revisions are refused as the safe non-retryable diagnostic
+`studio.host/unexpected-resource-result`. Accepted pages are detached before they leave core. Searches use
+the canonical read context with no expected revision or idempotency key, and a stale-generation failure
+invalidates resource, model, recovery, and artifact access together. If the advertised operation or adapter
+is missing, `resources` stays undefined and the open diagnostics identify the optional degradation.
+
 ## Query guarantees
 
 Resource search, counts, facets, pagination, relations and projections enforce authorization inside the host query. Studio never post-filters unauthorized results. Opaque cursors are preferred over client-constructed offsets for mutable datasets.

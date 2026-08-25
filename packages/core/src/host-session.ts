@@ -15,7 +15,11 @@ import {
   type JsonObject,
   type JsonPrimitive,
   type JsonValue,
+  type MessageReference,
   type QualifiedName,
+  type ResourceSearchHit,
+  type ResourceSearchPage,
+  type ResourceSearchQuery,
   type Revision,
   type StableId,
   type StudioConfiguration,
@@ -31,6 +35,7 @@ import { StudioSession } from './session.js';
 const ARTIFACT_PORT: QualifiedName = 'studio.port/artifact';
 const MODEL_PORT: QualifiedName = 'studio.port/model';
 const RECOVERY_PORT: QualifiedName = 'studio.port/recovery';
+const RESOURCE_PORT: QualifiedName = 'studio.port/resource';
 const ARTIFACT_LOAD: QualifiedName = 'studio.operation/artifact.load';
 const ARTIFACT_SAVE: QualifiedName = 'studio.operation/artifact.save';
 const MODEL_GET: QualifiedName = 'studio.operation/model.get';
@@ -38,9 +43,24 @@ const MODEL_LIST: QualifiedName = 'studio.operation/model.list';
 const RECOVERY_STORE: QualifiedName = 'studio.operation/recovery.store';
 const RECOVERY_LOAD: QualifiedName = 'studio.operation/recovery.load';
 const RECOVERY_DISCARD: QualifiedName = 'studio.operation/recovery.discard';
+const RESOURCE_SEARCH: QualifiedName = 'studio.operation/resource.search';
 
 const STABLE_ID = /^[A-Za-z0-9][A-Za-z0-9._:/-]*$/u;
+const QUALIFIED_NAME = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
 const FORBIDDEN_IDENTIFIERS = new Set(['__proto__', 'prototype', 'constructor']);
+
+/** Public bounds enforced before a composed session invokes resource search. */
+export const STUDIO_RESOURCE_SEARCH_LIMITS: Readonly<{
+  maximumCursorLength: number;
+  maximumLimit: number;
+  maximumSearchLength: number;
+  minimumLimit: number;
+}> = Object.freeze({
+  maximumCursorLength: 500,
+  maximumLimit: 100,
+  maximumSearchLength: 500,
+  minimumLimit: 1,
+});
 
 // Model reads cross the same untrusted adapter boundary as artifact reads. The
 // canonical schema is interpreted without eval before any model field reaches
@@ -85,6 +105,11 @@ export interface StudioHostSessionModels {
   list(): Promise<HostPortResult<ContentModelDocument[]>>;
 }
 
+/** Read-only discovery of host-authorized resources behind this session. */
+export interface StudioHostSessionResources {
+  search(query: ResourceSearchQuery): Promise<HostPortResult<ResourceSearchPage>>;
+}
+
 export interface StudioHostSessionHandle {
   /** The complete open-time negotiation and profile diagnostics. */
   readonly diagnostics: readonly StudioDiagnostic[];
@@ -95,6 +120,8 @@ export interface StudioHostSessionHandle {
   readonly models: StudioHostSessionModels | undefined;
   /** Present only when feature policy, advertised operations, and adapter agree. */
   readonly recovery: StudioHostSessionRecovery | undefined;
+  /** Present only when the resource port advertises and implements search. */
+  readonly resources: StudioHostSessionResources | undefined;
   /** The most recent host-accepted Blueprint revision. */
   readonly revision: Revision;
   readonly session: StudioSession;
@@ -108,6 +135,7 @@ export type StudioHostSessionErrorCode =
   | 'disposed'
   | 'invalid-identifier'
   | 'invalid-model-reference'
+  | 'invalid-resource-query'
   | 'read-only-session'
   | 'unexpected-artifact';
 
@@ -154,6 +182,11 @@ export async function openStudioSession(
   appendProfileDiagnostics(configuration, negotiation);
   const recoveryAvailable = appendOperationDiagnostics(adapter, configuration, negotiation);
   const modelsAvailable = appendModelOperationDiagnostics(adapter, configuration, negotiation);
+  const resourcesAvailable = appendResourceOperationDiagnostics(
+    adapter,
+    configuration,
+    negotiation,
+  );
   if (negotiation.diagnostics.some((entry) => entry.severity === 'blocking')) {
     throw new StudioHostSessionError(
       'configuration-blocked',
@@ -211,6 +244,7 @@ export async function openStudioSession(
     negotiation,
     recoveryAvailable,
     modelsAvailable,
+    resourcesAvailable,
     session,
     document.revision,
   );
@@ -221,6 +255,7 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
   public readonly negotiation: CapabilityNegotiationResult;
   public readonly models: StudioHostSessionModels | undefined;
   public readonly recovery: StudioHostSessionRecovery | undefined;
+  public readonly resources: StudioHostSessionResources | undefined;
   public readonly session: StudioSession;
 
   readonly #adapter: HostAdapter;
@@ -240,6 +275,7 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
     negotiation: CapabilityNegotiationResult,
     recoveryAvailable: boolean,
     modelsAvailable: boolean,
+    resourcesAvailable: boolean,
     session: StudioSession,
     revision: Revision,
   ) {
@@ -263,6 +299,12 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
           get: (reference: ArtifactReference): Promise<HostPortResult<ContentModelDocument>> =>
             this.#getModel(reference),
           list: (): Promise<HostPortResult<ContentModelDocument[]>> => this.#listModels(),
+        })
+      : undefined;
+    this.resources = resourcesAvailable
+      ? Object.freeze({
+          search: (query: ResourceSearchQuery): Promise<HostPortResult<ResourceSearchPage>> =>
+            this.#searchResources(query),
         })
       : undefined;
   }
@@ -458,6 +500,40 @@ class BoundStudioHostSession implements StudioHostSessionHandle {
     this.session.markSaved(result.revision, stateVersion);
     this.#clearMutationKey(ARTIFACT_SAVE, fingerprint);
     return { revision: result.revision, value: null };
+  }
+
+  async #searchResources(query: ResourceSearchQuery): Promise<HostPortResult<ResourceSearchPage>> {
+    this.#assertActive();
+    if (!isResourceSearchQuery(query)) {
+      throw new StudioHostSessionError(
+        'invalid-resource-query',
+        'A resource search requires a canonical resource type, bounded limit, cursor, and search text.',
+      );
+    }
+    const resource = this.#adapter.resource;
+    if (resource === undefined) {
+      throw adapterContractFailure(
+        'studio.host/adapter-port-unavailable',
+        'The negotiated resource adapter is unavailable.',
+      );
+    }
+    const querySnapshot = cloneContractValue(query);
+    const context = createContext(
+      this.#configuration,
+      this.#identifiers.requestId(RESOURCE_SEARCH),
+      { operationId: RESOURCE_SEARCH },
+    );
+    const result: unknown = await this.#invoke(() => resource.search(querySnapshot, context));
+    if (!isResourceSearchResult(result, querySnapshot)) {
+      throw adapterContractFailure(
+        'studio.host/unexpected-resource-result',
+        'The resource port returned a malformed, mismatched, duplicate, or oversized search page.',
+      );
+    }
+    return {
+      ...(result.revision === undefined ? {} : { revision: result.revision }),
+      value: cloneContractValue(result.value),
+    };
   }
 
   async #storeRecovery(envelope: JsonObject): Promise<HostPortResult<null>> {
@@ -706,6 +782,41 @@ function appendModelOperationDiagnostics(
   return available;
 }
 
+function appendResourceOperationDiagnostics(
+  adapter: HostAdapter,
+  configuration: StudioConfiguration,
+  negotiation: CapabilityNegotiationResult,
+): boolean {
+  const resource = configuration.hostCapabilities.ports.find((entry) => entry.id === RESOURCE_PORT);
+  if (resource === undefined) {
+    return false;
+  }
+  let available = true;
+  if (!resource.operations.includes(RESOURCE_SEARCH)) {
+    available = false;
+    negotiation.diagnostics.push(
+      createDiagnostic(
+        'studio.host/missing-optional-operation',
+        `The resource port omits ${RESOURCE_SEARCH}; resource discovery is disabled.`,
+        'information',
+        { operationId: RESOURCE_SEARCH },
+      ),
+    );
+  }
+  if (adapter.resource === undefined) {
+    available = false;
+    negotiation.diagnostics.push(
+      createDiagnostic(
+        'studio.host/adapter-port-unavailable',
+        'The capability document advertises resource discovery but the adapter does not implement it.',
+        'information',
+        { port: RESOURCE_PORT },
+      ),
+    );
+  }
+  return available;
+}
+
 function appendProfileDiagnostics(
   configuration: StudioConfiguration,
   negotiation: CapabilityNegotiationResult,
@@ -742,6 +853,9 @@ function requestedOptionalPorts(
   }
   if (configuration.hostCapabilities.ports.some((entry) => entry.id === MODEL_PORT)) {
     ports.add(MODEL_PORT);
+  }
+  if (configuration.hostCapabilities.ports.some((entry) => entry.id === RESOURCE_PORT)) {
+    ports.add(RESOURCE_PORT);
   }
   return [...ports];
 }
@@ -851,6 +965,128 @@ function isModelListResult(value: unknown): value is HostPortResult<ContentModel
     coordinates.add(coordinate);
   }
   return true;
+}
+
+function isResourceSearchQuery(value: unknown): value is ResourceSearchQuery {
+  if (
+    !isPlainRecord(value) ||
+    !hasExactKeys(value, ['limit', 'resourceType'], ['cursor', 'search'])
+  ) {
+    return false;
+  }
+  return (
+    typeof value.limit === 'number' &&
+    Number.isSafeInteger(value.limit) &&
+    value.limit >= STUDIO_RESOURCE_SEARCH_LIMITS.minimumLimit &&
+    value.limit <= STUDIO_RESOURCE_SEARCH_LIMITS.maximumLimit &&
+    isQualifiedName(value.resourceType) &&
+    isBoundedOptionalString(
+      value.cursor,
+      STUDIO_RESOURCE_SEARCH_LIMITS.maximumCursorLength,
+      false,
+    ) &&
+    isBoundedOptionalString(value.search, STUDIO_RESOURCE_SEARCH_LIMITS.maximumSearchLength, true)
+  );
+}
+
+function isResourceSearchResult(
+  value: unknown,
+  query: ResourceSearchQuery,
+): value is HostPortResult<ResourceSearchPage> {
+  if (!isHostResultRecord(value) || !isResourceSearchPage(value.value, query)) {
+    return false;
+  }
+  return true;
+}
+
+function isResourceSearchPage(
+  value: unknown,
+  query: ResourceSearchQuery,
+): value is ResourceSearchPage {
+  if (!isPlainRecord(value) || !hasExactKeys(value, ['items'], ['nextCursor'])) {
+    return false;
+  }
+  if (
+    !Array.isArray(value.items) ||
+    value.items.length > query.limit ||
+    !isBoundedOptionalString(
+      value.nextCursor,
+      STUDIO_RESOURCE_SEARCH_LIMITS.maximumCursorLength,
+      false,
+    )
+  ) {
+    return false;
+  }
+  const identifiers = new Set<StableId>();
+  for (const item of value.items) {
+    if (!isResourceSearchHit(item, query.resourceType) || identifiers.has(item.id)) {
+      return false;
+    }
+    identifiers.add(item.id);
+  }
+  return true;
+}
+
+function isResourceSearchHit(
+  value: unknown,
+  resourceType: QualifiedName,
+): value is ResourceSearchHit {
+  return (
+    isPlainRecord(value) &&
+    hasExactKeys(value, ['id', 'label', 'resourceType']) &&
+    isStableId(value.id) &&
+    value.resourceType === resourceType &&
+    isMessageReference(value.label)
+  );
+}
+
+function isMessageReference(value: unknown): value is MessageReference {
+  return (
+    isPlainRecord(value) &&
+    hasExactKeys(value, ['key'], ['defaultMessage']) &&
+    isQualifiedName(value.key) &&
+    (value.defaultMessage === undefined ||
+      (typeof value.defaultMessage === 'string' &&
+        value.defaultMessage.length >= 1 &&
+        value.defaultMessage.length <= 500))
+  );
+}
+
+function isQualifiedName(value: unknown): value is QualifiedName {
+  return typeof value === 'string' && value.length <= 160 && QUALIFIED_NAME.test(value);
+}
+
+function isBoundedOptionalString(
+  value: unknown,
+  maximumLength: number,
+  allowEmpty: boolean,
+): boolean {
+  return (
+    value === undefined ||
+    (typeof value === 'string' &&
+      value.length <= maximumLength &&
+      (allowEmpty || value.length >= 1))
+  );
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[] = [],
+): boolean {
+  const allowed = new Set([...required, ...optional]);
+  return (
+    required.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every((key) => allowed.has(key))
+  );
 }
 
 function isHostResultRecord(value: unknown): value is { revision?: Revision; value: unknown } {
