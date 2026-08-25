@@ -45,6 +45,42 @@ configuration identifies:
 Configuration is generated server-side or by another trusted host boundary. User-supplied configuration never
 grants a capability.
 
+### Install and bootstrap one Studio coordinate
+
+Consume the exact eight versions in the published `studio-release.json`; verify its corpus digest before
+replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
+first-party definitions are not a deployable integration. The current candidate tree must first pass the
+protected coordinated publish workflow; its checked-in staggered alpha record is not a substitute for npm
+availability.
+
+The browser host then starts from Studio's supported additive bootstrap rather than recreating the page-builder
+catalog:
+
+```ts
+import {
+  createStudioStandaloneSetup,
+  defineKumweStudio,
+  StudioAuthoringControlRegistry,
+} from '@kumwe/studio';
+
+defineKumweStudio();
+const setup = createStudioStandaloneSetup(resolvedSession, {
+  blockDefinitions: trustedExtensionBlocks,
+  patterns: trustedExtensionPatterns,
+});
+
+studio.configuration = setup.configuration;
+studio.patterns = setup.patterns;
+studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
+  media: { provider: mediaProvider, uploadTransport },
+});
+```
+
+The first-party 45 blocks and ten patterns lead deterministically; host contributions append only after their
+owner, namespace, capability, and schema checks pass. Duplicate identities fail closed. Editor.js remains a
+private Studio implementation selected by the registry: the host supplies canonical values and neutral
+services, never editor tools, plugin configuration, or editor-native JSON.
+
 ## 3. Implement host ports
 
 Transport is adapter-owned. HTTP, an in-process API, `postMessage`, a desktop bridge, or a native channel may
@@ -118,6 +154,13 @@ The host maps validated block/theme contracts to trusted renderers. Rendering ob
 
 The preview DOM is disposable. Studio uses markers for selection geometry but never scrapes it to recreate an
 artifact. Production delivery must work without the Studio authoring packages.
+
+`@kumwe/studio-renderer-web` is the portable first-party delivery implementation. A JavaScript delivery host
+may call `renderStudioWeb` and install the returned trusted enhancement jobs with `enhanceStudioWeb`; a
+server-side host may implement native templates instead. Both paths resolve media and dynamic bindings through
+authorized host callbacks, preserve the no-JavaScript semantic fallback, and replay the same exhaustive
+`conformance/renderer-web/` corpus. A server renderer does not translate Studio block names into a separate,
+weaker semantic contract.
 
 ### Preview handshake
 

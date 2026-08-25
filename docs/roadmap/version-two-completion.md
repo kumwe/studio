@@ -1,17 +1,18 @@
 # Studio completion plan for Kumwe App Version 2
 
-**Objective.** Take Studio from its current state — a proven contract, a headless engine, and an
-outline-shaped authoring shell — to a **wired, visual page builder that Kumwe App can integrate and
-ship inside Version 2**.
+**Objective.** Take the repository-verified standalone page-builder candidate through one coordinated
+eight-package release, real Kumwe App integration, profile qualification, and evidence review so it can ship
+inside Version 2.
 
 **Companion documents.**
 
 - The host's own steps: [`kumwe/app` → `docs/roadmap/studio-completion.md`](https://github.com/kumwe/app/blob/master/docs/roadmap/studio-completion.md)
 - The joint sequence binding both: [`docs/integration/version-two-joint-plan.md`](../integration/version-two-joint-plan.md)
 
-This file holds forward work only. Each step names what to build, why it unblocks the objective, the
-acceptance test that proves it, and where the existing roadmap already defines the scope so nothing is
-restated twice. Steps are ordered: a later step assumes every earlier one landed.
+This file is the completion ledger. Each step records the implementation already present, the acceptance test
+that proves it, and the remaining release/evidence dependency. Steps are ordered: a later step assumes every
+earlier contract and runtime increment landed, but no repository state is silently promoted to accepted
+evidence.
 
 ---
 
@@ -27,18 +28,20 @@ later packages are judged against the product profile they actually ship.
 
 ---
 
-## The five blockers this plan clears
+## Original blockers and their current closure
 
-Verified against `origin/main`. These are the reasons a host cannot integrate today, in dependency
-order:
+| #   | Original blocker                             | Step           | Repository state                                                                                         | Remaining dependency                                                 |
+| --- | -------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | No consumer bound `HostAdapter` to a session | `ST-2`         | Implemented with `openStudioSession`, save/revision/recovery/model/resource seams and lifecycle tests    | Published-coordinate replay through real Kumwe App and a second host |
+| 2   | Contribution runtime activated blocks only   | `ST-3`         | Implemented for all six canonical kinds with immutable generations, lifecycle and SDK parity             | Independent host/extension replay and evidence                       |
+| 3   | No live preview surface                      | `ST-4`         | Implemented with host-staged binding, handshake, coalescing, selection, measured geometry and fallback   | Qualified framed-host CSP and independent evidence                   |
+| 4   | No visual canvas or layout/catalog runtime   | `ST-6`, `ST-7` | Implemented with four layout blocks, 45 production blocks, ten patterns and measured direct manipulation | Complete `authoring-web` profile/manual matrix and App journey       |
+| 5   | No coherent released package set             | `ST-1`         | Eight-package fixed group, release record and guarded workflows implemented                              | Merge, coordinated version/publish, and registry verification        |
 
-| #   | Blocker                                                                                                             | Step           |
-| --- | ------------------------------------------------------------------------------------------------------------------- | -------------- |
-| 1   | Nothing in Studio ever calls a host — `HostAdapter` has no consumer, and no public API binds a configuration to one | `ST-2`         |
-| 2   | The contribution runtime activates blocks only, while a host legitimately declares six canonical kinds              | `ST-3`         |
-| 3   | There is no preview surface — zero frames; the shell only announces reload and teardown                             | `ST-4`         |
-| 4   | There is no visual canvas and no layout blocks; the canvas is a list of label chips                                 | `ST-6`, `ST-7` |
-| 5   | The published packages have no coherent released set a host can pin as one                                          | `ST-1`         |
+The runtime wave also implements `M5-01`–`M5-03`: private Editor.js rich-text authoring, safe HTML/Markdown
+codecs, Studio media and resource controls, complete semantic web rendering, progressive behaviors, and an
+exhaustive `renderer-web` corpus. Those capabilities are candidate bits until the remaining dependencies above
+and below are satisfied.
 
 ---
 
@@ -58,8 +61,8 @@ product needs now.
    web obligation and defers its Flutter half.
 2. Declare the Version 2 supported profile set explicitly: `studio.profile/engine-core`,
    `host-baseline`, `host-baseline-v2`, `media-policy`, `preview-identity-v1`, `schema-property`,
-   plus `renderer-web` and `authoring-web` once `ST-4` and `ST-7` deliver them. `flutter` profiles are
-   declared as Version 3 targets.
+   `binding-projection-v1`, and `renderer-web`, which are now executable, plus target `authoring-web` once
+   its complete assertion set lands. `flutter` profiles are declared as Version 3 targets.
 3. Record the decision as an ADR in [`docs/decisions/`](../decisions/) in the existing style, naming
    the rejected alternative (hold Version 2 until Dart parity exists) and its cost.
 4. Update [`STATUS.md`](STATUS.md): the six-month board, the gate summary, and the M2-06/M3-06/M4-06
@@ -93,8 +96,13 @@ release record names; a host pins one identifier; the digest check fails when a 
 
 ### `ST-2` — Bind the host adapter into a real session API _(blocker 1)_
 
-The single largest integration blocker. Studio defines nine ports and 24 operations, negotiation, an
-error taxonomy and a reference testbed — and never calls any of it.
+**Repository state:** implemented. `openStudioSession` binds a resolved configuration to the injected adapter,
+serializes saves against accepted revisions, invalidates stale generations, and exposes negotiated recovery,
+model, and resource seams without adding a transport or DOM dependency. Unit, lifecycle, HTTP-testbed, model,
+resource, conflict, retry, and cancellation lanes exercise the public boundary. Real Kumwe App and independent
+second-host replay at the published coordinate remain acceptance work.
+
+The implemented public surface covers the nine ports and 24 operations below.
 
 Ports and operations as published today:
 
@@ -133,10 +141,11 @@ failures mapping to canonical categories, and idempotent replay producing one ef
 
 ### `ST-3` — Activate every contribution kind _(blocker 2)_
 
-Kumwe App's manifest 6 / SPI 4 declares six canonical kinds — `block-definition`, `pattern`,
-`field-adapter`, `inspector`, `design-vocabulary`, `migration`. Studio's runtime activates **blocks
-only**, so the host can legitimately declare contributions Studio cannot consume. This mismatch is live
-today.
+**Repository state:** implemented. Kumwe App's manifest 6 / SPI 4 declares six canonical kinds —
+`block-definition`, `pattern`, `field-adapter`, `inspector`, `design-vocabulary`, `migration` — and Studio's
+runtime activates all six through kind-scoped immutable generations. Schema admission, namespace/collision
+guards, disable/revoke/reactivate/upgrade behavior, unresolved diagnostics, stale-generation refusal, and
+`defineStudioPlugin` parity are covered in the repository. Independent host lifecycle evidence remains open.
 
 1. Extend `ContributionRuntime` so every declared kind activates through the same transactional
    discipline blocks use: sealed immutable generations, owner-namespace enforcement, duplicate and
@@ -158,7 +167,11 @@ refusal, and SDK parity.
 
 ### `ST-4` — A real preview surface _(blocker 3)_
 
-Studio has a complete preview protocol and no surface that uses it.
+**Repository state:** implemented as a host-owned binding. The shell consumes `PreviewClient`, stages exact
+draft identities through the injected host, waits for readiness, coalesces and cancels superseded renders,
+drives viewports, maps selection both ways, measures marker geometry, and degrades to structural authoring when
+preview authority is absent. The reference host and CSP/accessibility browser lanes exercise the runtime;
+qualified framed-host CSP and independent reproduction remain open.
 
 1. Add a preview region to the shell hosting the renderer in a same-origin frame, driven by the
    existing `PreviewClient` — never ad-hoc messaging. Perform the ready handshake before any render.
@@ -187,9 +200,10 @@ still works; the accessibility and CSP lane stays green.
 
 ### `ST-5` — Session modes on the wire
 
-The core enforces five editing modes; the host contract cannot express them —
-`StudioConfiguration` carries only `editable | read-only`, and the shell never sets a mode. A content
-author therefore cannot be given a content-only session.
+**Repository state:** implemented. The configuration, headless session, canonical mode-to-command table,
+command vectors, and shell affordances agree on model, blueprint, content, hybrid, and read-only boundaries.
+Forbidden commands fail closed without changing document, history, or selection. Host profile replay and
+evidence remain open.
 
 1. Add the mode to the negotiated session configuration in the protocol, with the closed vocabulary the
    core already implements: `model`, `blueprint`, `content`, `hybrid`, `read-only`.
@@ -207,17 +221,18 @@ boundary the engine enforces.
 
 ### `ST-6` — Layout blocks and responsive composition _(blocker 4, part one)_
 
-No `section`, `stack`, `grid` or `columns` block exists anywhere in runtime code, so there is nothing to
-compose a page _from_. This is `M4-02` in [`README.md`](README.md) — scope is defined there and not
-restated here.
+**Repository state:** implemented. First-party section, stack, grid, and columns definitions ship inside the
+45-block production catalog with bounded defaults, slots, responsive inheritance, semantic presentation
+intent, theme controls, and recipes. Unit tests resolve the same four-to-two-to-one composition in two unrelated
+themes; the browser lane proves live compact/medium/expanded reflow with no stored CSS. Independent renderer
+replay and evidence remain open.
 
 1. Ship the layout block family as first-class block definitions with bounded, theme-driven properties:
    section, stack, grid, columns, plus slots and constrained sizing.
 2. Complete the layout vocabulary beyond the two size-role axes already delivered: alignment, spacing,
    visibility per viewport, and breakpoint inheritance — all as bounded token references, never stored
    CSS.
-3. Reach the token recipes already implemented in core from the inspector, which currently has no path
-   to them.
+3. Expose core token recipes through the inspector and dispatch each selection as one canonical atomic batch.
 4. Prove the four-to-two-to-one responsive behaviour in two unrelated themes, which is `M4-02`'s stated
    acceptance.
 
@@ -226,8 +241,8 @@ two themes with no stored CSS and no viewport-specific markup, driven entirely b
 
 ### `ST-7` — The visual canvas and direct manipulation _(blocker 4, part two)_
 
-The canvas is a list of label chips. This is what stands between the current shell and the draggable,
-dynamic page builder the product is for.
+The measured preview is the visual canvas. It exposes selection, hover, semantic destinations, live indicators,
+pointer reorder/reparent, and the exact same dispatcher through keyboard, outline, and command-palette paths.
 
 1. Render the composition visually in the canvas region using the preview surface from `ST-4` as the
    visual substrate, with selection, hover and drop targets resolved through the marker map and its
@@ -237,8 +252,8 @@ dynamic page builder the product is for.
 3. Keep every operation reachable without pointer input — drag remains a strict enhancement over the
    existing keyboard and outline paths, dispatching the identical commands, and a cancelled drag
    provably changes nothing. This is `M4-05`'s standing rule.
-4. Close the command surface: the shell currently dispatches ten of seventeen command types. Add the
-   missing ones, including reparenting moves, so every semantic operation has an interface path.
+4. Keep the complete Blueprint command surface reachable, including reparenting moves, restore,
+   inheritance reset, and validated pattern application, so every semantic operation has an interface path.
 
 **Acceptance.** An author builds a nested, responsive page by direct manipulation; every one of those
 operations is also achievable by keyboard; the accessibility lane stays at zero violations; cancelled
@@ -288,8 +303,10 @@ breakage.
 
 ### `ST-9` — Publish the authoring message catalogue
 
-The shell's message keys are not published, so a host cannot feed them from its own translation chain or
-prove coverage.
+**Repository state:** implemented. `@kumwe/studio` exports the typed message catalogue and ships the canonical
+English JSON subpath; protocol/testkit copies and the contract gate verify keys, defaults, and named
+parameters. Hosts may provide typed overrides without persisting translated labels. Locale/RTL/long-label
+qualification across the supported matrix remains evidence work.
 
 1. Publish the complete key catalogue as a versioned artifact in `@kumwe/studio`, with a lane that fails
    when a key is added without entering it.
@@ -342,7 +359,8 @@ and a `beta` channel a host can depend on.
 ## What is deliberately not in this plan
 
 - **Dart and Flutter parity** — Version 3, per the scope decision above.
-- **Months 5 and 6 breadth** beyond what integration needs: the ecosystem, marketplace and
-  second-vertical packages stay on the roadmap and block nothing here.
+- **Remaining Months 5 and 6 breadth** beyond the landed media/rich-text/catalog wave: ecosystem,
+  marketplace, independent-host, performance, operations, and second-vertical qualification stay on the
+  programme roadmap.
 - **A public composition editing surface** — Version 2 composes in the administrator only.
 - **Gate B qualification itself**, which is the host's release gate and runs in the App's phase 7.

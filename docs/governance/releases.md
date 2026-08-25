@@ -27,9 +27,20 @@ version in a local manifest is scaffolding and MUST NOT be published manually ar
 release-readiness workflow cannot publish or authenticate to a registry, and passing it is not Gate A or
 Gate B evidence.
 
+The current integration candidate introduces `@kumwe/studio-renderer-web` as the eighth package and carries
+the code, changesets, release-record schema, pack checks, notices, and verifier needed for the complete family.
+Its checked-in `studio-release.json` is still the staggered alpha baseline, not proof that those exact eight
+versions are available from npm. After merge, the normal Changesets version workflow must advance all eight
+manifests to one new coordinate and the protected publish workflow must verify every registry artifact before
+Kumwe App or another deployable host updates its pin.
+
 Promotion from `alpha` to `beta` additionally requires a declared, executable conformance profile the
 candidate is feature-complete against, claimed with reproduced evidence. The profiles and their assertion
 sets are in [conformance profiles](../contracts/conformance-profiles.md).
+
+“Release-candidate implementation” may describe a proposed immutable source tree under evaluation. It does
+not mean the npm `rc` channel has opened. An `rc` publication is allowed only after every advertised profile
+is claimed at that exact commit; naming incomplete bits “RC” cannot substitute for that evidence.
 
 ## Release unit and record
 

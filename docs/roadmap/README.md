@@ -5,8 +5,9 @@ production-qualified authoring platform. It covers the first six months of deliv
 tempo; acceptance evidence decides whether work advances. A month ending does not relax a dependency or
 promote a gate.
 
-Studio is a schema-aware composition system, not a browser for writing arbitrary HTML, CSS, JavaScript, or
-host templates. It gives authors a visual canvas while preserving typed content, reusable blueprints,
+Studio is a schema-aware composition system, not a browser for persisting unrestricted HTML, CSS, JavaScript,
+or host templates. It can normalize allowed HTML into structural safe markup and apply separately governed
+scoped styling while preserving typed content, reusable blueprints,
 host-owned policy, theme-owned design choices, deterministic rendering, and a portable, versioned protocol.
 
 The programme is deliberately larger than an MVP. Version 2 Gate B represents a useful, supportable web
@@ -72,9 +73,10 @@ may be shipped; it is not merely a feature-complete declaration.
 The Version 2 web qualification target is exactly
 `studio.profile/engine-core`, `studio.profile/host-baseline`,
 `studio.profile/host-baseline-v2`, `studio.profile/media-policy`,
-`studio.profile/preview-identity-v1`, and `studio.profile/schema-property`, plus
-`studio.profile/renderer-web` and `studio.profile/authoring-web` when their executable assertion sets
-are delivered. A target is not a conformance claim: a release may name one of these profiles in
+`studio.profile/preview-identity-v1`, `studio.profile/schema-property`,
+`studio.profile/binding-projection-v1`, and `studio.profile/renderer-web`, plus target
+`studio.profile/authoring-web` when its complete executable assertion set is delivered. A target is not a
+conformance claim: a release may name one of these profiles in
 `claimedProfiles` only after the evidence model permits that exact claim. The current release record
 claims none.
 

@@ -8,6 +8,21 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Standalone production authoring and delivery (M4-01, M4-02, M5-01, M5-02, M5-03)
+
+- Studio now defaults to a host-neutral catalog of 45 schema-valid first-party blocks and ten starter
+  patterns. The live Lit inspector mounts Studio-owned rich-text, source, chart, drawing, table, money,
+  presentation, scoped-style, and media controls, while a policy-filtered resource browser supplies
+  cancellation-safe discovery and opt-in canonical references for contributed ports.
+- Editor.js `2.31.6` is the private default rich-text implementation behind Studio profiles and canonical
+  `StudioRichTextDocument` values. First-party structured tools, deterministic Markdown conversion,
+  policy-sanitized HTML import, and the strict-CSP sink-free surface never expose editor-native state to a
+  host or persist it in an artifact.
+- `@kumwe/studio-renderer-web` renders all 45 types with semantic no-JavaScript fallbacks and Studio-owned,
+  disposable progressive behavior. Its eight digest-pinned vectors exhaustively cover the catalog,
+  presentation capabilities, progressive families, and security fallbacks; the production reference page
+  exercises every registered type plus live rich-text, media, drawing, and table authoring.
+
 ### Deterministic visual-canvas placement (M4-01, M4-05)
 
 - Measured pointer placement now resolves an exact-distance tie in favor of the deeper semantic
@@ -36,7 +51,8 @@ work-package acceptance and gate outcomes remain governed by
   and native Flutter profiles remain mandatory Version 3 targets instead of unrelated Version 2 gate
   blockers. ADR 0019 records the scope decision; Gate A and Gate B remain unassessed/blocked, and no
   profile is claimed without reproduced evidence.
-- The seven public npm packages are one Changesets fixed group. A closed canonical
+- The coordinated npm family is now eight packages, including `@kumwe/studio-renderer-web`, in one
+  Changesets fixed group. A closed canonical
   `studio-release.json` records their exact versions, the wire protocol, corpus-manifest digest, and
   evidence-backed profile identifiers; protocol and testkit ship byte-identical exported copies.
 - Deterministic sync/check/version commands, packaging checks, a publication guard, post-publish npm
