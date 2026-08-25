@@ -31,6 +31,11 @@ with arbitrary CSS and JavaScript.
 | Table                                                                    | `table` with canonical bounded text-only table data                                                                         |
 | Toggle                                                                   | Native dialog/popover disclosure triggers and call-to-action links                                                          |
 
+The first-party drawing and table definitions mount Studio's own canonical
+value editors. Drawing provides equivalent SVG pointer and labelled
+coordinate/keyboard paths; table provides labelled text-cell and structural
+actions. Hosts do not supply an editor implementation for either capability.
+
 Every block has the reusable `studio.control/presentation` inspector. Its `design` intent covers
 alignment, renderer-owned motion/transition/parallax, height/width, inverse color roles,
 margin/padding, markers, flow/relative/sticky position, print selection, scrolling, and responsive

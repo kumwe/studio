@@ -16,8 +16,10 @@ fallbacks, and progressive behavior.
 
 The separate “Inline block authoring” panel mounts `StudioAuthoringControlRegistry`. Its prose control
 uses the Studio-owned Editor.js adapter without importing Editor.js from the host, and its media control
-uses a host-injected `MediaProvider` while persisting only canonical references. The deterministic mock
-demonstrates browse/select/upload handoff but does not claim durable media custody, scanning, or delivery.
+uses a host-injected `MediaProvider` while persisting only canonical references. The same panel mounts the
+dependency-free native SVG drawing and text-only table controls and sends their canonical values through
+ordinary Studio commands. The deterministic mock demonstrates browse/select/upload handoff but does not claim
+durable media custody, scanning, or delivery.
 
 The renderer surface is now slotted into the shell and the shell owns ready/render ordering, deterministic
 coalescing, viewport changes and two-way marker selection through `StudioPreviewBinding`. This harness uses a

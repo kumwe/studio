@@ -68,6 +68,36 @@ export async function mountReferenceAuthoringControls(
     }),
   );
 
+  const drawingNode = requireNode(studio, 'drawing');
+  const drawingBinding = requireStaticBinding(drawingNode, 'drawing');
+  const drawingHolder = requireControlHolder(holder, 'drawing');
+  handles.push(
+    await registry.mount(STUDIO_AUTHORING_CONTROL_IDS.drawing, {
+      binding: drawingBinding,
+      holder: drawingHolder,
+      onChange: (change) => {
+        if (change.valid) setStaticBinding(studio, drawingNode.id, 'drawing', change.value);
+      },
+      profile: 'studio.drawing/canonical',
+      value: drawingBinding.source.value,
+    }),
+  );
+
+  const tableNode = requireNode(studio, 'reference-table');
+  const tableBinding = requireStaticBinding(tableNode, 'table');
+  const tableHolder = requireControlHolder(holder, 'table');
+  handles.push(
+    await registry.mount(STUDIO_AUTHORING_CONTROL_IDS.table, {
+      binding: tableBinding,
+      holder: tableHolder,
+      onChange: (change) => {
+        if (change.valid) setStaticBinding(studio, tableNode.id, 'table', change.value);
+      },
+      profile: 'studio.table/canonical',
+      value: tableBinding.source.value,
+    }),
+  );
+
   return (): void => handles.forEach((handle) => handle.destroy());
 }
 

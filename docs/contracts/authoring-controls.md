@@ -19,12 +19,14 @@ The registered identifiers in this release family are:
 - `studio.control/drawing`
 - `studio.control/money`
 - `studio.control/scoped-css`
+- `studio.control/table`
 
 Profiles are closed. Rich text accepts only the named profiles exported by
 `@kumwe/studio-rich-text`. Source accepts `studio.source/code`,
-`studio.source/latex`, or `studio.source/mermaid`; its canonical value remains
-plain bounded text and its mode comes only from the profile. Unknown control or
-profile input fails closed.
+`studio.source/latex`, or `studio.source/mermaid`; drawing and table accept only
+`studio.drawing/canonical` and `studio.table/canonical` when a profile is
+declared. Source canonical value remains plain bounded text and its mode comes
+only from the profile. Unknown control or profile input fails closed.
 
 ## Shell discovery and lifecycle
 
@@ -74,16 +76,33 @@ decimal string and an uppercase three-letter currency without a binary-float
 conversion. Invalid transient input preserves and reports the last valid
 canonical value.
 
+The drawing control is a native SVG value editor. Pointer strokes and its
+labelled point-coordinate/keyboard path both produce only bounded canonical
+points, color tokens, and stroke widths. The SVG is a disposable view; SVG
+markup, canvas commands, scripts, and data URLs never become values. Alternative
+text and dimensions retain their protocol ceilings. Committing or removing a
+stroke calls `onChange` with one detached canonical document, so the shell's
+ordinary command history owns undo and redo. Pointer cancellation and Escape
+discard only the uncommitted stroke.
+
+The table control edits the canonical caption, column headings, and text cells
+through a labelled native table. It preserves exact row/column parity, the
+50-column and 1000-row ceilings, and the text-length bounds. Add/remove actions
+are explicit and keyboard-operable. It never parses or persists HTML table
+markup. Every accepted cell or structural edit calls `onChange`, so the shell's
+canonical history remains the only undo authority.
+
 `studio.control/scoped-css` is a trusted host styling control, not a Blueprint
 field. It parses only named node parts and the renderer's fixed property/value
 ceiling into `StudioScopedStyleSheet`. Selectors, at-rules, URLs, active values,
 and arbitrary declarations are rejected before compilation. Portable persisted
 appearance remains semantic design intent governed by the theme contract.
 
-Media and drawing controls use the same registry identifiers but require their
-dedicated Studio-owned services. Media persists only canonical references;
-asset bytes and delivery URLs remain host-owned. Drawing persists only the
-bounded canonical vector document and never SVG, canvas commands, or data URLs.
+Media controls use the same registry identifiers but require dedicated
+Studio-owned services over host ports. Media persists only canonical
+references; asset bytes and delivery URLs remain host-owned. Drawing and table
+are dependency-free first-party value editors and persist only their bounded
+canonical documents.
 
 ## Binding and accessibility rules
 

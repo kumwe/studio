@@ -33,7 +33,10 @@ design language instead.
 
 All controls enforce static-binding mutability, preserve the last valid value,
 and expose labelled keyboard-operable controls. Media custody remains with host
-ports; Studio owns the selection and upload experience.
+ports; Studio owns the selection and upload experience. Drawing uses a native
+SVG view with equivalent pointer and explicit coordinate/keyboard paths, while
+table authoring uses a native text-only table. Both emit detached canonical
+values through the same change seam, leaving undo/redo to Studio commands.
 
 ## Consequences
 
