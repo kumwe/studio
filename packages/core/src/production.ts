@@ -6,8 +6,10 @@ import {
   type BlockPortDefinition,
   type BlockType,
   type BlueprintNode,
+  type FieldBinding,
   type JsonObject,
   type JsonSchema,
+  type JsonValue,
   type LocalName,
   type PatternDocument,
   type QualifiedName,
@@ -18,7 +20,6 @@ import {
   coreLayoutInitialProperties,
   createCoreLayoutBlockDefinitions,
   isCoreLayoutBlockType,
-  type CoreLayoutBlockType,
 } from './layout.js';
 
 /** The host-neutral first-party blocks shipped by every Studio installation. */
@@ -131,15 +132,15 @@ export const CORE_PRODUCTION_PATTERN_IDS: readonly [
 ]);
 
 const VERSION = '1.0.0';
-const OWNER = Object.freeze({ id: 'studio.core/blocks' as QualifiedName, version: VERSION });
+const OWNER = Object.freeze({ id: 'studio.core/blocks', version: VERSION });
 const WEB_RENDERERS = Object.freeze([
   {
-    capability: 'studio.renderer/semantic-web' as QualifiedName,
+    capability: 'studio.renderer/semantic-web',
     surface: 'preview' as const,
     versions: '^1.0.0',
   },
   {
-    capability: 'studio.renderer/semantic-web' as QualifiedName,
+    capability: 'studio.renderer/semantic-web',
     surface: 'web' as const,
     versions: '^1.0.0',
   },
@@ -631,7 +632,7 @@ function pattern(id: string, roots: BlueprintNode[]): PatternDocument {
 function node(
   id: string,
   name: keyof typeof CORE_PRODUCTION_BLOCK_TYPES,
-  staticBindings: Readonly<Record<string, unknown>> = {},
+  staticBindings: Readonly<Record<string, JsonValue>> = {},
   children?: BlueprintNode[],
   dynamicBindings: Readonly<Record<string, BindingSource>> = {},
 ): BlueprintNode {
@@ -642,13 +643,13 @@ function node(
       : name === 'card'
         ? 'actions'
         : 'items';
-  const bindings = Object.fromEntries([
-    ...Object.entries(staticBindings).map(([port, value]) => [
-      port,
-      binding({ kind: 'static-value', value: value as never }),
-    ]),
-    ...Object.entries(dynamicBindings).map(([port, source]) => [port, binding(source)]),
-  ]);
+  const bindings: Record<LocalName, FieldBinding> = {};
+  for (const [port, value] of Object.entries(staticBindings)) {
+    bindings[port] = binding({ kind: 'static-value', value });
+  }
+  for (const [port, source] of Object.entries(dynamicBindings)) {
+    bindings[port] = binding(source);
+  }
   const result: BlueprintNode = {
     authoring: {
       mode: isCoreLayoutBlockType(type) || children !== undefined ? 'structural' : 'content',
@@ -666,7 +667,7 @@ function node(
   return result;
 }
 
-function binding(source: BindingSource) {
+function binding(source: BindingSource): FieldBinding {
   return { onError: 'error' as const, onNull: 'empty' as const, source, transforms: [] };
 }
 
