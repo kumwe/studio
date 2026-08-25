@@ -11,6 +11,35 @@ Start with:
 - [`../portability/README.md`](../portability/README.md) for language/runtime rules; and
 - [`../media/README.md`](../media/README.md) for the media ownership boundary.
 
+## Current Studio-side deliverable
+
+The integration candidate contains the runtime an embedding host consumes, not only a proposed API:
+
+| Surface            | Repository-verified implementation                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Standalone builder | 45 first-party block definitions, ten starter patterns, schema-valid insertion defaults, measured direct manipulation, and keyboard/outline/explicit-control parity                   |
+| Inline content     | Editor.js `2.31.6` behind Studio's private factory, first-party structured tools, canonical rich-text JSON, Markdown conversion, safe-HTML import, and a strict-CSP sink-free surface |
+| Delivery           | `@kumwe/studio-renderer-web` semantic output for all 45 types, no-JavaScript fallbacks, disposable trusted enhancements, and an exhaustive portable renderer corpus                   |
+| Host data          | Read-only model projection, policy-filtered resource discovery, canonical resource-reference selection for opted-in contributed ports, and host-authoritative binding resolution      |
+| Media              | Studio-owned browse/upload/metadata/reorder/recovery controls over host-owned media providers and upload transports                                                                   |
+| Portability        | Eight coordinated package manifests and one release record; Editor.js, Lit, drag internals, and host classes remain outside public protocol contracts                                 |
+
+This is candidate implementation, not a published support claim. The current release record claims no
+profile, Gate A/B counts have not moved, and the new eight-package coordinate must still be created and
+published through the protected release workflow.
+
+## Cross-repository landing sequence
+
+1. Merge and version the verified Studio tree; publish all eight exact packages and verify the registry
+   copies against `studio-release.json`.
+2. In the host, update one exact release record and corpus digest atomically. Never combine an old Studio
+   package with the new renderer, vendor workspace builds, or reconstruct the catalog inside the host.
+3. Bind the public session, preview, media, resource, renderer, localization, contribution, and persistence
+   seams to host-owned authority. The host never imports or configures Editor.js.
+4. Replay every applicable portable corpus through the real host adapters and renderer, then run the
+   integrated browser/security/accessibility/rollback matrix.
+5. Promote a channel only for the exact immutable family whose profile evidence was accepted.
+
 ## Integration principle
 
 Studio owns authoring intent and deterministic composition operations. The host owns authority and durable

@@ -34,4 +34,6 @@ if (missing.length > 0) {
   );
 }
 
-console.log(`Published Studio release ${record.release} verified across all seven packages.`);
+console.log(
+  `Published Studio release ${record.release} verified across all ${Object.keys(record.packages).length} packages.`,
+);

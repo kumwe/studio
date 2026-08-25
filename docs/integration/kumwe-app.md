@@ -9,6 +9,25 @@ Doctrine DBAL, Twig server rendering, focused Lit enhancements, immutable versio
 trusted extensions, owner-aware contributions, immutable runtime generations, strict public/admin/portal
 boundaries, recovery isolation, revision/workflow/translation support, and bounded KIS customization.
 
+## Current Studio candidate boundary
+
+The Studio-side runtime needed by the App is present in the integration candidate: the eight-package family,
+45 first-party blocks, ten patterns, measured page canvas, private Editor.js rich-text adapter, media and
+resource controls, complete semantic web renderer, and portable host/renderer/binding corpora. Kumwe App must
+consume those capabilities through public Studio contracts; it must not reproduce the catalog, expose
+Editor.js, or carry a private fork of renderer behavior.
+
+That candidate has not yet become an official coordinated npm release. The required landing order is:
+
+1. merge and publish one exact eight-package Studio coordinate through the protected release train;
+2. atomically pin all eight versions plus the release/corpus digests in Kumwe App;
+3. replay the portable corpora through the real App adapters and Twig renderer; and
+4. qualify the integrated browser, database, security, media, extension, migration, and rollback matrices.
+
+Until step 1 completes, App work is an additive integration candidate rather than a supported production
+dependency. Workspace tarballs, mixed alpha versions, and copied Studio runtime are not substitutes for the
+published coordinate.
+
 The adapter is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
 assertion set for [`studio.profile/host-baseline`](../contracts/conformance-profiles.md): language-neutral
 JSON that a PHPUnit suite replays against the Kumwe App adapter to prove the persistence and
@@ -44,7 +63,8 @@ The integration must preserve Kumwe App's existing rules:
 8. Public, portal, administrator and recovery surfaces remain separate and deny-by-default.
 9. Twig stays strict and auto-escaped; raw output is limited to presenter-guaranteed safe projections.
 10. Documents use bounded typed ASTs and semantic KIS/theme choices, never stored executable code, raw Twig,
-    arbitrary HTML/CSS/JavaScript, SQL, or hidden service calls.
+    unrestricted HTML/CSS, JavaScript, SQL, or hidden service calls. Allowed pasted HTML is normalized into
+    Studio safe-markup structures, while scoped styles remain separately authorized renderer context.
 
 ## Target authoring model
 
@@ -229,6 +249,10 @@ Kumwe App supplies a first-class media port supporting browse/search, upload ses
 cancel/retry, processing status, stable asset references, metadata, alternative/decorative text, captions,
 focal points, renditions, replacement/versioning, permissions, lifecycle and audit.
 
+Studio's candidate already supplies the reusable field controller and live authoring controls for those
+workflows. The App adapter provides the authenticated `MediaProvider` and `MediaUploadTransport`; it does not
+build a second picker or let the browser bypass the existing media application service.
+
 The authoring document stores the stable media reference and presentation intent. It does not store a temporary
 upload URL, filesystem path, raw byte payload, signed download URL, image-processing command, or private
 metadata. Details and the ownership split are in [`../media/README.md`](../media/README.md).
@@ -243,8 +267,8 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 3. add authenticated preview and public Twig block rendering;
 4. expose Studio only for explicitly opted-in authoring definitions;
 5. prove save/revision/workflow/translation/permission/media/extension lifecycle;
-6. migrate the reusable rich-text/media authoring UI into Studio packages while Kumwe App adapters continue to
-   own routes, security and persistence;
+6. bind Studio's shipped rich-text/media/resource controls to Kumwe App adapters while Kumwe App continues to
+   own routes, security, persistence and policy; Editor.js remains private to Studio;
 7. qualify old and new paths together; and
 8. retire a legacy editor only after every stored form/content shape has a tested fallback or migration.
 
@@ -266,7 +290,9 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 
 ## Kumwe App integration phases
 
-Durable work starts after Studio Gate A.
+Production activation starts after Studio Gate A. Additive adapter work may proceed beforehand on coordinated
+integration branches, but it remains a discovery/integration candidate and cannot become a supported runtime
+dependency until the contract and exact release coordinate are accepted.
 
 | Studio package  | Kumwe App integration result                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------- |

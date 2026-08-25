@@ -30,19 +30,21 @@ implementation that claimed a profile keeps claiming it for the version it passe
 | `studio.profile/media-policy`          | A host media pipeline             | `vectors/media/`                                                               | Declared, executable |
 | `studio.profile/preview-identity-v1`   | A preview client/host             | `vectors/preview/`                                                             | Declared, executable |
 | `studio.profile/schema-property`       | A property-schema validator       | `vectors/schema-profile/`                                                      | Declared, executable |
-| `studio.profile/renderer-web`          | A trusted renderer                | `conformance/renderer-web/`, rich text, preview, CSP and accessibility lanes   | Target               |
+| `studio.profile/renderer-web`          | A trusted renderer                | `conformance/renderer-web/`, rich text, preview, CSP and accessibility lanes   | Declared, executable |
 | `studio.profile/authoring-web`         | An authoring client               | `conformance/authoring-web/`, the requirement registry and accessibility lanes | Target               |
 | `studio.profile/engine-dart`           | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay                  | Version 3 target     |
 | `studio.profile/renderer-flutter`      | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions                  | Version 3 target     |
 | `studio.profile/authoring-flutter`     | A native Flutter authoring client | Version 3 interaction and accessibility assertions                             | Version 3 target     |
 
-The Version 2 qualification target comprises the seven declared executable profiles plus
-`renderer-web` and `authoring-web` when their assertion sets become executable. The three Dart/Flutter
+The Version 2 qualification target comprises the eight declared executable profiles plus
+`authoring-web` when its assertion set becomes executable. The three Dart/Flutter
 profiles are Version 3 targets and do not block Version 2. A target row is not a support or conformance
 claim; the current release record claims no profiles.
 
 A profile marked **Target** is named so that consumers can see the intended boundary. It is not
-claimable: its assertion set is not yet executable, and no implementation may advertise it.
+claimable: its assertion set is not yet complete and executable, and no implementation may advertise it.
+An executable profile is likewise not advertised until an immutable evidence bundle records an accepted
+claim; the current release record intentionally claims none.
 
 ## `studio.profile/host-baseline`
 
@@ -193,7 +195,7 @@ malformed, cross-draft, reordered, duplicate, incomplete, invented, and revoked 
 stale same-digest callback and measurement generations.
 
 This narrow profile does not claim renderer visual fidelity, CSP deployment, accessibility output, or
-the complete preview lifecycle; those remain part of the target `renderer-web` assertion set. It makes
+the complete preview lifecycle; those remain part of the wider `renderer-web` assertion set. It makes
 the portable identity boundary executable without overstating the wider renderer.
 
 ## `studio.profile/schema-property`
@@ -226,11 +228,13 @@ not independent acceptance evidence.
 
 ## Web profile corpus increments
 
-`conformance/renderer-web/*.json` now fixes portable first-party renderer inputs and observable HTML,
-CSS and enhancement expectations. `@kumwe/studio-renderer-web` supplies the reference replay. The
-corpus currently covers value escaping, responsive layout and an accessible chart fallback; it does
-not yet cover the complete catalog, CSP deployment, progressive-enhancement browser behavior, visual
-fidelity or the accessibility matrix.
+The eight `conformance/renderer-web/*.json` vectors fix portable first-party renderer inputs and observable
+HTML, CSS, enhancement, and fail-closed security expectations. Their machine-checked coverage is exhaustive
+across all 45 canonical block types, nine progressive-behavior families, ten presentation capabilities, and
+five security fallbacks. `@kumwe/studio-renderer-web` supplies the reference replay, while the browser lanes
+exercise progressive behavior, CSP, reduced motion, responsive output, and accessibility. A PHP/Twig or other
+host-native renderer still has to replay the same corpus, and accepted visual/accessibility/environment
+evidence is still required before a release claims the profile.
 
 `conformance/authoring-web/*.json` fixes semantic browser lanes independently of CSS selectors or a
 particular component implementation. Each lane starts from a fresh Blueprint and compares the exact
@@ -240,9 +244,10 @@ explicit structural-control moves. A conforming authoring client still needs a b
 drives the real shell plus the complete interaction registry, touch, RTL, 400% zoom/reflow, reduced
 motion, automated accessibility and manual assistive-technology lanes.
 
-Both profiles therefore remain **Target**. These digest-pinned corpora and reference-runner tests are
-implemented increments, not product conformance claims, Gate A/B evidence, or authority to promote a
-package beyond alpha.
+`renderer-web` is therefore declared and executable but unclaimed. `authoring-web` remains **Target**: its
+digest-pinned runner increment is not the complete browser assertion set. Neither repository tests nor an
+executable profile are by themselves a product conformance claim, Gate A/B evidence, or authority to promote
+a package beyond alpha.
 
 ## Claiming a profile
 

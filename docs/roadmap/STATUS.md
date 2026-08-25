@@ -1,26 +1,28 @@
 # Programme status
 
-**Updated:** 2026-08-24
+**Updated:** 2026-08-25
 
-This file describes work still to be delivered. It does not claim that documented contracts or planned tests
-already exist in runtime code. Accepted work is recorded against immutable evidence and release history.
+This file distinguishes repository-verified implementation from accepted evidence and published release
+coordinates. A runtime increment may be complete and green in the repository while its programme package,
+profile, or release channel remains unaccepted. Accepted work is recorded only against immutable evidence and
+release history.
 
 ## Current position
 
-| Item                              | Status                                                                                                                                                                                                                  |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Programme phase                   | Months 1–4 running concurrently: foundation completions, contract corpus, headless runtime, authoring shell                                                                                                             |
-| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                                                                              |
-| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                                                                         |
-| Published Studio packages         | Seven alpha prereleases on the npm `alpha` dist-tag; none supported, none accepted by evidence review                                                                                                                   |
-| Declared conformance profiles     | `host-baseline`, additive `host-baseline-v2`, `engine-core`, `media-policy`, `preview-identity-v1`, `schema-property`, and `binding-projection-v1` declared and executable; renderer and authoring profiles are targets |
-| Version 2 qualification target    | The seven executable profiles above plus target `renderer-web` and `authoring-web`; no profile is currently claimed                                                                                                     |
-| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                            |
-| Release channel                   | `alpha`. Promotion to `beta` needs a profile claim backed by reproduced evidence — see the road to beta below                                                                                                           |
-| Supported production hosts        | None                                                                                                                                                                                                                    |
-| Supported protocol version        | None; the first contract release candidate is produced by `M2-08`                                                                                                                                                       |
-| Earliest durable host integration | After Gate A                                                                                                                                                                                                            |
-| Current authoritative activity    | Implement the contract corpus, deterministic core, contribution runtime, preview bridge, and authoring shell against the executable check lane; assemble Gate A evidence                                                |
+| Item                              | Status                                                                                                                                                                                                        |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Programme phase                   | Months 1–5 implementation increments are running concurrently; the standalone production authoring/renderer wave is repository-verified while host qualification and evidence remain open                     |
+| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                                                                    |
+| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                                                               |
+| Published Studio packages         | The existing registry baseline is alpha and unsupported. This branch defines an eight-package family including `renderer-web`, but no new coordinated immutable family has been published from it yet         |
+| Declared conformance profiles     | Eight profiles are declared and executable, including `renderer-web`; `authoring-web` remains a target because its complete real-shell assertion set and manual matrix are not yet present                    |
+| Version 2 qualification target    | The eight executable profiles plus target `authoring-web`; the current release record deliberately claims none                                                                                                |
+| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                  |
+| Release channel                   | `alpha`. The branch is a release-candidate implementation snapshot, not an npm `rc`; `beta`/`rc` promotion still needs reproduced evidence and channel authorization                                          |
+| Supported production hosts        | None                                                                                                                                                                                                          |
+| Supported protocol version        | None; runtime uses draft wire `0.1.0-draft.2`, while the first supported contract release candidate is produced by `M2-08`                                                                                    |
+| Earliest durable host integration | After Gate A                                                                                                                                                                                                  |
+| Current authoritative activity    | Publish one coordinated eight-package coordinate, replay it in Kumwe App and a second host/renderer, complete `authoring-web`, resolve distribution licensing, and assemble independently reproduced evidence |
 
 Delivered, repository-verified increments are recorded in [`CHANGELOG.md`](../../CHANGELOG.md) and in the
 implementation board below. A changelog entry means the behaviour exists and passes the check lane on a
@@ -38,18 +40,18 @@ Gate counts change only after evidence review. A documentation claim does not mo
 
 ## Six-month board
 
-| Month  | Packages        | State        | Immediate dependency                                               |
-| ------ | --------------- | ------------ | ------------------------------------------------------------------ |
-| 1      | `M1-01`–`M1-06` | Active       | Reviewer reproduction of the delivered evidence and baseline lanes |
-| 2      | `M2-01`–`M2-08` | Active       | Remaining contract scope below, then accepted Month 1 packages     |
-| Gate A | 14 criteria     | Not assessed | Accepted `M2-08` evidence bundle                                   |
-| 3      | `M3-01`–`M3-05` | Active       | Implementation running ahead of Gate A as unaccepted scaffolding   |
-| V3     | `M3-06`         | Planned      | Ratified Version 3 Dart profile and the Version 2 DOM-free core    |
-| 4      | `M4-01`–`M4-05` | Active       | Relevant Version 2 Month 3 packages                                |
-| V3     | `M4-06`         | Planned      | `M3-06` and the Version 3 Flutter authoring profile                |
-| 5      | `M5-01`–`M5-06` | Planned      | Relevant Months 3 and 4 packages                                   |
-| 6      | `M6-01`–`M6-06` | Planned      | Implemented Version 2 web, generic-host, and Kumwe App profiles    |
-| Gate B | 18 criteria     | Blocked      | Accepted `M6-06` evidence bundle                                   |
+| Month  | Packages        | State        | Immediate dependency                                                    |
+| ------ | --------------- | ------------ | ----------------------------------------------------------------------- |
+| 1      | `M1-01`–`M1-06` | Active       | Reviewer reproduction of the delivered evidence and baseline lanes      |
+| 2      | `M2-01`–`M2-08` | Active       | Remaining contract scope below, then accepted Month 1 packages          |
+| Gate A | 14 criteria     | Not assessed | Accepted `M2-08` evidence bundle                                        |
+| 3      | `M3-01`–`M3-05` | Active       | Implementation running ahead of Gate A as unaccepted scaffolding        |
+| V3     | `M3-06`         | Planned      | Ratified Version 3 Dart profile and the Version 2 DOM-free core         |
+| 4      | `M4-01`–`M4-05` | Active       | Relevant Version 2 Month 3 packages                                     |
+| V3     | `M4-06`         | Planned      | `M3-06` and the Version 3 Flutter authoring profile                     |
+| 5      | `M5-01`–`M5-06` | Active       | Media/rich-text/catalog runtime landed; ecosystem and host proof remain |
+| 6      | `M6-01`–`M6-06` | Planned      | Implemented Version 2 web, generic-host, and Kumwe App profiles         |
+| Gate B | 18 criteria     | Blocked      | Accepted `M6-06` evidence bundle                                        |
 
 ## Implementation board
 
@@ -57,39 +59,42 @@ Repository-verified increments per work package, with the scope that still block
 the programme vocabulary; `evidence-review` here means the implementation is complete against its
 acceptance list and awaits an evidence bundle plus an independent reviewer.
 
-| Package | State           | Delivered (see changelog)                                                                              | Still blocking acceptance                                               |
-| ------- | --------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `M1-04` | evidence-review | Stable criterion registry; strict bundle/gate validator; safe complete bundle lane                     | First real bundle; independent human reproduction and durable retention |
-| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                                                | Reviewer reproduction; first alpha publish not yet exercised            |
-| `M1-06` | evidence-review | Registry with 30 obligations, zero open; automated WCAG lane                                           | Reviewer reproduction                                                   |
-| `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors                       | Reviewer reproduction; independent cross-runtime profile replay         |
-| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                                              | Reviewer reproduction                                                   |
-| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds                                  | Reviewer reproduction                                                   |
-| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding                                   | Reviewer reproduction                                                   |
-| `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors                                     | Reviewer reproduction                                                   |
-| `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest                                      | Generated TypeScript models and canonical round-trip                    |
-| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals                                      | Reviewer reproduction                                                   |
-| `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes                                       | Reviewer reproduction against the Version 2 TypeScript profile          |
-| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations                                           | Reviewer reproduction; lifecycle fixtures for non-block contributions   |
-| `M3-03` | evidence-review | Testbed, HTTP adapter, and single-exchange plus stateful host corpora                                  | Independent replay and reviewer reproduction                            |
-| `M3-04` | evidence-review | Responder, handshake, geometry, attempt-safe cancellation, portable identity corpus                    | Reviewer reproduction                                                   |
-| `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations                               | Kumwe App's Gate A contribution contract; its host adapter at Gate B    |
-| `M4-02` | active          | Core section/stack/grid/columns, typed recipes/tokens, reference reflow, two-theme semantic resolution | Independent second-renderer replay and reviewer reproduction            |
-| `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                                       | Reviewer reproduction                                                   |
-| `M4-01` | active          | Shell regions, host-bound preview, measured SVG visual canvas, two-way selection and degraded fallback | Dedicated framed-CSP policy; independent renderer/reviewer reproduction |
-| `M4-04` | active          | Read-only model session; exact field/control projection; portable binding corpus; model-driven shell   | Published Kumwe App AP-2 replay; independent second-host reproduction   |
-| `M4-05` | evidence-review | Measured reorder/reparent with identical outline/palette commands; tested no-op cancellation           | Evidence bundle; manual AT/touch/zoom/RTL matrix; reviewer reproduction |
-| `M5-01` | active          | Upload orchestration over the canonical session state machine                                          | Media browser UI; paste/drop capture; real host adapter exercises       |
-| `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | Ratified `engine-dart` profile, generated models, cross-runtime replay  |
-| `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                     | `M3-06` and native Flutter authoring/renderer profiles                  |
+| Package | State           | Delivered (see changelog)                                                                                                                                                   | Still blocking acceptance                                                                                  |
+| ------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `M1-04` | evidence-review | Stable criterion registry; strict bundle/gate validator; safe complete bundle lane                                                                                          | First real bundle; independent human reproduction and durable retention                                    |
+| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                                                                                                                     | Reviewer reproduction; first alpha publish not yet exercised                                               |
+| `M1-06` | evidence-review | Registry with 30 obligations, zero open; automated WCAG lane                                                                                                                | Reviewer reproduction                                                                                      |
+| `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors                                                                                            | Reviewer reproduction; independent cross-runtime profile replay                                            |
+| `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                                                                                                                   | Reviewer reproduction                                                                                      |
+| `M2-03` | evidence-review | Runtime, authoring SDK, lifecycle fixtures across six canonical kinds                                                                                                       | Reviewer reproduction                                                                                      |
+| `M2-04` | evidence-review | Taxonomy, ports, negotiation, handshake, published transport binding                                                                                                        | Reviewer reproduction                                                                                      |
+| `M2-05` | evidence-review | Grammar, wire upload lifecycle, conformance corpus, policy vectors                                                                                                          | Reviewer reproduction                                                                                      |
+| `M2-06` | active          | Canonical serialization with its portable corpus, digest manifest                                                                                                           | Generated TypeScript models and canonical round-trip                                                       |
+| `M2-07` | evidence-review | Threat registry closed: 14 of 14 enforced with recorded residuals                                                                                                           | Reviewer reproduction                                                                                      |
+| `M3-01` | evidence-review | Session, selection, migrations, canonical form; generative lanes                                                                                                            | Reviewer reproduction against the Version 2 TypeScript profile                                             |
+| `M3-02` | evidence-review | Transactional owner-aware runtime with immutable generations                                                                                                                | Reviewer reproduction; lifecycle fixtures for non-block contributions                                      |
+| `M3-03` | evidence-review | Testbed, HTTP adapter, and single-exchange plus stateful host corpora                                                                                                       | Independent replay and reviewer reproduction                                                               |
+| `M3-04` | evidence-review | Responder, handshake, geometry, attempt-safe cancellation, portable identity corpus                                                                                         | Reviewer reproduction                                                                                      |
+| `M3-05` | active          | All declaration kinds schema-backed, incl. design vocabulary, migrations                                                                                                    | Kumwe App's Gate A contribution contract; its host adapter at Gate B                                       |
+| `M4-02` | evidence-review | Section/stack/grid/columns, responsive presentation intent, recipes, two-theme semantic resolution and browser 4→2→1 reflow                                                 | Independent second-renderer replay and reviewer reproduction                                               |
+| `M4-03` | evidence-review | Five modes, total table, mode-boundary vectors, per-slot markers                                                                                                            | Reviewer reproduction                                                                                      |
+| `M4-01` | active          | Full catalog/pattern palette, host-bound preview, measured SVG visual canvas, live controls, two-way selection and degraded fallback                                        | Dedicated framed-CSP policy; complete `authoring-web` adapter/matrix; independent reviewer reproduction    |
+| `M4-04` | active          | Read-only model/resource sessions; exact field/control projection; portable binding corpus; policy-filtered resource browser                                                | Published Kumwe App AP-2/resource replay; independent second-host reproduction                             |
+| `M4-05` | evidence-review | Measured reorder/reparent with identical outline/palette commands; tested no-op cancellation                                                                                | Evidence bundle; manual AT/touch/zoom/RTL matrix; reviewer reproduction                                    |
+| `M5-01` | active          | Media field controller and shell controls cover browse/search/page/select/replace, paste/drop/upload, metadata, progress, cancellation, retry, ordering and orphan recovery | Real persistent host adapter, hostile-media and supported-browser evidence                                 |
+| `M5-02` | active          | Private Editor.js adapter, first-party rich-text tools, Markdown and safe-HTML codecs, renderer projection, strict-CSP sink-free surface                                    | Full paste/browser/server-renderer matrix; independent evidence; Kumwe App distribution-license decision   |
+| `M5-03` | evidence-review | Standalone 45-block catalog, ten patterns, schema-valid insertion defaults, complete semantic renderer, guided controls and exhaustive renderer corpus                      | Independent PHP/Twig or second-renderer replay; complete `authoring-web` profile and reviewer reproduction |
+| `M3-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                                                                                          | Ratified `engine-dart` profile, generated models, cross-runtime replay                                     |
+| `M4-06` | planned         | Version 3 target; no Version 2 deliverable claimed                                                                                                                          | `M3-06` and native Flutter authoring/renderer profiles                                                     |
 
 ### Latest state transition
 
-| Package / integration item | Implementation commit                      | Evidence bundle        | New state       | Blocking item                                                                                                                                              | Reviewer   |
-| -------------------------- | ------------------------------------------ | ---------------------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `M4-01` / `ST-4`           | `26359f3d98717450fc083bc2d3d21a762df750e3` | none — not yet created | active          | Reproduce the Playwright accessibility/CSP lane; ratify a dedicated framed authoring policy because the pinned reference CSP retains `frame-src 'none'`    | unassigned |
-| `M4-04` / `ST-8`           | `ba7238fa60ab0269cee47264b9b94961c07183ec` | none — not yet created | active          | Replay the published Kumwe App AP-2 session adapter and the portable binding corpus in an independent second host                                          | unassigned |
-| `M4-05` / `ST-7`           | `84f2907`                                  | none — not yet created | evidence-review | Reproduce the measured-canvas browser lane independently; complete the manual screen-reader, touch, zoom and RTL matrix; pair with a qualified framed host | unassigned |
+| Package / integration item | Implementation commit                      | Evidence bundle        | New state       | Blocking item                                                                                                                                           | Reviewer   |
+| -------------------------- | ------------------------------------------ | ---------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `M4-01` / `ST-4`, `ST-7`   | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Complete the real-shell `authoring-web` assertion set, framed-host CSP proof, and manual AT/touch/zoom/RTL matrix                                       | unassigned |
+| `M4-02` / `ST-6`           | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | evidence-review | Replay the responsive composition semantics in an independent renderer and reproduce the browser evidence                                               | unassigned |
+| `M4-04` / `ST-8`           | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Replay the exact published package family through Kumwe App AP-2/resource adapters and an independent second host                                       | unassigned |
+| `M5-01`–`M5-03`            | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Publish the family, prove real host media and PHP/Twig delivery, complete authoring qualification, resolve license distribution, and reproduce evidence | unassigned |
 
 ## Downstream integration commitments
 
@@ -108,32 +113,27 @@ so a contract change here is measured against it.
 
 ## Next dependency-ordered actions
 
-The current contract wave makes the integration boundary implementable and provable from published artifacts
-alone: named conformance profiles with the host assertion corpus, the transport binding and its
-operation registry, the media upload lifecycle, the Gate A preview vocabulary, authorized mutations,
-the remaining declaration payloads, canonical serialization as a corpus, and a digest-verified corpus
-manifest. `studio.profile/schema-property` now adds the portable admission/instance corpus, stable
-error taxonomy, aligned meta-schema and reference runner needed before a host freezes a contributed
-property schema. Every published limit is pinned at and immediately over its boundary; combined depth,
-reference fan-out, speculative diagnostic replay, distinct diagnostic bounding, and deterministic
-cross-pass/root/reference precedence are executable assertions rather than implementation assumptions.
-That implementation is repository-verifiable; it is not an accepted claim
-until an independent runtime replay and evidence review are recorded. The next actions in dependency
-order:
+The candidate tree now contains the Studio-side page-building runtime rather than only contracts: all eight
+packages, 45 first-party blocks, ten patterns, Editor.js behind a private canonical adapter, media/resource
+controls, the measured canvas, and the semantic renderer with exhaustive portable vectors. Repository checks
+prove that implementation snapshot; they do not publish it or accept a profile. The remaining actions are:
 
-1. Independent non-TypeScript replay of `studio.profile/host-baseline-v2` and
-   `studio.profile/schema-property`, plus independent second-host replay of
-   `studio.profile/binding-projection-v1`, followed by immutable evidence review. The host sequence
-   schema now carries every timing/render precondition explicitly; repository verification is not
-   acceptance.
-2. Grid and column composition with the two-theme four-to-two-to-one proof, the remaining `M4-02`
-   scope: real layout blocks with bounded column/span/collapse semantics, renderer support, the
-   authoring path, and a second unrelated theme proven end to end.
-3. The media browser surface with paste/drop capture and real host adapter exercises (`M5-01`).
-4. Generated TypeScript models and canonical round-trip to complete `M2-06`, reviewer reproduction of
-   the packages at evidence-review, the independent non-TypeScript replay of
-   `studio.profile/schema-property`, and the first real evidence bundles — the gate on every profile
-   claim and therefore on the beta channel.
+1. Merge the verified Studio candidate, run the Changesets version workflow, and publish one immutable
+   eight-package coordinate. The version command must advance every package to the same coordinate, regenerate
+   all three release-record copies, pack/install the family without workspace links, and pass the registry
+   post-publication verifier. Kumwe App must not pin a workspace tree or a subset of packages in its place.
+2. Atomically pin that exact record and corpus digest in Kumwe App, then replay the host, preview, media,
+   binding, property-schema, and renderer corpora through its real Joomla/Mezzio/Doctrine/Twig adapters. App
+   security, persistence, media, workflow, extension, and renderer behavior remains host-owned.
+3. Complete the selector-neutral `authoring-web` assertion set and its production-shell browser adapter,
+   including keyboard/pointer/explicit-control equivalence, save/conflict/recovery, media and resource
+   failures, touch, RTL, 400% zoom/reflow, reduced motion, and manual assistive-technology evidence.
+4. Replay `renderer-web` in Kumwe App's PHP/Twig path and an unrelated renderer, and replay the executable
+   host/schema/binding profiles independently. Resolve the recorded Editor.js/Kumwe App distribution-license
+   decision before claiming an affected integrated release.
+5. Generate the first real content-addressed evidence bundles, obtain the required independent human reviews,
+   ratify Gate A, and only then open an evidence-backed `beta` or immutable `rc` channel. The current branch
+   may be evaluated as candidate bits, but it is not itself an `rc` publication.
 
 ## Road to beta
 
@@ -141,26 +141,27 @@ The [release policy](../governance/releases.md) defines `beta` as a feature-comp
 declared profile, with contract changes treated as release blockers. Three things gate the promotion,
 and only the first is now in place:
 
-1. **A declared, executable profile.** Done for the host boundary:
+1. **A declared, executable profile.** Done for eight Version 2 boundaries:
    [`studio.profile/host-baseline-v2`](../contracts/conformance-profiles.md) adds the stateful sequence
    assertion set without changing `host-baseline`. `engine-core`, `media-policy`, `preview-identity-v1`, and
-   `schema-property`, and `binding-projection-v1` are declared against the command, media,
+   `schema-property`, `binding-projection-v1`, and `renderer-web` are declared against the command, media,
    preview-identity, property-schema, and read-only model-binding corpora. The renderer and authoring
-   profiles remain targets — their assertion sets are not yet executable, so no package may advertise
-   them.
+   packages are implemented, but `authoring-web` remains a target until its complete assertion set exists.
+   No package may advertise any executable profile before accepted claim evidence names it.
 2. **Feature-completeness against the profile a package advertises.** The reference host is complete
    against the executable v2 assertion set in the repository lane; the profile documents the two
-   idempotency scope collision drills it does not yet prove portably. For an authoring package,
-   feature-completeness additionally means the Month 4 and Month 5 authoring scope — grid and column
-   composition, the media surface, and rich text — which is still active or planned.
+   idempotency scope collision drills it does not yet prove portably. The standalone catalog, responsive
+   layout, renderer, rich text, media and resource-control implementations are present; authoring-package
+   feature-completeness still requires the complete `authoring-web` corpus, real host lifecycle lanes, and
+   supported manual accessibility matrix.
 3. **An evidence-backed claim.** A profile claim names the profile, the corpus version, and the commit
    it was replayed at, reproduced by an independent reviewer under the [evidence model](evidence.md).
    No evidence bundle has been reproduced yet, so no claim can currently be made.
 
 Beta is therefore not blocked on Gate A ratification, but it is blocked on the same evidence discipline:
-the fastest honest route is to independently replay v2, reproduce one evidence bundle, and
-promote the packages whose profile is executable — protocol, core, and testkit — ahead of the authoring
-shell, which cannot be feature-complete until its own profile is executable.
+the fastest honest route is to publish the coherent eight-package family, independently replay its executable
+profiles, reproduce an acceptable evidence bundle, and promote only the packages whose claims that bundle
+actually supports. An `rc` label is stricter, not a shortcut around that sequence.
 
 ## Programme risks under active control
 

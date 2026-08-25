@@ -12,8 +12,8 @@ detail.
 
 **The objective in one sentence.** An authorized Kumwe App administrator composes a page by direct
 manipulation from typed, theme-bounded blocks bound to this platform's own content types, previews it
-authenticated, and publishes it — with the composition stored as canonical JSON carrying no markup,
-style or code.
+authenticated, and publishes it — with the composition stored as canonical JSON carrying no executable code
+or unrestricted markup/style, while safe markup and scoped styling cross only their governed boundaries.
 
 ---
 
@@ -50,6 +50,22 @@ What remains is the coordinated App adapter/session replay at one release coordi
 manual qualification named by the evidence model; those obligations still gate acceptance of the final
 embedded-builder journey.
 
+The subsequent production wave is also present in Studio: 45 first-party blocks, ten patterns, guided
+rich-text/source/chart/drawing/table/money/presentation/media controls, policy-filtered resource discovery,
+Editor.js behind a private canonical adapter, and `@kumwe/studio-renderer-web` with an exhaustive portable
+corpus. This closes the earlier question about how much page-builder surface Version 2 receives. It does not
+close release coordination, Kumwe App's adapter/Twig replay, the complete `authoring-web` profile, independent
+evidence, or the recorded Editor.js distribution-license decision.
+
+## Current coordinated checkpoint
+
+| Area            | Current truth                                                                                                             | Next irreversible dependency                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Studio source   | Repository-verified eight-package candidate with the standalone page-builder runtime and green check lane                 | Merge, Changesets versioning, protected publish, and registry verification of one exact family      |
+| Studio profiles | Eight declared executable profiles including `renderer-web`; `authoring-web` remains a target; release record claims none | Complete the real-shell authoring corpus and reproduce claim evidence                               |
+| Kumwe App       | Additive integration branch may implement host-owned adapters, Twig rendering, persistence, policy, media, and lifecycle  | Replace provisional pins atomically with the official Studio coordinate and replay the exact corpus |
+| Release status  | `alpha`; candidate bits are not an npm `rc`, Gate A is unassessed, and Gate B is blocked                                  | Independent human review and gate/channel decision after integrated qualification                   |
+
 ---
 
 ## Dependency matrix
@@ -85,6 +101,9 @@ contribution kinds. _App_ `AP-1` full pin and corpus replay, `AP-2` content-type
 with an expected revision, survives a conflict by returning the safe revision, and invalidates on a
 permission change — proved by the host conformance profiles rather than by hand-written expectations.
 
+**Current state:** Studio's host/session side and corpora are implemented; completion still depends on an
+official package coordinate and the real Kumwe App replay.
+
 ### Milestone 2 — Visible
 
 _Studio_ `ST-4` preview surface, `ST-5` session modes, `ST-6` layout blocks and responsive vocabulary,
@@ -94,6 +113,10 @@ authenticated preview endpoint.
 **Done when** an author composes a nested, responsive page by dragging, sees it render live through the
 App's own template and theme path, and binds a block to a real content-type field — with every one of
 those operations also achievable by keyboard.
+
+**Current state:** the standalone Studio canvas, catalog, renderer, controls, media/resource seams, and binding
+projection are implemented. The App's authenticated Twig path and exact-package browser journey remain the
+cross-repository proof.
 
 ### Milestone 3 — Shippable
 
@@ -132,9 +155,10 @@ was created to correct.
 2. **Whether Version 2 ships against a ratified or a draft contract.** If Studio's Gate A cannot be
    accepted in time, the choice is to ship qualified against a pinned draft — honestly recorded — or to
    hold the release. Pinning exact versions makes the first option viable; it is still a decision.
-3. **How much page-builder surface Version 2 needs.** `ST-6` and `ST-7` are the difference between an
-   outline editor that works and a builder that feels like one. They are the largest remaining
-   engineering effort on either side.
+3. **The Editor.js distribution decision.** Studio isolates the Apache-2.0 dependency behind its private
+   rich-text boundary, but Kumwe App currently declares `GPL-2.0-only`. A qualified rights/licensing decision
+   or approved distribution boundary is still required before the affected integrated release can be
+   promoted; documentation and automation cannot make that decision.
 
 ---
 

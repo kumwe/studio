@@ -1,6 +1,7 @@
 # `@kumwe/studio`
 
-Status: pre-Gate-A foundation alpha. The shell demonstrates contract integration and is not a finished UX.
+Status: integration-candidate alpha. The standalone page-building runtime is implemented; profile, host, and
+release qualification remain governed by the evidence ledger.
 
 The Lit Web Component authoring shell for Studio. It renders a block/pattern palette, measured visual
 canvas with a structural fallback, semantic outline, selection inspector, command history, and a

@@ -1,10 +1,10 @@
 # Kumwe Studio
 
-Kumwe Studio is a portable, schema-aware visual composition platform for building reusable blueprints and populating structured content without authoring HTML, CSS, JavaScript, or template code.
+Kumwe Studio is a portable, schema-aware visual composition platform for building reusable blueprints and populating structured content without requiring authors to hand-code a page. Safe HTML import is normalized into Studio's bounded structural markup, styling is expressed through semantic presentation intent or a separately governed scoped-style boundary, and authored JavaScript or template code is never persisted.
 
 Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe App](https://github.com/kumwe/app) is the first reference host, not a hard-coded dependency.
 
-> **Project status:** foundation programme with the contract corpus, headless runtime, and authoring shell under active implementation. Contracts are intentionally unstable until Gate A. No package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
+> **Project status:** integration-candidate implementation with the eight-package web family, 45-block/ten-pattern standalone catalog, private Editor.js rich-text adapter, semantic web renderer, and authoring shell present in the repository. Contracts remain intentionally unstable until Gate A, the current release record claims no profile, and no package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
 
 Version 2 qualifies the web integration only. Dart and native Flutter profiles remain Version 3 targets;
 their deferral neither removes them from the architecture nor turns them into Version 2 gate blockers.
@@ -21,6 +21,7 @@ Studio owns:
 - immutable blueprint and block contracts;
 - deterministic commands, validation, history, and migrations;
 - a Lit-based web authoring surface;
+- the first-party page-building catalog, guided controls, and portable semantic web renderer;
 - theme, extension, preview, media, and host-provider ports;
 - conformance tooling for hosts, themes, blocks, and SDKs.
 
@@ -35,7 +36,7 @@ Hosts retain authority for authentication, authorization, persistence, audit, wo
 | Entry or record | The actual content or business values                                                        |
 | Design profile  | Theme-supported tokens, recipes, breakpoint roles, patterns, and renderer capabilities       |
 
-The Studio interface may edit coordinated drafts, but these artifacts never collapse into one untyped document. Published contracts contain no executable HTML, CSS, JavaScript, Twig, SQL, callbacks, or arbitrary expressions.
+The Studio interface may edit coordinated drafts, but these artifacts never collapse into one untyped document. Published contracts contain no executable JavaScript, Twig, SQL, callbacks, arbitrary expressions, or unrestricted HTML/CSS. Allowed pasted markup is parsed into bounded structural data, and allowed scoped styling remains separate trusted renderer context rather than executable Blueprint content.
 
 ## Product language
 
@@ -56,6 +57,7 @@ packages/
   preview/       Versioned host-preview messaging: client, host responder, handshake
   rich-text/     Bounded rich-text integration pinned to the canonical grammar
   media/         Host-neutral media contracts, orchestration, and semantic validation
+  renderer-web/  Semantic HTML/CSS projection and disposable trusted enhancements
   testkit/       Fixtures, builders, command/media/host vectors, negative corpus, conformance assertions
 examples/
   reference-host/ Experimental Lit-shell development harness
@@ -98,8 +100,9 @@ bundle with its pinned Content Security Policy:
 npm start
 ```
 
-The reference host demonstrates the current authoring shell, deterministic commands, theme-aware
-rendering, and canonical preview channel without Kumwe App or another server. It is a development
+The reference host demonstrates the complete first-party catalog, guided rich-text/media/drawing/table
+controls, resource discovery, deterministic commands, theme-aware rendering, and canonical preview channel
+without Kumwe App or another server. It is a development
 harness and integration example, not a substitute for a host's authentication, policy, persistence,
 media, audit, or publication services. See its [scope and limitations](examples/reference-host/README.md).
 
@@ -131,7 +134,7 @@ Accessibility is a product invariant for both the authoring interface and the ou
 
 ## Releases
 
-The seven `@kumwe` packages form one fixed release family. [`studio-release.json`](studio-release.json)
+The eight `@kumwe` packages form one fixed release family. [`studio-release.json`](studio-release.json)
 records the exact package versions, wire protocol, corpus digest, and evidence-backed profile claims and
 ships byte-identically in protocol and testkit. The publish lane refuses a staggered family. Protocol
 compatibility, changesets, provenance, SBOMs, signed artifacts, deprecation windows, and generated SDK
