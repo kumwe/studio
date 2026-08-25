@@ -1,6 +1,28 @@
-import type { Extensions } from '@tiptap/core';
-import StarterKit from '@tiptap/starter-kit';
 import type { JsonObject, JsonValue } from '@kumwe/studio-protocol';
+
+export {
+  EditorJsRichTextEditorFactory,
+  StudioRichTextEditorFactory,
+  type StudioRichTextEditor,
+  type StudioRichTextEditorChange,
+  type StudioRichTextEditorOptions,
+  type StudioRichTextSurface,
+  type StudioRichTextSurfaceAdapter,
+  type StudioRichTextSurfaceOptions,
+} from './studio-rich-text-editor.js';
+export {
+  exportStudioMarkdown,
+  importStudioMarkdown,
+  type StudioMarkdownOptions,
+} from './markdown.js';
+export { importSafeHtml, STUDIO_SAFE_HTML_POLICY, type SafeHtmlImportPolicy } from './safe-html.js';
+export {
+  DOCUMENTATION_RICH_TEXT_PROFILE,
+  MARKETING_RICH_TEXT_PROFILE,
+  PORTABLE_RICH_TEXT_PROFILE,
+  resolveRichTextProfile,
+  type StudioRichTextProfileId,
+} from './profiles.js';
 
 export interface StudioRichTextMark {
   attrs?: JsonObject;
@@ -18,10 +40,6 @@ export interface StudioRichTextNode {
 export interface StudioRichTextDocument extends StudioRichTextNode {
   content: StudioRichTextNode[];
   type: 'doc';
-}
-
-export interface StudioRichTextOptions {
-  headingLevels?: readonly (1 | 2 | 3 | 4 | 5 | 6)[];
 }
 
 export interface RichTextSpanProjection {
@@ -128,19 +146,6 @@ interface ParseState {
   markCount: number;
   nodeCount: number;
   textLength: number;
-}
-
-export function createStudioRichTextExtensions(options: StudioRichTextOptions = {}): Extensions {
-  const headingLevels = options.headingLevels ?? DEFAULT_HEADING_LEVELS;
-  validateHeadingLevels(headingLevels);
-  return [
-    StarterKit.configure({
-      codeBlock: false,
-      heading: { levels: [...headingLevels] },
-      link: false,
-      underline: false,
-    }),
-  ];
 }
 
 export function parseRichTextDocument(
