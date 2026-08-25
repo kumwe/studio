@@ -81,6 +81,14 @@ host `MediaProvider` and optional upload transport; it owns no storage or delive
 Dynamic entry, context, resource, and query bindings are read-only. Only static bindings can be
 replaced or edited.
 
+`@kumwe/studio` mounts that state machine through `studio.control/media-reference` and
+`studio.control/media-collection`. The single-reference control exposes labelled browse, search,
+pagination, file/paste/drop upload, progress, cancel/retry, replace, orphan, alternative-text,
+decorative, caption, focal-point, and rendition controls. The collection control adds bounded
+multi-selection, metadata editing, removal, and explicit keyboard-operable ordering. Both require a
+host-injected provider, preserve the last schema-valid reference during invalid transient input, and
+reject unknown members so catalogue metadata, bytes, paths, and URLs cannot enter a canonical value.
+
 ## Privacy and security
 
 Media search results, thumbnails, metadata and counts are authorization-filtered by the host. Upload filenames are display metadata, not storage paths. SVG, HTML, PDF, video and other active formats follow host sanitization and content-disposition policy. EXIF/location and other sensitive metadata handling is explicit.

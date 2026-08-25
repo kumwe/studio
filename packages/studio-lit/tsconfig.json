@@ -10,6 +10,7 @@
   "references": [
     { "path": "../protocol" },
     { "path": "../core" },
+    { "path": "../media" },
     { "path": "../preview" },
     { "path": "../renderer-web" },
     { "path": "../rich-text" }
