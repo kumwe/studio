@@ -31,4 +31,9 @@ The following rules are non-negotiable:
 
 ## Delivery status
 
-These documents and schemas establish the intended contracts. Package scaffolding may exist without implementing the complete contract; no host adapter or conformance claim is implied by a named package or interface. The project roadmap requires executable conformance before Gate A and production qualification before Gate B.
+The repository now contains the standalone Version 2 runtime wave: a DOM-free core, host/session boundary,
+Lit authoring shell, private Editor.js adapter, media/resource controls, measured page canvas, 45-block catalog,
+semantic web renderer, portable corpora, and the eight-package release record. That repository-verified
+implementation still does not imply a supported host or accepted conformance claim. The exact distinction
+between implemented, published, evidenced, and accepted work is maintained in
+[`docs/roadmap/STATUS.md`](../roadmap/STATUS.md).

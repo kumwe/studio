@@ -1,6 +1,6 @@
 # Programme status
 
-**Updated:** 2026-08-25
+**Updated:** 2026-08-26
 
 This file distinguishes repository-verified implementation from accepted evidence and published release
 coordinates. A runtime increment may be complete and green in the repository while its programme package,
@@ -9,20 +9,22 @@ release history.
 
 ## Current position
 
-| Item                              | Status                                                                                                                                                                                                        |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Programme phase                   | Months 1–5 implementation increments are running concurrently; the standalone production authoring/renderer wave is repository-verified while host qualification and evidence remain open                     |
-| Gate A                            | Not assessed; the draft contract corpus and executable scaffolding have no accepted Gate A evidence bundle                                                                                                    |
-| Gate B                            | Blocked on Gate A and all implementation/qualification packages                                                                                                                                               |
-| Published Studio packages         | The existing registry baseline is alpha and unsupported. This branch defines an eight-package family including `renderer-web`, but no new coordinated immutable family has been published from it yet         |
-| Declared conformance profiles     | Eight profiles are declared and executable, including `renderer-web`; `authoring-web` remains a target because its complete real-shell assertion set and manual matrix are not yet present                    |
-| Version 2 qualification target    | The eight executable profiles plus target `authoring-web`; the current release record deliberately claims none                                                                                                |
-| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                  |
-| Release channel                   | `alpha`. The branch is a release-candidate implementation snapshot, not an npm `rc`; `beta`/`rc` promotion still needs reproduced evidence and channel authorization                                          |
-| Supported production hosts        | None                                                                                                                                                                                                          |
-| Supported protocol version        | None; runtime uses draft wire `0.1.0-draft.2`, while the first supported contract release candidate is produced by `M2-08`                                                                                    |
-| Earliest durable host integration | After Gate A                                                                                                                                                                                                  |
-| Current authoritative activity    | Publish one coordinated eight-package coordinate, replay it in Kumwe App and a second host/renderer, complete `authoring-web`, resolve distribution licensing, and assemble independently reproduced evidence |
+| Item                              | Status                                                                                                                                                                                                          |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Programme phase                   | The Version 2 standalone page-builder/runtime wave is merged and repository-verified; coordinated prerelease publication, Core integration, profile completion, and qualification are in progress               |
+| Gate A                            | Not assessed; the implemented draft contract corpus has no accepted Gate A evidence bundle                                                                                                                      |
+| Gate B                            | Blocked on formal Gate A plus the remaining host, accessibility, performance, recovery, release-material, evidence, and independent-review qualification                                                        |
+| Published Studio packages         | The existing registry baseline is staggered alpha and unsupported. Merged `main` defines the complete eight-package family including `renderer-web`, but no new coordinated immutable family has been published |
+| Declared conformance profiles     | Eight profiles are declared and executable, including `renderer-web`; `authoring-web` remains a target because its complete real-shell assertion set and manual matrix are not yet present                      |
+| Version 2 qualification target    | The eight executable profiles plus target `authoring-web`; the current release record deliberately claims none                                                                                                  |
+| Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                    |
+| Release channel                   | `alpha`. Merged `main` is the intended release-candidate implementation baseline, but not yet an npm `rc`; `beta`/`rc` promotion still needs reproduced evidence and channel authorization                      |
+| Supported production hosts        | None                                                                                                                                                                                                            |
+| Supported protocol version        | None; runtime uses draft wire `0.1.0-draft.2`, while the first supported contract release candidate is produced by `M2-08`                                                                                      |
+| Earliest durable host integration | After Gate A                                                                                                                                                                                                    |
+| Current authoritative activity    | Publish one coordinated eight-package coordinate, replay it in Kumwe App and a second host/renderer, complete `authoring-web`, resolve distribution licensing, and assemble independently reproduced evidence   |
+| Repository verification baseline  | `97875bca2a858bb68ad33686dbb4b8689f38ef2f`: `npm run check` passes 1,022 Vitest assertions plus 25 Node tests; `npm run check:a11y` passes all 11 Chromium journeys                                             |
+| Next package coordinate           | Changesets resolves all eight fixed-group packages to `0.1.0-alpha.9`; the version PR and registry publication have not yet completed                                                                           |
 
 Delivered, repository-verified increments are recorded in [`CHANGELOG.md`](../../CHANGELOG.md) and in the
 implementation board below. A changelog entry means the behaviour exists and passes the check lane on a
@@ -36,7 +38,9 @@ bundle and an independent reviewer per the [evidence model](evidence.md).
 | A — integration contract established  |       14 |   0 |       0 |           14 | Not assessed |
 | B — implemented, qualified, shippable |       18 |   0 |       0 |           18 | Blocked      |
 
-Gate counts change only after evidence review. A documentation claim does not move these numbers.
+Gate counts change only after evidence review. A documentation claim does not move these numbers. The zeroes
+in this table are evidence decisions, not an assertion that the runtime is absent; the implementation board
+below records what the exact repository baseline already exercises.
 
 ## Six-month board
 
@@ -62,7 +66,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | Package | State           | Delivered (see changelog)                                                                                                                                                   | Still blocking acceptance                                                                                  |
 | ------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `M1-04` | evidence-review | Stable criterion registry; strict bundle/gate validator; safe complete bundle lane                                                                                          | First real bundle; independent human reproduction and durable retention                                    |
-| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                                                                                                                     | Reviewer reproduction; first alpha publish not yet exercised                                               |
+| `M1-05` | evidence-review | Secret scan, audit, SBOM, release train, changeset gate                                                                                                                     | Reviewer reproduction; first coordinated eight-package publish not yet exercised                           |
 | `M1-06` | evidence-review | Registry with 30 obligations, zero open; automated WCAG lane                                                                                                                | Reviewer reproduction                                                                                      |
 | `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors                                                                                            | Reviewer reproduction; independent cross-runtime profile replay                                            |
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                                                                                                                   | Reviewer reproduction                                                                                      |
@@ -91,10 +95,10 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 
 | Package / integration item | Implementation commit                      | Evidence bundle        | New state       | Blocking item                                                                                                                                           | Reviewer   |
 | -------------------------- | ------------------------------------------ | ---------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `M4-01` / `ST-4`, `ST-7`   | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Complete the real-shell `authoring-web` assertion set, framed-host CSP proof, and manual AT/touch/zoom/RTL matrix                                       | unassigned |
-| `M4-02` / `ST-6`           | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | evidence-review | Replay the responsive composition semantics in an independent renderer and reproduce the browser evidence                                               | unassigned |
-| `M4-04` / `ST-8`           | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Replay the exact published package family through Kumwe App AP-2/resource adapters and an independent second host                                       | unassigned |
-| `M5-01`–`M5-03`            | `d079a573054eba2b95a5bfb128c5e120d1011dc6` | none — not yet created | active          | Publish the family, prove real host media and PHP/Twig delivery, complete authoring qualification, resolve license distribution, and reproduce evidence | unassigned |
+| `M4-01` / `ST-4`, `ST-7`   | `97875bca2a858bb68ad33686dbb4b8689f38ef2f` | none — not yet created | active          | Complete the real-shell `authoring-web` assertion set, framed-host CSP proof, and manual AT/touch/zoom/RTL matrix                                       | unassigned |
+| `M4-02` / `ST-6`           | `97875bca2a858bb68ad33686dbb4b8689f38ef2f` | none — not yet created | evidence-review | Replay the responsive composition semantics in an independent renderer and reproduce the browser evidence                                               | unassigned |
+| `M4-04` / `ST-8`           | `97875bca2a858bb68ad33686dbb4b8689f38ef2f` | none — not yet created | active          | Replay the exact published package family through Kumwe App AP-2/resource adapters and an independent second host                                       | unassigned |
+| `M5-01`–`M5-03`            | `97875bca2a858bb68ad33686dbb4b8689f38ef2f` | none — not yet created | active          | Publish the family, prove real host media and PHP/Twig delivery, complete authoring qualification, resolve license distribution, and reproduce evidence | unassigned |
 
 ## Downstream integration commitments
 
@@ -118,8 +122,9 @@ packages, 45 first-party blocks, ten patterns, Editor.js behind a private canoni
 controls, the measured canvas, and the semantic renderer with exhaustive portable vectors. Repository checks
 prove that implementation snapshot; they do not publish it or accept a profile. The remaining actions are:
 
-1. Merge the verified Studio candidate, run the Changesets version workflow, and publish one immutable
-   eight-package coordinate. The version command must advance every package to the same coordinate, regenerate
+1. Recover the alpha release workflow for merged baseline
+   `97875bca2a858bb68ad33686dbb4b8689f38ef2f`, create and merge its Changesets version PR, and publish the
+   predicted `0.1.0-alpha.9` eight-package coordinate. The version command must advance every package to the same coordinate, regenerate
    all three release-record copies, pack/install the family without workspace links, and pass the registry
    post-publication verifier. Kumwe App must not pin a workspace tree or a subset of packages in its place.
 2. Atomically pin that exact record and corpus digest in Kumwe App, then replay the host, preview, media,
@@ -132,8 +137,8 @@ prove that implementation snapshot; they do not publish it or accept a profile. 
    host/schema/binding profiles independently. Resolve the recorded Editor.js/Kumwe App distribution-license
    decision before claiming an affected integrated release.
 5. Generate the first real content-addressed evidence bundles, obtain the required independent human reviews,
-   ratify Gate A, and only then open an evidence-backed `beta` or immutable `rc` channel. The current branch
-   may be evaluated as candidate bits, but it is not itself an `rc` publication.
+   ratify Gate A, and only then open an evidence-backed `beta` or immutable `rc` channel. The merged runtime
+   baseline is the intended candidate implementation, but it is not itself an `rc` publication.
 
 ## Road to beta
 

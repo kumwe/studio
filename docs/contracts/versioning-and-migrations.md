@@ -15,12 +15,12 @@ Studio distinguishes:
 
 These identifiers are independent and MUST NOT be compared or substituted. In particular, `/v1/` does not mean that the project has released version 1, `0.1-draft` is not a negotiated protocol SemVer, and `0.1.0-draft.2` does not select an artifact schema.
 
-| Axis                       | Current draft value                         | Used for                                                                     |
-| -------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| Schema epoch URI           | `https://schemas.kumwe.org/studio/v1/...`   | Names the intended major schema family and reference base                    |
-| Document contract revision | `0.1-draft`                                 | Selects the exact JSON shape and semantics of each document/message envelope |
-| Wire protocol version      | `0.1.0-draft.2`                             | Negotiates request/response and preview-channel behavior                     |
-| npm package version        | `0.1.0-alpha.0` for the foundation packages | Resolves implementation artifacts; never appears as a document discriminator |
+| Axis                       | Current draft value                                | Used for                                                                     |
+| -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Schema epoch URI           | `https://schemas.kumwe.org/studio/v1/...`          | Names the intended major schema family and reference base                    |
+| Document contract revision | `0.1-draft`                                        | Selects the exact JSON shape and semantics of each document/message envelope |
+| Wire protocol version      | `0.1.0-draft.2`                                    | Negotiates request/response and preview-channel behavior                     |
+| npm package version        | Exact coordinated version in `studio-release.json` | Resolves implementation artifacts; never appears as a document discriminator |
 
 The current plugin manifest intentionally has no general `studioVersions` range. Before Gate A, hosts pin an exact tested release set. Gate A must ratify a separately identified plugin API version before the manifest can declare a range; document and wire compatibility remain their own axes.
 

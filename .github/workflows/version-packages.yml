@@ -1,9 +1,15 @@
-name: Version packages
+name: Alpha release train
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact lowercase 40-character SHA currently at the head of main
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -16,7 +22,7 @@ concurrency:
 
 jobs:
   version:
-    name: Maintain the Changesets release pull request and publish alphas
+    name: Maintain the alpha version PR or publish its merged coordinate
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -26,23 +32,50 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          cache: npm
-          node-version: 24
-          registry-url: https://registry.npmjs.org
+      # A deleted or failed run can be recovered after rotating NPM_TOKEN, but
+      # only for the exact commit that is still the public head of main.
+      - name: Validate manual recovery target
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$GITHUB_REF" == "refs/heads/main" ]]
+          [[ "$GITHUB_SHA" == "$EXPECTED_SHA" ]]
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_SHA" ]]
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Set up Studio
+        uses: ./.github/actions/setup-studio
 
       - name: Run quality gate
         run: npm run check
 
-      # Fails fast with a clear identity when the npm token is missing,
-      # invisible to this repository, or invalid — separating secret-delivery
-      # problems from token-permission problems before any publish attempt.
+      # Pending changesets mean this run only maintains the version PR and has
+      # no reason to read a registry credential. Once that PR is merged there
+      # are no top-level changesets, and the same workflow enters publication.
+      - name: Inspect alpha release plan
+        id: plan
+        run: node scripts/release-plan.mjs --github-output
+
+      - name: Confirm this workflow owns only the alpha channel
+        shell: bash
+        env:
+          RELEASE_CHANNEL: ${{ steps.plan.outputs.channel }}
+          RELEASE_PRE_MODE: ${{ steps.plan.outputs.pre_mode }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_CHANNEL" == "alpha" ]]
+          [[ "$RELEASE_PRE_MODE" == "pre" ]]
+
+      # Authenticate only on the actual publish path. This lets a missing or
+      # rotated token fail publication clearly without blocking creation of the
+      # recoverable alpha version PR.
       - name: Verify npm authentication
+        if: steps.plan.outputs.operation == 'publish'
         run: |
           if [ -z "$NODE_AUTH_TOKEN" ]; then
             echo '::error::NPM_TOKEN is empty in this job - the secret is not reaching the workflow.'
@@ -53,27 +86,27 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # With pending changesets this maintains the version pull request; once
-      # that pull request merges, it publishes the versioned packages instead.
-      # Changesets pre mode keeps every publish on the alpha dist-tag; stable
-      # releases stay behind the Gate B release-readiness guard.
+      # that pull request merges, the guarded script publishes only a numeric
+      # alpha coordinate. Beta, RC, and stable promotion cannot pass this path.
       - name: Create or update version pull request, or publish
         id: release
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
           pr-title: 'chore: version Studio packages'
-          publish-script: npm run release:publish
+          publish-script: npm run release:publish-alpha
           version-script: npm run version-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ steps.plan.outputs.operation == 'publish' && steps.plan.outputs.channel == 'alpha' && steps.plan.outputs.pre_mode == 'pre' && secrets.NPM_TOKEN || '' }}
 
       - name: Verify the complete published release set
-        if: steps.release.outputs.published == 'true'
+        if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
 
-      # Runs on every push rather than only after a publish, so drift left by
-      # an earlier run is repaired on the next run instead of outliving it.
+      # Runs on every publish attempt, even when the requested versions were
+      # already present, so a recovery run also repairs distribution-tag drift.
       - name: Reconcile the alpha dist-tag
+        if: steps.plan.outputs.operation == 'publish'
         run: node scripts/reconcile-alpha-tag.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

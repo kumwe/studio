@@ -1,5 +1,9 @@
 # Quality and qualification strategy
 
+The operational contributor commands, environment baseline, test map, and version path live in the single
+root [`CONTRIBUTING.md`](../../CONTRIBUTING.md). This document defines the broader qualification model those
+commands support.
+
 Studio quality is an observable product property, not a count of features, tests, files or screenshots. A
 release must protect typed content, host authority, portability, accessibility, security, resilience and
 replaceability across the exact profiles it claims.

@@ -4,6 +4,7 @@ This documentation separates normative requirements, architectural rationale, im
 
 | Area                                   | Purpose                                                    | Authority              |
 | -------------------------------------- | ---------------------------------------------------------- | ---------------------- |
+| [Contributing](../CONTRIBUTING.md)     | One setup, quality, change, and release path               | Working procedure      |
 | [Project charter](project-charter.md)  | Product mission, scope, principles, and success conditions | Governing intent       |
 | [Glossary](glossary.md)                | Stable vocabulary used across packages and integrations    | Normative terminology  |
 | [Architecture](architecture/README.md) | System boundaries and responsibility model                 | Normative where stated |
