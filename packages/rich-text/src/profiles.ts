@@ -6,6 +6,10 @@ export type StudioRichTextProfileId =
 const PORTABLE_NODES = Object.freeze([
   'blockquote',
   'bulletList',
+  'callout',
+  'checklist',
+  'checklistItem',
+  'codeBlock',
   'doc',
   'hardBreak',
   'heading',
@@ -13,9 +17,12 @@ const PORTABLE_NODES = Object.freeze([
   'listItem',
   'orderedList',
   'paragraph',
+  'table',
+  'tableCell',
+  'tableRow',
   'text',
 ]);
-const PORTABLE_MARKS = Object.freeze(['bold', 'code', 'italic', 'strike']);
+const PORTABLE_MARKS = Object.freeze(['bold', 'code', 'highlight', 'italic', 'strike']);
 const ATTRIBUTE_LIMITS = Object.freeze({
   maximumDepth: 8,
   maximumItemsPerArray: 256,
@@ -27,8 +34,13 @@ const ATTRIBUTE_LIMITS = Object.freeze({
 function profile(maximumTextLength: number, maximumNodes: number): Readonly<StudioRichTextProfile> {
   return Object.freeze({
     allowedAttributes: Object.freeze({
+      callout: Object.freeze(['tone']),
+      checklistItem: Object.freeze(['checked', 'level']),
+      codeBlock: Object.freeze(['language']),
       heading: Object.freeze(['level']),
+      'mark:highlight': Object.freeze(['tone']),
       orderedList: Object.freeze(['start']),
+      table: Object.freeze(['header']),
     }),
     allowedMarks: PORTABLE_MARKS,
     allowedNodes: PORTABLE_NODES,

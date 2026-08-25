@@ -7,9 +7,11 @@ Bounded structured rich text is stored as JSON conforming to
 closed:
 
 - block nodes: `paragraph`, `heading` (levels 2–4), `blockquote`, `bulletList`, `orderedList`
-  (positive `start`), `listItem`, `horizontalRule`;
+  (positive `start`), `listItem`, `horizontalRule`, `checklist` with bounded-level
+  `checklistItem`, rectangular `table`/`tableRow`/`tableCell`, semantic `callout`, and inert
+  `codeBlock`;
 - inline nodes: `text` and `hardBreak`;
-- marks: `bold`, `code`, `italic`, `strike`.
+- marks: `bold`, `code`, `italic`, `strike`, and `highlight` with a bounded semantic tone.
 
 No other node, mark, or attribute is portable. Editor-specific state, raw HTML, CSS, URLs of
 executable schemes, and unknown attributes MUST NOT be stored. A profile may narrow this grammar
@@ -50,6 +52,13 @@ ignores attributes except a bounded ordered-list start, and drops active element
 content. A caller may narrow that ceiling but cannot add tags. Imported HTML is converted into the
 canonical grammar and never stored or rendered directly.
 
+The built-in Editor.js toolbox maps one-to-one to canonical paragraph, heading, quote, separator,
+bounded nested list, nested checklist, table, callout, and inert code nodes. List/checklist and table
+tools expose explicit add, remove, reorder/indent, row, column, and header controls; all controls are
+keyboard reachable and disabled in read-only mode. The semantic marker stores a named theme tone,
+not an arbitrary color. Tool registration is closed: an Editor.js block with an unknown or
+mismatched type fails validation and cannot enter canonical content.
+
 ## Renderer conformance
 
 Renderer conformance is defined against a canonical, language-neutral projection — never against
@@ -57,7 +66,8 @@ HTML or any other target format. For a document, the canonical renderer projecti
 its leaf block projections in document order: container blocks (`blockquote`, `bulletList`,
 `orderedList`, `listItem`) contribute no entries of their own and are traversed into, while every
 leaf block (`paragraph`, `heading`, `horizontalRule`) projects to
-`{ type, text, spans, embeds }`:
+`{ type, text, spans, embeds }`. Callouts, checklists, and tables are traversed as containers;
+checklist items and table cells are leaves, and inert code projects as a `codeBlock` leaf:
 
 - `text` is the concatenation of the block's text-node contents; non-text inline nodes contribute
   no characters.

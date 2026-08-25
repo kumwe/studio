@@ -3,16 +3,28 @@ import { richTextSchema } from '@kumwe/studio-protocol';
 import { DEFAULT_RICH_TEXT_PROFILE } from '../src/index.js';
 
 interface SchemaDefs {
-  $defs: Record<string, { properties?: { type?: { enum?: string[] } } }>;
+  $defs: Record<
+    string,
+    {
+      oneOf?: { properties?: { type?: { const?: string; enum?: string[] } } }[];
+      properties?: { type?: { enum?: string[] } };
+    }
+  >;
 }
 
 describe('portable rich-text profile', () => {
   const defs = (richTextSchema as unknown as SchemaDefs).$defs;
 
   it('matches the canonical mark vocabulary', () => {
-    expect([...DEFAULT_RICH_TEXT_PROFILE.allowedMarks].sort()).toEqual(
-      [...(defs.mark?.properties?.type?.enum ?? [])].sort(),
-    );
+    const mark = defs.mark;
+    const marks = [
+      ...(mark?.properties?.type?.enum ?? []),
+      ...(mark?.oneOf ?? []).flatMap((entry) => [
+        ...(entry.properties?.type?.enum ?? []),
+        ...(entry.properties?.type?.const === undefined ? [] : [entry.properties.type.const]),
+      ]),
+    ];
+    expect([...DEFAULT_RICH_TEXT_PROFILE.allowedMarks].sort()).toEqual(marks.sort());
   });
 
   it('matches the canonical node vocabulary', () => {

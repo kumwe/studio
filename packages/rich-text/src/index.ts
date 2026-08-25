@@ -82,10 +82,14 @@ export interface StudioRichTextProfile {
   maximumTextLength: number;
 }
 
-const PORTABLE_MARKS = Object.freeze(['bold', 'code', 'italic', 'strike']);
+const PORTABLE_MARKS = Object.freeze(['bold', 'code', 'highlight', 'italic', 'strike']);
 const PORTABLE_NODES = Object.freeze([
   'blockquote',
   'bulletList',
+  'callout',
+  'checklist',
+  'checklistItem',
+  'codeBlock',
   'doc',
   'hardBreak',
   'heading',
@@ -93,6 +97,9 @@ const PORTABLE_NODES = Object.freeze([
   'listItem',
   'orderedList',
   'paragraph',
+  'table',
+  'tableCell',
+  'tableRow',
   'text',
 ]);
 const DEFAULT_HEADING_LEVELS = Object.freeze([2, 3, 4] as const);
@@ -126,8 +133,13 @@ export const DEFAULT_RICH_TEXT_ATTRIBUTE_LIMITS: Readonly<StudioRichTextAttribut
 
 export const DEFAULT_RICH_TEXT_PROFILE: Readonly<StudioRichTextProfile> = Object.freeze({
   allowedAttributes: Object.freeze({
+    callout: Object.freeze(['tone']),
+    checklistItem: Object.freeze(['checked', 'level']),
+    codeBlock: Object.freeze(['language']),
     heading: Object.freeze(['level']),
+    'mark:highlight': Object.freeze(['tone']),
     orderedList: Object.freeze(['start']),
+    table: Object.freeze(['header']),
   }),
   allowedMarks: PORTABLE_MARKS,
   allowedNodes: PORTABLE_NODES,
@@ -184,17 +196,26 @@ function collectBlockProjections(
   projections: RichTextBlockProjection[],
 ): void {
   switch (node.type) {
+    case 'checklistItem':
     case 'heading':
     case 'paragraph':
+    case 'tableCell':
       projections.push(projectLeafBlock(node));
+      break;
+    case 'codeBlock':
+      projections.push({ embeds: [], spans: [], text: node.text ?? '', type: 'codeBlock' });
       break;
     case 'horizontalRule':
       projections.push({ embeds: [], spans: [], text: '', type: 'horizontalRule' });
       break;
     case 'blockquote':
     case 'bulletList':
+    case 'callout':
+    case 'checklist':
     case 'listItem':
     case 'orderedList':
+    case 'table':
+    case 'tableRow':
       for (const child of node.content ?? []) {
         collectBlockProjections(child, projections);
       }
@@ -357,7 +378,15 @@ function parseMark(
       state,
     );
   }
-  if (mark.attrs !== undefined) {
+  if (mark.type === 'highlight') {
+    const tone = mark.attrs?.tone;
+    if (
+      typeof tone !== 'string' ||
+      !['accent', 'danger', 'info', 'success', 'warning'].includes(tone)
+    ) {
+      throw new TypeError(`${path}.attrs.tone must be a configured highlight tone.`);
+    }
+  } else if (mark.attrs !== undefined) {
     throw new TypeError(`${path} cannot carry attributes in the portable rich-text grammar.`);
   }
   return mark;
@@ -427,6 +456,62 @@ function assertNodeGrammar(
       assertNoNodeFields(node, path, ['attrs', 'marks', 'text']);
       assertNonEmptyChildTypes(node.content, path, blockNodeTypes);
       break;
+    case 'callout':
+      assertNoNodeFields(node, path, ['marks', 'text']);
+      assertNonEmptyChildTypes(node.content, path, blockNodeTypes);
+      if (
+        typeof node.attrs?.tone !== 'string' ||
+        !['danger', 'info', 'success', 'warning'].includes(node.attrs.tone)
+      ) {
+        throw new TypeError(`${path}.attrs.tone must be a configured callout tone.`);
+      }
+      break;
+    case 'checklist':
+      assertNoNodeFields(node, path, ['attrs', 'marks', 'text']);
+      assertNonEmptyChildTypes(node.content, path, checklistItemNodeTypes);
+      break;
+    case 'checklistItem':
+      assertNoNodeFields(node, path, ['marks', 'text']);
+      assertChildTypes(node.content ?? [], path, inlineNodeTypes);
+      if (typeof node.attrs?.checked !== 'boolean') {
+        throw new TypeError(`${path}.attrs.checked must be a boolean.`);
+      }
+      if (
+        !Number.isSafeInteger(node.attrs.level) ||
+        Number(node.attrs.level) < 0 ||
+        Number(node.attrs.level) > 4
+      ) {
+        throw new TypeError(`${path}.attrs.level must be an integer from zero through four.`);
+      }
+      break;
+    case 'table':
+      assertNoNodeFields(node, path, ['marks', 'text']);
+      assertNonEmptyChildTypes(node.content, path, tableRowNodeTypes);
+      if (typeof node.attrs?.header !== 'boolean') {
+        throw new TypeError(`${path}.attrs.header must be a boolean.`);
+      }
+      assertRectangularTable(node.content, path);
+      break;
+    case 'tableRow':
+      assertNoNodeFields(node, path, ['attrs', 'marks', 'text']);
+      assertNonEmptyChildTypes(node.content, path, tableCellNodeTypes);
+      break;
+    case 'tableCell':
+      assertNoNodeFields(node, path, ['attrs', 'marks', 'text']);
+      assertChildTypes(node.content ?? [], path, inlineNodeTypes);
+      break;
+    case 'codeBlock':
+      assertNoNodeFields(node, path, ['content', 'marks']);
+      if (node.text === undefined) {
+        throw new TypeError(`${path}.text is required for a code block.`);
+      }
+      if (
+        typeof node.attrs?.language !== 'string' ||
+        !/^[A-Za-z0-9][A-Za-z0-9+_.#-]{0,63}$/u.test(node.attrs.language)
+      ) {
+        throw new TypeError(`${path}.attrs.language must be a bounded language identifier.`);
+      }
+      break;
     case 'hardBreak':
     case 'horizontalRule':
       assertNoNodeFields(node, path, ['attrs', 'content', 'marks', 'text']);
@@ -452,13 +537,31 @@ function assertPortableMarkSet(marks: readonly StudioRichTextMark[], path: strin
 const blockNodeTypes = new Set([
   'blockquote',
   'bulletList',
+  'callout',
+  'checklist',
+  'codeBlock',
   'heading',
   'horizontalRule',
   'orderedList',
   'paragraph',
+  'table',
 ]);
 const inlineNodeTypes = new Set(['hardBreak', 'text']);
 const listItemNodeTypes = new Set(['listItem']);
+const checklistItemNodeTypes = new Set(['checklistItem']);
+const tableRowNodeTypes = new Set(['tableRow']);
+const tableCellNodeTypes = new Set(['tableCell']);
+
+function assertRectangularTable(
+  rows: readonly StudioRichTextNode[] | undefined,
+  path: string,
+): void {
+  const width = rows?.[0]?.content?.length ?? 0;
+  const invalid = rows?.findIndex((row) => row.content?.length !== width) ?? -1;
+  if (width < 1 || invalid >= 0) {
+    throw new TypeError(`${path}.content must be a non-empty rectangular table.`);
+  }
+}
 
 function assertNoNodeFields(
   node: StudioRichTextNode,

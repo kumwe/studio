@@ -254,7 +254,7 @@ describe('Studio rich text', () => {
   it.each([
     { maximumDocumentBytes: 10_485_761 },
     { maximumMarks: 400_001 },
-    { maximumMarksPerNode: 5 },
+    { maximumMarksPerNode: 6 },
     { maximumNodes: 100_001 },
     { maximumTextLength: 10_485_761 },
   ])('rejects profile values above immutable resource ceilings: %o', (override) => {
