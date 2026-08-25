@@ -6,6 +6,7 @@ export {
 } from './guards.js';
 export { HostPortFailure, isHostPortFailure } from './host-failure.js';
 export {
+  authoringWebVectorSchema,
   blockDefinitionSchema,
   bindingProjectionVectorSchema,
   blueprintSchema,

@@ -21,20 +21,20 @@ implementation that claimed a profile keeps claiming it for the version it passe
 
 ## Declared profiles
 
-| Profile                                | Claimed by                        | Executable assertion set                                      | State                |
-| -------------------------------------- | --------------------------------- | ------------------------------------------------------------- | -------------------- |
-| `studio.profile/host-baseline`         | A host adapter                    | `vectors/host/` replayed through the adapter                  | Declared, executable |
-| `studio.profile/host-baseline-v2`      | A host adapter                    | `host-baseline` plus `vectors/host-sequence/`                 | Declared, executable |
-| `studio.profile/engine-core`           | A protocol engine                 | `vectors/command/` and `vectors/canonical/`                   | Declared, executable |
-| `studio.profile/binding-projection-v1` | A model-binding client or host    | `vectors/binding-projection/`                                 | Declared, executable |
-| `studio.profile/media-policy`          | A host media pipeline             | `vectors/media/`                                              | Declared, executable |
-| `studio.profile/preview-identity-v1`   | A preview client/host             | `vectors/preview/`                                            | Declared, executable |
-| `studio.profile/schema-property`       | A property-schema validator       | `vectors/schema-profile/`                                     | Declared, executable |
-| `studio.profile/renderer-web`          | A trusted renderer                | `conformance/rich-text/` and the preview channel obligations  | Target               |
-| `studio.profile/authoring-web`         | An authoring client               | The interaction requirement registry and accessibility lanes  | Target               |
-| `studio.profile/engine-dart`           | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay | Version 3 target     |
-| `studio.profile/renderer-flutter`      | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions | Version 3 target     |
-| `studio.profile/authoring-flutter`     | A native Flutter authoring client | Version 3 interaction and accessibility assertions            | Version 3 target     |
+| Profile                                | Claimed by                        | Executable assertion set                                                       | State                |
+| -------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------ | -------------------- |
+| `studio.profile/host-baseline`         | A host adapter                    | `vectors/host/` replayed through the adapter                                   | Declared, executable |
+| `studio.profile/host-baseline-v2`      | A host adapter                    | `host-baseline` plus `vectors/host-sequence/`                                  | Declared, executable |
+| `studio.profile/engine-core`           | A protocol engine                 | `vectors/command/` and `vectors/canonical/`                                    | Declared, executable |
+| `studio.profile/binding-projection-v1` | A model-binding client or host    | `vectors/binding-projection/`                                                  | Declared, executable |
+| `studio.profile/media-policy`          | A host media pipeline             | `vectors/media/`                                                               | Declared, executable |
+| `studio.profile/preview-identity-v1`   | A preview client/host             | `vectors/preview/`                                                             | Declared, executable |
+| `studio.profile/schema-property`       | A property-schema validator       | `vectors/schema-profile/`                                                      | Declared, executable |
+| `studio.profile/renderer-web`          | A trusted renderer                | `conformance/renderer-web/`, rich text, preview, CSP and accessibility lanes   | Target               |
+| `studio.profile/authoring-web`         | An authoring client               | `conformance/authoring-web/`, the requirement registry and accessibility lanes | Target               |
+| `studio.profile/engine-dart`           | A Dart protocol engine            | Version 3 canonical, command, migration, and host-port replay                  | Version 3 target     |
+| `studio.profile/renderer-flutter`      | A native Flutter renderer         | Version 3 block, theme, preview, and accessibility assertions                  | Version 3 target     |
+| `studio.profile/authoring-flutter`     | A native Flutter authoring client | Version 3 interaction and accessibility assertions                             | Version 3 target     |
 
 The Version 2 qualification target comprises the seven declared executable profiles plus
 `renderer-web` and `authoring-web` when their assertion sets become executable. The three Dart/Flutter
@@ -223,6 +223,26 @@ where JSON Schema can express it; the vectors additionally prove resolution, rec
 canonical byte limits, and stable diagnostics. A profile claim must replay both accepted and rejected
 vectors from a digest-verified corpus. The reference tests establish an implementation result but are
 not independent acceptance evidence.
+
+## Web profile corpus increments
+
+`conformance/renderer-web/*.json` now fixes portable first-party renderer inputs and observable HTML,
+CSS and enhancement expectations. `@kumwe/studio-renderer-web` supplies the reference replay. The
+corpus currently covers value escaping, responsive layout and an accessible chart fallback; it does
+not yet cover the complete catalog, CSP deployment, progressive-enhancement browser behavior, visual
+fidelity or the accessibility matrix.
+
+`conformance/authoring-web/*.json` fixes semantic browser lanes independently of CSS selectors or a
+particular component implementation. Each lane starts from a fresh Blueprint and compares the exact
+document, selected/focused node, dispatched command intent, dirty state and live-region keys. The
+first vector proves the portable runner and the required equivalence shape for keyboard, pointer and
+explicit structural-control moves. A conforming authoring client still needs a browser adapter that
+drives the real shell plus the complete interaction registry, touch, RTL, 400% zoom/reflow, reduced
+motion, automated accessibility and manual assistive-technology lanes.
+
+Both profiles therefore remain **Target**. These digest-pinned corpora and reference-runner tests are
+implemented increments, not product conformance claims, Gate A/B evidence, or authority to promote a
+package beyond alpha.
 
 ## Claiming a profile
 

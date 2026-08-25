@@ -116,6 +116,14 @@ this manifest, so a stale or altered fixture is detected before it silently chan
 claim means. The schema manifest in `@kumwe/studio-protocol` covers the schemas; this covers everything
 replayed against them.
 
+`@kumwe/studio-testkit/conformance/authoring-web/<filename>` publishes selector-neutral authoring
+lanes. `runAuthoringWebVector(vector, adapter)` opens a fresh adapter session for every lane, performs
+only the vector actions, and compares the returned canonical document, command intents, focus,
+selection, announcements and dirty state. The adapter is deliberately injected: a browser host maps
+the semantic steps onto its real DOM without exposing Lit, Editor.js, drag-and-drop, or host types in
+the corpus. The current runner test proves fixture isolation and comparison behavior; it is not a
+claim that the production shell has completed the entire authoring-web profile.
+
 `@kumwe/studio-testkit/studio-release.json` is byte-identical to the workspace and protocol copies. A
 host can vendor this record with the corpus, verify `corpusManifestDigest`, and resolve the exact eight
 package versions named by one Studio release coordinate. An empty `claimedProfiles` array is deliberate:

@@ -45,6 +45,21 @@ export {
   type HttpTimeoutHandle,
 } from './http-host-adapter.js';
 
+export {
+  runAuthoringWebVector,
+  type AuthoringWebAction,
+  type AuthoringWebCommandObservation,
+  type AuthoringWebConformanceAdapter,
+  type AuthoringWebConformanceSession,
+  type AuthoringWebGiven,
+  type AuthoringWebLane,
+  type AuthoringWebLaneResult,
+  type AuthoringWebObservation,
+  type AuthoringWebRegion,
+  type AuthoringWebVector,
+  type AuthoringWebVectorResult,
+} from './web-conformance.js';
+
 export interface BlueprintFixtureOptions {
   blockLocks?: BlueprintBlockLock[];
   id?: string;

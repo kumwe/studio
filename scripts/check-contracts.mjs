@@ -54,6 +54,14 @@ const packageConformanceDirectory = new URL(
   '../packages/testkit/conformance/rich-text/',
   import.meta.url,
 );
+const rootAuthoringWebConformanceDirectory = new URL(
+  '../schemas/conformance/authoring-web/',
+  import.meta.url,
+);
+const packageAuthoringWebConformanceDirectory = new URL(
+  '../packages/testkit/conformance/authoring-web/',
+  import.meta.url,
+);
 const rootRendererWebConformanceDirectory = new URL(
   '../schemas/conformance/renderer-web/',
   import.meta.url,
@@ -215,6 +223,24 @@ const packageConformanceFiles = (await readdir(packageConformanceDirectory))
 assertSameNames('testkit renderer-conformance copies', conformanceFiles, packageConformanceFiles);
 await assertCopies(rootConformanceDirectory, packageConformanceDirectory, conformanceFiles);
 
+const authoringWebConformanceFiles = (await readdir(rootAuthoringWebConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageAuthoringWebConformanceFiles = (await readdir(packageAuthoringWebConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames(
+  'testkit authoring-web conformance copies',
+  authoringWebConformanceFiles,
+  packageAuthoringWebConformanceFiles,
+);
+await assertCopies(
+  rootAuthoringWebConformanceDirectory,
+  packageAuthoringWebConformanceDirectory,
+  authoringWebConformanceFiles,
+);
+
 const rendererWebConformanceFiles = (await readdir(rootRendererWebConformanceDirectory))
   .filter((name) => name.endsWith('.json'))
   .sort();
@@ -268,6 +294,7 @@ if (corpusManifest.kind !== 'corpus-manifest' || !Array.isArray(corpusManifest.g
 }
 const corpusDirectories = new Map([
   ['binding-projection-vectors', packageBindingProjectionVectorDirectory],
+  ['authoring-web-conformance', packageAuthoringWebConformanceDirectory],
   ['canonical-vectors', packageCanonicalVectorDirectory],
   ['command-vectors', packageVectorDirectory],
   ['fixtures', packageFixtureDirectory],
@@ -676,6 +703,34 @@ for (const conformanceFile of conformanceFiles) {
       }
       previousEmbedIndex = embed.index;
     }
+  }
+}
+
+if (authoringWebConformanceFiles.length === 0) {
+  throw new Error('The authoring-web conformance corpus is empty.');
+}
+const validateAuthoringWebVector = getCanonicalValidator('authoring-web-vector.schema.json');
+const authoringWebVectorIdentifiers = new Set();
+for (const vectorFile of authoringWebConformanceFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(vectorFile, rootAuthoringWebConformanceDirectory), 'utf8'),
+  );
+  if (!validateAuthoringWebVector(vector)) {
+    throw new Error(
+      `${vectorFile} violates authoring-web-vector.schema.json: ` +
+        ajv.errorsText(validateAuthoringWebVector.errors),
+    );
+  }
+  if (authoringWebVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Authoring-web vector identifier ${vector.id} is duplicated.`);
+  }
+  authoringWebVectorIdentifiers.add(vector.id);
+  const laneNames = new Set();
+  for (const lane of vector.lanes) {
+    if (laneNames.has(lane.name)) {
+      throw new Error(`${vectorFile} duplicates lane ${lane.name}.`);
+    }
+    laneNames.add(lane.name);
   }
 }
 
@@ -1146,9 +1201,10 @@ console.log(
     `${previewVectorFiles.length} preview identity vectors, ` +
     `${schemaProfileVectorFiles.length} schema-profile vectors, ` +
     `${canonicalVectorFiles.length} canonical serialization vectors, ` +
-    `${invalidFiles.length} negative fixtures, ` +
-    `${conformanceFiles.length} rich-text renderer fixtures, and ` +
-    `${rendererWebConformanceFiles.length} renderer-web fixtures verified.`,
+    `${invalidFiles.length} negative fixtures, and ` +
+    `${conformanceFiles.length} rich-text renderer fixtures, ` +
+    `${authoringWebConformanceFiles.length} authoring-web vectors, and ` +
+    `${rendererWebConformanceFiles.length} renderer-web vectors verified.`,
 );
 
 function validateHostSequenceSemantics(vector, file) {

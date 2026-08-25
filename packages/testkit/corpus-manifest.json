@@ -1154,6 +1154,16 @@
     {
       "files": [
         {
+          "digest": "sha256-MQavkWcGxN1RXJoa16WNsFhbvAzfE3Zz+ak++SpX8tQ=",
+          "file": "non-drag-move-equivalence.json"
+        }
+      ],
+      "group": "authoring-web-conformance",
+      "path": "conformance/authoring-web"
+    },
+    {
+      "files": [
+        {
           "digest": "sha256-gYLt/6rwo8QRm+guMxuJtgzLQT/goMKgO7dR4MU9Q2o=",
           "file": "chart-fallback.json"
         },
