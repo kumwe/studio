@@ -1,6 +1,10 @@
 # Architecture decision records
 
-These records capture foundational decisions whose reversal would materially affect public contracts. Statuses are `proposed`, `accepted`, `superseded`, or `rejected`. Initial records remain **proposed** until Gate A ratification; documentation does not imply implementation.
+These records capture foundational decisions whose reversal would materially affect public contracts. Statuses
+are `proposed`, `accepted`, `superseded`, or `rejected`. The status is a contract-ratification state, not an
+implementation flag: the standalone runtime implements many proposed records, including the page builder,
+Editor.js adapter, governed safe-markup/scoped-style controls, and semantic renderer. Initial records remain
+**proposed** until Gate A review formally freezes them.
 
 | ADR                                                | Decision                                                       | Status   |
 | -------------------------------------------------- | -------------------------------------------------------------- | -------- |

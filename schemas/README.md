@@ -18,7 +18,7 @@ Version 2 Gate A release workflow must:
 5. compare packaged digests with canonical digests and fail on divergence;
 6. publish a manifest containing each `$id`, file digest, schema epoch URI, document contract revision, and generator version.
 
-The separate [`studio-release.schema.json`](studio-release.schema.json) closes the seven-package release
+The separate [`studio-release.schema.json`](studio-release.schema.json) closes the eight-package release
 family. The generated root record and its protocol/testkit copies bind exact package versions to the wire
 protocol and corpus-manifest digest; `claimedProfiles` remains empty until immutable evidence permits a claim.
 
@@ -31,7 +31,7 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 | [`common.schema.json`](common.schema.json)                                       | Shared identifiers, references, messages and diagnostics |
 | [`authoring-message-catalog.schema.json`](authoring-message-catalog.schema.json) | Versioned shell locale catalog and named parameters      |
 | [`studio-config.schema.json`](studio-config.schema.json)                         | Resolved serializable session configuration              |
-| [`studio-release.schema.json`](studio-release.schema.json)                       | Fixed seven-package Studio release coordinate            |
+| [`studio-release.schema.json`](studio-release.schema.json)                       | Fixed eight-package Studio release coordinate            |
 | [`content-model.schema.json`](content-model.schema.json)                         | Portable content-model definition                        |
 | [`entry.schema.json`](entry.schema.json)                                         | Typed-model entry envelope and values                    |
 | [`blueprint.schema.json`](blueprint.schema.json)                                 | Composition tree, bindings and dependency locks          |

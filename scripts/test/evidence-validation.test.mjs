@@ -162,7 +162,10 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   for (const workflowName of ['evidence-bundle.yml', 'release.yml']) {
     const workflow = await readFile(`${repositoryRoot}/.github/workflows/${workflowName}`, 'utf8');
     for (const match of workflow.matchAll(/^\s*uses:\s*([^\s]+)$/gmu)) {
-      assert.match(match[1], /@[a-f0-9]{40}$/u, `${workflowName}: ${match[1]} is not pinned`);
+      assert.ok(
+        match[1] === './.github/actions/setup-studio' || /@[a-f0-9]{40}$/u.test(match[1]),
+        `${workflowName}: ${match[1]} is neither local nor pinned`,
+      );
     }
     assert.match(workflow, /persist-credentials: false/u);
     assert.match(workflow, /timeout-minutes:/u);
@@ -172,7 +175,8 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
     `${repositoryRoot}/.github/workflows/evidence-bundle.yml`,
     'utf8',
   );
-  assert.match(evidenceWorkflow, /playwright install --with-deps chromium/u);
+  assert.match(evidenceWorkflow, /uses: \.\/\.github\/actions\/setup-studio/u);
+  assert.match(evidenceWorkflow, /install-playwright: 'true'/u);
   assert.match(evidenceWorkflow, /path: \$\{\{ steps\.bundle\.outputs\.bundle_path \}\}/u);
   assert.doesNotMatch(evidenceWorkflow, /^\s+bundle_id:/mu);
   assert.doesNotMatch(evidenceWorkflow, /path: evidence\/bundles\/$/mu);
@@ -180,6 +184,15 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   const releaseWorkflow = await readFile(`${repositoryRoot}/.github/workflows/release.yml`, 'utf8');
   assert.match(releaseWorkflow, /ref: \$\{\{ inputs\.gate_record_sha \}\}/u);
   assert.match(releaseWorkflow, /sparse-checkout: evidence/u);
+
+  const setupAction = await readFile(
+    `${repositoryRoot}/.github/actions/setup-studio/action.yml`,
+    'utf8',
+  );
+  assert.match(setupAction, /actions\/setup-node@[a-f0-9]{40}/u);
+  assert.match(setupAction, /npm install --global npm@11\.9\.0/u);
+  assert.match(setupAction, /npm ci/u);
+  assert.match(setupAction, /playwright install --with-deps chromium/u);
 });
 
 async function createBundleFixture(t) {

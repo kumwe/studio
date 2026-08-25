@@ -31,7 +31,13 @@ Package side effects are prohibited except custom-element registration entry poi
 
 ## Release unit
 
-All first-party packages use a coordinated release train. The release manifest maps each independently versioned package to the tested schema epoch, document contract revisions, and wire protocol versions; none is inferred from a package major. Packages may have different patch versions, but the release manifest records the tested set. A host should depend on compatible ranges and pin the resolved release set in deployable builds.
+All eight Version 2 npm packages use one Changesets fixed group and share a single Studio release coordinate.
+The generated release record maps that exact coordinate to the tested schema epoch, document contract
+revisions, wire protocol version, corpus digest, package versions, and evidence-backed profile claims; none
+is inferred from a package major. Deployable hosts pin the exact release coordinate and verify its record.
+They do not resolve compatible ranges or independently select package patch versions. Future separately
+qualified package families, including Version 3 Dart artifacts, must be bound explicitly by a later release
+record rather than inferred from the npm coordinate.
 
 ## Gate interpretation
 

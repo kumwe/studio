@@ -1,0 +1,31 @@
+name: Set up Studio
+description: Install the one supported Node, npm, dependency, and optional browser environment.
+
+inputs:
+  install-playwright:
+    description: Install locked Chromium and its Linux system dependencies.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        cache: npm
+        node-version: 24
+        registry-url: https://registry.npmjs.org
+
+    - name: Pin npm declared by the repository
+      shell: bash
+      run: npm install --global npm@11.9.0
+
+    - name: Install locked dependencies
+      shell: bash
+      run: npm ci
+
+    - name: Install locked Playwright Chromium
+      if: ${{ inputs.install-playwright == 'true' }}
+      shell: bash
+      run: ./node_modules/.bin/playwright install --with-deps chromium

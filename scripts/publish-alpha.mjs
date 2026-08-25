@@ -1,0 +1,57 @@
+import { execFileSync } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { assertCoordinatedRelease } from './release-record.mjs';
+import { inspectReleasePlan } from './release-plan.mjs';
+
+const alphaVersionPattern =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-alpha\.(0|[1-9][0-9]*)$/u;
+const repositoryRoot = new URL('../', import.meta.url);
+
+export function assertAlphaPublication(record, plan) {
+  assertCoordinatedRelease(record);
+
+  if (plan.preMode !== 'pre' || plan.channel !== 'alpha') {
+    throw new Error('Automated publication is restricted to Changesets alpha pre mode.');
+  }
+  if (plan.operation !== 'publish' || plan.hasPendingChangesets) {
+    throw new Error(
+      'Alpha publication requires a consumed version commit with no pending changesets.',
+    );
+  }
+  if (!alphaVersionPattern.test(record.release)) {
+    throw new Error(
+      `Automated publication accepts only numeric alpha versions; received ${String(record.release)}.`,
+    );
+  }
+}
+
+async function main() {
+  if (process.argv.length !== 2) {
+    throw new Error('Usage: node scripts/publish-alpha.mjs');
+  }
+
+  const record = JSON.parse(await readFile(new URL('studio-release.json', repositoryRoot), 'utf8'));
+  const plan = await inspectReleasePlan(repositoryRoot);
+  assertAlphaPublication(record, plan);
+
+  const repositoryPath = fileURLToPath(repositoryRoot);
+  const releaseCheck = fileURLToPath(new URL('./check-release-record.mjs', import.meta.url));
+  const changesetsCli = fileURLToPath(
+    new URL('../node_modules/@changesets/cli/bin.js', import.meta.url),
+  );
+
+  execFileSync(process.execPath, [releaseCheck, '--require-coordinated'], {
+    cwd: repositoryPath,
+    stdio: 'inherit',
+  });
+  execFileSync(process.execPath, [changesetsCli, 'publish'], {
+    cwd: repositoryPath,
+    stdio: 'inherit',
+  });
+}
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}

@@ -20,12 +20,15 @@ Version 3 targets.
 | Portable stable media-reference shape                                    | Private/public delivery policy, signed URLs and CDN/origin handling |
 | Media port types, diagnostics and conformance tests                      | Rate limits, quotas, lifecycle jobs, backup/restore and operations  |
 
-The table assigns target ownership. In the current alpha, `@kumwe/studio-media` contains only the host-neutral
-provider interface, cancellation-safe browse/search/pagination state, and deterministic rendition selection.
-The complete UI and port behaviour remain Gate A/B work. The authoritative media
+The table assigns target ownership. The current alpha implements the Studio side of this boundary: the
+host-neutral provider, cancellation-safe browse/search/pagination and upload state, rendition selection,
+media-field controller, and shell controls for browse, select, replace, paste/drop/upload, progress,
+cancellation, retry, ordering, metadata, and orphan recovery. That repository-verified runtime is not yet a
+supported host claim. Gate qualification still needs a real persistent host adapter, hostile-media and
+supported-browser evidence, lifecycle/recovery drills, and independent reproduction. The authoritative media
 application/domain/infrastructure remains in [`kumwe/app`](https://github.com/kumwe/app) and is exposed by the
-Kumwe App adapter for Studio. A separate media repository is unnecessary unless Kumwe App later decides to extract its entire media service for reasons
-independent of Studio.
+Kumwe App adapter for Studio. A separate media repository is unnecessary unless Kumwe App later decides to
+extract its entire media service for reasons independent of Studio.
 
 ## Portable media reference
 
