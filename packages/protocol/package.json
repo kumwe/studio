@@ -13,6 +13,8 @@
   "sideEffects": false,
   "files": [
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "third-party-licenses",
     "dist",
     "schemas",
     "studio-release.json",

@@ -48,5 +48,8 @@ an SBOM and audits production dependencies. These controls complement one anothe
 inventory, the package notice bundle travels with the tarball, and review records the distribution decision.
 
 The generator never downloads license material. It reads the exact installed package represented by the
-lockfile, which makes `npm ci` followed by regeneration reproducible and causes unavailable license evidence to
-fail closed.
+lockfile. A reviewed identity-, declared-license- and digest-pinned copy under
+`evidence/third-party-licenses/` may supply immutable upstream evidence, including when a publisher omits its
+license file from the npm archive; the notice names the exact upstream source. Curated evidence takes precedence
+so a repackaged archive cannot silently change the license bundle. This makes `npm ci` followed by regeneration
+reproducible and causes unavailable or changed license evidence to fail closed.

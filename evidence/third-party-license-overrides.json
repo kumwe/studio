@@ -1,0 +1,44 @@
+{
+  "@editorjs/caret@1.1.0": {
+    "declaredLicense": "MIT",
+    "file": "third-party-licenses/editor-js__utils.txt",
+    "sha256": "5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1",
+    "source": "https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE"
+  },
+  "@editorjs/dom@1.1.0": {
+    "declaredLicense": "MIT",
+    "file": "third-party-licenses/editor-js__utils.txt",
+    "sha256": "5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1",
+    "source": "https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE"
+  },
+  "@editorjs/editorjs@2.31.6": {
+    "declaredLicense": "Apache-2.0",
+    "file": "third-party-licenses/editorjs__editorjs-2.31.6.txt",
+    "sha256": "b946f387bbb7de6843c0db34f87a8956f229d220b3bf81b16b8425788cacf3ed",
+    "source": "https://github.com/codex-team/editor.js/blob/v2.31.6/LICENSE"
+  },
+  "@editorjs/helpers@1.2.2": {
+    "declaredLicense": "MIT",
+    "file": "third-party-licenses/editor-js__utils.txt",
+    "sha256": "5955c6e9d1de490608d7a41b4cfff00e769867ddb5fac2999b8efc874500e3a1",
+    "source": "https://github.com/editor-js/utils/blob/023b992f3ed56d32f7a907914e851d3cfdf78036/LICENSE"
+  },
+  "@lit-labs/ssr-dom-shim@1.6.0": {
+    "declaredLicense": "BSD-3-Clause",
+    "file": "third-party-licenses/lit-labs__ssr-dom-shim-1.6.0.txt",
+    "sha256": "2b66f9390afde29edfe4314daff93f01fb182e1178053e228120178987e5db75",
+    "source": "https://github.com/lit/lit/blob/%40lit-labs/ssr-dom-shim%401.6.0/LICENSE"
+  },
+  "codex-notifier@1.1.2": {
+    "declaredLicense": "MIT",
+    "file": "third-party-licenses/codex-notifier-1.1.2.txt",
+    "sha256": "698022d282ae51ef05451e18cda80381aa74c6a8bb19b4ee4565b1926d36e08a",
+    "source": "https://github.com/codex-team/js-notifier/blob/d000792c90bbde682d438b3554f3b9c8f6ddcb95/LICENSE"
+  },
+  "codex-tooltip@1.0.6": {
+    "declaredLicense": "MIT",
+    "file": "third-party-licenses/codex-tooltip-1.0.6.txt",
+    "sha256": "4350bad7723eb798e1b61d8bb006dbdba611d64257b711f81bc9dc737e82b69f",
+    "source": "https://github.com/codex-team/codex.tooltips/blob/c1d3798621189ede6aaa66765acd5901b5310275/LICENSE"
+  }
+}
