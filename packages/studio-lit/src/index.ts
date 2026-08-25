@@ -1,6 +1,12 @@
 import { KumweStudioElement } from './kumwe-studio.js';
 
 export {
+  createStudioStandaloneSetup,
+  type StudioStandaloneExtensions,
+  type StudioStandaloneSetup,
+} from './bootstrap.js';
+
+export {
   parseScopedCss,
   serializeScopedCss,
   STUDIO_AUTHORING_CONTROL_IDS,
@@ -30,6 +36,7 @@ export {
   type StudioDirtyChangedDetail,
   type StudioDocumentChangeDetail,
   type StudioInsertRequestDetail,
+  type StudioScopedStyleChangeDetail,
   type StudioViewportChangeDetail,
 } from './kumwe-studio.js';
 export {

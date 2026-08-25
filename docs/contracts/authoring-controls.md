@@ -26,6 +26,39 @@ Profiles are closed. Rich text accepts only the named profiles exported by
 plain bounded text and its mode comes only from the profile. Unknown control or
 profile input fails closed.
 
+## Shell discovery and lifecycle
+
+The Studio shell discovers controls only from the active `BlockDefinition`:
+`propertyControls` address canonical node properties and `ports[].authoring`
+addresses canonical field bindings. The shell mounts a supported control after
+Lit has committed its holder, passes the definition's exact profile and current
+canonical value, and destroys the handle when the target, registry, selected
+node, or shell connection changes. Mount errors and invalid changes produce
+stable `studio.authoring/*` diagnostics; they never fall back to a raw
+editor-native JSON field.
+
+A valid property change is applied through `studio.command/set-property`. A
+valid port change creates or updates a `static-value` binding through
+`studio.command/set-binding`; clearing an optional value uses
+`studio.command/remove-binding`. This command path preserves Studio validation,
+history, dirty state, preview scheduling, and host change events. Non-static
+bindings are always mounted read-only. A custom registry may inject host media
+and trusted-preview services, but it cannot bypass those rules.
+
+`studio.control/scoped-css` is the sole non-persisting property-control
+exception. Its valid change emits `studio-scoped-style-change` with the target
+node ID and structured sheet. The host may place that sheet in trusted renderer
+context; the shell never dispatches `set-property` for it and never stores it in
+the Blueprint.
+
+When the experimental shell configuration omits `blockDefinitions`, the shell
+uses Studio's full first-party production catalog. When `patterns` is also
+absent, it uses the compatible first-party starter patterns. Explicit arrays
+are exact overrides, and an explicit catalog does not implicitly acquire
+first-party patterns. `createStudioStandaloneSetup` is the supported additive
+bootstrap for hosts: first-party entries lead, host contributions append, and
+duplicate identities fail closed.
+
 ## Implemented guided controls
 
 The source control uses a Studio-neutral code-field adapter, with an accessible

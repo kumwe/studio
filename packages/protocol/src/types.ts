@@ -1033,7 +1033,8 @@ export interface StudioConfiguration {
 }
 
 export interface ExperimentalShellConfiguration {
-  blockDefinitions: BlockDefinition[];
+  /** Omit to use Studio's complete first-party catalog; an explicit array overrides it. */
+  blockDefinitions?: BlockDefinition[];
   session: StudioConfiguration;
 }
 
