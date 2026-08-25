@@ -42,6 +42,9 @@ export function compileStudioScopedStyleSheet(
   scope: string,
   sheet: Readonly<StudioScopedStyleSheet>,
 ): string {
+  if (!/^[A-Za-z][A-Za-z0-9_-]{0,511}$/u.test(scope)) {
+    throw new TypeError('Scoped CSS scope must be a bounded CSS-safe identifier.');
+  }
   if (sheet.rules.length > 100) throw new RangeError('Scoped stylesheet exceeds 100 rules.');
   const base = `[data-studio-scope="${scope}"]`;
   return sheet.rules

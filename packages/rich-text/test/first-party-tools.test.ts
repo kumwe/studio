@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   fromStudioEditorJsBlocks,
@@ -15,53 +17,150 @@ import {
   type StudioRichTextDocument,
 } from '../src/index.js';
 
-const ADVANCED: StudioRichTextDocument = {
+const ADVANCED = parseRichTextDocument(
+  (
+    JSON.parse(
+      readFileSync(
+        join(process.cwd(), 'schemas/conformance/rich-text/advanced.first-party.json'),
+        'utf8',
+      ),
+    ) as { document: unknown }
+  ).document,
+);
+
+const STRUCTURAL_RICH_TEXT: StudioRichTextDocument = {
   content: [
     {
-      attrs: { tone: 'warning' },
       content: [
         {
           content: [
             {
-              marks: [{ attrs: { tone: 'accent' }, type: 'highlight' }],
-              text: 'Mind the gap',
-              type: 'text',
+              content: markedInline('List'),
+              type: 'paragraph',
+            },
+            {
+              attrs: { start: 3 },
+              content: [
+                {
+                  content: [
+                    {
+                      content: [
+                        { marks: [{ type: 'code' }], text: 'nested', type: 'text' },
+                        { type: 'hardBreak' },
+                        { text: 'line', type: 'text' },
+                      ],
+                      type: 'paragraph',
+                    },
+                  ],
+                  type: 'listItem',
+                },
+              ],
+              type: 'orderedList',
+            },
+            {
+              content: [{ text: 'Second list block', type: 'text' }],
+              type: 'paragraph',
             },
           ],
-          type: 'paragraph',
+          type: 'listItem',
         },
       ],
-      type: 'callout',
+      type: 'bulletList',
     },
     {
       content: [
         {
-          attrs: { checked: true, level: 0 },
-          content: [{ text: 'Done', type: 'text' }],
-          type: 'checklistItem',
-        },
-        {
-          attrs: { checked: false, level: 1 },
-          content: [{ text: 'Nested', type: 'text' }],
+          attrs: { checked: true, level: 2 },
+          content: markedInline('Checklist'),
           type: 'checklistItem',
         },
       ],
       type: 'checklist',
     },
     {
-      attrs: { header: true },
+      attrs: { header: false },
       content: [
         {
-          content: [{ content: [{ text: 'Name', type: 'text' }], type: 'tableCell' }],
+          content: [{ content: markedInline('Table'), type: 'tableCell' }],
           type: 'tableRow',
         },
       ],
       type: 'table',
     },
-    { attrs: { language: 'typescript' }, text: 'const answer = 42;', type: 'codeBlock' },
+    {
+      content: [
+        {
+          content: [
+            { marks: [{ type: 'italic' }], text: 'Quoted', type: 'text' },
+            { type: 'hardBreak' },
+            { text: 'line', type: 'text' },
+          ],
+          type: 'paragraph',
+        },
+        {
+          attrs: { tone: 'info' },
+          content: [
+            {
+              content: [{ text: 'Nested callout', type: 'text' }],
+              type: 'paragraph',
+            },
+          ],
+          type: 'callout',
+        },
+        {
+          content: [{ text: 'Final quote block', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'blockquote',
+    },
+    {
+      attrs: { tone: 'success' },
+      content: [
+        {
+          content: [
+            { marks: [{ type: 'strike' }], text: 'Callout', type: 'text' },
+            { type: 'hardBreak' },
+            { text: 'line', type: 'text' },
+          ],
+          type: 'paragraph',
+        },
+        {
+          content: [
+            {
+              content: [
+                {
+                  content: [{ text: 'Nested quote', type: 'text' }],
+                  type: 'paragraph',
+                },
+              ],
+              type: 'listItem',
+            },
+          ],
+          type: 'bulletList',
+        },
+      ],
+      type: 'callout',
+    },
   ],
   type: 'doc',
 };
+
+function markedInline(prefix: string): StudioRichTextDocument['content'] {
+  return [
+    { marks: [{ type: 'bold' }], text: `${prefix} bold`, type: 'text' },
+    { marks: [{ type: 'italic' }], text: ' italic', type: 'text' },
+    { marks: [{ type: 'strike' }], text: ' strike', type: 'text' },
+    { marks: [{ type: 'code' }], text: ' code', type: 'text' },
+    {
+      marks: [{ attrs: { tone: 'warning' }, type: 'highlight' }],
+      text: ' highlight',
+      type: 'text',
+    },
+    { type: 'hardBreak' },
+    { text: 'line', type: 'text' },
+  ];
+}
 
 describe('first-party Editor.js tool boundary', () => {
   it('maps every governed node through named tools without editor-native persistence', () => {
@@ -74,6 +173,43 @@ describe('first-party Editor.js tool boundary', () => {
     );
     expect(() => fromStudioEditorJsBlocks({ blocks: [{ data: {}, type: 'raw' }] })).toThrow(
       /first-party/u,
+    );
+  });
+
+  it('round-trips the advanced corpus and nested first-party nodes through rendered tools', () => {
+    const tools = studioEditorJsTools();
+    for (const value of [ADVANCED, STRUCTURAL_RICH_TEXT]) {
+      const canonical = parseRichTextDocument(value);
+      for (const block of toStudioEditorJsBlocks(canonical)) {
+        const Tool = tools[block.type];
+        const tool = new Tool({ data: block.data });
+        tool.render();
+        expect(tool.save().node, `${block.type} must not discard canonical content`).toEqual(
+          block.data.node,
+        );
+      }
+    }
+  });
+
+  it('changes list presentation without moving or flattening interleaved canonical blocks', () => {
+    const source = STRUCTURAL_RICH_TEXT.content[0];
+    if (source === undefined) throw new Error('Missing structural list fixture.');
+    const tool = new StudioListTool({ data: { node: source } });
+    const root = tool.render();
+    const style = root.querySelector<HTMLSelectElement>('[aria-label="List style"]');
+    if (style === null) throw new Error('Missing list style control.');
+    style.value = 'ordered';
+    style.dispatchEvent(new Event('change'));
+
+    const saved = tool.save().node;
+    expect(saved.type).toBe('orderedList');
+    expect(saved.content?.[0]?.content?.map((block) => block.type)).toEqual([
+      'paragraph',
+      'orderedList',
+      'paragraph',
+    ]);
+    expect(saved.content?.[0]?.content?.[0]?.content).toEqual(
+      source.content?.[0]?.content?.[0]?.content,
     );
   });
 

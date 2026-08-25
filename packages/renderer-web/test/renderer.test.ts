@@ -20,6 +20,91 @@ const richText: JsonObject = {
   type: 'doc',
 };
 
+const completeRichText: JsonObject = {
+  content: [
+    {
+      attrs: { level: 3 },
+      content: [{ marks: [{ type: 'italic' }], text: 'Heading', type: 'text' }],
+      type: 'heading',
+    },
+    {
+      content: [
+        {
+          content: [
+            { marks: [{ type: 'strike' }], text: 'Quoted', type: 'text' },
+            { type: 'hardBreak' },
+            { marks: [{ type: 'code' }], text: 'line', type: 'text' },
+          ],
+          type: 'paragraph',
+        },
+      ],
+      type: 'blockquote',
+    },
+    {
+      content: [
+        {
+          content: [{ content: [{ text: 'Bullet', type: 'text' }], type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ],
+      type: 'bulletList',
+    },
+    {
+      attrs: { start: 2 },
+      content: [
+        {
+          content: [{ content: [{ text: 'Ordered', type: 'text' }], type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ],
+      type: 'orderedList',
+    },
+    { type: 'horizontalRule' },
+    {
+      attrs: { tone: 'warning' },
+      content: [
+        {
+          content: [
+            {
+              marks: [{ attrs: { tone: 'danger' }, type: 'highlight' }],
+              text: 'Callout',
+              type: 'text',
+            },
+          ],
+          type: 'paragraph',
+        },
+      ],
+      type: 'callout',
+    },
+    {
+      content: [
+        {
+          attrs: { checked: true, level: 2 },
+          content: [{ text: 'Checked', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    },
+    {
+      attrs: { header: true },
+      content: [
+        {
+          content: [{ content: [{ text: 'Column', type: 'text' }], type: 'tableCell' }],
+          type: 'tableRow',
+        },
+        {
+          content: [{ content: [{ text: 'Value', type: 'text' }], type: 'tableCell' }],
+          type: 'tableRow',
+        },
+      ],
+      type: 'table',
+    },
+    { attrs: { language: 'html' }, text: '<script>', type: 'codeBlock' },
+  ],
+  type: 'doc',
+};
+
 const media: JsonObject = {
   accessibility: { altText: 'A sample', mode: 'informative' },
   assetId: 'asset-1',
@@ -124,6 +209,35 @@ describe('semantic web renderer', () => {
     expect(output.enhancements.map((item) => item.kind)).toEqual(['chart', 'math', 'diagram']);
   });
 
+  it('renders every portable rich-text node and semantic highlight tone', async () => {
+    const output = await renderStudioWeb({
+      roots: [
+        node('portable-rich-text', CORE_PRODUCTION_BLOCK_TYPES.richText, {
+          content: completeRichText,
+        }),
+      ],
+    });
+
+    expect(output.html).toContain('<h3><em>Heading</em></h3>');
+    expect(output.html).toContain(
+      '<blockquote><p><del>Quoted</del><br><code>line</code></p></blockquote>',
+    );
+    expect(output.html).toContain('<ul><li><p>Bullet</p></li></ul>');
+    expect(output.html).toContain('<ol start="2"><li><p>Ordered</p></li></ol>');
+    expect(output.html).toContain('<hr>');
+    expect(output.html).toContain(
+      '<aside data-studio-rich-text-callout data-studio-tone="warning"><p><mark data-studio-tone="danger">Callout</mark></p></aside>',
+    );
+    expect(output.html).toContain(
+      '<ul data-studio-rich-text-checklist><li data-studio-rich-text-checklist-item data-studio-checked="true" data-studio-level="2">',
+    );
+    expect(output.html).toContain(
+      '<table data-studio-rich-text-table><thead><tr><th scope="col">Column</th></tr></thead>',
+    );
+    expect(output.html).toContain('<tbody><tr><td>Value</td></tr></tbody></table>');
+    expect(output.html).toContain('<pre><code data-language="html">&lt;script&gt;</code></pre>');
+  });
+
   it('renders only structural allowlisted HTML and policy-scoped CSS', () => {
     expect(
       renderSafeMarkupFragment({
@@ -156,6 +270,73 @@ describe('semantic web renderer', () => {
         rules: [{ declarations: { background: 'url(javascript:1)' }, target: 'self' }],
       }),
     ).toThrow();
+    expect(() =>
+      compileStudioScopedStyleSheet('x"]{}body{color:red}/*', {
+        rules: [{ declarations: { color: '#112233' }, target: 'self' }],
+      }),
+    ).toThrow(/scope/u);
+  });
+
+  it('uses collision-free scopes to isolate CSS for formerly colliding schema-valid node ids', async () => {
+    const firstId = 'nj6puezis73af';
+    const secondId = 'n1ksfjywvqcv2';
+    const output = await renderStudioWeb(
+      {
+        roots: [
+          node(firstId, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'First' }),
+          node(secondId, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Second' }),
+        ],
+      },
+      {
+        scopedStyles: {
+          [firstId]: { rules: [{ declarations: { color: '#112233' }, target: 'self' }] },
+          [secondId]: { rules: [{ declarations: { color: '#445566' }, target: 'self' }] },
+        },
+      },
+    );
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const firstScope = host
+      .querySelector(`[data-studio-node="${firstId}"]`)
+      ?.getAttribute('data-studio-scope');
+    const secondScope = host
+      .querySelector(`[data-studio-node="${secondId}"]`)
+      ?.getAttribute('data-studio-scope');
+
+    expect(firstScope).toBeTruthy();
+    expect(secondScope).toBeTruthy();
+    expect(firstScope).not.toBe(secondScope);
+    expect(output.css).toContain(`[data-studio-scope="${firstScope}"]{color:#112233}`);
+    expect(output.css).toContain(`[data-studio-scope="${secondScope}"]{color:#445566}`);
+  });
+
+  it('keeps enhancement order equal to document order across delayed host resolution', async () => {
+    const chartValue: JsonObject = {
+      datasets: [{ label: 'Series', values: [1] }],
+      labels: ['A'],
+      type: 'bar',
+    };
+    const roots = [
+      node('first', CORE_PRODUCTION_BLOCK_TYPES.chart),
+      node('second', CORE_PRODUCTION_BLOCK_TYPES.chart),
+    ];
+    const output = await renderStudioWeb(
+      { roots },
+      {
+        resolveBinding: async (candidate, port) => {
+          if (port !== 'chart') return undefined;
+          if (candidate.id === 'first') {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          }
+          return chartValue;
+        },
+      },
+    );
+
+    expect(output.enhancements.map((item) => item.nodeId)).toEqual(['first', 'second']);
+    expect(output.html.indexOf('data-studio-node="first"')).toBeLessThan(
+      output.html.indexOf('data-studio-node="second"'),
+    );
   });
 
   it('keeps a slideshow usable before enhancement and describes trusted behavior separately', async () => {

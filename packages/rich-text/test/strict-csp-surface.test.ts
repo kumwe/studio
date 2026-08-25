@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  parseRichTextDocument,
   StudioRichTextEditorFactory,
   StudioStrictCspRichTextSurfaceAdapter,
   type StudioRichTextDocument,
@@ -15,7 +18,32 @@ const INITIAL: StudioRichTextDocument = {
   type: 'doc',
 };
 
+const ADVANCED = parseRichTextDocument(
+  (
+    JSON.parse(
+      readFileSync(
+        join(process.cwd(), 'schemas/conformance/rich-text/advanced.first-party.json'),
+        'utf8',
+      ),
+    ) as { document: unknown }
+  ).document,
+);
+
 describe('Studio strict-CSP rich-text surface', () => {
+  it('snapshots the advanced first-party corpus without semantic loss', async () => {
+    const holder = document.createElement('div');
+    document.body.append(holder);
+    const editor = await new StudioRichTextEditorFactory(
+      new StudioStrictCspRichTextSurfaceAdapter(),
+    ).create({ holder, value: ADVANCED });
+
+    expect(await editor.save()).toEqual(ADVANCED);
+    expect(holder.querySelector('style,script,[style]')).toBeNull();
+
+    editor.destroy();
+    holder.remove();
+  });
+
   it('authors every first-party block without creating style or HTML-string sinks', async () => {
     const holder = document.createElement('div');
     document.body.append(holder);
