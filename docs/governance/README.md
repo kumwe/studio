@@ -97,9 +97,18 @@ that identify a contract contradiction remain unresolved until code, schema, fix
 
 ## Dependency and license governance
 
-Studio is MIT licensed. Every production dependency must be license-compatible with MIT distribution and the
-GPL-2.0-only Kumwe App consumer, actively maintained, justifiable against an internal implementation, and
-isolated behind a boundary when it could otherwise own Studio's public model.
+Studio-authored code is MIT licensed. Every production dependency must be actively maintained, justified
+against an internal implementation, and isolated behind a boundary when it could otherwise own Studio's public
+model. Distribution and downstream-use compatibility are separate release questions: dependency notices and
+license texts travel with each affected package, while every host assesses the licenses of the bytes it actually
+distributes.
+
+Editor.js is an Apache-2.0 implementation dependency of the browser authoring package. Kumwe App currently
+declares `GPL-2.0-only`; this repository does not claim that embedding or redistributing the Editor.js-bearing
+frontend under that declaration is compatible. The integration remains release-blocked until the project owner
+records a qualified rights/licensing decision or selects a deployment boundary that avoids redistributing those
+bytes. Studio documentation cannot unilaterally relicense Kumwe App or substitute for legal review. See
+[`dependency-licenses.md`](dependency-licenses.md).
 
 A consequential dependency proposal records:
 
@@ -110,9 +119,9 @@ A consequential dependency proposal records:
 - replacement/exit strategy and public-type leakage check; and
 - lockfile, SBOM, vulnerability and update policy.
 
-Lit may implement Web Components, Tiptap/ProseMirror may implement bounded rich-text editing, a drag primitive
-may assist pointer mechanics, and Yjs may later implement collaboration. None becomes the Studio artifact,
-command, host-port, theme or plugin contract.
+Lit may implement Web Components, Editor.js may implement bounded block-content editing, a drag primitive may
+assist pointer mechanics, and Yjs may later implement collaboration. None becomes the Studio artifact, command,
+host-port, theme or plugin contract.
 
 ## Security, privacy and conduct
 

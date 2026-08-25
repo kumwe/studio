@@ -15,7 +15,7 @@ Shape and semantics overlap deliberately and must agree. When code, prose, schem
 
 - Keep the protocol language-neutral and serializable as bounded JSON.
 - Never persist executable HTML, CSS, JavaScript, template code, SQL, callbacks, framework objects, or arbitrary expressions in a Studio artifact.
-- Do not leak Lit, Tiptap, Ajv, drag-and-drop, or host-specific types through public protocol contracts.
+- Do not leak Lit, Editor.js, Ajv, drag-and-drop, or host-specific types through public protocol contracts.
 - Keep `@kumwe/studio-core` independent of the DOM.
 - Treat browser validation as authoring assistance; the host remains authoritative.
 - Make every drag action possible with keyboard and explicit structural controls.
