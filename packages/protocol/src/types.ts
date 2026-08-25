@@ -215,11 +215,23 @@ export interface BlockSlotDefinition {
 }
 
 export interface BlockPortDefinition {
+  /**
+   * Portable authoring hints. They select a Studio control/profile without
+   * exposing an editor implementation. A read-only port may still be bound by
+   * the host, but Studio never offers a value mutation for it.
+   */
+  authoring?: BlockPortAuthoringMetadata;
   id: LocalName;
   label: MessageReference;
   multiple: boolean;
   required: boolean;
   valueType: string;
+}
+
+export interface BlockPortAuthoringMetadata {
+  control?: QualifiedName;
+  profile?: QualifiedName;
+  readOnly?: boolean;
 }
 
 export interface RendererRequirement {

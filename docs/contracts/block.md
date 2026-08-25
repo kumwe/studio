@@ -14,7 +14,7 @@ The `0.1-draft` block schema declares:
 - localized title, description and category keys;
 - property JSON Schema and defaults;
 - named slots with cardinality and explicit accepted child types;
-- input binding ports with value type, required state and multiplicity;
+- input binding ports with value type, required state and multiplicity, plus optional implementation-neutral authoring control/profile hints;
 - supported editing modes; support in a hybrid composite is derived from the declared Blueprint/Content behavior, and read-only is a session state rather than a block mode;
 - bounded theme design controls;
 - required renderer capabilities by output surface;
@@ -54,6 +54,12 @@ Blocks MUST NOT inspect or mutate siblings or ancestors outside declared command
 
 An `0.1-draft` port is an input and declares a logical type such as `text`, `rich-text`, `money`, `media`, `resource`, or a namespaced extension type. Studio validates source-to-port compatibility and every transform. Null and error behavior is currently explicit on each Blueprint binding. Renderers receive already resolved, authorized, typed values. Gate A must decide and schema-model output ports and block-level defaults before they become portable behavior.
 
+Optional `authoring` metadata selects a namespaced Studio control and semantic profile. It MUST NOT
+expose the editor library, renderer configuration, callbacks, or a host framework type. `readOnly: true`
+means the shell may display the host-resolved projection but does not offer a mutation for that port.
+In particular, the first-party resource and query projection blocks are read-only: only a host can
+authorize and resolve their database-backed values.
+
 ## Renderers
 
 A block MAY have multiple renderer implementations identified by surface and renderer ID. The definition manifest describes compatibility; executable renderer registration remains trusted host or plugin code.
@@ -84,3 +90,15 @@ Studio preserves an unknown node as opaque data and displays its type, owner, ve
 Studio ships canonical `section`, `stack`, `grid`, and `columns` block definitions without standardizing their HTML/CSS implementation. The definitions expose closed semantic properties for alignment, spacing, per-viewport visibility, stack direction, a one-through-twelve grid/column count, and collapse behavior. Responsive overrides use the ordinary Blueprint property map and inherit from the base value when the active viewport has no override; the document never stores a media query, class name, declaration, or viewport-specific markup.
 
 `createCoreLayoutBlockDefinitions` admits the layout family recursively and requires a host to add each content block type explicitly. It likewise requires one or more trusted renderer capabilities; there is no wildcard slot or renderer. `resolveCoreLayoutIntent` validates the effective tokens against the active theme and reports exact base/default/viewport provenance. A missing theme control or choice fails closed instead of selecting a visually similar replacement. See [ADR 0022](../decisions/0022-core-layout-block-family.md).
+
+## First-party production catalog
+
+`createCoreProductionBlockDefinitions()` returns the complete 27-type catalog: section, stack, grid,
+columns, heading, rich text, image, gallery/slideshow, video, audio, attachment, code, math, Mermaid
+diagram, chart, drawing, embed, call to action, card, accordion/item, tabs/tab, callout, content
+reference, content collection, and money. `coreProductionInitialProperties()` is the only canonical
+factory for a new first-party node's property defaults; every result validates against its definition.
+
+`createCoreProductionPatterns()` returns ten portable starter compositions. Patterns may use static
+bindings or host-resolved resource/query bindings, but contain no HTML, CSS, JavaScript, template, SQL,
+or implementation-specific editor state. See [ADR 0026](../decisions/0026-production-block-catalog.md).
