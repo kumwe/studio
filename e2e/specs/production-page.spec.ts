@@ -88,11 +88,34 @@ test('Studio controls edit, upload, save, reload, and render canonical values', 
     '/reference-media/gallery-two.svg',
   );
 
+  const drawing = page.locator('[data-reference-control="drawing"]');
+  const drawingCanvas = drawing.locator(
+    'svg[aria-label="A blue line rising from lower left to upper right"]',
+  );
+  await drawingCanvas.focus();
+  await drawingCanvas.press('Space');
+  await drawingCanvas.press('ArrowRight');
+  await drawingCanvas.press('Space');
+  await drawingCanvas.press('Enter');
+  await expect(surface.locator('[data-studio-node="drawing"] polyline')).toHaveCount(2);
+
+  const table = page.locator('[data-reference-control="table"]');
+  await table.getByRole('button', { name: 'Add table row' }).click();
+  await table.getByRole('textbox', { name: 'Table row 4, column 1' }).fill('Drawing control');
+  await table.getByRole('textbox', { name: 'Table row 4, column 2' }).fill('Exercised');
+  await expect(
+    surface
+      .locator('[data-studio-node="reference-table"] tr')
+      .filter({ hasText: 'Drawing control' }),
+  ).toContainText('Exercised');
+
   await page.locator('.reference-save').click();
   await expect(page.locator('.reference-session-status')).toHaveText('Browser draft saved.');
   const serialized = await page.evaluate(() => localStorage.getItem('studio.reference/draft-v1'));
   expect(serialized).toContain('Studio persists only canonical rich text');
+  expect(serialized).toContain('Drawing control');
   expect(serialized).not.toMatch(/editorjs|codex|tunes/iu);
+  expect(serialized).not.toContain('<svg');
 
   await media.getByLabel('Upload media').setInputFiles({
     buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
@@ -113,6 +136,12 @@ test('Studio controls edit, upload, save, reload, and render canonical values', 
   await expect(surface.locator('[data-studio-node="faq-editor-answer"]')).toContainText(
     'Studio persists only canonical rich text across a browser draft reload.',
   );
+  await expect(surface.locator('[data-studio-node="drawing"] polyline')).toHaveCount(2);
+  await expect(
+    surface
+      .locator('[data-studio-node="reference-table"] tr')
+      .filter({ hasText: 'Drawing control' }),
+  ).toContainText('Exercised');
 });
 
 test.describe('touch and right-to-left delivery', () => {

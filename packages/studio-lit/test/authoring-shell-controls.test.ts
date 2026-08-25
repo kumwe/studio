@@ -145,7 +145,13 @@ describe('Studio shell authoring-control lifecycle', () => {
     const money = productionNode('money', 'studio.core/money', {
       amount: staticBinding({ amount: '19.95', currency: 'NAD' }),
     });
-    const element = await mount([richText, source, chart, money]);
+    const drawing = productionNode('drawing', 'studio.core/drawing', {
+      drawing: staticBinding({ alt: 'Diagram', height: 100, strokes: [], width: 100 }),
+    });
+    const table = productionNode('table', 'studio.core/table', {
+      table: staticBinding({ columns: ['Name'], rows: [['First']] }),
+    });
+    const element = await mount([richText, source, chart, money, drawing, table]);
 
     await select(element, 'rich');
     expect(element.shadowRoot?.querySelector('.fake-editorjs-runtime')).not.toBeNull();
@@ -170,6 +176,56 @@ describe('Studio shell authoring-control lifecycle', () => {
       element.shadowRoot?.querySelector<HTMLInputElement>('[aria-label="Exact decimal amount"]')
         ?.value,
     ).toBe('19.95');
+
+    await select(element, 'drawing');
+    const drawingCanvas = element.shadowRoot?.querySelector<SVGSVGElement>(
+      'svg[aria-label="Diagram"]',
+    );
+    if (drawingCanvas === null || drawingCanvas === undefined) {
+      throw new Error('Missing drawing canvas.');
+    }
+    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
+    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowRight' }));
+    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
+    drawingCanvas.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(
+      element.document?.roots.find((node) => node.id === 'drawing')?.bindings.drawing?.source,
+    ).toMatchObject({
+      kind: 'static-value',
+      value: {
+        strokes: [
+          {
+            points: [
+              { x: 0, y: 0 },
+              { x: 1, y: 0 },
+            ],
+          },
+        ],
+      },
+    });
+    element.undo();
+    await element.updateComplete;
+    expect(
+      element.document?.roots.find((node) => node.id === 'drawing')?.bindings.drawing?.source,
+    ).toMatchObject({ kind: 'static-value', value: { strokes: [] } });
+
+    await select(element, 'table');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('[aria-label="Add table row"]')?.click();
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(
+      element.document?.roots.find((node) => node.id === 'table')?.bindings.table?.source,
+    ).toEqual({
+      kind: 'static-value',
+      value: { columns: ['Name'], rows: [['First'], ['']] },
+    });
+    element.undo();
+    await element.updateComplete;
+    expect(
+      element.document?.roots.find((node) => node.id === 'table')?.bindings.table?.source,
+    ).toEqual({ kind: 'static-value', value: { columns: ['Name'], rows: [['First']] } });
   });
 
   it('mounts governed property controls, forwards read-only state and surfaces failures', async () => {

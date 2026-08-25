@@ -60,6 +60,14 @@ emits `studio-scoped-style-change` with `{ nodeId, value }`, and the host may
 apply that structured sheet as trusted renderer context. It is never written to
 the Blueprint.
 
+Drawing and table are complete first-party value editors. Drawing offers a
+native SVG pointer surface plus labelled coordinates and keyboard actions; it
+emits only canonical vector strokes and alternative text. Table offers labelled
+caption, heading, cell, row, and column controls over the canonical text-only
+table document. Both honor read-only bindings and route every accepted commit
+through the registry's `onChange`, so shell command history provides undo/redo.
+Neither control persists DOM, SVG, HTML, canvas commands, or executable source.
+
 ## Localization
 
 The shell exports `studioMessageCatalog`, `studioMessages`, `messageText`, and their associated

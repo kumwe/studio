@@ -1,5 +1,18 @@
-import { parseStudioChartSpec, parseStudioMoneyValue } from '@kumwe/studio-core';
-import type { FieldBinding, StudioChartSpec, StudioMoneyValue } from '@kumwe/studio-protocol';
+import {
+  parseStudioChartSpec,
+  parseStudioDrawingDocument,
+  parseStudioMoneyValue,
+  parseStudioTableDocument,
+} from '@kumwe/studio-core';
+import type {
+  FieldBinding,
+  StudioChartSpec,
+  StudioDrawingDocument,
+  StudioDrawingPoint,
+  StudioDrawingStroke,
+  StudioMoneyValue,
+  StudioTableDocument,
+} from '@kumwe/studio-protocol';
 import {
   compileStudioScopedStyleSheet,
   type StudioScopedStyleRule,
@@ -21,6 +34,7 @@ export interface StudioAuthoringControlIdMap {
   richText: 'studio.control/rich-text';
   scopedCss: 'studio.control/scoped-css';
   source: 'studio.control/source';
+  table: 'studio.control/table';
 }
 
 export const STUDIO_AUTHORING_CONTROL_IDS: Readonly<StudioAuthoringControlIdMap> = Object.freeze({
@@ -32,6 +46,7 @@ export const STUDIO_AUTHORING_CONTROL_IDS: Readonly<StudioAuthoringControlIdMap>
   richText: 'studio.control/rich-text',
   scopedCss: 'studio.control/scoped-css',
   source: 'studio.control/source',
+  table: 'studio.control/table',
 });
 
 export type StudioAuthoringControlId =
@@ -124,6 +139,8 @@ export class StudioAuthoringControlRegistry {
         return new StudioSourceControl(options, this.#codeField, this.#sourcePreview);
       case 'studio.control/chart':
         return new StudioChartControl(options);
+      case 'studio.control/drawing':
+        return new StudioDrawingControl(options);
       case 'studio.control/media-reference':
         return mountStudioMediaReferenceControl(options, this.#requireMedia());
       case 'studio.control/media-collection':
@@ -132,8 +149,10 @@ export class StudioAuthoringControlRegistry {
         return new StudioMoneyControl(options);
       case 'studio.control/scoped-css':
         return new StudioScopedCssControl(options);
+      case 'studio.control/table':
+        return new StudioTableControl(options);
       default:
-        throw new Error(`Studio control ${control} requires its dedicated drawing service.`);
+        throw new Error(`Unknown Studio authoring control ${String(control)}.`);
     }
   }
 
@@ -432,6 +451,553 @@ class StudioChartControl implements StudioAuthoringControlHandle<StudioChartSpec
   }
 }
 
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
+/**
+ * Native, dependency-free vector authoring over Studio's bounded drawing value.
+ * The SVG is a view only: only detached points, color tokens, and widths cross
+ * the control boundary.
+ */
+class StudioDrawingControl implements StudioAuthoringControlHandle<StudioDrawingDocument> {
+  readonly #alt: HTMLTextAreaElement;
+  readonly #color: HTMLInputElement;
+  readonly #commitStroke: HTMLButtonElement;
+  readonly #height: HTMLInputElement;
+  readonly #holder: HTMLElement;
+  readonly #onChange: StudioAuthoringControlOptions['onChange'];
+  readonly #pointX: HTMLInputElement;
+  readonly #pointY: HTMLInputElement;
+  readonly #status: HTMLElement;
+  readonly #strokeWidth: HTMLInputElement;
+  readonly #svg: SVGSVGElement;
+  readonly #width: HTMLInputElement;
+  public readonly readOnly: boolean;
+  #activePointerId: number | undefined;
+  #lastValid: StudioDrawingDocument;
+  #pendingPoints: StudioDrawingPoint[] = [];
+  #working: StudioDrawingDocument;
+
+  public constructor(options: StudioAuthoringControlOptions) {
+    parseCanonicalControlProfile(options.profile, 'studio.drawing/canonical', 'drawing');
+    this.readOnly = isReadOnly(options);
+    this.#lastValid = parseStudioDrawingDocument(options.value);
+    this.#working = structuredClone(this.#lastValid);
+    this.#onChange = options.onChange;
+    this.#holder = controlGroup(options.holder, 'Drawing editor');
+
+    const help = document.createElement('p');
+    help.textContent = this.readOnly
+      ? 'Drawing is read-only.'
+      : 'Draw with a pointer, or enter a point and use Add point. Arrow keys move the point; Space adds it and Enter commits the stroke.';
+
+    this.#alt = document.createElement('textarea');
+    this.#alt.setAttribute('aria-label', 'Drawing alternative text');
+    this.#alt.disabled = this.readOnly;
+    this.#alt.maxLength = 5_000;
+    this.#alt.rows = 3;
+    this.#alt.value = this.#lastValid.alt;
+    this.#alt.addEventListener('input', () => {
+      this.#working.alt = this.#alt.value;
+      this.#commitWorking();
+    });
+
+    this.#width = numberInput('Drawing width', this.#lastValid.width, this.readOnly, 1, 4_096, 1);
+    this.#height = numberInput(
+      'Drawing height',
+      this.#lastValid.height,
+      this.readOnly,
+      1,
+      4_096,
+      1,
+    );
+    this.#width.addEventListener('input', () => this.#changeDimensions());
+    this.#height.addEventListener('input', () => this.#changeDimensions());
+
+    this.#color = textInput('Drawing color token', '#000000', this.readOnly);
+    this.#color.maxLength = 127;
+    this.#color.spellcheck = false;
+    this.#color.addEventListener('input', () => this.#validateStrokeSettings());
+    this.#strokeWidth = numberInput('Drawing stroke width', 2, this.readOnly, 0.25, 64, 0.25);
+    this.#strokeWidth.addEventListener('input', () => this.#validateStrokeSettings());
+
+    this.#svg = document.createElementNS(SVG_NAMESPACE, 'svg');
+    this.#svg.classList.add('studio-drawing-canvas');
+    this.#svg.setAttribute('role', 'img');
+    this.#svg.setAttribute('aria-label', this.#lastValid.alt);
+    this.#svg.setAttribute(
+      'aria-description',
+      'Arrow keys move the drawing point. Space adds a point. Enter commits and Escape discards the current stroke.',
+    );
+    this.#svg.setAttribute(
+      'aria-keyshortcuts',
+      'ArrowUp ArrowDown ArrowLeft ArrowRight Space Enter Escape',
+    );
+    this.#svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    this.#svg.tabIndex = this.readOnly ? -1 : 0;
+    this.#svg.addEventListener('pointerdown', (event) => this.#beginPointerStroke(event));
+    this.#svg.addEventListener('pointermove', (event) => this.#continuePointerStroke(event));
+    this.#svg.addEventListener('pointerup', (event) => this.#finishPointerStroke(event));
+    this.#svg.addEventListener('pointercancel', (event) => this.#cancelPointerStroke(event));
+    this.#svg.addEventListener('keydown', (event) => this.#handleCanvasKey(event));
+
+    this.#pointX = numberInput('Drawing point x', 0, this.readOnly, 0, this.#lastValid.width, 1);
+    this.#pointY = numberInput('Drawing point y', 0, this.readOnly, 0, this.#lastValid.height, 1);
+    const addPoint = actionButton('Add drawing point', () => this.#addKeyboardPoint());
+    this.#commitStroke = actionButton('Commit drawing stroke', () => this.#completeStroke(), true);
+    const discardStroke = actionButton('Discard current drawing stroke', () => {
+      this.#pendingPoints = [];
+      this.#renderDrawing();
+    });
+    const removeStroke = actionButton(
+      'Remove last drawing stroke',
+      () => this.#removeLastStroke(),
+      this.#lastValid.strokes.length === 0,
+    );
+    for (const button of [addPoint, this.#commitStroke, discardStroke, removeStroke]) {
+      button.hidden = this.readOnly;
+    }
+
+    this.#status = document.createElement('p');
+    this.#status.setAttribute('aria-live', 'polite');
+    this.#status.className = 'studio-authoring-status';
+
+    this.#holder.append(
+      help,
+      this.#alt,
+      this.#width,
+      this.#height,
+      this.#color,
+      this.#strokeWidth,
+      this.#svg,
+      this.#pointX,
+      this.#pointY,
+      addPoint,
+      this.#commitStroke,
+      discardStroke,
+      removeStroke,
+      this.#status,
+    );
+    this.#renderDrawing();
+  }
+
+  public destroy(): void {
+    this.#holder.remove();
+  }
+
+  public focus(): void {
+    this.#svg.focus();
+  }
+
+  public value(): StudioDrawingDocument {
+    return structuredClone(this.#lastValid);
+  }
+
+  #addKeyboardPoint(): void {
+    if (this.readOnly) return;
+    const point = {
+      x: Number(this.#pointX.value),
+      y: Number(this.#pointY.value),
+    };
+    if (!this.#validPoint(point)) {
+      this.#invalid();
+      return;
+    }
+    this.#appendPoint(point);
+    this.#renderDrawing();
+  }
+
+  #appendPoint(point: StudioDrawingPoint): void {
+    if (this.#pendingPoints.length >= 10_000) {
+      this.#status.textContent = 'A drawing stroke can contain at most 10000 points.';
+      return;
+    }
+    const previous = this.#pendingPoints.at(-1);
+    if (previous?.x === point.x && previous.y === point.y) return;
+    this.#pendingPoints.push(point);
+  }
+
+  #beginPointerStroke(event: PointerEvent): void {
+    if (this.readOnly || event.button !== 0) return;
+    event.preventDefault();
+    this.#activePointerId = event.pointerId;
+    this.#pendingPoints = [this.#pointFromPointer(event)];
+    try {
+      this.#svg.setPointerCapture(event.pointerId);
+    } catch {
+      // A detached/testing SVG can lack pointer capture; in-document pointer
+      // events still retain the same canonical completion path.
+    }
+    this.#renderDrawing();
+  }
+
+  #cancelPointerStroke(event: PointerEvent): void {
+    if (event.pointerId !== this.#activePointerId) return;
+    this.#activePointerId = undefined;
+    this.#pendingPoints = [];
+    this.#renderDrawing();
+  }
+
+  #changeDimensions(): void {
+    if (this.readOnly) return;
+    this.#working.width = Number(this.#width.value);
+    this.#working.height = Number(this.#height.value);
+    if (this.#commitWorking()) {
+      this.#pointX.max = String(this.#lastValid.width);
+      this.#pointY.max = String(this.#lastValid.height);
+      this.#pointX.value = String(clamp(Number(this.#pointX.value), 0, this.#lastValid.width));
+      this.#pointY.value = String(clamp(Number(this.#pointY.value), 0, this.#lastValid.height));
+      this.#renderDrawing();
+    }
+  }
+
+  #commitWorking(): boolean {
+    if (this.readOnly) return false;
+    try {
+      this.#lastValid = parseStudioDrawingDocument(this.#working);
+      this.#working = structuredClone(this.#lastValid);
+      this.#onChange?.({ valid: true, value: this.value() });
+      this.#svg.setAttribute('aria-label', this.#lastValid.alt);
+      return true;
+    } catch {
+      this.#invalid();
+      return false;
+    }
+  }
+
+  #completeStroke(): void {
+    if (this.readOnly || this.#pendingPoints.length === 0) return;
+    try {
+      const stroke = this.#parseStroke(this.#pendingPoints);
+      this.#working.strokes = [...this.#lastValid.strokes, stroke];
+      if (!this.#commitWorking()) return;
+      this.#pendingPoints = [];
+      this.#renderDrawing();
+    } catch {
+      this.#invalid();
+    }
+  }
+
+  #continuePointerStroke(event: PointerEvent): void {
+    if (event.pointerId !== this.#activePointerId) return;
+    event.preventDefault();
+    this.#appendPoint(this.#pointFromPointer(event));
+    this.#renderDrawing();
+  }
+
+  #finishPointerStroke(event: PointerEvent): void {
+    if (event.pointerId !== this.#activePointerId) return;
+    event.preventDefault();
+    this.#appendPoint(this.#pointFromPointer(event));
+    this.#activePointerId = undefined;
+    this.#completeStroke();
+  }
+
+  #handleCanvasKey(event: KeyboardEvent): void {
+    if (this.readOnly) return;
+    const step = event.shiftKey ? 10 : 1;
+    let x = Number(this.#pointX.value);
+    let y = Number(this.#pointY.value);
+    switch (event.key) {
+      case 'ArrowLeft':
+        x -= step;
+        break;
+      case 'ArrowRight':
+        x += step;
+        break;
+      case 'ArrowUp':
+        y -= step;
+        break;
+      case 'ArrowDown':
+        y += step;
+        break;
+      case ' ':
+        event.preventDefault();
+        this.#addKeyboardPoint();
+        return;
+      case 'Enter':
+        event.preventDefault();
+        this.#completeStroke();
+        return;
+      case 'Escape':
+        event.preventDefault();
+        this.#pendingPoints = [];
+        this.#renderDrawing();
+        return;
+      default:
+        return;
+    }
+    event.preventDefault();
+    this.#pointX.value = String(clamp(x, 0, this.#lastValid.width));
+    this.#pointY.value = String(clamp(y, 0, this.#lastValid.height));
+  }
+
+  #invalid(): void {
+    this.#onChange?.({ valid: false, value: this.value() });
+  }
+
+  #parseStroke(points: readonly StudioDrawingPoint[]): StudioDrawingStroke {
+    const candidate = parseStudioDrawingDocument({
+      alt: this.#lastValid.alt,
+      height: this.#lastValid.height,
+      strokes: [
+        {
+          color: this.#color.value,
+          points: structuredClone(points),
+          width: Number(this.#strokeWidth.value),
+        },
+      ],
+      width: this.#lastValid.width,
+    }).strokes[0];
+    if (candidate === undefined) throw new TypeError('Drawing stroke is unavailable.');
+    return candidate;
+  }
+
+  #pointFromPointer(event: PointerEvent): StudioDrawingPoint {
+    const bounds = this.#svg.getBoundingClientRect();
+    const x =
+      bounds.width > 0
+        ? ((event.clientX - bounds.left) / bounds.width) * this.#lastValid.width
+        : event.offsetX;
+    const y =
+      bounds.height > 0
+        ? ((event.clientY - bounds.top) / bounds.height) * this.#lastValid.height
+        : event.offsetY;
+    return {
+      x: clamp(Number.isFinite(x) ? x : 0, 0, this.#lastValid.width),
+      y: clamp(Number.isFinite(y) ? y : 0, 0, this.#lastValid.height),
+    };
+  }
+
+  #removeLastStroke(): void {
+    if (this.readOnly || this.#lastValid.strokes.length === 0) return;
+    this.#working = structuredClone(this.#lastValid);
+    this.#working.strokes.pop();
+    if (this.#commitWorking()) this.#renderDrawing();
+  }
+
+  #renderDrawing(): void {
+    this.#svg.setAttribute(
+      'viewBox',
+      `0 0 ${String(this.#lastValid.width)} ${String(this.#lastValid.height)}`,
+    );
+    this.#svg.replaceChildren();
+    for (const stroke of this.#lastValid.strokes) this.#svg.append(this.#strokeElement(stroke));
+    if (this.#pendingPoints.length > 0) {
+      try {
+        this.#svg.append(this.#strokeElement(this.#parseStroke(this.#pendingPoints)));
+      } catch {
+        // Invalid transient tool settings do not replace canonical output.
+      }
+    }
+    this.#commitStroke.disabled = this.#pendingPoints.length === 0;
+    this.#status.textContent = `${String(this.#lastValid.strokes.length)} committed strokes; ${String(this.#pendingPoints.length)} points in the current stroke.`;
+    const remove = this.#holder.querySelector<HTMLButtonElement>(
+      '[aria-label="Remove last drawing stroke"]',
+    );
+    if (remove !== null) remove.disabled = this.#lastValid.strokes.length === 0;
+  }
+
+  #strokeElement(stroke: StudioDrawingStroke): SVGPolylineElement {
+    const polyline = document.createElementNS(SVG_NAMESPACE, 'polyline');
+    polyline.setAttribute('fill', 'none');
+    polyline.setAttribute(
+      'points',
+      stroke.points.map((point) => `${point.x},${point.y}`).join(' '),
+    );
+    polyline.setAttribute('stroke', stroke.color.startsWith('#') ? stroke.color : 'currentColor');
+    polyline.setAttribute('stroke-linecap', 'round');
+    polyline.setAttribute('stroke-linejoin', 'round');
+    polyline.setAttribute('stroke-width', String(stroke.width));
+    return polyline;
+  }
+
+  #validPoint(point: StudioDrawingPoint): boolean {
+    try {
+      this.#parseStroke([point]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  #validateStrokeSettings(): void {
+    if (this.readOnly) return;
+    try {
+      this.#parseStroke(this.#pendingPoints.length === 0 ? [{ x: 0, y: 0 }] : this.#pendingPoints);
+    } catch {
+      this.#invalid();
+    }
+    this.#renderDrawing();
+  }
+}
+
+/** Text-only canonical table editor; DOM table markup is never the value. */
+class StudioTableControl implements StudioAuthoringControlHandle<StudioTableDocument> {
+  readonly #holder: HTMLElement;
+  readonly #onChange: StudioAuthoringControlOptions['onChange'];
+  public readonly readOnly: boolean;
+  #lastValid: StudioTableDocument;
+  #working: StudioTableDocument;
+
+  public constructor(options: StudioAuthoringControlOptions) {
+    parseCanonicalControlProfile(options.profile, 'studio.table/canonical', 'table');
+    this.readOnly = isReadOnly(options);
+    this.#lastValid = parseStudioTableDocument(options.value);
+    this.#working = structuredClone(this.#lastValid);
+    this.#onChange = options.onChange;
+    this.#holder = controlGroup(options.holder, 'Table editor');
+    this.#render();
+  }
+
+  public destroy(): void {
+    this.#holder.remove();
+  }
+
+  public focus(): void {
+    this.#holder.querySelector<HTMLElement>('input,textarea,button')?.focus();
+  }
+
+  public value(): StudioTableDocument {
+    return structuredClone(this.#lastValid);
+  }
+
+  #addColumn(): void {
+    if (this.readOnly || this.#lastValid.columns.length >= 50) return;
+    this.#working = structuredClone(this.#lastValid);
+    this.#working.columns.push(`Column ${String(this.#working.columns.length + 1)}`);
+    for (const row of this.#working.rows) row.push('');
+    if (this.#commit()) this.#render();
+  }
+
+  #addRow(): void {
+    if (this.readOnly || this.#lastValid.rows.length >= 1_000) return;
+    this.#working = structuredClone(this.#lastValid);
+    this.#working.rows.push(this.#working.columns.map(() => ''));
+    if (this.#commit()) this.#render();
+  }
+
+  #commit(): boolean {
+    if (this.readOnly) return false;
+    try {
+      this.#lastValid = parseStudioTableDocument(this.#working);
+      this.#working = structuredClone(this.#lastValid);
+      this.#onChange?.({ valid: true, value: this.value() });
+      return true;
+    } catch {
+      this.#onChange?.({ valid: false, value: this.value() });
+      return false;
+    }
+  }
+
+  #removeColumn(): void {
+    if (this.readOnly || this.#lastValid.columns.length <= 1) return;
+    this.#working = structuredClone(this.#lastValid);
+    this.#working.columns.pop();
+    for (const row of this.#working.rows) row.pop();
+    if (this.#commit()) this.#render();
+  }
+
+  #removeRow(): void {
+    if (this.readOnly || this.#lastValid.rows.length === 0) return;
+    this.#working = structuredClone(this.#lastValid);
+    this.#working.rows.pop();
+    if (this.#commit()) this.#render();
+  }
+
+  #render(): void {
+    this.#holder.replaceChildren();
+    const help = document.createElement('p');
+    help.textContent = 'Table cells are text. HTML and executable content are not interpreted.';
+    const caption = textInput('Table caption', this.#working.caption ?? '', this.readOnly);
+    caption.maxLength = 500;
+    caption.addEventListener('input', () => {
+      if (caption.value.length === 0) delete this.#working.caption;
+      else this.#working.caption = caption.value;
+      this.#commit();
+    });
+    this.#holder.append(help, caption);
+
+    const table = document.createElement('table');
+    table.setAttribute('aria-label', 'Table data');
+    const head = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.append(tableHeader('Row'));
+    for (const [columnIndex, columnValue] of this.#working.columns.entries()) {
+      const header = tableHeader(`Column ${String(columnIndex + 1)}`);
+      const input = textInput(
+        `Table column ${String(columnIndex + 1)} heading`,
+        columnValue,
+        this.readOnly,
+      );
+      input.maxLength = 500;
+      input.addEventListener('input', () => {
+        this.#working.columns[columnIndex] = input.value;
+        this.#commit();
+      });
+      header.replaceChildren(input);
+      headerRow.append(header);
+    }
+    head.append(headerRow);
+    table.append(head);
+
+    const body = document.createElement('tbody');
+    for (const [rowIndex, rowValue] of this.#working.rows.entries()) {
+      const row = document.createElement('tr');
+      const rowHeader = document.createElement('th');
+      rowHeader.scope = 'row';
+      rowHeader.textContent = String(rowIndex + 1);
+      row.append(rowHeader);
+      for (const [columnIndex, cellValue] of rowValue.entries()) {
+        const cell = document.createElement('td');
+        const input = document.createElement('textarea');
+        input.setAttribute(
+          'aria-label',
+          `Table row ${String(rowIndex + 1)}, column ${String(columnIndex + 1)}`,
+        );
+        input.disabled = this.readOnly;
+        input.maxLength = 5_000;
+        input.rows = 2;
+        input.value = cellValue;
+        input.addEventListener('input', () => {
+          const targetRow = this.#working.rows[rowIndex];
+          if (targetRow === undefined) return;
+          targetRow[columnIndex] = input.value;
+          this.#commit();
+        });
+        cell.append(input);
+        row.append(cell);
+      }
+      body.append(row);
+    }
+    table.append(body);
+    this.#holder.append(table);
+
+    if (!this.readOnly) {
+      const actions = document.createElement('div');
+      actions.className = 'studio-authoring-actions';
+      actions.append(
+        actionButton('Add table row', () => this.#addRow(), this.#working.rows.length >= 1_000),
+        actionButton(
+          'Remove last table row',
+          () => this.#removeRow(),
+          this.#working.rows.length === 0,
+        ),
+        actionButton(
+          'Add table column',
+          () => this.#addColumn(),
+          this.#working.columns.length >= 50,
+        ),
+        actionButton(
+          'Remove last table column',
+          () => this.#removeColumn(),
+          this.#working.columns.length <= 1,
+        ),
+      );
+      this.#holder.append(actions);
+    }
+  }
+}
+
 class StudioMoneyControl implements StudioAuthoringControlHandle<StudioMoneyValue> {
   readonly #amount: HTMLInputElement;
   readonly #currency: HTMLInputElement;
@@ -602,6 +1168,16 @@ function parseSourceProfile(profile: string | undefined): string {
   }
 }
 
+function parseCanonicalControlProfile(
+  value: string | undefined,
+  expected: string,
+  name: string,
+): void {
+  if (value !== undefined && value !== expected) {
+    throw new TypeError(`Unknown Studio ${name} profile "${value}".`);
+  }
+}
+
 function isReadOnly(options: StudioAuthoringControlOptions): boolean {
   return (
     options.readOnly === true ||
@@ -644,6 +1220,25 @@ function textInput(label: string, value: string, readOnly: boolean): HTMLInputEl
   return input;
 }
 
+function numberInput(
+  label: string,
+  value: number,
+  readOnly: boolean,
+  minimum: number,
+  maximum: number,
+  step: number,
+): HTMLInputElement {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.setAttribute('aria-label', label);
+  input.disabled = readOnly;
+  input.max = String(maximum);
+  input.min = String(minimum);
+  input.step = String(step);
+  input.value = String(value);
+  return input;
+}
+
 function selectInput(
   label: string,
   values: readonly string[],
@@ -678,6 +1273,10 @@ function actionButton(label: string, action: () => void, disabled = false): HTML
   button.disabled = disabled;
   button.addEventListener('click', action);
   return button;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
