@@ -370,6 +370,71 @@ function pointerEvent(
   });
 }
 
+async function mountBoundaryRankingScenario(onlyChildHeight: number): Promise<{
+  commandTypes: string[];
+  element: KumweStudioElement;
+  overlay: SVGSVGElement;
+  region: SVGRectElement;
+}> {
+  const client = new FakePreviewClient();
+  client.rectsByNode['section-a'] = [{ height: 100, width: 300, x: 0, y: 0 }];
+  client.rectsByNode['text-source'] = [{ height: 30, width: 120, x: 10, y: 20 }];
+  client.rectsByNode['section-b'] = [{ height: 100, width: 300, x: 0, y: 200 }];
+  client.rectsByNode['text-existing'] = [{ height: onlyChildHeight, width: 300, x: 0, y: 200 }];
+  const { element } = await mount({
+    blockDefinitions: [
+      defineTestBlock({
+        label: 'Section',
+        slots: [
+          {
+            accepts: { types: ['studio.core/text'] },
+            id: 'content',
+            label: { defaultMessage: 'Content', key: 'studio.test/content' },
+            maximum: 20,
+            minimum: 0,
+            ordered: true,
+          },
+        ],
+        type: 'studio.core/section',
+      }),
+      defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+    ],
+    client,
+    roots: [
+      section('section-a', [node('text-source')]),
+      section('section-b', [node('text-existing')]),
+    ],
+  });
+  const commandTypes: string[] = [];
+  element.addEventListener('studio-document-change', (event) => {
+    const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+    if (detail.command !== null) {
+      commandTypes.push(detail.command.type);
+    }
+  });
+  client.announceReady();
+  await client.waitForRenders(1);
+  const digest = client.renders[0]?.payload.draftDigest ?? '';
+  client.resolveRender(0, {
+    [marker(digest, 0)]: 'section-a',
+    [marker(digest, 1)]: 'text-source',
+    [marker(digest, 2)]: 'section-b',
+    [marker(digest, 3)]: 'text-existing',
+  });
+  await settle(element);
+
+  element.shadowRoot?.querySelector<HTMLButtonElement>('.canvas-edit-toggle')?.click();
+  await element.updateComplete;
+  const region = element.shadowRoot?.querySelector<SVGRectElement>(
+    '.preview-canvas-region[data-node-id="text-source"]',
+  );
+  const overlay = element.shadowRoot?.querySelector<SVGSVGElement>('.preview-canvas-overlay');
+  if (region === null || region === undefined || overlay === null || overlay === undefined) {
+    throw new Error('Missing measured preview canvas controls.');
+  }
+  return { commandTypes, element, overlay, region };
+}
+
 describe('shell preview surface', () => {
   it('keeps the scrollable preview stage keyboard focusable', async () => {
     const { element } = await mount();
@@ -738,6 +803,53 @@ describe('shell preview surface', () => {
     }
     await settle(element);
     expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
+    expect(commandTypes.at(-1)).toBe('studio.command/move-node');
+    element.remove();
+  });
+
+  it('prefers the deeper semantic destination when parent and only-child boundaries coincide', async () => {
+    const { commandTypes, element, overlay, region } = await mountBoundaryRankingScenario(100);
+
+    region.dispatchEvent(pointerEvent('pointerdown', 42, 150, 30));
+    overlay.dispatchEvent(pointerEvent('pointermove', 42, 150, 300));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-status')?.textContent).toContain(
+      'section-b',
+    );
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+
+    overlay.dispatchEvent(pointerEvent('pointerup', 42, 150, 300));
+    await settle(element);
+    expect(element.document?.roots.map((entry) => entry.id)).toEqual(['section-a', 'section-b']);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual([
+      'text-existing',
+      'text-source',
+    ]);
+    expect(commandTypes.at(-1)).toBe('studio.command/move-node');
+    element.remove();
+  });
+
+  it('keeps the nearer root destination when the deeper boundary is one pixel farther', async () => {
+    const { commandTypes, element, overlay, region } = await mountBoundaryRankingScenario(99);
+
+    region.dispatchEvent(pointerEvent('pointerdown', 43, 150, 30));
+    overlay.dispatchEvent(pointerEvent('pointermove', 43, 150, 300));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-status')?.textContent).not.toContain(
+      'section-b',
+    );
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+
+    overlay.dispatchEvent(pointerEvent('pointerup', 43, 150, 300));
+    await settle(element);
+    expect(element.document?.roots.map((entry) => entry.id)).toEqual([
+      'section-a',
+      'section-b',
+      'text-source',
+    ]);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual([
+      'text-existing',
+    ]);
     expect(commandTypes.at(-1)).toBe('studio.command/move-node');
     element.remove();
   });

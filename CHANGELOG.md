@@ -8,6 +8,14 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Deterministic visual-canvas placement (M4-01, M4-05)
+
+- Measured pointer placement now resolves an exact-distance tie in favor of the deeper semantic
+  destination. A parent and its only rendered child may legitimately expose coincident rectangles;
+  dragging to their shared boundary now reaches the child's owning slot instead of silently selecting
+  the document-root boundary enumerated first. The candidate set, command dispatcher, protocol shape,
+  keyboard paths, and host authority remain unchanged.
+
 ### Gate evidence authenticity (M1-04)
 
 - Stable IDs and required evidence-class mappings now cover all 14 Gate A and 18 Gate B criteria.

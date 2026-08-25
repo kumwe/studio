@@ -205,7 +205,11 @@ Placement semantics never come from geometry. The shell derives compatible colle
 from the Blueprint, block slot declarations, session permissions, mode policy and hybrid composition bounds,
 then uses measured rectangles only to rank and draw those already-valid candidates. Pointer reordering and
 reparenting therefore dispatch the same `reorder-children` or `move-node` command as their outline and
-keyboard equivalents. `Escape` or `pointercancel` revokes the transient gesture without dispatching.
+keyboard equivalents. When two candidates are at exactly the same measured distance, the destination whose
+parent is deeper in the Blueprint tree wins; document roots have depth zero, and candidates at the same depth
+retain their deterministic semantic enumeration order. This makes a slot boundary selectable when a parent
+and its only rendered child have coincident rectangles without allowing geometry to create or authorize a
+destination. `Escape` or `pointercancel` revokes the transient gesture without dispatching.
 
 ## Security policy
 
