@@ -55,6 +55,19 @@ studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
 await studio.authoringReady;
 ```
 
+Editor.js remains Studio's private default rich-text surface. A host enforcing strict style CSP and
+Trusted Types without a `default` policy selects Studio's feature-capable sink-free surface without
+learning an editor-specific API:
+
+```ts
+studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
+  strictContentSecurityPolicy: true,
+});
+```
+
+Both surfaces read and write the same governed `StudioRichTextDocument`; this option neither changes
+the artifact contract nor weakens the host policy.
+
 Scoped CSS is the deliberate exception to property persistence: its control
 emits `studio-scoped-style-change` with `{ nodeId, value }`, and the host may
 apply that structured sheet as trusted renderer context. It is never written to

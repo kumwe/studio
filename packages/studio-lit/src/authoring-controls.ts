@@ -18,7 +18,11 @@ import {
   type StudioScopedStyleRule,
   type StudioScopedStyleSheet,
 } from '@kumwe/studio-renderer-web';
-import { StudioRichTextEditorFactory, type StudioRichTextDocument } from '@kumwe/studio-rich-text';
+import {
+  StudioRichTextEditorFactory,
+  StudioStrictCspRichTextSurfaceAdapter,
+  type StudioRichTextDocument,
+} from '@kumwe/studio-rich-text';
 import {
   mountStudioMediaCollectionControl,
   mountStudioMediaReferenceControl,
@@ -108,6 +112,8 @@ export interface StudioAuthoringControlServices {
   media?: StudioMediaAuthoringServices;
   richTextFactory?: StudioRichTextEditorFactory;
   sourcePreview?: StudioSourcePreviewAdapter;
+  /** Use Studio's sink-free rich-text surface under strict style CSP and Trusted Types. */
+  strictContentSecurityPolicy?: boolean;
 }
 
 /**
@@ -124,7 +130,13 @@ export class StudioAuthoringControlRegistry {
   public constructor(services: StudioAuthoringControlServices = {}) {
     this.#codeField = services.codeField ?? new TextareaCodeFieldAdapter();
     this.#media = services.media;
-    this.#richTextFactory = services.richTextFactory ?? new StudioRichTextEditorFactory();
+    this.#richTextFactory =
+      services.richTextFactory ??
+      new StudioRichTextEditorFactory(
+        services.strictContentSecurityPolicy === true
+          ? new StudioStrictCspRichTextSurfaceAdapter()
+          : undefined,
+      );
     this.#sourcePreview = services.sourcePreview;
   }
 

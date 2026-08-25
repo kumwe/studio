@@ -14,9 +14,12 @@ drawing, exact money, scoped styling, content references, and query-backed colle
 store semantic responsive intent; the renderer emits semantic HTML, bounded scoped CSS, usable advanced
 fallbacks, and progressive behavior.
 
-The separate “Inline block authoring” panel mounts `StudioAuthoringControlRegistry`. Its prose control
-uses the Studio-owned Editor.js adapter without importing Editor.js from the host, and its media control
-uses a host-injected `MediaProvider` while persisting only canonical references. The same panel mounts the
+The separate “Inline block authoring” panel mounts `StudioAuthoringControlRegistry`. Because this
+host pins strict style CSP and Trusted Types without a `default` policy, it explicitly selects Studio's
+sink-free rich-text surface. The surface retains Studio's full first-party structured tool suite and
+canonical JSON; the host neither imports Editor.js nor weakens its policy. A less restrictive host gets
+the Studio-owned Editor.js adapter by default without importing Editor.js itself. The media control uses
+a host-injected `MediaProvider` while persisting only canonical references. The same panel mounts the
 dependency-free native SVG drawing and text-only table controls and sends their canonical values through
 ordinary Studio commands. The deterministic mock demonstrates browse/select/upload handoff but does not claim
 durable media custody, scanning, or delivery.

@@ -59,6 +59,22 @@ keyboard reachable and disabled in read-only mode. The semantic marker stores a 
 not an arbitrary color. Tool registration is closed: an Editor.js block with an unknown or
 mismatched type fails validation and cannot enter canonical content.
 
+Editor.js remains the default private browser surface. A host that enforces a style policy without
+inline styles and Trusted Types without a `default` policy explicitly sets
+`strictContentSecurityPolicy: true` on `StudioAuthoringControlRegistry`. Studio then selects its
+sink-free surface internally; the host still supplies only Studio profiles and canonical values and
+does not import, configure, or receive Editor.js. The strict surface uses the same closed first-party
+tool set and supports semantic inline marks, line breaks, block insertion/removal/reordering,
+structured list/checklist/table operations, focus, replacement, read-only inspection, and canonical
+save. It creates no style element, style attribute, script, or HTML-string sink. This is an authoring
+surface substitution, not a plain-text compatibility mode, and it does not change persisted JSON.
+
+Editor.js `2.31.6` cannot be used by this strict profile as shipped: its distribution injects runtime
+CSS and uses raw HTML sinks. Studio does not respond by weakening `style-src`, minting a permissive
+Trusted Types `default` policy, or asking a host to grant Editor.js policy access. A later Editor.js
+release may become eligible for the strict profile only after its complete sink behavior is reviewed
+and covered by the same browser security tests.
+
 ## Renderer conformance
 
 Renderer conformance is defined against a canonical, language-neutral projection — never against

@@ -45,6 +45,13 @@ history, dirty state, preview scheduling, and host change events. Non-static
 bindings are always mounted read-only. A custom registry may inject host media
 and trusted-preview services, but it cannot bypass those rules.
 
+Editor.js is Studio's private default rich-text surface. A host with strict style CSP and Trusted
+Types sets `strictContentSecurityPolicy: true` when constructing the registry. The registry then
+uses Studio's sink-free rich-text surface with the same profiles, canonical document, tools, and
+authoring lifecycle. This option is a Studio security capability: it neither exposes an editor
+vendor nor permits a host to configure one. It does not weaken the page policy or create a Trusted
+Types `default` policy.
+
 `studio.control/scoped-css` is the sole non-persisting property-control
 exception. Its valid change emits `studio-scoped-style-change` with the target
 node ID and structured sheet. The host may place that sheet in trusted renderer

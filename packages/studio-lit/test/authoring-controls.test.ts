@@ -246,6 +246,32 @@ describe('first-party page authoring controls', () => {
     root.remove();
   });
 
+  it("selects Studio's canonical sink-free rich-text surface for strict security policies", async () => {
+    const root = holder();
+    const value = {
+      content: [
+        {
+          content: [{ text: 'Strict authoring', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'doc',
+    } as const;
+    const control = await new StudioAuthoringControlRegistry({
+      strictContentSecurityPolicy: true,
+    }).mount('studio.control/rich-text', {
+      holder: root,
+      profile: 'studio.rich-text/portable',
+      value,
+    });
+
+    expect(root.querySelector('[data-studio-rich-text-surface="strict-csp"]')).not.toBeNull();
+    expect(root.querySelector('style,script,[style]')).toBeNull();
+    expect(control.value()).toEqual(value);
+    control.destroy();
+    root.remove();
+  });
+
   it('parses only structured scoped CSS and rejects active or escaping values', async () => {
     const sheet = parseScopedCss(
       'self { color: var(--studio-text); padding-block: 1rem; }\nheading { text-align: center; }',

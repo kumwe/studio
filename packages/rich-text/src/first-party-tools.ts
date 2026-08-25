@@ -384,7 +384,8 @@ export class StudioListTool {
     for (const [index, row] of this.#rows.entries()) {
       const item = document.createElement('li');
       item.dataset.index = String(index);
-      item.style.marginInlineStart = `${row.depth * 1.5}rem`;
+      item.dataset.studioDepth = String(row.depth);
+      item.setAttribute('aria-level', String(row.depth + 1));
       const input = textInput(`List item ${index + 1}`, row.text, this.#readOnly);
       input.dataset.listText = String(index);
       item.append(input);
@@ -491,7 +492,8 @@ export class StudioChecklistTool {
     root.replaceChildren();
     for (const [index, row] of this.#rows.entries()) {
       const group = editorGroup(`Checklist item ${index + 1}`);
-      group.style.marginInlineStart = `${row.depth * 1.5}rem`;
+      group.dataset.studioDepth = String(row.depth);
+      group.setAttribute('aria-level', String(row.depth + 1));
       const checked = document.createElement('input');
       checked.type = 'checkbox';
       checked.checked = row.checked;

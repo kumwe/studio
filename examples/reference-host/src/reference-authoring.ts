@@ -33,7 +33,9 @@ export async function mountReferenceAuthoringControls(
 ): Promise<() => void> {
   const registry = new StudioAuthoringControlRegistry({
     media: { provider: new ReferenceMediaProvider() },
+    strictContentSecurityPolicy: true,
   });
+  studio.authoringControlRegistry = registry;
   const handles: StudioAuthoringControlHandle[] = [];
   const richTextNode = requireNode(studio, 'faq-editor-answer');
   const richTextBinding = requireStaticBinding(richTextNode, 'content');
@@ -98,7 +100,10 @@ export async function mountReferenceAuthoringControls(
     }),
   );
 
-  return (): void => handles.forEach((handle) => handle.destroy());
+  return (): void => {
+    handles.forEach((handle) => handle.destroy());
+    if (studio.authoringControlRegistry === registry) studio.authoringControlRegistry = undefined;
+  };
 }
 
 class ReferenceMediaProvider implements MediaProvider {
