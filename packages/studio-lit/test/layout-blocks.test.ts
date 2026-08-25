@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   CORE_LAYOUT_BLOCK_TYPES,
   CORE_LAYOUT_THEME_CONTROLS,
+  CORE_PRODUCTION_BLOCK_TYPES,
   RECIPE_MARKER_PROPERTY,
   createCoreLayoutBlockDefinitions,
+  createCoreProductionBlockDefinitions,
 } from '@kumwe/studio-core';
 import {
   STUDIO_CONTRACT_VERSION,
@@ -233,6 +235,37 @@ describe('layout authoring controls', () => {
       properties: { collapse: 'stack', columns: 1 },
       slots: { items: [] },
       type: CORE_LAYOUT_BLOCK_TYPES.grid,
+    });
+    element.remove();
+  });
+
+  it('inserts every first-party content block with its schema-valid production defaults', async () => {
+    const element = await mount([]);
+    const productionDefinitions = createCoreProductionBlockDefinitions();
+    if (element.configuration === undefined) {
+      throw new Error('Fixture requires a Studio configuration.');
+    }
+    element.configuration = {
+      ...element.configuration,
+      blockDefinitions: productionDefinitions,
+    };
+    await element.updateComplete;
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.command-palette-toggle')?.click();
+    await element.updateComplete;
+    const insert = [
+      ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.command-entry') ?? []),
+    ].find((button) => button.textContent?.includes('Insert Heading'));
+    if (insert === undefined) {
+      throw new Error('Missing Insert Heading command.');
+    }
+    insert.click();
+    await element.updateComplete;
+
+    expect(element.document?.roots[0]).toMatchObject({
+      authoring: { mode: 'content' },
+      properties: { level: 2 },
+      slots: {},
+      type: CORE_PRODUCTION_BLOCK_TYPES.heading,
     });
     element.remove();
   });

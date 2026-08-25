@@ -29,6 +29,7 @@ These records capture foundational decisions whose reversal would materially aff
 | [0023](0023-shell-preview-surface-binding.md)      | Shell preview binds a host-staged canonical channel            | Proposed |
 | [0024](0024-read-only-model-binding-projection.md) | Host models project into read-only field-binding affordances   | Proposed |
 | [0025](0025-measured-preview-visual-canvas.md)     | Direct manipulation uses measured preview geometry             | Proposed |
+| [0026](0026-production-block-catalog.md)           | Studio owns a portable production block catalog                | Proposed |
 | [0034](0034-editorjs-private-authoring-adapter.md) | Editor.js stays behind Studio's canonical authoring boundary   | Proposed |
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

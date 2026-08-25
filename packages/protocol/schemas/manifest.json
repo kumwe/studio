@@ -14,7 +14,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/binding-projection-vector.schema.json"
     },
     {
-      "digest": "sha256-sx4nxAo1fq7Mjp2J3gfsIWRq9vD6nkDDrc1PtWLzfNE=",
+      "digest": "sha256-S3sx0m9PQs2vMFNvYIapBXc8W184cEng5MFF54C6RwQ=",
       "file": "block-definition.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/block-definition.schema.json"
     },

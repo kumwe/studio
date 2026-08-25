@@ -11,8 +11,8 @@ import {
 import {
   BlockRegistry,
   RECIPE_MARKER_PROPERTY,
-  coreLayoutInitialProperties,
-  isCoreLayoutBlockType,
+  coreProductionInitialProperties,
+  isCoreProductionBlockType,
   permittedCommandTypes,
   projectBlueprintFieldBindings,
   recipeSelectionOperations,
@@ -1581,11 +1581,16 @@ export class KumweStudioElement extends LitElement {
       nodeId = `${base}-${counter}`;
     }
     const node: BlueprintNode = {
-      authoring: { mode: isCoreLayoutBlockType(definition.type) ? 'structural' : 'content' },
+      authoring: {
+        mode:
+          isCoreProductionBlockType(definition.type) && definition.slots.length > 0
+            ? 'structural'
+            : 'content',
+      },
       bindings: {},
       id: nodeId,
-      properties: isCoreLayoutBlockType(definition.type)
-        ? coreLayoutInitialProperties(definition.type)
+      properties: isCoreProductionBlockType(definition.type)
+        ? coreProductionInitialProperties(definition.type)
         : {},
       slots: Object.fromEntries(definition.slots.map((slot) => [slot.id, []])),
       type: definition.type,

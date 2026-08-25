@@ -57,6 +57,18 @@ export {
   type CoreLayoutVisibility,
 } from './layout.js';
 export {
+  CORE_PRODUCTION_BLOCK_TYPES,
+  CORE_PRODUCTION_CONTROL_IDS,
+  CORE_PRODUCTION_PATTERN_IDS,
+  coreProductionInitialProperties,
+  createCoreProductionBlockDefinitions,
+  createCoreProductionPatterns,
+  isCoreProductionBlockType,
+  type CoreProductionBlockTypeMap,
+  type CoreProductionControlIdMap,
+  type CoreProductionBlockType,
+} from './production.js';
+export {
   openStudioSession,
   StudioHostSessionError,
   type OpenStudioSessionOptions,

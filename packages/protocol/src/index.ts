@@ -62,6 +62,7 @@ export {
   type BlockFallback,
   type BlockIcon,
   type BlockPortDefinition,
+  type BlockPortAuthoringMetadata,
   type BlockPropertyControl,
   type BlockSlotAcceptance,
   type BlockSlotDefinition,
