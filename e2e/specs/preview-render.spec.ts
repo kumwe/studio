@@ -7,8 +7,8 @@ import { openShell } from '../support/shell.js';
  * page runs the shell-owned preview surface over PreviewClient and PreviewHost
  * joined by a MessageChannel with the contract's origin/channel/generation/
  * sequence filtering. The spec drives insertion, selection in both
- * directions through the marker map, and size-role reflow across the viewport
- * switcher, all under the pinned CSP with zero violations.
+ * directions through the canonical marker map, and a viewport re-render,
+ * all under the pinned CSP with zero violations.
  */
 
 interface RecordedViolation {
@@ -43,9 +43,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('the reference renderer renders, tracks selection, and reflows by size role', async ({
-  page,
-}) => {
+test('the production renderer renders and keeps canonical two-way selection', async ({ page }) => {
   const shell = await openShell(page);
   const pane = shell.getByRole('region', { name: 'Rendered preview' });
   const surface = page.locator('.preview-surface');
@@ -55,15 +53,15 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   await expect(status).toHaveText('Preview is current.');
   await expect(surface.locator('.preview-empty')).toBeVisible();
 
-  // Inserting from the palette flows through the render path to real
-  // semantic DOM: a <section> landmark-free region with a heading.
+  // Inserting from the palette flows through the production semantic-web
+  // renderer to a canonical wrapper with explicit layout intent.
   await shell
     .getByRole('complementary', { name: 'Block palette' })
     .getByRole('button', { name: 'Section' })
     .click();
-  const renderedSection = surface.locator('section.preview-section');
+  const renderedSection = surface.locator('[data-studio-block="section"]');
   await expect(renderedSection).toHaveCount(1);
-  await expect(renderedSection.locator('h3')).toHaveText('Section');
+  await expect(renderedSection.locator('[data-studio-layout="section"]')).toHaveCount(1);
   expect(isPreviewMarker(await renderedSection.getAttribute('data-marker'))).toBe(true);
 
   // Selecting in the shell's outline corresponds to a rendered region: the
@@ -78,14 +76,14 @@ test('the reference renderer renders, tracks selection, and reflows by size role
   const marker = await highlighted.getAttribute('data-marker');
   expect(isPreviewMarker(marker)).toBe(true);
 
-  // Trusted activation travels the other way. Add a second region, keep the
-  // Section selected, then click the rendered Text and verify that the shell
+  // Trusted activation travels the other way. Add block prose, keep the
+  // Section selected, then click rendered Rich text and verify that the shell
   // resolves its marker back to the exact outline node.
   await shell
     .getByRole('complementary', { name: 'Block palette' })
-    .getByRole('button', { name: 'Text' })
+    .getByRole('button', { name: 'Rich text' })
     .click();
-  const renderedText = surface.locator('p.preview-text');
+  const renderedText = surface.locator('[data-studio-block="rich-text"]');
   await expect(renderedText).toHaveCount(1);
   await shell
     .getByRole('complementary', { name: 'Outline' })
@@ -93,39 +91,19 @@ test('the reference renderer renders, tracks selection, and reflows by size role
     .click();
   await renderedText.click();
   await expect(
-    shell.getByRole('complementary', { name: 'Outline' }).getByRole('button', { name: 'Text' }),
+    shell
+      .getByRole('complementary', { name: 'Outline' })
+      .getByRole('button', { name: 'Rich text' }),
   ).toHaveAttribute('aria-pressed', 'true');
 
-  // Size-role reflow: the inserted section carries the `quarter` inline size
-  // role. At the compact base viewport the single-column grid gives it the
-  // full row; switching to the expanded viewport gives the grid four columns,
-  // so the same block drops to roughly a quarter of the surface. Assert the
-  // computed-width relation, not exact pixels.
-  const widthRatio = async (): Promise<number> =>
-    page.evaluate(() => {
-      const grid = document.querySelector('.preview-grid');
-      const block = document.querySelector('.preview-section');
-      if (grid === null || block === null) {
-        return -1;
-      }
-      const gridWidth = grid.getBoundingClientRect().width;
-      const blockWidth = block.getBoundingClientRect().width;
-      return gridWidth === 0 ? -1 : blockWidth / gridWidth;
-    });
-
+  // A viewport switch re-renders the same canonical page and the selection
+  // map is rebuilt from the new renderer output rather than reused by index.
   await expect(surface).toHaveAttribute('data-preview-viewport', 'compact');
-  const compactRatio = await widthRatio();
-  expect(compactRatio).toBeGreaterThan(0.85);
-
   await shell
     .getByRole('region', { name: 'Preview width' })
     .getByRole('button', { name: 'Expanded' })
     .click();
   await expect(surface).toHaveAttribute('data-preview-viewport', 'expanded');
-  const expandedRatio = await widthRatio();
-  expect(expandedRatio).toBeGreaterThan(0);
-  expect(expandedRatio).toBeLessThan(0.35);
-  expect(expandedRatio).toBeLessThan(compactRatio);
 
   // The selection affordance survived the re-render: the highlight was
   // re-applied to the marker of the fresh render.
