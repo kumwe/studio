@@ -6,6 +6,11 @@ import {
   type StudioScopedStyleSheet,
 } from '@kumwe/studio-renderer-web';
 import { StudioRichTextEditorFactory, type StudioRichTextDocument } from '@kumwe/studio-rich-text';
+import {
+  mountStudioMediaCollectionControl,
+  mountStudioMediaReferenceControl,
+  type StudioMediaAuthoringServices,
+} from './media-authoring-control.js';
 
 export interface StudioAuthoringControlIdMap {
   chart: 'studio.control/chart';
@@ -47,9 +52,11 @@ export interface StudioAuthoringControlHandle<TValue = unknown> {
 export interface StudioAuthoringControlOptions<TValue = unknown> {
   binding?: FieldBinding;
   holder: HTMLElement;
+  mediaTypes?: readonly string[];
   onChange?: (change: StudioAuthoringControlChange<TValue>) => void;
   profile?: string;
   readOnly?: boolean;
+  usage?: `${string}/${string}`;
   value: TValue;
 }
 
@@ -83,6 +90,7 @@ export interface StudioCodeFieldAdapter {
 
 export interface StudioAuthoringControlServices {
   codeField?: StudioCodeFieldAdapter;
+  media?: StudioMediaAuthoringServices;
   richTextFactory?: StudioRichTextEditorFactory;
   sourcePreview?: StudioSourcePreviewAdapter;
 }
@@ -94,11 +102,13 @@ export interface StudioAuthoringControlServices {
  */
 export class StudioAuthoringControlRegistry {
   readonly #codeField: StudioCodeFieldAdapter;
+  readonly #media: StudioMediaAuthoringServices | undefined;
   readonly #richTextFactory: StudioRichTextEditorFactory;
   readonly #sourcePreview: StudioSourcePreviewAdapter | undefined;
 
   public constructor(services: StudioAuthoringControlServices = {}) {
     this.#codeField = services.codeField ?? new TextareaCodeFieldAdapter();
+    this.#media = services.media;
     this.#richTextFactory = services.richTextFactory ?? new StudioRichTextEditorFactory();
     this.#sourcePreview = services.sourcePreview;
   }
@@ -114,14 +124,16 @@ export class StudioAuthoringControlRegistry {
         return new StudioSourceControl(options, this.#codeField, this.#sourcePreview);
       case 'studio.control/chart':
         return new StudioChartControl(options);
+      case 'studio.control/media-reference':
+        return mountStudioMediaReferenceControl(options, this.#requireMedia());
+      case 'studio.control/media-collection':
+        return mountStudioMediaCollectionControl(options, this.#requireMedia());
       case 'studio.control/money':
         return new StudioMoneyControl(options);
       case 'studio.control/scoped-css':
         return new StudioScopedCssControl(options);
       default:
-        throw new Error(
-          `Studio control ${control} requires its dedicated media or drawing service.`,
-        );
+        throw new Error(`Studio control ${control} requires its dedicated drawing service.`);
     }
   }
 
@@ -151,6 +163,13 @@ export class StudioAuthoringControlRegistry {
       readOnly: editor.readOnly,
       value: (): StudioRichTextDocument => structuredClone(value),
     };
+  }
+
+  #requireMedia(): StudioMediaAuthoringServices {
+    if (this.#media === undefined) {
+      throw new Error('Studio media controls require host-injected media services.');
+    }
+    return this.#media;
   }
 }
 
