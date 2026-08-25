@@ -48,7 +48,11 @@ Every placement is derived first from the canonical Blueprint and active configu
 set excludes self/descendant targets, incompatible or full slots, moves that violate a source-slot
 minimum, session-forbidden roots, and hybrid destinations outside composable/allowed/unlocked bounds.
 Measured child rectangles place ordered boundaries; an empty compatible slot receives a deterministic
-band within its measured parent. Geometry ranks candidates but never creates one. Pointer, outline
+band within its measured parent. Geometry ranks candidates but never creates one. If valid candidates
+have exactly equal measured distance, the shell chooses the destination whose parent is deepest in the
+Blueprint tree (with document roots at depth zero), then preserves semantic enumeration order between
+equally deep candidates. This resolves coincident parent/only-child boundaries toward the more specific
+slot instead of whichever collection happened to be enumerated first. Pointer, outline
 destination selector, and command-palette destination entries all call the same semantic dispatcher:
 same-collection moves use `reorder-children`; cross-collection moves use `move-node`.
 
@@ -73,6 +77,10 @@ them after volatile layout changes. The reference renderer proves the equivalent
 `MessageChannel` path and the shell's CSP/keyboard browser lane. It does not close the separately
 tracked dedicated framed-authoring CSP policy, independent renderer reproduction, or the manual
 screen-reader, touch, zoom, and RTL qualification matrix.
+
+The specificity tie-break is internal authoring behaviour: it changes no protocol or host-adapter shape.
+The semantic outline and command palette continue to expose the complete candidate set, so keyboard and
+assistive-technology users select the same exact destination without depending on geometric ranking.
 
 ## Rejected alternatives
 

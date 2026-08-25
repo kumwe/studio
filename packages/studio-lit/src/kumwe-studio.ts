@@ -178,12 +178,14 @@ interface MoveCollection {
   label: string;
   parentNodeId?: NodeId;
   slot?: string;
+  specificity: number;
 }
 
 interface CanvasDropTarget extends MoveDestinationOption {
   distanceX: number;
   distanceY: number;
   indicator: PreviewMarkerRect;
+  specificity: number;
 }
 
 interface PreviewCanvasDragState {
@@ -1972,17 +1974,22 @@ export class KumweStudioElement extends LitElement {
       return [];
     }
     const collections: MoveCollection[] = [
-      { collection: document.roots, label: this.#text('studio.shell/document-roots') },
+      {
+        collection: document.roots,
+        label: this.#text('studio.shell/document-roots'),
+        specificity: 0,
+      },
     ];
-    const stack = [...document.roots];
+    const stack = document.roots.map((node) => ({ node, specificity: 1 }));
     while (stack.length > 0) {
-      const parent = stack.shift();
-      if (parent === undefined) {
+      const current = stack.shift();
+      if (current === undefined) {
         break;
       }
+      const { node: parent, specificity } = current;
       const definition = this.#findDefinition(parent);
       for (const children of Object.values(parent.slots)) {
-        stack.push(...children);
+        stack.push(...children.map((node) => ({ node, specificity: specificity + 1 })));
       }
       for (const slot of definition?.slots ?? []) {
         if (!slot.accepts.types.includes(node.type)) {
@@ -1996,6 +2003,7 @@ export class KumweStudioElement extends LitElement {
           }),
           parentNodeId: parent.id,
           slot: slot.id,
+          specificity,
         });
       }
     }
@@ -4957,7 +4965,10 @@ export class KumweStudioElement extends LitElement {
     let distance = Number.POSITIVE_INFINITY;
     for (const target of targets) {
       const current = Math.hypot(target.distanceX - x, target.distanceY - y);
-      if (current < distance) {
+      if (
+        current < distance ||
+        (current === distance && (chosen === undefined || target.specificity > chosen.specificity))
+      ) {
         chosen = target;
         distance = current;
       }
@@ -4997,6 +5008,7 @@ export class KumweStudioElement extends LitElement {
           distanceX: target.x + target.width / 2,
           distanceY: target.y + target.height / 2,
           indicator: target,
+          specificity: collection.specificity,
         });
         continue;
       }
@@ -5029,6 +5041,7 @@ export class KumweStudioElement extends LitElement {
         distanceX: indicator.x + indicator.width / 2,
         distanceY: indicator.y + indicator.height / 2,
         indicator,
+        specificity: collection.specificity,
       });
     }
     return targets;

@@ -146,7 +146,10 @@ newer edits dirty, and supersedes preview work so the host next stages the exact
 
 Pointer reorder/reparent, the selected outline entry's destination selector, and command-palette
 destinations use one candidate set and dispatcher (`reorder-children` within a collection, `move-node`
-between collections). `Escape` and `pointercancel` are exact no-ops. Geometry is volatile: call the public
+between collections). Pointer ranking prefers the deeper semantic destination when two valid boundaries
+are at exactly the same measured distance, so a coincident parent and only child do not make the child's
+owning slot unreachable. Candidates at the same depth retain deterministic semantic order. `Escape` and
+`pointercancel` are exact no-ops. Geometry is volatile: call the public
 `refreshPreviewGeometry()` method after the embedding host observes preview scroll, resize, zoom, or late
 asset settlement. A newer measurement generation wins even for the same render digest.
 
