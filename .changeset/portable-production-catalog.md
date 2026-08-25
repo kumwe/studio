@@ -4,5 +4,5 @@
 '@kumwe/studio': minor
 ---
 
-Ship the host-neutral 30-block production catalog and ten starter patterns, publish portable port
+Ship the host-neutral 45-block production catalog and ten starter patterns, publish portable port
 authoring metadata, and make Studio insertion create schema-valid first-party nodes.

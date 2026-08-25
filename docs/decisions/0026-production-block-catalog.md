@@ -12,7 +12,7 @@ couple the generic package to one application.
 
 ## Decision
 
-Studio ships 30 host-neutral definitions and ten deterministic starter patterns. The catalog owns
+Studio ships 45 host-neutral definitions and ten deterministic starter patterns. The catalog owns
 responsive structure, ordinary content and media, progressive composites, rich source/data display,
 and resource projection primitives. Each persisted node remains bounded JSON. Host data enters only
 through standard `resource-reference` and `query-reference` bindings.

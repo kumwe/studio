@@ -4,6 +4,7 @@ import {
   parseStudioDrawingDocument,
   parseStudioMoneyValue,
   parseStudioPresentationIntent,
+  parseStudioTableDocument,
 } from '../src/index.js';
 
 describe('canonical production values', () => {
@@ -75,5 +76,18 @@ describe('canonical production values', () => {
     expect(() => parseStudioPresentationIntent({ visibility: { desktop: 'hidden' } })).toThrow(
       /unknown member desktop/u,
     );
+  });
+
+  it('parses text-only tables with exact row/column parity', () => {
+    expect(parseStudioTableDocument({ columns: ['Name', 'Value'], rows: [['One', '1']] })).toEqual({
+      columns: ['Name', 'Value'],
+      rows: [['One', '1']],
+    });
+    expect(() => parseStudioTableDocument({ columns: ['A', 'B'], rows: [['only one']] })).toThrow(
+      /one cell per column/u,
+    );
+    expect(() =>
+      parseStudioTableDocument({ columns: ['A'], rows: [[{ html: '<script>' }]] }),
+    ).toThrow(/bounded strings/u);
   });
 });

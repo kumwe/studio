@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CORE_PRODUCTION_BLOCK_TYPES,
   coreProductionInitialProperties,
@@ -136,6 +136,72 @@ describe('trusted progressive interaction controller', () => {
     expect(rendered?.hasAttribute('data-studio-motion-visible')).toBe(true);
     handle.dispose();
     expect(rendered?.dataset.studioMotion).toBeUndefined();
+    host.remove();
+  });
+
+  it('updates and disposes deterministic countdown behavior', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-01-01T00:00:00.000Z'));
+    try {
+      const countdown = node(
+        'countdown',
+        CORE_PRODUCTION_BLOCK_TYPES.countdown,
+        { completionMessage: 'Finished', target: '2030-01-01T00:00:01.000Z' },
+        {},
+        { display: 'compact', expiredBehavior: 'message' },
+      );
+      const result = await renderStudioWeb({ roots: [countdown] });
+      const host = document.createElement('div');
+      document.body.append(host);
+      host.innerHTML = result.html;
+      const handle = await enhanceStudioWeb(host, result);
+      await vi.advanceTimersByTimeAsync(2_000);
+      const complete = host.querySelector<HTMLElement>('[data-studio-countdown-complete]');
+      expect(complete?.hidden).toBe(false);
+      expect(complete?.textContent).toBe('Finished');
+      handle.dispose();
+      expect(complete?.hidden).toBe(true);
+      host.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('upgrades lightbox links into a disposable focus-managed dialog', async () => {
+    const reference: JsonObject = {
+      accessibility: { altText: 'Preview', mode: 'informative' },
+      assetId: 'preview',
+      contractVersion: '0.1-draft',
+      kind: 'media-reference',
+      usage: 'studio.media/content',
+    };
+    const gallery = node(
+      'lightbox',
+      CORE_PRODUCTION_BLOCK_TYPES.gallery,
+      { items: [reference] },
+      {},
+      { autoplay: false, columns: 1, lightbox: true, presentation: 'grid' },
+    );
+    const result = await renderStudioWeb(
+      { roots: [gallery] },
+      {
+        resolveMedia: () => ({ altText: 'Preview', src: 'https://cdn.example.test/preview.jpg' }),
+      },
+    );
+    const host = document.createElement('div');
+    document.body.append(host);
+    host.innerHTML = result.html;
+    const handle = await enhanceStudioWeb(host, result);
+    const link = host.querySelector<HTMLAnchorElement>('[data-studio-lightbox-open]');
+    link?.click();
+    const dialog = host.querySelector<HTMLDialogElement>('[data-studio-lightbox-dialog]');
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    const close = dialog?.querySelector<HTMLButtonElement>('button:last-child');
+    close?.click();
+    expect(dialog?.hasAttribute('open')).toBe(false);
+    expect(document.activeElement).toBe(link);
+    handle.dispose();
+    expect(host.querySelector('[data-studio-lightbox-dialog]')).toBeNull();
     host.remove();
   });
 });

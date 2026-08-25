@@ -4,6 +4,7 @@ import {
   parseStudioDrawingDocument,
   parseStudioMoneyValue,
   parseStudioPresentationIntent,
+  parseStudioTableDocument,
 } from '@kumwe/studio-core';
 import type {
   BlueprintDocument,
@@ -62,9 +63,16 @@ const BASE_CSS = `
 [data-studio-dialog] summary,[data-studio-popover] summary{cursor:pointer}
 [data-studio-dialog-panel],[data-studio-popover-panel]{background:Canvas;border:1px solid currentColor;color:CanvasText;max-block-size:min(80vh,50rem);max-inline-size:min(90vw,50rem);overflow:auto;padding:1rem}
 [data-studio-dialog][open][data-studio-dialog-modal="true"] [data-studio-dialog-panel]{inset:50% auto auto 50%;position:fixed;transform:translate(-50%,-50%);z-index:1000}
+[data-studio-dialog-presentation="offcanvas"][open] [data-studio-dialog-panel]{block-size:100dvb;inset:0 0 0 auto;max-block-size:none;max-inline-size:min(90vw,30rem);position:fixed;transform:none;z-index:1000}
+[data-studio-dialog-presentation="overlay"][open] [data-studio-dialog-panel]{inset:auto 1rem 1rem;max-inline-size:none;position:fixed;z-index:1000}
 [data-studio-popover-panel]{inset-block-start:100%;inset-inline-start:0;position:absolute;z-index:100}
 [data-studio-popover-placement="top"] [data-studio-popover-panel]{inset-block:auto 100%}
 [data-studio-notice]{border-inline-start:.25rem solid currentColor;padding:.75rem 1rem}
+[data-studio-cover]{display:grid;isolation:isolate;min-block-size:20rem;overflow:hidden;place-items:center;position:relative}[data-studio-cover] img{block-size:100%;inline-size:100%;inset:0;object-fit:cover;position:absolute;z-index:-2}[data-studio-cover]::after{background:rgb(0 0 0/var(--studio-cover-overlay,.35));content:"";inset:0;position:absolute;z-index:-1}
+[data-studio-navigation] ul{display:flex;flex-wrap:wrap;gap:.75rem;list-style:none;margin:0;padding:0}[data-studio-navigation="breadcrumbs"] li+li::before{content:"/";margin-inline-end:.75rem}[data-studio-navigation="navbar"]{align-items:center;display:flex;justify-content:space-between}
+[data-studio-badge],[data-studio-label]{border-radius:.25rem;display:inline-block;padding:.15em .5em}[data-studio-badge="soft"]{opacity:.85}[data-studio-badge="outline"]{border:1px solid currentColor}
+[data-studio-spinner]{animation:studio-spin 1s linear infinite;border:.2em solid currentColor;border-inline-end-color:transparent;border-radius:50%;block-size:1.5em;display:inline-block;inline-size:1.5em}@keyframes studio-spin{to{transform:rotate(1turn)}}
+[data-studio-lightbox-dialog]{background:Canvas;color:CanvasText;inline-size:min(90vw,70rem);max-block-size:90dvb;padding:1rem}[data-studio-lightbox-dialog] img{block-size:auto;max-block-size:75dvb;max-inline-size:100%}
 [data-studio-chart-table]{border-collapse:collapse;inline-size:100%}
 [data-studio-chart-table] th,[data-studio-chart-table] td{border:1px solid currentColor;padding:.35rem;text-align:end}
 [data-studio-chart-table] th:first-child{text-align:start}
@@ -173,6 +181,36 @@ async function renderType(
       return notice(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.popover:
       return popover(node, scope, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.article:
+      return article(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.badge:
+      return badge(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.countdown:
+      return countdown(node, scope, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.cover:
+      return cover(node, scope, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.descriptionItem:
+      return descriptionItem(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.descriptionList:
+      return descriptionList(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.divider:
+      return divider(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.icon:
+      return icon(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.label:
+      return label(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.navigation:
+      return navigation(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.navigationItem:
+      return navigationItem(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.progress:
+      return progress(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.search:
+      return search(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.spinner:
+      return spinner(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.table:
+      return table(node, state);
     default:
       return `<p role="status">Unsupported Studio block ${escapeHtml(node.type)}</p>`;
   }
@@ -239,6 +277,7 @@ async function gallery(
     await Promise.all(references.map((reference) => resolvedMedia(reference, state)))
   ).filter((item): item is ResolvedWebMedia => item !== undefined);
   const presentation = node.properties.presentation === 'slideshow' ? 'slideshow' : 'grid';
+  const lightbox = node.properties.lightbox === true;
   const columns = integerProperty(node.properties.columns, 1, 12, 4);
   state.css.push(`[data-studio-scope="${scope}"]{--studio-gallery-columns:${columns}}`);
   if (presentation === 'slideshow') {
@@ -249,10 +288,13 @@ async function gallery(
       scope,
     });
   }
+  if (lightbox && media.length > 0) {
+    state.enhancements.push({ kind: 'lightbox', nodeId: node.id, scope });
+  }
   const items = media
     .map(
       (item, index) =>
-        `<figure data-studio-slide="${index}"><img data-studio-part="media" src="${escapeAttribute(item.src)}" alt="${escapeAttribute(item.altText)}"${mediaDimensions(item)}>${item.caption === undefined ? '' : `<figcaption>${escapeHtml(item.caption)}</figcaption>`}</figure>`,
+        `<figure data-studio-slide="${index}">${lightbox ? `<a data-studio-lightbox-open="${index}" href="${escapeAttribute(item.src)}">` : ''}<img data-studio-part="media" src="${escapeAttribute(item.src)}" alt="${escapeAttribute(item.altText)}"${mediaDimensions(item)}>${lightbox ? '</a>' : ''}${item.caption === undefined ? '' : `<figcaption>${escapeHtml(item.caption)}</figcaption>`}</figure>`,
     )
     .join('');
   return `<section data-studio-gallery="${presentation}" aria-label="Media gallery"><div data-studio-part="content">${items}</div>${presentation === 'slideshow' ? '<p><button type="button" data-studio-slide-previous>Previous</button><button type="button" data-studio-slide-next>Next</button></p>' : ''}</section>`;
@@ -326,8 +368,12 @@ async function dialog(
   const trigger = stringValue(await bindingValue(node, 'triggerLabel', state)) || 'Open dialog';
   const title = stringValue(await bindingValue(node, 'title', state)) || 'Dialog';
   const modal = node.properties.modal !== false;
+  const candidatePresentation = stringProperty(node.properties.presentation, '');
+  const presentation = ['modal', 'offcanvas', 'overlay'].includes(candidatePresentation)
+    ? candidatePresentation
+    : 'modal';
   state.enhancements.push({ kind: 'dialog', modal, nodeId: node.id, scope });
-  return `<details data-studio-dialog data-studio-dialog-modal="${String(modal)}"><summary data-studio-dialog-trigger>${escapeHtml(trigger)}</summary><section data-studio-dialog-panel role="dialog" aria-modal="${String(modal)}" aria-labelledby="${scope}-dialog-title" tabindex="-1"><h2 data-studio-part="heading" id="${scope}-dialog-title">${escapeHtml(title)}</h2><div data-studio-part="content">${await children(node, 'content', state)}</div><button type="button" data-studio-dialog-close>Close</button></section></details>`;
+  return `<details data-studio-dialog data-studio-dialog-modal="${String(modal)}" data-studio-dialog-presentation="${presentation}"><summary data-studio-dialog-trigger>${escapeHtml(trigger)}</summary><section data-studio-dialog-panel role="dialog" aria-modal="${String(modal)}" aria-labelledby="${scope}-dialog-title" tabindex="-1"><h2 data-studio-part="heading" id="${scope}-dialog-title">${escapeHtml(title)}</h2><div data-studio-part="content">${await children(node, 'content', state)}</div><button type="button" data-studio-dialog-close>Close</button></section></details>`;
 }
 
 async function chart(
@@ -512,13 +558,202 @@ async function popover(
   const placement = ['auto', 'bottom', 'left', 'right', 'top'].includes(candidate)
     ? candidate
     : 'auto';
+  const candidatePresentation = stringProperty(node.properties.presentation, '');
+  const presentation =
+    candidatePresentation === 'dropbar' ||
+    candidatePresentation === 'dropdown' ||
+    candidatePresentation === 'tooltip'
+      ? candidatePresentation
+      : 'popover';
   state.enhancements.push({
     dismissOnBlur: node.properties.dismissOnBlur !== false,
     kind: 'popover',
     nodeId: node.id,
+    presentation,
     scope,
   });
-  return `<details data-studio-popover data-studio-popover-placement="${placement}"><summary data-studio-popover-trigger>${escapeHtml(trigger)}</summary><aside data-studio-popover-panel role="region" aria-labelledby="${scope}-popover-title" tabindex="-1">${title.length === 0 ? `<span class="studio-visually-hidden" id="${scope}-popover-title">${escapeHtml(trigger)}</span>` : `<h3 data-studio-part="heading" id="${scope}-popover-title">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></aside></details>`;
+  return `<details data-studio-popover data-studio-popover-placement="${placement}" data-studio-popover-presentation="${presentation}"><summary data-studio-popover-trigger>${escapeHtml(trigger)}</summary><aside data-studio-popover-panel role="${presentation === 'tooltip' ? 'tooltip' : 'region'}" aria-labelledby="${scope}-popover-title" tabindex="-1">${title.length === 0 ? `<span class="studio-visually-hidden" id="${scope}-popover-title">${escapeHtml(trigger)}</span>` : `<h3 data-studio-part="heading" id="${scope}-popover-title">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></aside></details>`;
+}
+
+async function article(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const title = stringValue(await bindingValue(node, 'title', state));
+  return `<article>${title.length === 0 ? '' : `<h2 data-studio-part="heading">${escapeHtml(title)}</h2>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></article>`;
+}
+
+async function badge(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const appearance = ['outline', 'soft', 'solid'].includes(
+    stringProperty(node.properties.appearance, ''),
+  )
+    ? stringProperty(node.properties.appearance, '')
+    : 'solid';
+  return `<span data-studio-badge="${appearance}" data-studio-tone="${toneProperty(node.properties.tone)}">${escapeHtml(stringValue(await bindingValue(node, 'label', state)))}</span>`;
+}
+
+async function countdown(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
+  const target = stringValue(await bindingValue(node, 'target', state));
+  const timestamp = Date.parse(target);
+  if (!Number.isFinite(timestamp)) return '<span role="status">Countdown unavailable</span>';
+  const targetIso = new Date(timestamp).toISOString();
+  const completionMessage = stringValue(await bindingValue(node, 'completionMessage', state));
+  const display = node.properties.display === 'compact' ? 'compact' : 'detailed';
+  const expiredBehavior = ['hide', 'message', 'zero'].includes(
+    stringProperty(node.properties.expiredBehavior, ''),
+  )
+    ? (stringProperty(node.properties.expiredBehavior, '') as 'hide' | 'message' | 'zero')
+    : 'zero';
+  state.enhancements.push({
+    completionMessage,
+    display,
+    expiredBehavior,
+    kind: 'countdown',
+    nodeId: node.id,
+    scope,
+    target: targetIso,
+  });
+  return `<time data-studio-countdown datetime="${targetIso}" aria-live="polite"><span data-studio-countdown-value>${escapeHtml(targetIso)}</span><span data-studio-countdown-complete hidden>${escapeHtml(completionMessage)}</span></time>`;
+}
+
+async function cover(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
+  const background = await resolvedMedia(await bindingValue(node, 'background', state), state);
+  const overlay = stringProperty(node.properties.overlay, 'medium');
+  const opacity =
+    overlay === 'none' ? 0 : overlay === 'light' ? 0.2 : overlay === 'strong' ? 0.65 : 0.4;
+  state.css.push(`[data-studio-scope="${scope}"]{--studio-cover-overlay:${opacity}}`);
+  const alignment = ['center', 'end', 'start'].includes(
+    stringProperty(node.properties.alignment, ''),
+  )
+    ? stringProperty(node.properties.alignment, '')
+    : 'center';
+  return `<section data-studio-cover data-studio-cover-align="${alignment}">${background === undefined ? '' : `<img src="${escapeAttribute(background.src)}" alt="" aria-hidden="true"${mediaDimensions(background)}>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></section>`;
+}
+
+async function descriptionItem(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const term = stringValue(await bindingValue(node, 'term', state));
+  const description = await bindingValue(node, 'description', state);
+  let body: string;
+  try {
+    body = renderRichText(parseRichTextDocument(description));
+  } catch {
+    body = escapeHtml(stringValue(description));
+  }
+  return `<div data-studio-description-item><dt>${escapeHtml(term)}</dt><dd>${body}</dd></div>`;
+}
+
+async function descriptionList(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const title = stringValue(await bindingValue(node, 'title', state));
+  const items = await Promise.all(
+    (node.slots.items ?? []).map((item) => descriptionItem(item, state)),
+  );
+  return `${title.length === 0 ? '' : `<h3 data-studio-part="heading">${escapeHtml(title)}</h3>`}<dl>${items.join('')}</dl>`;
+}
+
+async function divider(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const style = ['dashed', 'dotted', 'solid'].includes(stringProperty(node.properties.style, ''))
+    ? stringProperty(node.properties.style, '')
+    : 'solid';
+  const label = stringValue(await bindingValue(node, 'label', state));
+  return `<hr data-studio-divider="${style}"${label.length === 0 ? '' : ` aria-label="${escapeAttribute(label)}"`}>`;
+}
+
+async function icon(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const candidate = stringProperty(node.properties.name, 'symbol');
+  const name = /^[a-z][a-z0-9-]{0,62}(?:\/[a-z][a-z0-9-]{0,62})?$/u.test(candidate)
+    ? candidate
+    : 'symbol';
+  const decorative = node.properties.decorative !== false;
+  const alternative = stringValue(await bindingValue(node, 'alternativeText', state)) || 'Icon';
+  return `<span data-studio-icon="${escapeAttribute(name)}" aria-hidden="true"></span>${decorative ? '' : `<span class="studio-visually-hidden">${escapeHtml(alternative)}</span>`}`;
+}
+
+async function label(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  return `<span data-studio-label data-studio-tone="${toneProperty(node.properties.tone)}">${escapeHtml(stringValue(await bindingValue(node, 'text', state)))}</span>`;
+}
+
+async function navigation(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const candidate = stringProperty(node.properties.presentation, '');
+  const presentation = [
+    'breadcrumbs',
+    'dotnav',
+    'dropnav',
+    'navbar',
+    'nav',
+    'pagination',
+    'subnav',
+    'thumbnav',
+  ].includes(candidate)
+    ? candidate
+    : 'nav';
+  const accessibleLabel = stringValue(await bindingValue(node, 'label', state)) || 'Navigation';
+  const items = await Promise.all(
+    (node.slots.items ?? []).map((item) => navigationItem(item, state)),
+  );
+  return `<nav data-studio-navigation="${presentation}" aria-label="${escapeAttribute(accessibleLabel)}"><ul>${items.join('')}</ul></nav>`;
+}
+
+async function navigationItem(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const labelValue = stringValue(await bindingValue(node, 'label', state));
+  const href = safeUrl(stringProperty(node.properties.href, ''));
+  const labelMarkup =
+    href === undefined
+      ? `<span>${escapeHtml(labelValue)}</span>`
+      : `<a href="${escapeAttribute(href)}"${node.properties.current === true ? ' aria-current="page"' : ''}>${escapeHtml(labelValue)}</a>`;
+  const childItems = await Promise.all(
+    (node.slots.children ?? []).map((item) => navigationItem(item, state)),
+  );
+  return `<li data-studio-navigation-item data-studio-node="${escapeAttribute(node.id)}">${labelMarkup}${childItems.length === 0 ? '' : `<ul>${childItems.join('')}</ul>`}</li>`;
+}
+
+async function progress(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const maximum = integerProperty(node.properties.maximum, 1, 1_000_000, 100);
+  const candidate = await bindingValue(node, 'value', state);
+  const value =
+    typeof candidate === 'number' && Number.isFinite(candidate)
+      ? Math.max(0, Math.min(maximum, candidate))
+      : 0;
+  const labelValue = stringValue(await bindingValue(node, 'label', state)) || 'Progress';
+  return `<label>${escapeHtml(labelValue)} <progress max="${maximum}" value="${value}">${value} / ${maximum}</progress></label>`;
+}
+
+async function search(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const action = safeUrl(stringProperty(node.properties.action, ''));
+  const candidate = stringProperty(node.properties.queryParameter, 'q');
+  const parameter = /^[A-Za-z][A-Za-z0-9_-]{0,99}$/u.test(candidate) ? candidate : 'q';
+  const labelValue = stringValue(await bindingValue(node, 'label', state)) || 'Search';
+  const placeholder = stringValue(await bindingValue(node, 'placeholder', state));
+  return `<form role="search" method="get"${action === undefined ? '' : ` action="${escapeAttribute(action)}"`}><label>${escapeHtml(labelValue)} <input type="search" name="${parameter}"${placeholder.length === 0 ? '' : ` placeholder="${escapeAttribute(placeholder)}"`}></label><button type="submit">Search</button></form>`;
+}
+
+async function spinner(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  const labelValue = stringValue(await bindingValue(node, 'label', state)) || 'Loading';
+  if (node.properties.active === false)
+    return `<span role="status">${escapeHtml(labelValue)}</span>`;
+  const size = ['large', 'medium', 'small'].includes(stringProperty(node.properties.size, ''))
+    ? stringProperty(node.properties.size, '')
+    : 'medium';
+  return `<span role="status"><span data-studio-spinner data-studio-spinner-size="${size}" aria-hidden="true"></span><span class="studio-visually-hidden">${escapeHtml(labelValue)}</span></span>`;
+}
+
+async function table(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
+  try {
+    const value = parseStudioTableDocument(await bindingValue(node, 'table', state));
+    const headings = value.columns
+      .map((column) => `<th scope="col">${escapeHtml(column)}</th>`)
+      .join('');
+    const rows = value.rows
+      .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+      .join('');
+    return `<table data-studio-table>${value.caption === undefined ? '' : `<caption>${escapeHtml(value.caption)}</caption>`}<thead><tr>${headings}</tr></thead><tbody>${rows}</tbody></table>`;
+  } catch {
+    return '<p role="status">Table data unavailable</p>';
+  }
 }
 
 async function children(
@@ -543,8 +778,28 @@ async function resolvedMedia(
 ): Promise<ResolvedWebMedia | undefined> {
   if (!isMediaReference(value) || state.context.resolveMedia === undefined) return undefined;
   const media = await state.context.resolveMedia(value);
-  const src = safeUrl(media.src);
+  const src = safeMediaUrl(media, state.context.allowBlobMedia === true);
   return src === undefined ? undefined : { ...media, src };
+}
+
+function safeMediaUrl(media: Readonly<ResolvedWebMedia>, allowBlob: boolean): string | undefined {
+  const ordinary = safeUrl(media.src);
+  if (ordinary !== undefined) return ordinary;
+  if (
+    !allowBlob ||
+    !/^blob:https?:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?\/[A-Za-z0-9._~-]+$/u.test(media.src)
+  ) {
+    return undefined;
+  }
+  const mediaType = media.mediaType?.toLowerCase();
+  if (
+    mediaType === 'image/svg+xml' ||
+    mediaType === 'text/html' ||
+    mediaType === 'application/xhtml+xml'
+  ) {
+    return undefined;
+  }
+  return media.src;
 }
 
 function isMediaReference(value: unknown): value is MediaReference {
@@ -650,6 +905,13 @@ function integerProperty(
 
 function stringProperty(value: JsonValue | undefined, fallback: string): string {
   return typeof value === 'string' ? value : fallback;
+}
+
+function toneProperty(value: JsonValue | undefined): string {
+  const candidate = stringProperty(value, 'neutral');
+  return ['error', 'information', 'neutral', 'success', 'warning'].includes(candidate)
+    ? candidate
+    : 'neutral';
 }
 
 function stringValue(value: unknown): string {

@@ -26,6 +26,12 @@ only when it replays the same corpus.
 - The closed presentation intent maps to renderer-owned CSS. Motion is installed only by the
   disposable enhancer, respects reduced-motion preferences, and leaves content visible when
   JavaScript is absent. Parallax offsets are bounded and never accept authored measurements.
+- Countdown, lightbox, dialog/offcanvas/overlay, popover/dropdown/dropbar/tooltip, navigation,
+  slideshow, and tab behavior is Studio-owned and disposable. Native disclosure, links, ordered
+  content, semantic time, and data tables remain useful before enhancement.
+- `allowBlobMedia` defaults to false. When explicitly enabled it applies only to a trusted media
+  resolver's syntactically bounded `blob:https?` result. Active SVG/HTML media and all `data:` URLs
+  still fail closed; ordinary resource, embed, and action URL sinks never inherit this authority.
 
 ## Optional exact adapters
 

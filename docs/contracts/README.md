@@ -20,6 +20,7 @@ This directory contains the normative contracts between Studio core, user interf
 - [Rich text](rich-text.md)
 - [Advanced authoring controls](authoring-controls.md)
 - [Semantic web renderer](renderer-web.md)
+- [Production capability matrix](production-capability-matrix.md)
 - [Localization](localization.md)
 - [Versioning and migrations](versioning-and-migrations.md)
 - [Extension lifecycle](extension-lifecycle.md)

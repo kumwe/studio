@@ -1110,6 +1110,10 @@
           "file": "studio-presentation.css-injection.json"
         },
         {
+          "digest": "sha256-oF+T+wJT1px5lPSq1YClUSIZhsIYBw9SMCndc6Ano1Q=",
+          "file": "studio-table.html-cell.json"
+        },
+        {
           "digest": "sha256-ip22Uidj7KWI9kqcBbB5YphmBjcUSFyJ0hvO28V6I9w=",
           "file": "theme.unknown-member.json"
         }

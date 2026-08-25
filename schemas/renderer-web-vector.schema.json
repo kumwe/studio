@@ -67,7 +67,21 @@
         "enhancements": {
           "type": "array",
           "maxItems": 100,
-          "items": { "enum": ["chart", "diagram", "math", "slideshow", "tabs"] }
+          "items": {
+            "enum": [
+              "chart",
+              "countdown",
+              "diagram",
+              "dialog",
+              "lightbox",
+              "math",
+              "motion",
+              "notice",
+              "popover",
+              "slideshow",
+              "tabs"
+            ]
+          }
         }
       }
     }

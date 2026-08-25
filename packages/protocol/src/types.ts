@@ -356,6 +356,13 @@ export interface StudioPresentationIntent {
   width?: 'auto' | 'content' | 'full';
 }
 
+/** Canonical bounded table data used by static authoring and host query projections. */
+export interface StudioTableDocument {
+  caption?: string;
+  columns: string[];
+  rows: string[][];
+}
+
 export interface HostPortCapability {
   id: QualifiedName;
   operations: QualifiedName[];

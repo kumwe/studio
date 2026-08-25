@@ -34,6 +34,12 @@ export async function enhanceStudioWeb(
       case 'motion':
         disposers.push(enhanceMotion(container, enhancement));
         break;
+      case 'countdown':
+        disposers.push(enhanceCountdown(container, enhancement));
+        break;
+      case 'lightbox':
+        disposers.push(enhanceLightbox(container));
+        break;
       case 'slideshow':
         disposers.push(enhanceSlideshow(container, enhancement));
         break;
@@ -235,6 +241,20 @@ function enhancePopover(
       }
     });
   }
+  if (enhancement.presentation === 'tooltip') {
+    const open = (): void => {
+      disclosure.open = true;
+    };
+    const close = (event: Event): void => {
+      const related =
+        event instanceof FocusEvent || event instanceof MouseEvent ? event.relatedTarget : null;
+      if (!(related instanceof Node) || !disclosure.contains(related)) disclosure.open = false;
+    };
+    listen(listeners, trigger, 'mouseenter', open);
+    listen(listeners, trigger, 'focus', open);
+    listen(listeners, disclosure, 'mouseleave', close);
+    listen(listeners, disclosure, 'focusout', close);
+  }
   trigger.setAttribute('aria-expanded', String(disclosure.open));
   return () =>
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
@@ -281,6 +301,111 @@ function enhanceMotion(
     observer.disconnect();
     delete container.dataset.studioMotion;
     delete container.dataset.studioMotionVisible;
+  };
+}
+
+function enhanceCountdown(
+  container: HTMLElement,
+  enhancement: Extract<StudioWebEnhancement, { kind: 'countdown' }>,
+): () => void {
+  const countdown = container.querySelector<HTMLTimeElement>('[data-studio-countdown]');
+  const value = countdown?.querySelector<HTMLElement>('[data-studio-countdown-value]');
+  const complete = countdown?.querySelector<HTMLElement>('[data-studio-countdown-complete]');
+  if (countdown === undefined || countdown === null || value === undefined || value === null) {
+    return () => undefined;
+  }
+  const target = Date.parse(enhancement.target);
+  const render = (): void => {
+    const remaining = Math.max(0, target - Date.now());
+    const totalSeconds = Math.floor(remaining / 1000);
+    const days = Math.floor(totalSeconds / 86_400);
+    const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+    const minutes = Math.floor((totalSeconds % 3_600) / 60);
+    const seconds = totalSeconds % 60;
+    value.textContent =
+      enhancement.display === 'compact'
+        ? `${String(days)}:${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+        : `${String(days)} days ${String(hours)} hours ${String(minutes)} minutes ${String(seconds)} seconds`;
+    if (remaining > 0) return;
+    if (enhancement.expiredBehavior === 'hide') container.hidden = true;
+    if (enhancement.expiredBehavior === 'message') {
+      value.hidden = true;
+      if (complete !== undefined && complete !== null) {
+        complete.textContent = enhancement.completionMessage || 'Complete';
+        complete.hidden = false;
+      }
+    }
+  };
+  render();
+  const interval = window.setInterval(render, 1_000);
+  return () => {
+    window.clearInterval(interval);
+    container.hidden = false;
+    value.hidden = false;
+    value.textContent = enhancement.target;
+    if (complete !== undefined && complete !== null) complete.hidden = true;
+  };
+}
+
+function enhanceLightbox(container: HTMLElement): () => void {
+  const links = [...container.querySelectorAll<HTMLAnchorElement>('[data-studio-lightbox-open]')];
+  if (links.length === 0) return () => undefined;
+  const dialog = document.createElement('dialog');
+  dialog.dataset.studioLightboxDialog = '';
+  dialog.setAttribute('aria-label', 'Media viewer');
+  const image = document.createElement('img');
+  image.dataset.studioPart = 'media';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.textContent = 'Close';
+  const previous = document.createElement('button');
+  previous.type = 'button';
+  previous.textContent = 'Previous';
+  const next = document.createElement('button');
+  next.type = 'button';
+  next.textContent = 'Next';
+  dialog.append(image, previous, next, close);
+  container.append(dialog);
+  let index = 0;
+  let restoreFocus: HTMLElement | undefined;
+  const show = (candidate: number): void => {
+    index = (candidate + links.length) % links.length;
+    const link = links[index];
+    const source = link?.querySelector<HTMLImageElement>('img');
+    if (link === undefined || source === undefined || source === null) return;
+    image.src = link.href;
+    image.alt = source.alt;
+  };
+  const open = (candidate: number, source: HTMLElement): void => {
+    restoreFocus = source;
+    show(candidate);
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else dialog.setAttribute('open', '');
+    close.focus();
+  };
+  const closeDialog = (): void => {
+    if (typeof dialog.close === 'function') dialog.close();
+    else dialog.removeAttribute('open');
+    restoreFocus?.focus();
+  };
+  const listeners: { listener: EventListener; target: EventTarget; type: string }[] = [];
+  links.forEach((link, candidate) =>
+    listen(listeners, link, 'click', (event) => {
+      event.preventDefault();
+      open(candidate, link);
+    }),
+  );
+  listen(listeners, previous, 'click', () => show(index - 1));
+  listen(listeners, next, 'click', () => show(index + 1));
+  listen(listeners, close, 'click', closeDialog);
+  listen(listeners, dialog, 'cancel', (event) => {
+    event.preventDefault();
+    closeDialog();
+  });
+  return () => {
+    listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+    if (dialog.open) closeDialog();
+    dialog.remove();
   };
 }
 

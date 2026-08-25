@@ -6,6 +6,7 @@ import type {
   StudioDrawingStroke,
   StudioMoneyValue,
   StudioPresentationIntent,
+  StudioTableDocument,
 } from '@kumwe/studio-protocol';
 
 const CHART_TYPES = new Set(['bar', 'doughnut', 'line', 'pie']);
@@ -211,6 +212,31 @@ export function parseStudioPresentationIntent(value: unknown): StudioPresentatio
     ...(visibility === undefined ? {} : { visibility }),
     ...(width === undefined ? {} : { width }),
   };
+}
+
+/** Parse a bounded, text-only table and require one cell per declared column. */
+export function parseStudioTableDocument(value: unknown): StudioTableDocument {
+  const record = exactRecord(value, ['caption', 'columns', 'rows'], 'Table');
+  const columns = stringArray(record.columns, 50, 500, 'Table columns');
+  if (columns.length === 0) throw new RangeError('Table must declare at least one column.');
+  if (!Array.isArray(record.rows) || record.rows.length > 1000) {
+    throw new RangeError('Table rows exceed the 1000-row limit.');
+  }
+  const rows = record.rows.map((candidate, index) => {
+    const cells = stringArray(candidate, 50, 5000, `Table row ${index}`);
+    if (cells.length !== columns.length) {
+      throw new RangeError(`Table row ${index} must contain one cell per column.`);
+    }
+    return cells;
+  });
+  let caption: string | undefined;
+  if (record.caption !== undefined) {
+    if (typeof record.caption !== 'string' || record.caption.length > 500) {
+      throw new TypeError('Table caption must be a bounded string.');
+    }
+    caption = record.caption;
+  }
+  return { ...(caption === undefined ? {} : { caption }), columns, rows };
 }
 
 function exactRecord(
