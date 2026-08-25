@@ -206,7 +206,9 @@
       "data-studio-notice-dismiss",
       "data-studio-lightbox-open",
       "data-studio-countdown",
-      "data-studio-navigation-toggle"
+      "data-studio-navigation-toggle",
+      "<ul><li data-studio-navigation-item data-studio-block=\"navigation-item\" data-studio-node=\"behavior-navigation-parent\"",
+      "<ul data-studio-navigation-children><li data-studio-navigation-item data-studio-block=\"navigation-item\" data-studio-node=\"behavior-navigation-child\""
     ],
     "htmlExcludes": ["<script", "onclick=", "javascript:"],
     "cssContains": ["data-studio-dialog-presentation", "data-studio-lightbox-dialog"],

@@ -238,7 +238,19 @@
       "bindings": {},
       "id": "description-list",
       "properties": {},
-      "slots": { "items": [] },
+      "slots": {
+        "items": [
+          {
+            "authoring": { "mode": "content" },
+            "bindings": {},
+            "id": "description-list-item",
+            "properties": {},
+            "slots": {},
+            "type": "studio.core/description-item",
+            "version": "1.0.0"
+          }
+        ]
+      },
       "type": "studio.core/description-list",
       "version": "1.0.0"
     },
@@ -542,7 +554,7 @@
       "data-studio-block=\"tabs\"",
       "data-studio-block=\"video\"",
       "<article>",
-      "<dl>",
+      "<dl><div data-studio-description-item data-studio-block=\"description-item\" data-studio-node=\"description-list-item\"",
       "<hr",
       "data-studio-icon=\"symbol\"",
       "<nav data-studio-navigation=\"nav\"",

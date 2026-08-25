@@ -112,7 +112,14 @@ async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Pr
   if (scopedSheet !== undefined) state.css.push(compileStudioScopedStyleSheet(scope, scopedSheet));
   const content = await renderType(node, scope, state);
   const presentation = presentationAttributes(node, scope, state);
-  return `<div data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}"${presentation}>${content}</div>`;
+  const attributes = `data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}"${presentation}`;
+  if (node.type === CORE_PRODUCTION_BLOCK_TYPES.descriptionItem) {
+    return `<div data-studio-description-item ${attributes}>${content}</div>`;
+  }
+  if (node.type === CORE_PRODUCTION_BLOCK_TYPES.navigationItem) {
+    return `<li data-studio-navigation-item ${attributes}>${content}</li>`;
+  }
+  return `<div ${attributes}>${content}</div>`;
 }
 
 async function renderType(
@@ -644,14 +651,12 @@ async function descriptionItem(node: Readonly<BlueprintNode>, state: RenderState
   } catch {
     body = escapeHtml(stringValue(description));
   }
-  return `<div data-studio-description-item><dt>${escapeHtml(term)}</dt><dd>${body}</dd></div>`;
+  return `<dt>${escapeHtml(term)}</dt><dd>${body}</dd>`;
 }
 
 async function descriptionList(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
   const title = stringValue(await bindingValue(node, 'title', state));
-  const items = await Promise.all(
-    (node.slots.items ?? []).map((item) => descriptionItem(item, state)),
-  );
+  const items = await Promise.all((node.slots.items ?? []).map((item) => renderNode(item, state)));
   return `${title.length === 0 ? '' : `<h3 data-studio-part="heading">${escapeHtml(title)}</h3>`}<dl>${items.join('')}</dl>`;
 }
 
@@ -696,9 +701,7 @@ async function navigation(
     ? candidate
     : 'nav';
   const accessibleLabel = stringValue(await bindingValue(node, 'label', state)) || 'Navigation';
-  const items = await Promise.all(
-    (node.slots.items ?? []).map((item) => navigationItem(item, state)),
-  );
+  const items = await Promise.all((node.slots.items ?? []).map((item) => renderNode(item, state)));
   if ((node.slots.items ?? []).some((item) => (item.slots.children ?? []).length > 0)) {
     state.enhancements.push({ kind: 'navigation', nodeId: node.id, scope });
   }
@@ -713,9 +716,9 @@ async function navigationItem(node: Readonly<BlueprintNode>, state: RenderState)
       ? `<span>${escapeHtml(labelValue)}</span>`
       : `<a href="${escapeAttribute(href)}"${node.properties.current === true ? ' aria-current="page"' : ''}>${escapeHtml(labelValue)}</a>`;
   const childItems = await Promise.all(
-    (node.slots.children ?? []).map((item) => navigationItem(item, state)),
+    (node.slots.children ?? []).map((item) => renderNode(item, state)),
   );
-  return `<li data-studio-navigation-item data-studio-node="${escapeAttribute(node.id)}">${labelMarkup}${childItems.length === 0 ? '' : `<button type="button" data-studio-navigation-toggle aria-label="Toggle ${escapeAttribute(labelValue)} navigation">Expand</button><ul data-studio-navigation-children>${childItems.join('')}</ul>`}</li>`;
+  return `${labelMarkup}${childItems.length === 0 ? '' : `<button type="button" data-studio-navigation-toggle aria-label="Toggle ${escapeAttribute(labelValue)} navigation">Expand</button><ul data-studio-navigation-children>${childItems.join('')}</ul>`}`;
 }
 
 async function progress(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {

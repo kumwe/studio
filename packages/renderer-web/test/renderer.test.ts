@@ -233,7 +233,20 @@ describe('semantic web renderer', () => {
       CORE_PRODUCTION_BLOCK_TYPES.navigation,
       { label: 'Primary' },
       {
-        items: [node('nav-home', CORE_PRODUCTION_BLOCK_TYPES.navigationItem, { label: 'Home' })],
+        items: [
+          node(
+            'nav-home',
+            CORE_PRODUCTION_BLOCK_TYPES.navigationItem,
+            { label: 'Home' },
+            {
+              children: [
+                node('nav-child', CORE_PRODUCTION_BLOCK_TYPES.navigationItem, {
+                  label: 'Child',
+                }),
+              ],
+            },
+          ),
+        ],
       },
     );
     navigation.properties = { presentation: 'breadcrumbs' };
@@ -274,8 +287,16 @@ describe('semantic web renderer', () => {
       },
     );
     expect(output.html).toContain('<nav data-studio-navigation="breadcrumbs"');
+    expect(output.html).toContain(
+      '<ul><li data-studio-navigation-item data-studio-block="navigation-item" data-studio-node="nav-home"',
+    );
+    expect(output.html).toContain(
+      '<ul data-studio-navigation-children><li data-studio-navigation-item data-studio-block="navigation-item" data-studio-node="nav-child"',
+    );
     expect(output.html).toContain('aria-current="page"');
-    expect(output.html).toContain('<dl>');
+    expect(output.html).toContain(
+      '<dl><div data-studio-description-item data-studio-block="description-item" data-studio-node="description"',
+    );
     expect(output.html).toContain('<table data-studio-table>');
     expect(output.html).toContain('&lt;safe&gt;');
     expect(output.html).toContain('<form role="search" method="get">');
