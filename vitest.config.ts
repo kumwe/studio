@@ -9,6 +9,7 @@ export default defineConfig({
       '@kumwe/studio-media': source('media'),
       '@kumwe/studio-preview': source('preview'),
       '@kumwe/studio-protocol': source('protocol'),
+      '@kumwe/studio-renderer-web': source('renderer-web'),
       '@kumwe/studio-rich-text': source('rich-text'),
       '@kumwe/studio-testkit': source('testkit'),
     },

@@ -1,5 +1,23 @@
 import { KumweStudioElement } from './kumwe-studio.js';
 
+export {
+  parseScopedCss,
+  serializeScopedCss,
+  STUDIO_AUTHORING_CONTROL_IDS,
+  StudioAuthoringControlRegistry,
+  type StudioAuthoringControlChange,
+  type StudioAuthoringControlHandle,
+  type StudioAuthoringControlId,
+  type StudioAuthoringControlIdMap,
+  type StudioAuthoringControlOptions,
+  type StudioAuthoringControlServices,
+  type StudioCodeFieldAdapter,
+  type StudioCodeFieldHandle,
+  type StudioCodeFieldOptions,
+  type StudioSourcePreviewAdapter,
+  type StudioSourcePreviewValue,
+} from './authoring-controls.js';
+
 export function defineKumweStudio(tagName = 'kumwe-studio'): void {
   if (customElements.get(tagName) === undefined) {
     customElements.define(tagName, KumweStudioElement);

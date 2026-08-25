@@ -22,6 +22,15 @@ token edits state whether their value is base, inherited, or overridden for the 
 Importing the package has no registration side effect. Call `defineKumweStudio()` once, then use the
 `<kumwe-studio>` custom element or register the class under a host-specific tag.
 
+## Advanced authoring controls
+
+`StudioAuthoringControlRegistry` mounts first-party page controls by the stable
+identifiers in `STUDIO_AUTHORING_CONTROL_IDS`. It accepts canonical Studio
+values and editor-neutral injected services; hosts never configure or receive
+Editor.js, code-editor, chart, equation, or diagram runtime objects. Dynamic
+bindings are read-only and invalid transient input preserves the last canonical
+value. See the [normative control contract](../../docs/contracts/authoring-controls.md).
+
 ## Localization
 
 The shell exports `studioMessageCatalog`, `studioMessages`, `messageText`, and their associated
