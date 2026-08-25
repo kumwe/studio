@@ -2,10 +2,10 @@
 
 Portable semantic HTML and trusted progressive enhancements for the Studio production catalog.
 
-`renderStudioWeb(document, context)` renders all 27 first-party types, escapes ordinary values,
+`renderStudioWeb(document, context)` renders all 30 first-party types, escapes ordinary values,
 resolves media and business resources only through host callbacks, emits responsive 4→2→1 layout
 CSS, and returns a CSP-nonce-bearing style element plus declarative enhancement jobs. The base HTML is
-usable without JavaScript: accordions use `details`, tab panels remain visible, chart data remains an
+usable without JavaScript: accordions, dialogs, and popovers use `details`, tab panels remain visible, chart data remains an
 accessible table, and slideshow items remain an ordered scrollable collection.
 
 `enhanceStudioWeb(root, result, options)` installs the trusted tab/slideshow behavior and optional

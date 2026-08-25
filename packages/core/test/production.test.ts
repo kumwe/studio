@@ -15,10 +15,10 @@ import {
 describe('production block catalog', () => {
   const definitions = createCoreProductionBlockDefinitions();
 
-  it('ships exactly 27 unique, schema-profile-valid first-party definitions', () => {
-    expect(definitions).toHaveLength(27);
-    expect(new Set(definitions.map((definition) => definition.type))).toHaveLength(27);
-    expect(new Set(Object.values(CORE_PRODUCTION_BLOCK_TYPES))).toHaveLength(27);
+  it('ships exactly 30 unique, schema-profile-valid first-party definitions', () => {
+    expect(definitions).toHaveLength(30);
+    expect(new Set(definitions.map((definition) => definition.type))).toHaveLength(30);
+    expect(new Set(Object.values(CORE_PRODUCTION_BLOCK_TYPES))).toHaveLength(30);
 
     for (const definition of definitions) {
       const validator = compileStudioPropertySchema(definition.propertySchema);
@@ -100,5 +100,26 @@ describe('production block catalog', () => {
     expect(gallery?.propertySchema).toMatchObject({
       properties: { presentation: { enum: ['grid', 'slideshow'] } },
     });
+  });
+
+  it('models reusable dialog, popover, and message notice families', () => {
+    const byType = new Map(definitions.map((definition) => [definition.type, definition]));
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.dialog)).toMatchObject({
+      accessibility: { category: 'interactive' },
+      slots: [{ id: 'content' }],
+    });
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.popover)).toMatchObject({
+      accessibility: { category: 'interactive' },
+      slots: [{ id: 'content' }],
+    });
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.notice)?.propertySchema).toMatchObject({
+      properties: {
+        tone: { enum: ['comment', 'error', 'information', 'success', 'warning'] },
+      },
+    });
+    expect(
+      byType.get(CORE_PRODUCTION_BLOCK_TYPES.notice)?.ports.find((port) => port.id === 'content')
+        ?.authoring,
+    ).toMatchObject({ control: CORE_PRODUCTION_CONTROL_IDS.richText });
   });
 });

@@ -7,7 +7,7 @@
 
 Studio's document model must remain portable while a production page needs semantic HTML, responsive
 CSS, media and business-resource projections, charts, equations, diagrams, drawings, tabs,
-accordions, and slideshows. Letting each host interpret the catalog independently would produce
+accordions, dialogs, popovers, notices, and slideshows. Letting each host interpret the catalog independently would produce
 incompatible output. Persisting a frontend library configuration would give that library ownership of
 the public contract.
 

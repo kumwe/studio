@@ -30,6 +30,7 @@ import type {
 
 const BASE_CSS = `
 [data-studio-block]{box-sizing:border-box;min-inline-size:0}
+.studio-visually-hidden{block-size:1px;clip-path:inset(50%);inline-size:1px;overflow:hidden;position:absolute;white-space:nowrap}
 [data-studio-layout="section"]{inline-size:100%}
 [data-studio-layout="stack"]{display:flex;flex-direction:column;gap:var(--studio-space,1rem)}
 [data-studio-layout="grid"],[data-studio-layout="columns"]{display:grid;gap:var(--studio-space,1rem);grid-template-columns:repeat(var(--studio-columns-compact,1),minmax(0,1fr))}
@@ -41,6 +42,13 @@ const BASE_CSS = `
 [data-studio-gallery] figure{margin:0}
 [data-studio-block="drawing"] svg,[data-studio-part="media"]{block-size:auto;max-inline-size:100%}
 [data-studio-block="tabs"] [data-studio-tab-list][hidden]{display:none}
+[data-studio-dialog],[data-studio-popover]{position:relative}
+[data-studio-dialog] summary,[data-studio-popover] summary{cursor:pointer}
+[data-studio-dialog-panel],[data-studio-popover-panel]{background:Canvas;border:1px solid currentColor;color:CanvasText;max-block-size:min(80vh,50rem);max-inline-size:min(90vw,50rem);overflow:auto;padding:1rem}
+[data-studio-dialog][open][data-studio-dialog-modal="true"] [data-studio-dialog-panel]{inset:50% auto auto 50%;position:fixed;transform:translate(-50%,-50%);z-index:1000}
+[data-studio-popover-panel]{inset-block-start:100%;inset-inline-start:0;position:absolute;z-index:100}
+[data-studio-popover-placement="top"] [data-studio-popover-panel]{inset-block:auto 100%}
+[data-studio-notice]{border-inline-start:.25rem solid currentColor;padding:.75rem 1rem}
 [data-studio-chart-table]{border-collapse:collapse;inline-size:100%}
 [data-studio-chart-table] th,[data-studio-chart-table] td{border:1px solid currentColor;padding:.35rem;text-align:end}
 [data-studio-chart-table] th:first-child{text-align:start}
@@ -53,7 +61,7 @@ interface RenderState {
   enhancements: StudioWebEnhancement[];
 }
 
-/** Render a Blueprint through the portable 27-block semantic web profile. */
+/** Render a Blueprint through the portable semantic web profile. */
 export async function renderStudioWeb(
   document: Pick<BlueprintDocument, 'roots'>,
   context: Readonly<StudioWebRenderContext> = {},
@@ -116,6 +124,8 @@ async function renderType(
       return math(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.diagram:
       return diagram(node, scope, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.dialog:
+      return dialog(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.chart:
       return chart(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.drawing:
@@ -142,6 +152,10 @@ async function renderType(
       return contentCollection(node, scope, state);
     case CORE_PRODUCTION_BLOCK_TYPES.money:
       return money(node, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.notice:
+      return notice(node, scope, state);
+    case CORE_PRODUCTION_BLOCK_TYPES.popover:
+      return popover(node, scope, state);
     default:
       return `<p role="status">Unsupported Studio block ${escapeHtml(node.type)}</p>`;
   }
@@ -285,6 +299,18 @@ async function diagram(
   const sourceValue = stringValue(await bindingValue(node, 'source', state));
   state.enhancements.push({ kind: 'diagram', nodeId: node.id, scope, source: sourceValue });
   return `<pre data-studio-diagram-source><code>${escapeHtml(sourceValue)}</code></pre>`;
+}
+
+async function dialog(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
+  const trigger = stringValue(await bindingValue(node, 'triggerLabel', state)) || 'Open dialog';
+  const title = stringValue(await bindingValue(node, 'title', state)) || 'Dialog';
+  const modal = node.properties.modal !== false;
+  state.enhancements.push({ kind: 'dialog', modal, nodeId: node.id, scope });
+  return `<details data-studio-dialog data-studio-dialog-modal="${String(modal)}"><summary data-studio-dialog-trigger>${escapeHtml(trigger)}</summary><section data-studio-dialog-panel role="dialog" aria-modal="${String(modal)}" aria-labelledby="${scope}-dialog-title" tabindex="-1"><h2 data-studio-part="heading" id="${scope}-dialog-title">${escapeHtml(title)}</h2><div data-studio-part="content">${await children(node, 'content', state)}</div><button type="button" data-studio-dialog-close>Close</button></section></details>`;
 }
 
 async function chart(
@@ -433,6 +459,49 @@ async function money(node: Readonly<BlueprintNode>, state: RenderState): Promise
   } catch {
     return '<span role="status">Amount unavailable</span>';
   }
+}
+
+async function notice(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
+  const title = stringValue(await bindingValue(node, 'title', state));
+  const content = await bindingValue(node, 'content', state);
+  const candidate = typeof node.properties.tone === 'string' ? node.properties.tone : '';
+  const tone = ['comment', 'error', 'information', 'success', 'warning'].includes(candidate)
+    ? candidate
+    : 'information';
+  const assertive = tone === 'error' || tone === 'warning';
+  const dismissible = node.properties.dismissible === true;
+  if (dismissible) state.enhancements.push({ kind: 'notice', nodeId: node.id, scope });
+  let body: string;
+  try {
+    body = renderRichText(parseRichTextDocument(content));
+  } catch {
+    body = escapeHtml(stringValue(content));
+  }
+  return `<aside data-studio-notice data-studio-tone="${tone}" role="${assertive ? 'alert' : 'status'}" aria-live="${assertive ? 'assertive' : 'polite'}">${title.length === 0 ? '' : `<h3 data-studio-part="heading">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${body}</div>${dismissible ? '<button type="button" data-studio-notice-dismiss>Dismiss</button>' : ''}</aside>`;
+}
+
+async function popover(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): Promise<string> {
+  const trigger = stringValue(await bindingValue(node, 'triggerLabel', state)) || 'Show details';
+  const title = stringValue(await bindingValue(node, 'title', state));
+  const candidate = typeof node.properties.placement === 'string' ? node.properties.placement : '';
+  const placement = ['auto', 'bottom', 'left', 'right', 'top'].includes(candidate)
+    ? candidate
+    : 'auto';
+  state.enhancements.push({
+    dismissOnBlur: node.properties.dismissOnBlur !== false,
+    kind: 'popover',
+    nodeId: node.id,
+    scope,
+  });
+  return `<details data-studio-popover data-studio-popover-placement="${placement}"><summary data-studio-popover-trigger>${escapeHtml(trigger)}</summary><aside data-studio-popover-panel role="region" aria-labelledby="${scope}-popover-title" tabindex="-1">${title.length === 0 ? `<span class="studio-visually-hidden" id="${scope}-popover-title">${escapeHtml(trigger)}</span>` : `<h3 data-studio-part="heading" id="${scope}-popover-title">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></aside></details>`;
 }
 
 async function children(
