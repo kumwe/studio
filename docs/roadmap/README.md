@@ -166,7 +166,7 @@ listed dependency is accepted.
 | `M6-02 Security and resilience qualification`     | `M5-01`–`M5-06`          | Independent threat review, dependency audit, fuzzing, CSP tests, malicious contribution/media corpus, privilege-reduction tests, rate/size/depth bounds, disconnect/retry, crash recovery, stale-preview, and data-loss drills produce no unresolved critical/high issue.       |
 | `M6-03 Accessibility and UX qualification`        | `M4-05`, `M5-03`         | The Version 2 web matrix passes automated and manual keyboard, touch, screen-reader, zoom/reflow, contrast, reduced-motion, localization, error prevention, and authoring assistance checks. Representative workflows are usability-tested and blocking failures are corrected. |
 | `M6-04 Performance qualification`                 | `M5-03`–`M5-06`          | Published budgets are met for package size, startup, interaction latency, preview update, large documents, memory, and media workflows on the Version 2 web device matrix. Measurements are reproducible and regressions fail CI.                                               |
-| `M6-05 Release and operations proof`              | `M6-01`–`M6-04`          | Clean builds are byte-verifiable, the fixed seven-package npm family carries provenance/SBOM/signatures, npm artifacts install in clean consumers, examples deploy, documentation links resolve, observability is actionable, and rollback/recovery drills succeed.             |
+| `M6-05 Release and operations proof`              | `M6-01`–`M6-04`          | Clean builds are byte-verifiable, the fixed eight-package npm family carries provenance/SBOM/signatures, npm artifacts install in clean consumers, examples deploy, documentation links resolve, observability is actionable, and rollback/recovery drills succeed.             |
 | `M6-06 Gate B review`                             | All Version 2 packages   | All Gate B criteria below carry current evidence and independent approval. The release candidate is installed and upgraded in generic-host, Kumwe App, renderer-web, and authoring-web profiles; public release notes and support boundaries agree with the artifacts.          |
 
 ## Gate A acceptance criteria
@@ -195,7 +195,7 @@ Gate B passes only when all criteria are met:
 
 1. **`gate-b/01-contract-implementation`** — Every Gate A public contract is implemented or explicitly excluded from the first supported profile by
    capability negotiation; no implementation silently ignores a declared feature.
-2. **`gate-b/02-coordinated-npm-release`** — The fixed seven-package TypeScript release family installs from npm into clean consumers at one release
+2. **`gate-b/02-coordinated-npm-release`** — The fixed eight-package TypeScript release family installs from npm into clean consumers at one release
    coordinate.
 3. **`gate-b/03-dom-free-core`** — The DOM-free TypeScript core passes the applicable command, migration, and serialization fixtures.
 4. **`gate-b/04-web-authoring-operations`** — The Lit shell exposes the complete semantic authoring operation set for

@@ -117,7 +117,7 @@ claim means. The schema manifest in `@kumwe/studio-protocol` covers the schemas;
 replayed against them.
 
 `@kumwe/studio-testkit/studio-release.json` is byte-identical to the workspace and protocol copies. A
-host can vendor this record with the corpus, verify `corpusManifestDigest`, and resolve the exact seven
+host can vendor this record with the corpus, verify `corpusManifestDigest`, and resolve the exact eight
 package versions named by one Studio release coordinate. An empty `claimedProfiles` array is deliberate:
 repository tests and declared targets are not evidence-backed release claims.
 

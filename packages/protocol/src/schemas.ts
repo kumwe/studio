@@ -25,11 +25,15 @@ import patternSchemaDocument from '../schemas/pattern.schema.json' with { type: 
 import pluginManifestSchemaDocument from '../schemas/plugin-manifest.schema.json' with { type: 'json' };
 import previewMessageSchemaDocument from '../schemas/preview-message.schema.json' with { type: 'json' };
 import previewVectorSchemaDocument from '../schemas/preview-vector.schema.json' with { type: 'json' };
+import rendererWebVectorSchemaDocument from '../schemas/renderer-web-vector.schema.json' with { type: 'json' };
 import provenanceSchemaDocument from '../schemas/provenance.schema.json' with { type: 'json' };
 import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
 import schemaProfileSchemaDocument from '../schemas/schema-profile.schema.json' with { type: 'json' };
 import schemaProfileVectorSchemaDocument from '../schemas/schema-profile-vector.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
+import studioChartSchemaDocument from '../schemas/studio-chart.schema.json' with { type: 'json' };
+import studioDrawingSchemaDocument from '../schemas/studio-drawing.schema.json' with { type: 'json' };
+import studioMoneySchemaDocument from '../schemas/studio-money.schema.json' with { type: 'json' };
 import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'json' };
 import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribution.schema.json' with { type: 'json' };
 import type { JsonSchema } from './types.js';
@@ -61,11 +65,15 @@ export const patternSchema: JsonSchema = patternSchemaDocument;
 export const pluginManifestSchema: JsonSchema = pluginManifestSchemaDocument;
 export const previewMessageSchema: JsonSchema = previewMessageSchemaDocument;
 export const previewVectorSchema: JsonSchema = previewVectorSchemaDocument;
+export const rendererWebVectorSchema: JsonSchema = rendererWebVectorSchemaDocument;
 export const provenanceSchema: JsonSchema = provenanceSchemaDocument;
 export const richTextSchema: JsonSchema = richTextSchemaDocument;
 export const schemaProfileSchema: JsonSchema = schemaProfileSchemaDocument;
 export const schemaProfileVectorSchema: JsonSchema = schemaProfileVectorSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
+export const studioChartSchema: JsonSchema = studioChartSchemaDocument;
+export const studioDrawingSchema: JsonSchema = studioDrawingSchemaDocument;
+export const studioMoneySchema: JsonSchema = studioMoneySchemaDocument;
 export const themeSchema: JsonSchema = themeSchemaDocument;
 export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSchemaDocument;
 
@@ -97,11 +105,15 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   pluginManifestSchema,
   previewMessageSchema,
   previewVectorSchema,
+  rendererWebVectorSchema,
   provenanceSchema,
   richTextSchema,
   schemaProfileSchema,
   schemaProfileVectorSchema,
   studioConfigurationSchema,
+  studioChartSchema,
+  studioDrawingSchema,
+  studioMoneySchema,
   themeSchema,
   unresolvedContributionSchema,
 ]);

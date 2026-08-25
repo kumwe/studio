@@ -54,6 +54,14 @@ const packageConformanceDirectory = new URL(
   '../packages/testkit/conformance/rich-text/',
   import.meta.url,
 );
+const rootRendererWebConformanceDirectory = new URL(
+  '../schemas/conformance/renderer-web/',
+  import.meta.url,
+);
+const packageRendererWebConformanceDirectory = new URL(
+  '../packages/testkit/conformance/renderer-web/',
+  import.meta.url,
+);
 
 const schemaFiles = (await readdir(rootSchemaDirectory))
   .filter((name) => name.endsWith('.schema.json'))
@@ -207,6 +215,23 @@ const packageConformanceFiles = (await readdir(packageConformanceDirectory))
 assertSameNames('testkit renderer-conformance copies', conformanceFiles, packageConformanceFiles);
 await assertCopies(rootConformanceDirectory, packageConformanceDirectory, conformanceFiles);
 
+const rendererWebConformanceFiles = (await readdir(rootRendererWebConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageRendererWebConformanceFiles = (await readdir(packageRendererWebConformanceDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+assertSameNames(
+  'testkit renderer-web conformance copies',
+  rendererWebConformanceFiles,
+  packageRendererWebConformanceFiles,
+);
+await assertCopies(
+  rootRendererWebConformanceDirectory,
+  packageRendererWebConformanceDirectory,
+  rendererWebConformanceFiles,
+);
+
 const manifest = JSON.parse(
   await readFile(new URL('manifest.json', packageSchemaDirectory), 'utf8'),
 );
@@ -252,6 +277,7 @@ const corpusDirectories = new Map([
   ['media-vectors', packageMediaVectorDirectory],
   ['preview-vectors', packagePreviewVectorDirectory],
   ['rich-text-conformance', packageConformanceDirectory],
+  ['renderer-web-conformance', packageRendererWebConformanceDirectory],
   ['schema-profile-vectors', packageSchemaProfileVectorDirectory],
 ]);
 assertSameNames(
@@ -295,6 +321,27 @@ for (const schema of schemas) {
     throw new Error(`Invalid schema ${schema.$id}: ${ajv.errorsText(ajv.errors)}`);
   }
   ajv.addSchema(schema);
+}
+
+const validateRendererWebVector = getCanonicalValidator('renderer-web-vector.schema.json');
+if (rendererWebConformanceFiles.length === 0) {
+  throw new Error('The canonical renderer-web conformance corpus is empty.');
+}
+const rendererWebVectorIdentifiers = new Set();
+for (const vectorFile of rendererWebConformanceFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(vectorFile, rootRendererWebConformanceDirectory), 'utf8'),
+  );
+  if (!validateRendererWebVector(vector)) {
+    throw new Error(
+      `${vectorFile} violates renderer-web-vector.schema.json: ` +
+        ajv.errorsText(validateRendererWebVector.errors),
+    );
+  }
+  if (rendererWebVectorIdentifiers.has(vector.id)) {
+    throw new Error(`Renderer-web vector identifier ${vector.id} is duplicated.`);
+  }
+  rendererWebVectorIdentifiers.add(vector.id);
 }
 
 const schemaByExample = new Map([
@@ -1099,8 +1146,9 @@ console.log(
     `${previewVectorFiles.length} preview identity vectors, ` +
     `${schemaProfileVectorFiles.length} schema-profile vectors, ` +
     `${canonicalVectorFiles.length} canonical serialization vectors, ` +
-    `${invalidFiles.length} negative fixtures, and ` +
-    `${conformanceFiles.length} renderer-conformance fixtures verified.`,
+    `${invalidFiles.length} negative fixtures, ` +
+    `${conformanceFiles.length} rich-text renderer fixtures, and ` +
+    `${rendererWebConformanceFiles.length} renderer-web fixtures verified.`,
 );
 
 function validateHostSequenceSemantics(vector, file) {

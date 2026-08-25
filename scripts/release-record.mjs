@@ -102,7 +102,7 @@ function assertExactPackageSet(packages) {
   const expected = [...STUDIO_RELEASE_PACKAGE_NAMES].sort();
   if (actual.join('\n') !== expected.join('\n')) {
     throw new Error(
-      `Release package set differs from the fixed seven-package family. Expected ${expected.join(', ')}; got ${actual.join(', ')}.`,
+      `Release package set differs from the fixed eight-package family. Expected ${expected.join(', ')}; got ${actual.join(', ')}.`,
     );
   }
   for (const name of STUDIO_RELEASE_PACKAGE_NAMES) {

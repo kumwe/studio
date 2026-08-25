@@ -23,6 +23,7 @@
       "@kumwe/studio-media": ["./packages/media/src/index.ts"],
       "@kumwe/studio-preview": ["./packages/preview/src/index.ts"],
       "@kumwe/studio-protocol": ["./packages/protocol/src/index.ts"],
+      "@kumwe/studio-renderer-web": ["./packages/renderer-web/src/index.ts"],
       "@kumwe/studio-rich-text": ["./packages/rich-text/src/index.ts"],
       "@kumwe/studio-testkit": ["./packages/testkit/src/index.ts"],
       "@kumwe/studio": ["./packages/studio-lit/src/index.ts"]

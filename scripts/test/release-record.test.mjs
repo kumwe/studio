@@ -34,11 +34,11 @@ describe('Studio release records', () => {
   it('rejects missing and unexpected packages', () => {
     const missing = inputs();
     delete missing.packages['@kumwe/studio-media'];
-    assert.throws(() => buildStudioReleaseRecord(missing), /fixed seven-package family/u);
+    assert.throws(() => buildStudioReleaseRecord(missing), /fixed eight-package family/u);
 
     const unexpected = inputs();
     unexpected.packages['@kumwe/studio-extra'] = '0.1.0-alpha.9';
-    assert.throws(() => buildStudioReleaseRecord(unexpected), /fixed seven-package family/u);
+    assert.throws(() => buildStudioReleaseRecord(unexpected), /fixed eight-package family/u);
   });
 
   it('fails the publication guard on a staggered package version', () => {

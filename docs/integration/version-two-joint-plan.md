@@ -108,7 +108,7 @@ pinned release in the signed manifest.
 
 ## The version pin protocol
 
-1. Studio publishes a **release coordinate** naming all seven package versions, the wire version, the
+1. Studio publishes a **release coordinate** naming all eight package versions, the wire version, the
    corpus digest and the claimed profiles (`ST-1`).
 2. Kumwe App vendors that record with the corpus, pins every package exactly, and digest-verifies before
    any conformance run. A non-exact specifier fails its build.

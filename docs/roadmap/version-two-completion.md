@@ -72,14 +72,14 @@ and the deferral is recorded as a decision rather than an omission.
 
 **Repository state:** the fixed-family configuration, generated record, drift checks, and guarded
 version/publish workflow are implemented. The checked-in record describes the current staggered alpha
-baseline; it is not a publication claim. The first version workflow run must advance all seven packages
+baseline; it is not a publication claim. The first version workflow run must advance all eight packages
 to one coordinate before the publication guard permits a release.
 
 Today the packages carry staggered versions, so a host cannot say "we integrate Studio _x_". Give the
-seven packages a single release coordinate.
+eight packages a single release coordinate.
 
 1. Add a workspace-level release identifier — a `studio-release.json` at the repository root carrying
-   the release name, the exact version of each of the seven packages, the protocol wire version, the
+   the release name, the exact version of each of the eight packages, the protocol wire version, the
    corpus manifest digest, and the profile identifiers claimed at that release.
 2. Publish it inside `@kumwe/studio-protocol` and `@kumwe/studio-testkit` so a host vendors it with the
    corpus it already verifies.
