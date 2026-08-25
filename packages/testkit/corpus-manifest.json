@@ -1106,6 +1106,10 @@
           "file": "studio-money.float.json"
         },
         {
+          "digest": "sha256-989o8RxLYQLsIKe/I0B+ETP4DRCjtniMzT57fwxbeGw=",
+          "file": "studio-presentation.css-injection.json"
+        },
+        {
           "digest": "sha256-ip22Uidj7KWI9kqcBbB5YphmBjcUSFyJ0hvO28V6I9w=",
           "file": "theme.unknown-member.json"
         }

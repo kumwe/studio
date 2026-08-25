@@ -204,4 +204,26 @@ describe('semantic web renderer', () => {
     expect(output.html).toContain('data-studio-tone="warning" role="alert"');
     expect(output.enhancements.map((item) => item.kind)).toEqual(['dialog', 'popover', 'notice']);
   });
+
+  it('projects bounded presentation intent and schedules trusted motion', async () => {
+    const heading = node('presented', CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Visible' });
+    heading.properties = {
+      design: {
+        align: 'center',
+        animation: 'fade',
+        position: 'sticky',
+        visibility: { compact: 'hidden', medium: 'visible' },
+        width: 'full',
+      },
+      level: 2,
+    };
+    const output = await renderStudioWeb({ roots: [heading] });
+    expect(output.html).toContain('data-studio-align="center"');
+    expect(output.html).toContain('data-studio-position="sticky"');
+    expect(output.html).toContain('data-studio-visible-compact="hidden"');
+    expect(output.html).not.toContain('style=');
+    expect(output.enhancements).toContainEqual(
+      expect.objectContaining({ animation: 'fade', kind: 'motion', nodeId: 'presented' }),
+    );
+  });
 });

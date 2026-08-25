@@ -31,6 +31,12 @@ export type StudioWebEnhancement =
   | { kind: 'diagram'; nodeId: string; scope: string; source: string }
   | { kind: 'dialog'; modal: boolean; nodeId: string; scope: string }
   | { kind: 'math'; displayMode: boolean; nodeId: string; scope: string; source: string }
+  | {
+      animation: 'fade' | 'parallax' | 'scale' | 'slide';
+      kind: 'motion';
+      nodeId: string;
+      scope: string;
+    }
   | { kind: 'notice'; nodeId: string; scope: string }
   | { dismissOnBlur: boolean; kind: 'popover'; nodeId: string; scope: string }
   | { autoplay: boolean; kind: 'slideshow'; nodeId: string; scope: string }

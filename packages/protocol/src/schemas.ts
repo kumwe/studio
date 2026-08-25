@@ -35,6 +35,7 @@ import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.j
 import studioChartSchemaDocument from '../schemas/studio-chart.schema.json' with { type: 'json' };
 import studioDrawingSchemaDocument from '../schemas/studio-drawing.schema.json' with { type: 'json' };
 import studioMoneySchemaDocument from '../schemas/studio-money.schema.json' with { type: 'json' };
+import studioPresentationSchemaDocument from '../schemas/studio-presentation.schema.json' with { type: 'json' };
 import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'json' };
 import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribution.schema.json' with { type: 'json' };
 import type { JsonSchema } from './types.js';
@@ -76,6 +77,7 @@ export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDo
 export const studioChartSchema: JsonSchema = studioChartSchemaDocument;
 export const studioDrawingSchema: JsonSchema = studioDrawingSchemaDocument;
 export const studioMoneySchema: JsonSchema = studioMoneySchemaDocument;
+export const studioPresentationSchema: JsonSchema = studioPresentationSchemaDocument;
 export const themeSchema: JsonSchema = themeSchemaDocument;
 export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSchemaDocument;
 
@@ -117,6 +119,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   studioChartSchema,
   studioDrawingSchema,
   studioMoneySchema,
+  studioPresentationSchema,
   themeSchema,
   unresolvedContributionSchema,
 ]);

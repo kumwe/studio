@@ -108,4 +108,34 @@ describe('trusted progressive interaction controller', () => {
     expect(notice?.hidden).toBe(false);
     host.remove();
   });
+
+  it('activates portable motion only after trusted enhancement and disposes it', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: () => ({ matches: false }),
+    });
+    Object.defineProperty(globalThis, 'IntersectionObserver', {
+      configurable: true,
+      value: undefined,
+    });
+    const heading = node(
+      'motion',
+      CORE_PRODUCTION_BLOCK_TYPES.heading,
+      { text: 'Motion' },
+      {},
+      { design: { animation: 'fade' }, level: 2 },
+    );
+    const result = await renderStudioWeb({ roots: [heading] });
+    const host = document.createElement('div');
+    document.body.append(host);
+    host.innerHTML = result.html;
+    const rendered = host.querySelector<HTMLElement>('[data-studio-node="motion"]');
+    expect(rendered?.dataset.studioMotion).toBeUndefined();
+    const handle = await enhanceStudioWeb(host, result);
+    expect(rendered?.dataset.studioMotion).toBe('fade');
+    expect(rendered?.hasAttribute('data-studio-motion-visible')).toBe(true);
+    handle.dispose();
+    expect(rendered?.dataset.studioMotion).toBeUndefined();
+    host.remove();
+  });
 });

@@ -24,6 +24,11 @@ read-only in Studio. The host authorizes their values and the trusted renderer r
 The gallery definition owns both grid and slideshow presentations. Slideshow is progressive renderer
 behavior over the same ordered media collection, not executable code in an artifact.
 
+Cross-cutting visual options use one optional closed `design` intent and the
+`studio.control/presentation` inspector contract. Blocks do not duplicate CSS-shaped property bags.
+Background media remains a typed media port on a semantic cover block rather than a URL in this
+intent.
+
 ## Consequences
 
 - A new host can register one canonical catalog and extend it with namespaced contributions.

@@ -72,6 +72,7 @@ export {
   parseStudioChartSpec,
   parseStudioDrawingDocument,
   parseStudioMoneyValue,
+  parseStudioPresentationIntent,
 } from './production-values.js';
 export {
   openStudioSession,

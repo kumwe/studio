@@ -31,6 +31,9 @@ export async function enhanceStudioWeb(
       case 'popover':
         disposers.push(enhancePopover(container, enhancement));
         break;
+      case 'motion':
+        disposers.push(enhanceMotion(container, enhancement));
+        break;
       case 'slideshow':
         disposers.push(enhanceSlideshow(container, enhancement));
         break;
@@ -235,6 +238,50 @@ function enhancePopover(
   trigger.setAttribute('aria-expanded', String(disclosure.open));
   return () =>
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+}
+
+function enhanceMotion(
+  container: HTMLElement,
+  enhancement: Extract<StudioWebEnhancement, { kind: 'motion' }>,
+): () => void {
+  if (reducedMotion()) return () => undefined;
+  container.dataset.studioMotion = enhancement.animation;
+  if (enhancement.animation === 'parallax') {
+    const update = (): void => {
+      const rect = container.getBoundingClientRect();
+      const progress = rect.top / Math.max(window.innerHeight, 1) - 0.5;
+      const offset = Math.max(-24, Math.min(24, progress * 24));
+      container.style.setProperty('--studio-parallax-offset', `${offset.toFixed(2)}px`);
+    };
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      container.style.removeProperty('--studio-parallax-offset');
+      delete container.dataset.studioMotion;
+    };
+  }
+  if (typeof IntersectionObserver !== 'function') {
+    container.dataset.studioMotionVisible = '';
+    return () => {
+      delete container.dataset.studioMotion;
+      delete container.dataset.studioMotionVisible;
+    };
+  }
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) {
+      container.dataset.studioMotionVisible = '';
+      observer.disconnect();
+    }
+  });
+  observer.observe(container);
+  return () => {
+    observer.disconnect();
+    delete container.dataset.studioMotion;
+    delete container.dataset.studioMotionVisible;
+  };
 }
 
 function enhanceSlideshow(

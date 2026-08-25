@@ -3,6 +3,7 @@ import {
   parseStudioChartSpec,
   parseStudioDrawingDocument,
   parseStudioMoneyValue,
+  parseStudioPresentationIntent,
 } from '@kumwe/studio-core';
 import type {
   BlueprintDocument,
@@ -11,6 +12,7 @@ import type {
   MediaReference,
   StudioChartSpec,
   StudioDrawingDocument,
+  StudioPresentationIntent,
 } from '@kumwe/studio-protocol';
 import {
   parseRichTextDocument,
@@ -31,6 +33,20 @@ import type {
 const BASE_CSS = `
 [data-studio-block]{box-sizing:border-box;min-inline-size:0}
 .studio-visually-hidden{block-size:1px;clip-path:inset(50%);inline-size:1px;overflow:hidden;position:absolute;white-space:nowrap}
+[data-studio-align="center"]{text-align:center}[data-studio-align="end"]{text-align:end}[data-studio-align="stretch"]{align-self:stretch}
+[data-studio-height="content"]{block-size:fit-content}[data-studio-height="full"]{block-size:100%}[data-studio-height="viewport"]{min-block-size:100dvb}
+[data-studio-inverse="true"]{background:var(--studio-inverse-background,CanvasText);color:var(--studio-inverse-foreground,Canvas)}
+[data-studio-margin="none"]{margin:0}[data-studio-margin="compact"]{margin:.5rem}[data-studio-margin="comfortable"]{margin:1rem}[data-studio-margin="spacious"]{margin:2rem}
+[data-studio-padding="none"]{padding:0}[data-studio-padding="compact"]{padding:.5rem}[data-studio-padding="comfortable"]{padding:1rem}[data-studio-padding="spacious"]{padding:2rem}
+[data-studio-marker="none"]{list-style:none}[data-studio-marker="disc"]{list-style:disc}[data-studio-marker="decimal"]{list-style:decimal}[data-studio-marker="check"]{list-style:"✓  "}
+[data-studio-position="relative"]{position:relative}[data-studio-position="sticky"]{inset-block-start:0;position:sticky;z-index:10}
+[data-studio-scroll="auto"]{overflow:auto}[data-studio-scroll="clip"]{overflow:clip}[data-studio-scroll="snap"]{overflow:auto;scroll-snap-type:block mandatory}
+[data-studio-width="content"]{inline-size:fit-content;max-inline-size:100%}[data-studio-width="full"]{inline-size:100%}
+[data-studio-print="only"]{display:none}[data-studio-visible-compact="hidden"]{display:none}
+[data-studio-motion]{opacity:0;transition:opacity .25s ease,transform .25s ease}[data-studio-motion="scale"]{transform:scale(.98)}[data-studio-motion="slide"]{transform:translateY(1rem)}[data-studio-motion-visible]{opacity:1;transform:none}[data-studio-motion="parallax"]{opacity:1;transform:translateY(var(--studio-parallax-offset,0))}
+@media (min-width:48rem){[data-studio-visible-medium="hidden"]{display:none}[data-studio-visible-medium="visible"]{display:block}}
+@media (min-width:75rem){[data-studio-visible-expanded="hidden"]{display:none}[data-studio-visible-expanded="visible"]{display:block}}
+@media print{[data-studio-print="hide"]{display:none!important}[data-studio-print="only"]{display:block}}
 [data-studio-layout="section"]{inline-size:100%}
 [data-studio-layout="stack"]{display:flex;flex-direction:column;gap:var(--studio-space,1rem)}
 [data-studio-layout="grid"],[data-studio-layout="columns"]{display:grid;gap:var(--studio-space,1rem);grid-template-columns:repeat(var(--studio-columns-compact,1),minmax(0,1fr))}
@@ -52,7 +68,7 @@ const BASE_CSS = `
 [data-studio-chart-table]{border-collapse:collapse;inline-size:100%}
 [data-studio-chart-table] th,[data-studio-chart-table] td{border:1px solid currentColor;padding:.35rem;text-align:end}
 [data-studio-chart-table] th:first-child{text-align:start}
-@media (prefers-reduced-motion:reduce){[data-studio-gallery="slideshow"] [data-studio-part="content"]{scroll-behavior:auto}}
+@media (prefers-reduced-motion:reduce){[data-studio-gallery="slideshow"] [data-studio-part="content"]{scroll-behavior:auto}[data-studio-motion]{opacity:1!important;transform:none!important;transition:none!important}}
 `.trim();
 
 interface RenderState {
@@ -87,7 +103,8 @@ async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Pr
   const scopedSheet = state.context.scopedStyles?.[node.id];
   if (scopedSheet !== undefined) state.css.push(compileStudioScopedStyleSheet(scope, scopedSheet));
   const content = await renderType(node, scope, state);
-  return `<div data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}">${content}</div>`;
+  const presentation = presentationAttributes(node, scope, state);
+  return `<div data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}"${presentation}>${content}</div>`;
 }
 
 async function renderType(
@@ -655,6 +672,48 @@ function scopeFor(nodeId: string): string {
     hash = Math.imul(hash, 16_777_619);
   }
   return `s${(hash >>> 0).toString(36)}`;
+}
+
+function presentationAttributes(
+  node: Readonly<BlueprintNode>,
+  scope: string,
+  state: RenderState,
+): string {
+  if (node.properties.design === undefined) return '';
+  let intent: StudioPresentationIntent;
+  try {
+    intent = parseStudioPresentationIntent(node.properties.design);
+  } catch {
+    return '';
+  }
+  if (intent.animation !== undefined && intent.animation !== 'none') {
+    state.enhancements.push({
+      animation: intent.animation,
+      kind: 'motion',
+      nodeId: node.id,
+      scope,
+    });
+  }
+  const attributes: [string, boolean | string | undefined][] = [
+    ['align', intent.align],
+    ['animation', intent.animation],
+    ['height', intent.height],
+    ['inverse', intent.inverse],
+    ['margin', intent.margin],
+    ['marker', intent.marker],
+    ['padding', intent.padding],
+    ['position', intent.position],
+    ['print', intent.print],
+    ['scroll', intent.scrolling],
+    ['visible-compact', intent.visibility?.compact],
+    ['visible-medium', intent.visibility?.medium],
+    ['visible-expanded', intent.visibility?.expanded],
+    ['width', intent.width],
+  ];
+  return attributes
+    .filter(([, value]) => value !== undefined)
+    .map(([name, value]) => ` data-studio-${name}="${escapeAttribute(String(value))}"`)
+    .join('');
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
