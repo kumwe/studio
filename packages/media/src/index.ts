@@ -24,3 +24,10 @@ export {
   type MediaUploadPolicyDecision,
 } from './upload-policy.js';
 export { validateMediaReference } from './validate-media-reference.js';
+export {
+  StudioMediaFieldController,
+  type StudioMediaFieldListener,
+  type StudioMediaFieldOptions,
+  type StudioMediaFieldState,
+  type StudioMediaFieldStatus,
+} from './media-field.js';

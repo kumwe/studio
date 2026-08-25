@@ -74,6 +74,13 @@ For informative images, Studio requires an accessible text alternative or a bind
 
 Studio exposes focal point, crop previews, intrinsic dimensions, rendition warnings, caption and credit/license metadata when supported. It warns when chosen media is too small, excessively large, unsupported, still processing, or inaccessible to the publication context.
 
+`StudioMediaFieldController` implements the host-neutral authoring state machine for browse, bounded
+search, cursor pagination, selection, replacement, paste/drop/file upload, progress, cancellation,
+retry, accessibility, focal point, rendition intent, and orphan recovery. The controller receives a
+host `MediaProvider` and optional upload transport; it owns no storage or delivery authority.
+Dynamic entry, context, resource, and query bindings are read-only. Only static bindings can be
+replaced or edited.
+
 ## Privacy and security
 
 Media search results, thumbnails, metadata and counts are authorization-filtered by the host. Upload filenames are display metadata, not storage paths. SVG, HTML, PDF, video and other active formats follow host sanitization and content-disposition policy. EXIF/location and other sensitive metadata handling is explicit.
@@ -88,6 +95,11 @@ The policy is deliberately lexical and performs no DNS resolution. DNS-rebinding
 
 ## Repository boundary
 
-In the current alpha, `@kumwe/studio-media` exposes a small `MediaProvider` interface for `get`, `list`, and `upload`, cancellation-safe `MediaLibrary` browse/search/pagination state, and deterministic rendition selection. Canonical MediaAsset and MediaReference schemas are owned and packaged by `@kumwe/studio-protocol`, not the media package. The complete media browser/upload UI, full lifecycle ports, diagnostics, and conformance surface are Gate A/B targets and are not claimed as implemented.
+`@kumwe/studio-media` exposes `MediaProvider`, cancellation-safe `MediaLibrary`, the canonical upload
+controller, and `StudioMediaFieldController`. Canonical MediaAsset and MediaReference schemas are
+owned and packaged by `@kumwe/studio-protocol`, not the media package. Visual presentation remains
+the responsibility of the Studio shell/custom field using this headless state machine. Evidence for
+complete browser accessibility and host-specific media-policy conformance remains a release-gate
+obligation and is not inferred from this implementation.
 
 Kumwe App will implement the authoritative media operations with its media application services. A separate media repository is unnecessary unless a future independent media service develops a lifecycle and audience beyond Studio.
