@@ -1,6 +1,11 @@
 import type { FieldBinding, StudioDiagnostic } from '@kumwe/studio-protocol';
 import { parseRichTextDocument, type StudioRichTextDocument } from './index.js';
-import { resolveRichTextProfile, type StudioRichTextProfileId } from './profiles.js';
+import {
+  resolveContainerRichTextProfile,
+  resolveRichTextProfile,
+  type StudioRichTextContainerType,
+  type StudioRichTextProfileId,
+} from './profiles.js';
 import {
   fromStudioEditorJsBlocks,
   StudioMarkerTool,
@@ -16,6 +21,7 @@ export interface StudioRichTextEditorChange {
 
 export interface StudioRichTextEditorOptions {
   binding?: FieldBinding;
+  containerType?: StudioRichTextContainerType;
   holder: HTMLElement;
   onChange?: (change: StudioRichTextEditorChange) => void;
   placeholder?: string;
@@ -65,7 +71,12 @@ export class StudioRichTextEditorFactory {
   }
 
   public async create(options: StudioRichTextEditorOptions): Promise<StudioRichTextEditor> {
-    const profile = resolveRichTextProfile(options.profile);
+    const profileId =
+      options.profile ??
+      (options.containerType === undefined
+        ? 'studio.rich-text/portable'
+        : resolveContainerRichTextProfile(options.containerType));
+    const profile = resolveRichTextProfile(profileId);
     let lastValid = parseRichTextDocument(options.value, profile);
     const readOnly =
       options.readOnly === true ||

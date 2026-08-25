@@ -19,6 +19,7 @@
     "noUncheckedIndexedAccess": true,
     "resolveJsonModule": true,
     "paths": {
+      "@editorjs/editorjs": ["./packages/rich-text/src/editorjs.d.ts"],
       "@kumwe/studio-core": ["./packages/core/src/index.ts"],
       "@kumwe/studio-media": ["./packages/media/src/index.ts"],
       "@kumwe/studio-preview": ["./packages/preview/src/index.ts"],

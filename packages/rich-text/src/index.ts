@@ -20,7 +20,9 @@ export {
   DOCUMENTATION_RICH_TEXT_PROFILE,
   MARKETING_RICH_TEXT_PROFILE,
   PORTABLE_RICH_TEXT_PROFILE,
+  resolveContainerRichTextProfile,
   resolveRichTextProfile,
+  type StudioRichTextContainerType,
   type StudioRichTextProfileId,
 } from './profiles.js';
 

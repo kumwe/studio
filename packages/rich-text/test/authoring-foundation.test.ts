@@ -9,6 +9,7 @@ import {
   exportStudioMarkdown,
   importSafeHtml,
   importStudioMarkdown,
+  resolveContainerRichTextProfile,
   resolveRichTextProfile,
   StudioRichTextEditorFactory,
 } from '../src/index.js';
@@ -95,6 +96,27 @@ describe('Studio rich-text authoring foundation', () => {
 
   it('fails closed for unknown profiles', () => {
     expect(() => resolveRichTextProfile('host/rich' as never)).toThrow(/Unknown Studio/u);
+    expect(() => resolveContainerRichTextProfile('host/container' as never)).toThrow(
+      /Unknown Studio/u,
+    );
+  });
+
+  it.each([
+    'studio.core/accordion-item',
+    'studio.core/dialog',
+    'studio.core/notice',
+    'studio.core/popover',
+    'studio.core/tab',
+  ] as const)('authors canonical content inside the %s control', async (containerType) => {
+    const adapter = new TestSurfaceAdapter();
+    const editor = await new StudioRichTextEditorFactory(adapter).create({
+      containerType,
+      holder: document.createElement('div'),
+      value: INITIAL,
+    });
+
+    expect(editor.readOnly).toBe(false);
+    expect(await editor.save()).toEqual(INITIAL);
   });
 
   it('keeps dynamic bindings read-only and never exposes editor-native state', async () => {
