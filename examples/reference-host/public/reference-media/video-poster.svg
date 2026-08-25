@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" role="img" aria-label="Reference video poster">
+  <rect width="1280" height="720" fill="#17233f" />
+  <circle cx="640" cy="360" r="150" fill="#fff" opacity=".95" />
+  <path d="m600 275 150 85-150 85z" fill="#3157d5" />
+</svg>
