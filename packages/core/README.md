@@ -31,7 +31,7 @@ The implemented surface covers:
 - `createCoreLayoutBlockDefinitions` / `resolveCoreLayoutIntent` — first-party section, stack, grid,
   and columns definitions plus theme-validated responsive intent resolution, with no DOM or stored
   CSS;
-- `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 30-block
+- `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 45-block
   production catalog and ten portable starter compositions, including media, rich content,
   progressive composites including dialogs, popovers, and notices, data display, and
   host-authoritative resource/query projections;

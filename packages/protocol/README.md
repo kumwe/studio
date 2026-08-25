@@ -45,7 +45,7 @@ portable corpora and runner-neutral digest manifest ship through the testkit. Th
 without selectors or component-library types; its target profile remains unclaimed until the full
 browser and accessibility matrix is reproduced.
 
-Canonical production values include chart, drawing, exact-decimal money, and the closed Studio
+Canonical production values include chart, drawing, exact-decimal money, text-only tables, and the closed Studio
 presentation intent. The latter carries semantic alignment, sizing, spacing, position, print,
 scrolling, marker, motion, and responsive-visibility choices without carrying CSS or JavaScript.
 

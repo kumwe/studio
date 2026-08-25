@@ -28,8 +28,10 @@ import {
 export interface CoreProductionBlockTypeMap {
   readonly accordion: 'studio.core/accordion';
   readonly accordionItem: 'studio.core/accordion-item';
+  readonly article: 'studio.core/article';
   readonly attachment: 'studio.core/attachment';
   readonly audio: 'studio.core/audio';
+  readonly badge: 'studio.core/badge';
   readonly callToAction: 'studio.core/call-to-action';
   readonly callout: 'studio.core/callout';
   readonly card: 'studio.core/card';
@@ -38,22 +40,35 @@ export interface CoreProductionBlockTypeMap {
   readonly columns: 'studio.core/columns';
   readonly contentCollection: 'studio.core/content-collection';
   readonly contentReference: 'studio.core/content-reference';
+  readonly countdown: 'studio.core/countdown';
+  readonly cover: 'studio.core/cover';
+  readonly descriptionItem: 'studio.core/description-item';
+  readonly descriptionList: 'studio.core/description-list';
   readonly diagram: 'studio.core/diagram';
   readonly dialog: 'studio.core/dialog';
+  readonly divider: 'studio.core/divider';
   readonly drawing: 'studio.core/drawing';
   readonly embed: 'studio.core/embed';
   readonly gallery: 'studio.core/gallery';
   readonly grid: 'studio.core/grid';
   readonly heading: 'studio.core/heading';
+  readonly icon: 'studio.core/icon';
   readonly image: 'studio.core/image';
+  readonly label: 'studio.core/label';
   readonly math: 'studio.core/math';
   readonly money: 'studio.core/money';
   readonly notice: 'studio.core/notice';
+  readonly navigation: 'studio.core/navigation';
+  readonly navigationItem: 'studio.core/navigation-item';
   readonly popover: 'studio.core/popover';
+  readonly progress: 'studio.core/progress';
   readonly richText: 'studio.core/rich-text';
+  readonly search: 'studio.core/search';
   readonly section: 'studio.core/section';
   readonly stack: 'studio.core/stack';
+  readonly spinner: 'studio.core/spinner';
   readonly tab: 'studio.core/tab';
+  readonly table: 'studio.core/table';
   readonly tabs: 'studio.core/tabs';
   readonly video: 'studio.core/video';
 }
@@ -62,8 +77,10 @@ export const CORE_PRODUCTION_BLOCK_TYPES: Readonly<CoreProductionBlockTypeMap> =
   ...CORE_LAYOUT_BLOCK_TYPES,
   accordion: 'studio.core/accordion',
   accordionItem: 'studio.core/accordion-item',
+  article: 'studio.core/article',
   attachment: 'studio.core/attachment',
   audio: 'studio.core/audio',
+  badge: 'studio.core/badge',
   callToAction: 'studio.core/call-to-action',
   callout: 'studio.core/callout',
   card: 'studio.core/card',
@@ -71,19 +88,32 @@ export const CORE_PRODUCTION_BLOCK_TYPES: Readonly<CoreProductionBlockTypeMap> =
   code: 'studio.core/code',
   contentCollection: 'studio.core/content-collection',
   contentReference: 'studio.core/content-reference',
+  countdown: 'studio.core/countdown',
+  cover: 'studio.core/cover',
+  descriptionItem: 'studio.core/description-item',
+  descriptionList: 'studio.core/description-list',
   diagram: 'studio.core/diagram',
   dialog: 'studio.core/dialog',
+  divider: 'studio.core/divider',
   drawing: 'studio.core/drawing',
   embed: 'studio.core/embed',
   gallery: 'studio.core/gallery',
   heading: 'studio.core/heading',
+  icon: 'studio.core/icon',
   image: 'studio.core/image',
+  label: 'studio.core/label',
   math: 'studio.core/math',
   money: 'studio.core/money',
+  navigation: 'studio.core/navigation',
+  navigationItem: 'studio.core/navigation-item',
   notice: 'studio.core/notice',
   popover: 'studio.core/popover',
+  progress: 'studio.core/progress',
   richText: 'studio.core/rich-text',
+  search: 'studio.core/search',
+  spinner: 'studio.core/spinner',
   tab: 'studio.core/tab',
+  table: 'studio.core/table',
   tabs: 'studio.core/tabs',
   video: 'studio.core/video',
 });
@@ -102,6 +132,7 @@ export interface CoreProductionControlIdMap {
   readonly richText: 'studio.control/rich-text';
   readonly scopedCss: 'studio.control/scoped-css';
   readonly source: 'studio.control/source';
+  readonly table: 'studio.control/table';
 }
 
 export const CORE_PRODUCTION_CONTROL_IDS: Readonly<CoreProductionControlIdMap> = Object.freeze({
@@ -114,6 +145,7 @@ export const CORE_PRODUCTION_CONTROL_IDS: Readonly<CoreProductionControlIdMap> =
   richText: 'studio.control/rich-text',
   scopedCss: 'studio.control/scoped-css',
   source: 'studio.control/source',
+  table: 'studio.control/table',
 });
 
 /** The ten reusable compositions distributed with the production catalog. */
@@ -161,6 +193,8 @@ const CONTENT_TYPES = Object.freeze(
   ALL_TYPES.filter(
     (type) =>
       type !== CORE_PRODUCTION_BLOCK_TYPES.accordionItem &&
+      type !== CORE_PRODUCTION_BLOCK_TYPES.descriptionItem &&
+      type !== CORE_PRODUCTION_BLOCK_TYPES.navigationItem &&
       type !== CORE_PRODUCTION_BLOCK_TYPES.tab,
   ),
 );
@@ -192,6 +226,15 @@ const textPort = (id: LocalName, required = false): BlockPortDefinition => ({
   multiple: false,
   required,
   valueType: 'text',
+});
+
+const numberPort = (id: LocalName, required = false): BlockPortDefinition => ({
+  authoring: { control: 'studio.control/number' },
+  id,
+  label: message(`port-${id}`, title(id)),
+  multiple: false,
+  required,
+  valueType: 'number',
 });
 
 const richTextPort = (id = 'content'): BlockPortDefinition => ({
@@ -263,6 +306,12 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     properties: { expanded: booleanSchema() },
     slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
   },
+  article: {
+    accessibility: 'landmark',
+    defaults: {},
+    ports: [textPort('title')],
+    slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 200 }],
+  },
   attachment: {
     accessibility: 'media',
     controls: { download: 'studio.control/switch' },
@@ -276,6 +325,16 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     defaults: { autoplay: false, controls: true },
     ports: [mediaPort('asset'), textPort('transcript')],
     properties: { autoplay: booleanSchema(), controls: booleanSchema() },
+  },
+  badge: {
+    accessibility: 'text',
+    controls: { appearance: 'studio.control/select', tone: 'studio.control/select' },
+    defaults: { appearance: 'solid', tone: 'neutral' },
+    ports: [textPort('label', true)],
+    properties: {
+      appearance: enumSchema('outline', 'soft', 'solid'),
+      tone: enumSchema('error', 'information', 'neutral', 'success', 'warning'),
+    },
   },
   callToAction: {
     accessibility: 'interactive',
@@ -346,6 +405,41 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     ports: [resourcePort('item', false)],
     properties: { presentation: enumSchema('full', 'summary', 'title') },
   },
+  countdown: {
+    accessibility: 'data-display',
+    controls: {
+      display: 'studio.control/select',
+      expiredBehavior: 'studio.control/select',
+    },
+    defaults: { display: 'detailed', expiredBehavior: 'zero' },
+    ports: [textPort('target', true), textPort('completionMessage')],
+    properties: {
+      display: enumSchema('compact', 'detailed'),
+      expiredBehavior: enumSchema('hide', 'message', 'zero'),
+    },
+  },
+  cover: {
+    accessibility: 'composite',
+    controls: { alignment: 'studio.control/select', overlay: 'studio.control/select' },
+    defaults: { alignment: 'center', overlay: 'medium' },
+    ports: [mediaPort('background')],
+    properties: {
+      alignment: enumSchema('center', 'end', 'start'),
+      overlay: enumSchema('light', 'medium', 'none', 'strong'),
+    },
+    slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
+  },
+  descriptionItem: {
+    accessibility: 'text',
+    defaults: {},
+    ports: [textPort('term', true), richTextPort('description')],
+  },
+  descriptionList: {
+    accessibility: 'data-display',
+    defaults: {},
+    ports: [textPort('title')],
+    slots: [{ accepts: [CORE_PRODUCTION_BLOCK_TYPES.descriptionItem], id: 'items', maximum: 100 }],
+  },
   diagram: {
     accessibility: 'data-display',
     controls: { theme: 'studio.control/select' },
@@ -355,11 +449,21 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
   },
   dialog: {
     accessibility: 'interactive',
-    controls: { modal: 'studio.control/switch' },
-    defaults: { modal: true },
+    controls: { modal: 'studio.control/switch', presentation: 'studio.control/select' },
+    defaults: { modal: true, presentation: 'modal' },
     ports: [textPort('triggerLabel', true), textPort('title', true)],
-    properties: { modal: booleanSchema() },
+    properties: {
+      modal: booleanSchema(),
+      presentation: enumSchema('modal', 'offcanvas', 'overlay'),
+    },
     slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
+  },
+  divider: {
+    accessibility: 'structural',
+    controls: { style: 'studio.control/select' },
+    defaults: { style: 'solid' },
+    ports: [textPort('label')],
+    properties: { style: enumSchema('dashed', 'dotted', 'solid') },
   },
   drawing: {
     accessibility: 'media',
@@ -390,13 +494,15 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     controls: {
       autoplay: 'studio.control/switch',
       columns: 'studio.control/integer',
+      lightbox: 'studio.control/switch',
       presentation: 'studio.control/select',
     },
-    defaults: { autoplay: false, columns: 4, presentation: 'grid' },
+    defaults: { autoplay: false, columns: 4, lightbox: false, presentation: 'grid' },
     ports: [mediaPort('items', true)],
     properties: {
       autoplay: booleanSchema(),
       columns: integerSchema(1, 12),
+      lightbox: booleanSchema(),
       presentation: enumSchema('grid', 'slideshow'),
     },
   },
@@ -407,6 +513,13 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     ports: [textPort('text', true)],
     properties: { level: integerSchema(1, 6) },
   },
+  icon: {
+    accessibility: 'media',
+    controls: { decorative: 'studio.control/switch', name: 'studio.control/single-line-text' },
+    defaults: { decorative: true, name: 'symbol' },
+    ports: [textPort('alternativeText')],
+    properties: { decorative: booleanSchema(), name: stringSchema(200) },
+  },
   image: {
     accessibility: 'media',
     controls: { fit: 'studio.control/select', loading: 'studio.control/select' },
@@ -416,6 +529,13 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
       fit: enumSchema('contain', 'cover', 'fill', 'scale-down'),
       loading: enumSchema('eager', 'lazy'),
     },
+  },
+  label: {
+    accessibility: 'text',
+    controls: { tone: 'studio.control/select' },
+    defaults: { tone: 'neutral' },
+    ports: [textPort('text', true)],
+    properties: { tone: enumSchema('error', 'information', 'neutral', 'success', 'warning') },
   },
   math: {
     accessibility: 'text',
@@ -441,6 +561,33 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
       },
     ],
   },
+  navigation: {
+    accessibility: 'landmark',
+    controls: { presentation: 'studio.control/select' },
+    defaults: { presentation: 'nav' },
+    ports: [textPort('label')],
+    properties: {
+      presentation: enumSchema(
+        'breadcrumbs',
+        'dotnav',
+        'dropnav',
+        'navbar',
+        'nav',
+        'pagination',
+        'subnav',
+        'thumbnav',
+      ),
+    },
+    slots: [{ accepts: [CORE_PRODUCTION_BLOCK_TYPES.navigationItem], id: 'items', maximum: 100 }],
+  },
+  navigationItem: {
+    accessibility: 'interactive',
+    controls: { current: 'studio.control/switch', href: 'studio.control/single-line-text' },
+    defaults: { current: false, href: '' },
+    ports: [textPort('label', true)],
+    properties: { current: booleanSchema(), href: stringSchema(2_048) },
+    slots: [{ accepts: [CORE_PRODUCTION_BLOCK_TYPES.navigationItem], id: 'children', maximum: 50 }],
+  },
   notice: {
     accessibility: 'composite',
     controls: { dismissible: 'studio.control/switch', tone: 'studio.control/select' },
@@ -456,19 +603,45 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     controls: {
       dismissOnBlur: 'studio.control/switch',
       placement: 'studio.control/select',
+      presentation: 'studio.control/select',
     },
-    defaults: { dismissOnBlur: true, placement: 'auto' },
+    defaults: { dismissOnBlur: true, placement: 'auto', presentation: 'popover' },
     ports: [textPort('triggerLabel', true), textPort('title')],
     properties: {
       dismissOnBlur: booleanSchema(),
       placement: enumSchema('auto', 'bottom', 'left', 'right', 'top'),
+      presentation: enumSchema('dropbar', 'dropdown', 'popover', 'tooltip'),
     },
     slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
+  },
+  progress: {
+    accessibility: 'data-display',
+    controls: { maximum: 'studio.control/integer' },
+    defaults: { maximum: 100 },
+    ports: [textPort('label'), numberPort('value', true)],
+    properties: { maximum: integerSchema(1, 1_000_000) },
   },
   richText: {
     accessibility: 'text',
     defaults: {},
     ports: [richTextPort()],
+  },
+  search: {
+    accessibility: 'interactive',
+    controls: {
+      action: 'studio.control/single-line-text',
+      queryParameter: 'studio.control/single-line-text',
+    },
+    defaults: { action: '', queryParameter: 'q' },
+    ports: [textPort('label'), textPort('placeholder')],
+    properties: { action: stringSchema(2_048), queryParameter: stringSchema(100) },
+  },
+  spinner: {
+    accessibility: 'data-display',
+    controls: { active: 'studio.control/switch', size: 'studio.control/select' },
+    defaults: { active: true, size: 'medium' },
+    ports: [textPort('label')],
+    properties: { active: booleanSchema(), size: enumSchema('large', 'medium', 'small') },
   },
   tab: {
     accessibility: 'composite',
@@ -482,6 +655,23 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     defaults: { activation: 'automatic' },
     properties: { activation: enumSchema('automatic', 'manual') },
     slots: [{ accepts: [CORE_PRODUCTION_BLOCK_TYPES.tab], id: 'items', maximum: 30 }],
+  },
+  table: {
+    accessibility: 'data-display',
+    defaults: {},
+    ports: [
+      {
+        authoring: {
+          control: CORE_PRODUCTION_CONTROL_IDS.table,
+          profile: 'studio.table/canonical',
+        },
+        id: 'table',
+        label: message('port-table', 'Table'),
+        multiple: false,
+        required: true,
+        valueType: 'studio.value/table',
+      },
+    ],
   },
   video: {
     accessibility: 'media',

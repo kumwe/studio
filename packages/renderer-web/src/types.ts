@@ -28,9 +28,19 @@ export interface StudioScopedStyleSheet {
 
 export type StudioWebEnhancement =
   | { kind: 'chart'; nodeId: string; scope: string; spec: StudioChartSpec }
+  | {
+      completionMessage: string;
+      display: 'compact' | 'detailed';
+      expiredBehavior: 'hide' | 'message' | 'zero';
+      kind: 'countdown';
+      nodeId: string;
+      scope: string;
+      target: string;
+    }
   | { kind: 'diagram'; nodeId: string; scope: string; source: string }
   | { kind: 'dialog'; modal: boolean; nodeId: string; scope: string }
   | { kind: 'math'; displayMode: boolean; nodeId: string; scope: string; source: string }
+  | { kind: 'lightbox'; nodeId: string; scope: string }
   | {
       animation: 'fade' | 'parallax' | 'scale' | 'slide';
       kind: 'motion';
@@ -38,11 +48,19 @@ export type StudioWebEnhancement =
       scope: string;
     }
   | { kind: 'notice'; nodeId: string; scope: string }
-  | { dismissOnBlur: boolean; kind: 'popover'; nodeId: string; scope: string }
+  | {
+      dismissOnBlur: boolean;
+      kind: 'popover';
+      nodeId: string;
+      presentation: 'dropbar' | 'dropdown' | 'popover' | 'tooltip';
+      scope: string;
+    }
   | { autoplay: boolean; kind: 'slideshow'; nodeId: string; scope: string }
   | { activation: 'automatic' | 'manual'; kind: 'tabs'; nodeId: string; scope: string };
 
 export interface StudioWebRenderContext {
+  /** Explicit trusted authority for local host-generated media previews; default is false. */
+  allowBlobMedia?: boolean;
   cspNonce?: string;
   locale?: string;
   resolveBinding?: (node: Readonly<BlueprintNode>, port: string) => unknown;

@@ -2,7 +2,7 @@
 
 Portable semantic HTML and trusted progressive enhancements for the Studio production catalog.
 
-`renderStudioWeb(document, context)` renders all 30 first-party types, escapes ordinary values,
+`renderStudioWeb(document, context)` renders all 45 first-party types, escapes ordinary values,
 resolves media and business resources only through host callbacks, emits responsive 4→2→1 layout
 CSS, and returns a CSP-nonce-bearing style element plus declarative enhancement jobs. The base HTML is
 usable without JavaScript: accordions, dialogs, and popovers use `details`, tab panels remain visible, chart data remains an
@@ -16,6 +16,11 @@ Every block may carry the closed Studio `design` intent for alignment, responsiv
 spacing, sizing, scrolling, print selection, sticky positioning, and reduced-motion-aware
 fade/slide/scale/parallax behavior. These are semantic choices compiled by the renderer, never raw
 CSS.
+
+The trusted enhancer also owns countdown updates, gallery lightboxes, modal/offcanvas/overlay focus,
+popover/dropdown/dropbar/tooltip disclosure, tabs, and slideshows. Local upload previews require the
+explicit `allowBlobMedia` authority; it is off by default, applies only to media resolver output, and
+still rejects active SVG/HTML media and every `data:` URL.
 
 Advanced libraries are exact, optional peers and lazy subpaths:
 

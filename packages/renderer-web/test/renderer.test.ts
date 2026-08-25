@@ -226,4 +226,87 @@ describe('semantic web renderer', () => {
       expect.objectContaining({ animation: 'fade', kind: 'motion', nodeId: 'presented' }),
     );
   });
+
+  it('renders semantic navigation, descriptions, tables, forms, progress, and cover media', async () => {
+    const navigation = node(
+      'navigation',
+      CORE_PRODUCTION_BLOCK_TYPES.navigation,
+      { label: 'Primary' },
+      {
+        items: [node('nav-home', CORE_PRODUCTION_BLOCK_TYPES.navigationItem, { label: 'Home' })],
+      },
+    );
+    navigation.properties = { presentation: 'breadcrumbs' };
+    const navItem = navigation.slots.items?.[0];
+    if (navItem !== undefined) navItem.properties = { current: true, href: '/home' };
+    const descriptions = node(
+      'descriptions',
+      CORE_PRODUCTION_BLOCK_TYPES.descriptionList,
+      { title: 'Details' },
+      {
+        items: [
+          node('description', CORE_PRODUCTION_BLOCK_TYPES.descriptionItem, {
+            description: richText,
+            term: 'Name',
+          }),
+        ],
+      },
+    );
+    const tableNode = node('table', CORE_PRODUCTION_BLOCK_TYPES.table, {
+      table: { columns: ['Name'], rows: [['<safe>']] },
+    });
+    const searchNode = node('search', CORE_PRODUCTION_BLOCK_TYPES.search, { label: 'Find' });
+    searchNode.properties = { action: 'javascript:alert(1)', queryParameter: 'query' };
+    const progressNode = node('progress', CORE_PRODUCTION_BLOCK_TYPES.progress, {
+      label: 'Complete',
+      value: 75,
+    });
+    const coverNode = node(
+      'cover',
+      CORE_PRODUCTION_BLOCK_TYPES.cover,
+      { background: media },
+      { content: [] },
+    );
+    const output = await renderStudioWeb(
+      { roots: [navigation, descriptions, tableNode, searchNode, progressNode, coverNode] },
+      {
+        resolveMedia: () => ({ altText: 'Background', src: 'https://cdn.example.test/cover.jpg' }),
+      },
+    );
+    expect(output.html).toContain('<nav data-studio-navigation="breadcrumbs"');
+    expect(output.html).toContain('aria-current="page"');
+    expect(output.html).toContain('<dl>');
+    expect(output.html).toContain('<table data-studio-table>');
+    expect(output.html).toContain('&lt;safe&gt;');
+    expect(output.html).toContain('<form role="search" method="get">');
+    expect(output.html).not.toContain('javascript:');
+    expect(output.html).toContain('<progress max="100" value="75">');
+    expect(output.html).toContain('data-studio-cover');
+  });
+
+  it('allows only explicit non-active blob media preview authority', async () => {
+    const imageNode = node('blob-image', CORE_PRODUCTION_BLOCK_TYPES.image, { asset: media });
+    const resolveMedia = () => ({
+      altText: 'Local preview',
+      mediaType: 'image/png',
+      src: 'blob:https://studio.example.test/123e4567-e89b-12d3-a456-426614174000',
+    });
+    expect((await renderStudioWeb({ roots: [imageNode] }, { resolveMedia })).html).toContain(
+      'Image unavailable',
+    );
+    expect(
+      (await renderStudioWeb({ roots: [imageNode] }, { allowBlobMedia: true, resolveMedia })).html,
+    ).toContain('blob:https://studio.example.test/123e4567-e89b-12d3-a456-426614174000');
+    expect(
+      (
+        await renderStudioWeb(
+          { roots: [imageNode] },
+          {
+            allowBlobMedia: true,
+            resolveMedia: () => ({ ...resolveMedia(), mediaType: 'image/svg+xml' }),
+          },
+        )
+      ).html,
+    ).toContain('Image unavailable');
+  });
 });

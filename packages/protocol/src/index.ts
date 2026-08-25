@@ -45,6 +45,7 @@ export {
   studioDrawingSchema,
   studioMoneySchema,
   studioPresentationSchema,
+  studioTableSchema,
   themeSchema,
   unresolvedContributionSchema,
 } from './schemas.js';
@@ -237,6 +238,7 @@ export {
   type StudioDrawingStroke,
   type StudioMoneyValue,
   type StudioPresentationIntent,
+  type StudioTableDocument,
   type StudioDiagnostic,
   type StudioDisplayPreferences,
   type StudioLimits,

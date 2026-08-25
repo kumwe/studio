@@ -15,10 +15,10 @@ import {
 describe('production block catalog', () => {
   const definitions = createCoreProductionBlockDefinitions();
 
-  it('ships exactly 30 unique, schema-profile-valid first-party definitions', () => {
-    expect(definitions).toHaveLength(30);
-    expect(new Set(definitions.map((definition) => definition.type))).toHaveLength(30);
-    expect(new Set(Object.values(CORE_PRODUCTION_BLOCK_TYPES))).toHaveLength(30);
+  it('ships exactly 45 unique, schema-profile-valid first-party definitions', () => {
+    expect(definitions).toHaveLength(45);
+    expect(new Set(definitions.map((definition) => definition.type))).toHaveLength(45);
+    expect(new Set(Object.values(CORE_PRODUCTION_BLOCK_TYPES))).toHaveLength(45);
 
     for (const definition of definitions) {
       const validator = compileStudioPropertySchema(definition.propertySchema);
@@ -58,6 +58,7 @@ describe('production block catalog', () => {
       CORE_PRODUCTION_CONTROL_IDS.money,
       CORE_PRODUCTION_CONTROL_IDS.richText,
       CORE_PRODUCTION_CONTROL_IDS.source,
+      CORE_PRODUCTION_CONTROL_IDS.table,
     ]) {
       expect(controls.has(control), control).toBe(true);
     }
@@ -130,5 +131,34 @@ describe('production block catalog', () => {
       byType.get(CORE_PRODUCTION_BLOCK_TYPES.notice)?.ports.find((port) => port.id === 'content')
         ?.authoring,
     ).toMatchObject({ control: CORE_PRODUCTION_CONTROL_IDS.richText });
+  });
+
+  it('consolidates the production navigation and semantic data families', () => {
+    const byType = new Map(definitions.map((definition) => [definition.type, definition]));
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.navigation)?.propertySchema).toMatchObject({
+      properties: {
+        presentation: {
+          enum: [
+            'breadcrumbs',
+            'dotnav',
+            'dropnav',
+            'navbar',
+            'nav',
+            'pagination',
+            'subnav',
+            'thumbnav',
+          ],
+        },
+      },
+    });
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.descriptionList)?.slots).toMatchObject([
+      { accepts: { types: [CORE_PRODUCTION_BLOCK_TYPES.descriptionItem] }, id: 'items' },
+    ]);
+    expect(byType.get(CORE_PRODUCTION_BLOCK_TYPES.table)?.ports).toMatchObject([
+      {
+        authoring: { control: CORE_PRODUCTION_CONTROL_IDS.table },
+        valueType: 'studio.value/table',
+      },
+    ]);
   });
 });
