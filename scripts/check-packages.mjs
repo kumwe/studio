@@ -25,6 +25,16 @@ for (const packageName of packageNames) {
       `${manifest.name ?? packageName} must include LICENSE in its package allowlist.`,
     );
   }
+  if (!manifest.files.includes('THIRD_PARTY_NOTICES.md')) {
+    throw new Error(
+      `${manifest.name ?? packageName} must include THIRD_PARTY_NOTICES.md in its package allowlist.`,
+    );
+  }
+  if (!manifest.files.includes('third-party-licenses')) {
+    throw new Error(
+      `${manifest.name ?? packageName} must include third-party-licenses in its package allowlist.`,
+    );
+  }
   if (packageLicense !== rootLicense) {
     throw new Error(`${manifest.name ?? packageName} does not carry the canonical license text.`);
   }
@@ -62,6 +72,7 @@ for (const packageName of packageNames) {
   const requiredFiles = [
     'LICENSE',
     'README.md',
+    'THIRD_PARTY_NOTICES.md',
     'dist/index.d.ts',
     'dist/index.js',
     'package.json',

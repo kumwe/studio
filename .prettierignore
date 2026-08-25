@@ -4,3 +4,5 @@ dist/
 dist-types/
 coverage/
 package-lock.json
+packages/*/THIRD_PARTY_NOTICES.md
+packages/*/third-party-licenses/
