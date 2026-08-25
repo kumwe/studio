@@ -17,7 +17,7 @@ only when it replays the same corpus.
 - Every value is escaped for its exact HTML/attribute/SVG context.
 - Responsive grid and columns inherit compact → medium → expanded values and support a deterministic
   one/two/four-column composition without storing media queries.
-- Accordions, tabs, and slideshows expose all content before enhancement. Keyboard behavior and
+- Accordions, dialogs, popovers, tabs, and slideshows expose all content before enhancement. Keyboard behavior and
   reduced-motion policy apply after the trusted enhancer activates.
 - Charts retain an accessible data table; math and diagrams retain their escaped source; drawings are
   rendered from bounded point/stroke data.

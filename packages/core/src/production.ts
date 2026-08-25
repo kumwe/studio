@@ -38,6 +38,7 @@ export interface CoreProductionBlockTypeMap {
   readonly contentCollection: 'studio.core/content-collection';
   readonly contentReference: 'studio.core/content-reference';
   readonly diagram: 'studio.core/diagram';
+  readonly dialog: 'studio.core/dialog';
   readonly drawing: 'studio.core/drawing';
   readonly embed: 'studio.core/embed';
   readonly gallery: 'studio.core/gallery';
@@ -46,6 +47,8 @@ export interface CoreProductionBlockTypeMap {
   readonly image: 'studio.core/image';
   readonly math: 'studio.core/math';
   readonly money: 'studio.core/money';
+  readonly notice: 'studio.core/notice';
+  readonly popover: 'studio.core/popover';
   readonly richText: 'studio.core/rich-text';
   readonly section: 'studio.core/section';
   readonly stack: 'studio.core/stack';
@@ -68,6 +71,7 @@ export const CORE_PRODUCTION_BLOCK_TYPES: Readonly<CoreProductionBlockTypeMap> =
   contentCollection: 'studio.core/content-collection',
   contentReference: 'studio.core/content-reference',
   diagram: 'studio.core/diagram',
+  dialog: 'studio.core/dialog',
   drawing: 'studio.core/drawing',
   embed: 'studio.core/embed',
   gallery: 'studio.core/gallery',
@@ -75,6 +79,8 @@ export const CORE_PRODUCTION_BLOCK_TYPES: Readonly<CoreProductionBlockTypeMap> =
   image: 'studio.core/image',
   math: 'studio.core/math',
   money: 'studio.core/money',
+  notice: 'studio.core/notice',
+  popover: 'studio.core/popover',
   richText: 'studio.core/rich-text',
   tab: 'studio.core/tab',
   tabs: 'studio.core/tabs',
@@ -340,6 +346,14 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
     ports: [sourcePort('studio.source/mermaid')],
     properties: { theme: enumSchema('dark', 'forest', 'neutral') },
   },
+  dialog: {
+    accessibility: 'interactive',
+    controls: { modal: 'studio.control/switch' },
+    defaults: { modal: true },
+    ports: [textPort('triggerLabel', true), textPort('title', true)],
+    properties: { modal: booleanSchema() },
+    slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
+  },
   drawing: {
     accessibility: 'media',
     defaults: {},
@@ -419,6 +433,30 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
         valueType: 'money',
       },
     ],
+  },
+  notice: {
+    accessibility: 'composite',
+    controls: { dismissible: 'studio.control/switch', tone: 'studio.control/select' },
+    defaults: { dismissible: false, tone: 'information' },
+    ports: [textPort('title'), richTextPort()],
+    properties: {
+      dismissible: booleanSchema(),
+      tone: enumSchema('comment', 'error', 'information', 'success', 'warning'),
+    },
+  },
+  popover: {
+    accessibility: 'interactive',
+    controls: {
+      dismissOnBlur: 'studio.control/switch',
+      placement: 'studio.control/select',
+    },
+    defaults: { dismissOnBlur: true, placement: 'auto' },
+    ports: [textPort('triggerLabel', true), textPort('title')],
+    properties: {
+      dismissOnBlur: booleanSchema(),
+      placement: enumSchema('auto', 'bottom', 'left', 'right', 'top'),
+    },
+    slots: [{ accepts: CONTENT_TYPES, id: 'content', maximum: 100 }],
   },
   richText: {
     accessibility: 'text',
@@ -639,7 +677,11 @@ function node(
 ): BlueprintNode {
   const type = CORE_PRODUCTION_BLOCK_TYPES[name];
   const slot =
-    name === 'section' || name === 'accordionItem' || name === 'tab'
+    name === 'section' ||
+    name === 'accordionItem' ||
+    name === 'dialog' ||
+    name === 'popover' ||
+    name === 'tab'
       ? 'content'
       : name === 'card'
         ? 'actions'

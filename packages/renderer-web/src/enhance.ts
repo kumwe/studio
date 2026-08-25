@@ -22,6 +22,15 @@ export async function enhanceStudioWeb(
       case 'tabs':
         disposers.push(enhanceTabs(container, enhancement));
         break;
+      case 'dialog':
+        disposers.push(enhanceDialog(container));
+        break;
+      case 'notice':
+        disposers.push(enhanceNotice(container));
+        break;
+      case 'popover':
+        disposers.push(enhancePopover(container, enhancement));
+        break;
       case 'slideshow':
         disposers.push(enhanceSlideshow(container, enhancement));
         break;
@@ -126,6 +135,108 @@ function enhanceTabs(
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
 }
 
+function enhanceDialog(container: HTMLElement): () => void {
+  const disclosure = container.querySelector<HTMLDetailsElement>('[data-studio-dialog]');
+  if (disclosure === null) return () => undefined;
+  const trigger = disclosure.querySelector<HTMLElement>('[data-studio-dialog-trigger]');
+  const panel = disclosure.querySelector<HTMLElement>('[data-studio-dialog-panel]');
+  const close = disclosure.querySelector<HTMLButtonElement>('[data-studio-dialog-close]');
+  if (trigger === null || panel === null) return () => undefined;
+  const listeners: { listener: EventListener; target: EventTarget; type: string }[] = [];
+  let restoreFocus: HTMLElement | undefined;
+  const closeDialog = (): void => {
+    disclosure.open = false;
+    trigger.setAttribute('aria-expanded', 'false');
+    restoreFocus?.focus();
+  };
+  listen(listeners, disclosure, 'toggle', () => {
+    trigger.setAttribute('aria-expanded', String(disclosure.open));
+    if (disclosure.open) {
+      restoreFocus = trigger;
+      firstFocusable(panel)?.focus();
+    }
+  });
+  if (close !== null) listen(listeners, close, 'click', closeDialog);
+  listen(listeners, panel, 'keydown', (event) => {
+    if (!(event instanceof KeyboardEvent)) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDialog();
+      return;
+    }
+    if (event.key !== 'Tab' || disclosure.dataset.studioDialogModal !== 'true') return;
+    const focusable = focusableElements(panel);
+    if (focusable.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+    const current = focusable.indexOf(document.activeElement as HTMLElement);
+    const next = event.shiftKey
+      ? current <= 0
+        ? focusable.length - 1
+        : current - 1
+      : current < 0 || current === focusable.length - 1
+        ? 0
+        : current + 1;
+    if ((event.shiftKey && current <= 0) || (!event.shiftKey && current === focusable.length - 1)) {
+      event.preventDefault();
+      focusable[next]?.focus();
+    }
+  });
+  trigger.setAttribute('aria-expanded', String(disclosure.open));
+  return () => {
+    listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+    disclosure.open = false;
+  };
+}
+
+function enhanceNotice(container: HTMLElement): () => void {
+  const notice = container.querySelector<HTMLElement>('[data-studio-notice]');
+  if (notice === null) return () => undefined;
+  const dismiss = notice.querySelector<HTMLButtonElement>('[data-studio-notice-dismiss]');
+  if (dismiss === null) return () => undefined;
+  const onDismiss = (): void => {
+    notice.hidden = true;
+  };
+  dismiss.addEventListener('click', onDismiss);
+  return () => {
+    dismiss.removeEventListener('click', onDismiss);
+    notice.hidden = false;
+  };
+}
+
+function enhancePopover(
+  container: HTMLElement,
+  enhancement: Extract<StudioWebEnhancement, { kind: 'popover' }>,
+): () => void {
+  const disclosure = container.querySelector<HTMLDetailsElement>('[data-studio-popover]');
+  if (disclosure === null) return () => undefined;
+  const trigger = disclosure.querySelector<HTMLElement>('[data-studio-popover-trigger]');
+  if (trigger === null) return () => undefined;
+  const listeners: { listener: EventListener; target: EventTarget; type: string }[] = [];
+  listen(listeners, disclosure, 'toggle', () =>
+    trigger.setAttribute('aria-expanded', String(disclosure.open)),
+  );
+  listen(listeners, disclosure, 'keydown', (event) => {
+    if (event instanceof KeyboardEvent && event.key === 'Escape') {
+      event.preventDefault();
+      disclosure.open = false;
+      trigger.focus();
+    }
+  });
+  if (enhancement.dismissOnBlur) {
+    listen(listeners, document, 'pointerdown', (event) => {
+      if (event.target instanceof Node && !disclosure.contains(event.target)) {
+        disclosure.open = false;
+      }
+    });
+  }
+  trigger.setAttribute('aria-expanded', String(disclosure.open));
+  return () =>
+    listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+}
+
 function enhanceSlideshow(
   container: HTMLElement,
   enhancement: Extract<StudioWebEnhancement, { kind: 'slideshow' }>,
@@ -183,6 +294,18 @@ function listen(
 
 function reducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function firstFocusable(container: HTMLElement): HTMLElement {
+  return focusableElements(container)[0] ?? container;
+}
+
+function focusableElements(container: HTMLElement): HTMLElement[] {
+  return [
+    ...container.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((element) => !element.hidden);
 }
 
 function disposeAll(disposers: (() => void)[]): void {

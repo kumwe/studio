@@ -31,9 +31,10 @@ The implemented surface covers:
 - `createCoreLayoutBlockDefinitions` / `resolveCoreLayoutIntent` — first-party section, stack, grid,
   and columns definitions plus theme-validated responsive intent resolution, with no DOM or stored
   CSS;
-- `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 27-block
+- `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 30-block
   production catalog and ten portable starter compositions, including media, rich content,
-  progressive composites, data display, and host-authoritative resource/query projections;
+  progressive composites including dialogs, popovers, and notices, data display, and
+  host-authoritative resource/query projections;
 - `coreProductionInitialProperties` — schema-valid defaults used by the Studio insertion path for
   every first-party type;
 - `compileStudioPropertySchema` / `assertStudioPropertySchema` — eval-free admission and validation

@@ -172,4 +172,36 @@ describe('semantic web renderer', () => {
       expect.objectContaining({ autoplay: true, kind: 'slideshow', nodeId: 'gallery' }),
     ]);
   });
+
+  it('renders progressive dialog, popover, and notice variants with semantic accessibility', async () => {
+    const dialog = node(
+      'dialog',
+      CORE_PRODUCTION_BLOCK_TYPES.dialog,
+      { title: 'Delete item', triggerLabel: 'Review deletion' },
+      {
+        content: [node('dialog-copy', CORE_PRODUCTION_BLOCK_TYPES.richText, { content: richText })],
+      },
+    );
+    const popover = node(
+      'popover',
+      CORE_PRODUCTION_BLOCK_TYPES.popover,
+      { title: 'More information', triggerLabel: 'Learn more' },
+      {
+        content: [
+          node('popover-copy', CORE_PRODUCTION_BLOCK_TYPES.richText, { content: richText }),
+        ],
+      },
+    );
+    const notice = node('notice', CORE_PRODUCTION_BLOCK_TYPES.notice, {
+      content: richText,
+      title: 'Check this field',
+    });
+    notice.properties = { dismissible: true, tone: 'warning' };
+    const output = await renderStudioWeb({ roots: [dialog, popover, notice] });
+    expect(output.html).toContain('<details data-studio-dialog');
+    expect(output.html).toContain('role="dialog" aria-modal="true"');
+    expect(output.html).toContain('<details data-studio-popover');
+    expect(output.html).toContain('data-studio-tone="warning" role="alert"');
+    expect(output.enhancements.map((item) => item.kind)).toEqual(['dialog', 'popover', 'notice']);
+  });
 });

@@ -29,7 +29,10 @@ export interface StudioScopedStyleSheet {
 export type StudioWebEnhancement =
   | { kind: 'chart'; nodeId: string; scope: string; spec: StudioChartSpec }
   | { kind: 'diagram'; nodeId: string; scope: string; source: string }
+  | { kind: 'dialog'; modal: boolean; nodeId: string; scope: string }
   | { kind: 'math'; displayMode: boolean; nodeId: string; scope: string; source: string }
+  | { kind: 'notice'; nodeId: string; scope: string }
+  | { dismissOnBlur: boolean; kind: 'popover'; nodeId: string; scope: string }
   | { autoplay: boolean; kind: 'slideshow'; nodeId: string; scope: string }
   | { activation: 'automatic' | 'manual'; kind: 'tabs'; nodeId: string; scope: string };
 

@@ -93,9 +93,10 @@ Studio ships canonical `section`, `stack`, `grid`, and `columns` block definitio
 
 ## First-party production catalog
 
-`createCoreProductionBlockDefinitions()` returns the complete 27-type catalog: section, stack, grid,
+`createCoreProductionBlockDefinitions()` returns the complete 30-type catalog: section, stack, grid,
 columns, heading, rich text, image, gallery/slideshow, video, audio, attachment, code, math, Mermaid
-diagram, chart, drawing, embed, call to action, card, accordion/item, tabs/tab, callout, content
+diagram, chart, drawing, embed, call to action, card, accordion/item, tabs/tab, dialog, popover,
+message notice, callout, content
 reference, content collection, and money. `coreProductionInitialProperties()` is the only canonical
 factory for a new first-party node's property defaults; every result validates against its definition.
 
