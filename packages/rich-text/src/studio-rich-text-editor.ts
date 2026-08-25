@@ -1,10 +1,12 @@
 import type { FieldBinding, StudioDiagnostic } from '@kumwe/studio-protocol';
-import {
-  parseRichTextDocument,
-  type StudioRichTextDocument,
-  type StudioRichTextNode,
-} from './index.js';
+import { parseRichTextDocument, type StudioRichTextDocument } from './index.js';
 import { resolveRichTextProfile, type StudioRichTextProfileId } from './profiles.js';
+import {
+  fromStudioEditorJsBlocks,
+  StudioMarkerTool,
+  studioEditorJsTools,
+  toStudioEditorJsBlocks,
+} from './first-party-tools.js';
 
 export interface StudioRichTextEditorChange {
   diagnostics: StudioDiagnostic[];
@@ -137,13 +139,8 @@ function invalidEditorDiagnostic(): StudioDiagnostic {
   };
 }
 
-interface EditorJsBlock {
-  data: { node: StudioRichTextNode };
-  type: 'studioCanonical';
-}
-
 interface EditorJsSnapshot {
-  blocks: EditorJsBlock[];
+  blocks: ReturnType<typeof toStudioEditorJsBlocks>;
   version?: string;
 }
 
@@ -166,11 +163,12 @@ class EditorJsSurfaceAdapter implements StudioRichTextSurfaceAdapter {
     const runtime = new Runtime({
       data: toEditorJs(options.initialValue),
       holder: options.holder,
+      inlineToolbar: ['bold', 'italic', 'marker'],
       minHeight: 0,
       onChange: options.onChange,
       placeholder: options.placeholder ?? '',
       readOnly: options.readOnly,
-      tools: { studioCanonical: StudioCanonicalTool },
+      tools: { ...studioEditorJsTools(), marker: StudioMarkerTool },
     });
     await runtime.isReady;
     return {
@@ -184,89 +182,13 @@ class EditorJsSurfaceAdapter implements StudioRichTextSurfaceAdapter {
   }
 }
 
-interface CanonicalToolConstructorOptions {
-  data?: { node?: StudioRichTextNode };
-  readOnly?: boolean;
-}
-
-/** Minimal canonical fallback tool; richer first-party tools replace it by profile. */
-class StudioCanonicalTool {
-  public static readonly isReadOnlySupported: boolean = true;
-
-  public static readonly toolbox: { icon: string; title: string } = {
-    icon: '¶',
-    title: 'Text',
-  };
-
-  readonly #node: StudioRichTextNode;
-  readonly #readOnly: boolean;
-  #input?: HTMLTextAreaElement;
-
-  public constructor(options: CanonicalToolConstructorOptions) {
-    this.#node = structuredClone(options.data?.node ?? { type: 'paragraph' });
-    this.#readOnly = options.readOnly === true;
-  }
-
-  public render(): HTMLElement {
-    if (this.#node.type === 'horizontalRule') {
-      const separator = document.createElement('hr');
-      separator.setAttribute('aria-label', 'Separator');
-      return separator;
-    }
-    const input = document.createElement('textarea');
-    input.setAttribute('aria-label', this.#node.type === 'heading' ? 'Heading' : 'Text');
-    input.disabled = this.#readOnly;
-    input.rows = this.#node.type === 'paragraph' ? 3 : 2;
-    input.value = nodeText(this.#node);
-    this.#input = input;
-    return input;
-  }
-
-  public save(): { node: StudioRichTextNode } {
-    if (this.#input === undefined || this.#node.type === 'horizontalRule') {
-      return { node: structuredClone(this.#node) };
-    }
-    const node = structuredClone(this.#node);
-    const text = this.#input.value;
-    if (node.type === 'heading' || node.type === 'paragraph') {
-      node.content = text.length > 0 ? [{ text, type: 'text' }] : [];
-    }
-    return { node };
-  }
-}
-
 function toEditorJs(document: StudioRichTextDocument): EditorJsSnapshot {
   return {
-    blocks: document.content.map((node) => ({
-      data: { node: structuredClone(node) },
-      type: 'studioCanonical',
-    })),
+    blocks: toStudioEditorJsBlocks(document),
     version: '2.31.6',
   };
 }
 
 function fromEditorJs(value: unknown): StudioRichTextDocument {
-  if (!isRecord(value) || !Array.isArray(value.blocks)) {
-    throw new TypeError('Editor surface returned an invalid block collection.');
-  }
-  const content = value.blocks.map((block, index) => {
-    if (
-      !isRecord(block) ||
-      block.type !== 'studioCanonical' ||
-      !isRecord(block.data) ||
-      !isRecord(block.data.node)
-    ) {
-      throw new TypeError(`Editor block ${index} is not a Studio canonical block.`);
-    }
-    return structuredClone(block.data.node) as unknown as StudioRichTextNode;
-  });
-  return { content: content.length > 0 ? content : [{ type: 'paragraph' }], type: 'doc' };
-}
-
-function nodeText(node: StudioRichTextNode): string {
-  return `${node.text ?? ''}${(node.content ?? []).map((child) => nodeText(child)).join('\n')}`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return fromStudioEditorJsBlocks(value);
 }

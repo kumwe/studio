@@ -1104,6 +1104,10 @@
     {
       "files": [
         {
+          "digest": "sha256-UWgLox9yJZ/L/f3NUC3lMJX2OsZvqo/R7+gO0S39O0A=",
+          "file": "advanced.first-party.json"
+        },
+        {
           "digest": "sha256-tfrW7o0SAOxFp9pTOi6mXKVmpT/t16ZqEBpyt5CIdNk=",
           "file": "blocks.structural.json"
         },

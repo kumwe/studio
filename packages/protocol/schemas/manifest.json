@@ -164,12 +164,12 @@
       "id": "https://schemas.kumwe.org/studio/v1/provenance.schema.json"
     },
     {
-      "digest": "sha256-PKyCGI95WZ6Uojq9u5HvS2wwWU97+V+nmsY4l/Vc040=",
+      "digest": "sha256-74OcoS9iGzRnDOjo/opHhlXZdxMLcCUkw0Ol4ipzkws=",
       "file": "rich-text-projection.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/rich-text-projection.schema.json"
     },
     {
-      "digest": "sha256-PgFfnylfsJzq7B0wQq1gAxYA0r6gMx+xiKeT3NiDVqc=",
+      "digest": "sha256-r+wYEvy3tvMdQhmU0272K1cklAiYcEiD7nICWDdFFPs=",
       "file": "rich-text.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/rich-text.schema.json"
     },
