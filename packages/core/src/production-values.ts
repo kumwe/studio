@@ -5,6 +5,7 @@ import type {
   StudioDrawingPoint,
   StudioDrawingStroke,
   StudioMoneyValue,
+  StudioPresentationIntent,
 } from '@kumwe/studio-protocol';
 
 const CHART_TYPES = new Set(['bar', 'doughnut', 'line', 'pie']);
@@ -117,6 +118,101 @@ export function parseStudioMoneyValue(value: unknown): StudioMoneyValue {
   return { amount: record.amount, currency: record.currency };
 }
 
+/** Parse closed presentation intent without accepting selectors, declarations, or measurements. */
+export function parseStudioPresentationIntent(value: unknown): StudioPresentationIntent {
+  const record = exactRecord(
+    value,
+    [
+      'align',
+      'animation',
+      'height',
+      'inverse',
+      'margin',
+      'marker',
+      'padding',
+      'position',
+      'print',
+      'scrolling',
+      'visibility',
+      'width',
+    ],
+    'Presentation intent',
+  );
+  const align = optionalEnum(record.align, ['center', 'end', 'start', 'stretch'], 'align');
+  const animation = optionalEnum(
+    record.animation,
+    ['fade', 'none', 'parallax', 'scale', 'slide'],
+    'animation',
+  );
+  const height = optionalEnum(record.height, ['auto', 'content', 'full', 'viewport'], 'height');
+  let inverse: boolean | undefined;
+  if (record.inverse !== undefined) {
+    if (typeof record.inverse !== 'boolean') throw new TypeError('inverse must be a boolean.');
+    inverse = record.inverse;
+  }
+  const margin = optionalEnum(
+    record.margin,
+    ['comfortable', 'compact', 'none', 'spacious'],
+    'margin',
+  );
+  const marker = optionalEnum(record.marker, ['check', 'decimal', 'disc', 'none'], 'marker');
+  const padding = optionalEnum(
+    record.padding,
+    ['comfortable', 'compact', 'none', 'spacious'],
+    'padding',
+  );
+  const position = optionalEnum(record.position, ['flow', 'relative', 'sticky'], 'position');
+  const print = optionalEnum(record.print, ['hide', 'only', 'show'], 'print');
+  const scrolling = optionalEnum(
+    record.scrolling,
+    ['auto', 'clip', 'snap', 'visible'],
+    'scrolling',
+  );
+  const width = optionalEnum(record.width, ['auto', 'content', 'full'], 'width');
+  let visibility: StudioPresentationIntent['visibility'];
+  if (record.visibility !== undefined) {
+    const visibilityRecord = exactRecord(
+      record.visibility,
+      ['compact', 'expanded', 'medium'],
+      'Presentation visibility',
+    );
+    const compact = optionalEnum(
+      visibilityRecord.compact,
+      ['hidden', 'visible'],
+      'compact visibility',
+    );
+    const expanded = optionalEnum(
+      visibilityRecord.expanded,
+      ['hidden', 'visible'],
+      'expanded visibility',
+    );
+    const medium = optionalEnum(
+      visibilityRecord.medium,
+      ['hidden', 'visible'],
+      'medium visibility',
+    );
+    visibility = {
+      ...(compact === undefined ? {} : { compact }),
+      ...(expanded === undefined ? {} : { expanded }),
+      ...(medium === undefined ? {} : { medium }),
+    };
+  }
+  return {
+    ...(align === undefined ? {} : { align }),
+    ...(animation === undefined ? {} : { animation }),
+    ...(height === undefined ? {} : { height }),
+    ...(inverse === undefined ? {} : { inverse }),
+    ...(margin === undefined ? {} : { margin }),
+    ...(marker === undefined ? {} : { marker }),
+    ...(padding === undefined ? {} : { padding }),
+    ...(position === undefined ? {} : { position }),
+    ...(print === undefined ? {} : { print }),
+    ...(scrolling === undefined ? {} : { scrolling }),
+    ...(visibility === undefined ? {} : { visibility }),
+    ...(width === undefined ? {} : { width }),
+  };
+}
+
 function exactRecord(
   value: unknown,
   keys: readonly string[],
@@ -164,4 +260,16 @@ function coordinate(value: unknown, maximum: number, name: string): number {
     throw new RangeError(`${name} must be a finite coordinate inside the drawing bounds.`);
   }
   return value;
+}
+
+function optionalEnum<TValue extends string>(
+  value: unknown,
+  values: readonly TValue[],
+  name: string,
+): TValue | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'string' || !values.some((candidate) => candidate === value)) {
+    throw new TypeError(`${name} is not an allowed presentation value.`);
+  }
+  return value as TValue;
 }

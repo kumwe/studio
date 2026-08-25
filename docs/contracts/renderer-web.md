@@ -23,6 +23,9 @@ only when it replays the same corpus.
   rendered from bounded point/stroke data.
 - Styles are node-scoped. A CSP nonce is validated before it is emitted. No authored JavaScript,
   handler, URL-bearing CSS, SVG source, or library configuration is accepted.
+- The closed presentation intent maps to renderer-owned CSS. Motion is installed only by the
+  disposable enhancer, respects reduced-motion preferences, and leaves content visible when
+  JavaScript is absent. Parallax offsets are bounded and never accept authored measurements.
 
 ## Optional exact adapters
 

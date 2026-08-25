@@ -12,6 +12,11 @@ accessible table, and slideshow items remain an ordered scrollable collection.
 advanced adapters. It returns an idempotent disposal handle. The Blueprint never contains event
 handlers, scripts, Chart.js options, Mermaid settings, KaTeX trust settings, or DOM objects.
 
+Every block may carry the closed Studio `design` intent for alignment, responsive visibility,
+spacing, sizing, scrolling, print selection, sticky positioning, and reduced-motion-aware
+fade/slide/scale/parallax behavior. These are semantic choices compiled by the renderer, never raw
+CSS.
+
 Advanced libraries are exact, optional peers and lazy subpaths:
 
 ```ts

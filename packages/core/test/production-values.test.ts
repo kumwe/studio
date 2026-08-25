@@ -3,6 +3,7 @@ import {
   parseStudioChartSpec,
   parseStudioDrawingDocument,
   parseStudioMoneyValue,
+  parseStudioPresentationIntent,
 } from '../src/index.js';
 
 describe('canonical production values', () => {
@@ -58,5 +59,21 @@ describe('canonical production values', () => {
       /decimal string/u,
     );
     expect(() => parseStudioMoneyValue({ amount: '01.00', currency: 'usd' })).toThrow();
+  });
+
+  it('detaches bounded presentation intent and rejects CSS-shaped input', () => {
+    const source = {
+      align: 'center',
+      animation: 'parallax',
+      position: 'sticky',
+      visibility: { compact: 'hidden', medium: 'visible' },
+    };
+    expect(parseStudioPresentationIntent(source)).toEqual(source);
+    expect(() =>
+      parseStudioPresentationIntent({ position: 'fixed;inset:0', style: 'display:none' }),
+    ).toThrow(/unknown member style/u);
+    expect(() => parseStudioPresentationIntent({ visibility: { desktop: 'hidden' } })).toThrow(
+      /unknown member desktop/u,
+    );
   });
 });

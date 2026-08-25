@@ -37,6 +37,8 @@ The implemented surface covers:
   host-authoritative resource/query projections;
 - `coreProductionInitialProperties` — schema-valid defaults used by the Studio insertion path for
   every first-party type;
+- `parseStudioPresentationIntent` — the closed, CSS-free visual capability contract shared by all
+  first-party inspector surfaces and renderers;
 - `compileStudioPropertySchema` / `assertStudioPropertySchema` — eval-free admission and validation
   for the closed, local-only `studio.profile/schema-property` surface, with stable
   `StudioSchemaProfileError` codes and schema pointers.

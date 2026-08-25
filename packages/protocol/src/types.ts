@@ -336,6 +336,26 @@ export interface StudioMoneyValue {
   currency: string;
 }
 
+/** Portable visual intent resolved by Studio renderers; it contains no CSS values or selectors. */
+export interface StudioPresentationIntent {
+  align?: 'center' | 'end' | 'start' | 'stretch';
+  animation?: 'fade' | 'none' | 'parallax' | 'scale' | 'slide';
+  height?: 'auto' | 'content' | 'full' | 'viewport';
+  inverse?: boolean;
+  margin?: 'comfortable' | 'compact' | 'none' | 'spacious';
+  marker?: 'check' | 'decimal' | 'disc' | 'none';
+  padding?: 'comfortable' | 'compact' | 'none' | 'spacious';
+  position?: 'flow' | 'relative' | 'sticky';
+  print?: 'hide' | 'only' | 'show';
+  scrolling?: 'auto' | 'clip' | 'snap' | 'visible';
+  visibility?: {
+    compact?: 'hidden' | 'visible';
+    expanded?: 'hidden' | 'visible';
+    medium?: 'hidden' | 'visible';
+  };
+  width?: 'auto' | 'content' | 'full';
+}
+
 export interface HostPortCapability {
   id: QualifiedName;
   operations: QualifiedName[];

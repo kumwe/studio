@@ -35,6 +35,10 @@ describe('production block catalog', () => {
           expect.objectContaining({ capability: 'studio.renderer/semantic-web', surface: 'web' }),
         ]),
       );
+      expect(definition.propertyControls).toContainEqual({
+        control: CORE_PRODUCTION_CONTROL_IDS.presentation,
+        property: 'design',
+      });
     }
   });
 

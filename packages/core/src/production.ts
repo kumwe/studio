@@ -1,5 +1,6 @@
 import {
   STUDIO_CONTRACT_VERSION,
+  studioPresentationSchema,
   type BindingSource,
   type BlockAccessibilityContract,
   type BlockDefinition,
@@ -97,6 +98,7 @@ export interface CoreProductionControlIdMap {
   readonly mediaCollection: 'studio.control/media-collection';
   readonly mediaReference: 'studio.control/media-reference';
   readonly money: 'studio.control/money';
+  readonly presentation: 'studio.control/presentation';
   readonly richText: 'studio.control/rich-text';
   readonly scopedCss: 'studio.control/scoped-css';
   readonly source: 'studio.control/source';
@@ -108,6 +110,7 @@ export const CORE_PRODUCTION_CONTROL_IDS: Readonly<CoreProductionControlIdMap> =
   mediaCollection: 'studio.control/media-collection',
   mediaReference: 'studio.control/media-reference',
   money: 'studio.control/money',
+  presentation: 'studio.control/presentation',
   richText: 'studio.control/rich-text',
   scopedCss: 'studio.control/scoped-css',
   source: 'studio.control/source',
@@ -242,6 +245,7 @@ const integerSchema = (minimum: number, maximum: number): JsonSchema => ({
   minimum,
   type: 'integer',
 });
+const PRESENTATION_PROPERTY_SCHEMA = presentationPropertySchema();
 
 const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object.freeze({
   accordion: {
@@ -497,7 +501,7 @@ export function createCoreProductionBlockDefinitions(): BlockDefinition[] {
   const layouts = createCoreLayoutBlockDefinitions({
     acceptedChildTypes: CONTENT_TYPES,
     rendererRequirements: WEB_RENDERERS,
-  });
+  }).map(addPresentationCapability);
   const content = (Object.keys(SPECS) as DefinitionName[]).map((name) =>
     createDefinition(name, SPECS[name]),
   );
@@ -618,13 +622,19 @@ function createDefinition(name: DefinitionName, spec: ProductionDefinitionSpec):
     label: message(`block-${kebab(name)}`, title(name)),
     owner: OWNER,
     ports: cloneContractValue([...(spec.ports ?? [])]),
-    propertyControls: Object.entries(spec.controls ?? {}).map(([property, control]) => ({
-      control,
-      property,
-    })),
+    propertyControls: [
+      ...Object.entries(spec.controls ?? {}).map(([property, control]) => ({
+        control,
+        property,
+      })),
+      { control: CORE_PRODUCTION_CONTROL_IDS.presentation, property: 'design' },
+    ],
     propertySchema: {
       additionalProperties: false,
-      properties: cloneContractValue({ ...(spec.properties ?? {}) }),
+      properties: cloneContractValue({
+        ...(spec.properties ?? {}),
+        design: PRESENTATION_PROPERTY_SCHEMA,
+      }),
       ...(spec.required === undefined ? {} : { required: [...spec.required] }),
       type: 'object',
     },
@@ -642,6 +652,36 @@ function createDefinition(name: DefinitionName, spec: ProductionDefinitionSpec):
     type,
     version: VERSION,
   };
+}
+
+function addPresentationCapability(definition: BlockDefinition): BlockDefinition {
+  const properties = definition.propertySchema.properties;
+  if (!isJsonObject(properties)) {
+    throw new TypeError(`${definition.type} property schema must declare an object property map.`);
+  }
+  return {
+    ...definition,
+    propertyControls: [
+      ...(definition.propertyControls ?? []),
+      { control: CORE_PRODUCTION_CONTROL_IDS.presentation, property: 'design' },
+    ],
+    propertySchema: {
+      ...definition.propertySchema,
+      properties: cloneContractValue({ ...properties, design: PRESENTATION_PROPERTY_SCHEMA }),
+    },
+  };
+}
+
+function presentationPropertySchema(): JsonSchema {
+  const schema = cloneContractValue(studioPresentationSchema);
+  delete schema.$id;
+  delete schema.$schema;
+  delete schema.title;
+  return schema;
+}
+
+function isJsonObject(value: JsonValue | undefined): value is JsonObject {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function pattern(id: string, roots: BlueprintNode[]): PatternDocument {

@@ -100,6 +100,13 @@ message notice, callout, content
 reference, content collection, and money. `coreProductionInitialProperties()` is the only canonical
 factory for a new first-party node's property defaults; every result validates against its definition.
 
+Every first-party definition also exposes the optional `design` property through
+`studio.control/presentation`. The closed intent covers alignment, bounded motion/parallax,
+height/width, inverse color roles, spacing roles, list markers, flow/relative/sticky positioning,
+print selection, scrolling, and compact/medium/expanded visibility. It contains no CSS selector,
+declaration, measurement, class name, or script. Renderers validate the canonical
+`studio-presentation.schema.json` shape before projecting it.
+
 `createCoreProductionPatterns()` returns ten portable starter compositions. Patterns may use static
 bindings or host-resolved resource/query bindings, but contain no HTML, CSS, JavaScript, template, SQL,
 or implementation-specific editor state. See [ADR 0026](../decisions/0026-production-block-catalog.md).
