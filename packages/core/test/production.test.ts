@@ -62,6 +62,11 @@ describe('production block catalog', () => {
         .filter((port) => port.valueType === 'resource')
         .every((port) => port.authoring?.readOnly === true && port.authoring.control === undefined),
     ).toBe(true);
+    const richTextProfiles = ports
+      .filter((port) => port.authoring?.control === CORE_PRODUCTION_CONTROL_IDS.richText)
+      .map((port) => port.authoring?.profile);
+    expect(richTextProfiles.length).toBeGreaterThan(0);
+    expect(new Set(richTextProfiles)).toEqual(new Set(['studio.rich-text/marketing']));
   });
 
   it('ships ten deterministic patterns whose nodes validate against the catalog', () => {

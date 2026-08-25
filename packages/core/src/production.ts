@@ -192,7 +192,10 @@ const textPort = (id: LocalName, required = false): BlockPortDefinition => ({
 });
 
 const richTextPort = (id = 'content'): BlockPortDefinition => ({
-  authoring: { control: CORE_PRODUCTION_CONTROL_IDS.richText, profile: 'studio.rich-text/full' },
+  authoring: {
+    control: CORE_PRODUCTION_CONTROL_IDS.richText,
+    profile: 'studio.rich-text/marketing',
+  },
   id,
   label: message(`port-${id}`, title(id)),
   multiple: false,
