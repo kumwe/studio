@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -29,16 +29,16 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.8",
-    "@kumwe/studio-media": "0.1.0-alpha.7",
-    "@kumwe/studio-preview": "0.1.0-alpha.6",
-    "@kumwe/studio-protocol": "0.1.0-alpha.6",
-    "@kumwe/studio-renderer-web": "0.1.0-alpha.8",
-    "@kumwe/studio-rich-text": "0.1.0-alpha.6",
+    "@kumwe/studio-core": "0.1.0-alpha.9",
+    "@kumwe/studio-media": "0.1.0-alpha.9",
+    "@kumwe/studio-preview": "0.1.0-alpha.9",
+    "@kumwe/studio-protocol": "0.1.0-alpha.9",
+    "@kumwe/studio-renderer-web": "0.1.0-alpha.9",
+    "@kumwe/studio-rich-text": "0.1.0-alpha.9",
     "lit": "3.3.3"
   },
   "devDependencies": {
-    "@kumwe/studio-testkit": "0.1.0-alpha.8"
+    "@kumwe/studio-testkit": "0.1.0-alpha.9"
   },
   "publishConfig": {
     "access": "public",

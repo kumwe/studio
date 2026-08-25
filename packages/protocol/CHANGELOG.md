@@ -1,5 +1,63 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-alpha.9
+
+### Minor Changes
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`d82f974`](https://github.com/kumwe/studio/commit/d82f97469fc216d85b9986d17cd48f423a6fae1c) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Activate, schema-validate, and resolve all six canonical composition contribution payload families
+  through one kind-scoped immutable registry generation, with typed inspector and field-adapter
+  projections and fail-closed lifecycle behavior.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`fbdda1e`](https://github.com/kumwe/studio/commit/fbdda1e1ece32680be6b93b993d7a8dedee98a26) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the bounded headless Blueprint host-session composition. `openStudioSession` now consumes a
+  resolved single-composition Blueprint configuration and deterministic identifier factories,
+  negotiates and loads the configured Blueprint, then returns a handle with serialized/coalesced
+  optimistic saves, exact-intent idempotency retry, raw optional recovery access, stale-generation
+  invalidation, and local idempotent disposal. The protocol publishes `HostPortFailure`, its guard, and
+  the stable `studio.host/stale-session-generation` diagnostic; the deterministic testbed uses that
+  public failure surface.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`2a1d3e1`](https://github.com/kumwe/studio/commit/2a1d3e1b6d88d771beca97744294ed77d237b66e) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Define the Version 2 web scope and publish the eight Studio packages as one fixed, machine-verifiable release family.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`6ca9916`](https://github.com/kumwe/studio/commit/6ca9916c06390834a4a7aa62e6f0587f29d4926e) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add accessible first-party Editor.js tools and canonical nodes for callouts, nested checklists,
+  tables, inert code, and semantic highlights.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`884bffc`](https://github.com/kumwe/studio/commit/884bffc53b27c78955f77e2e77cc3f7d6b6c778e) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Mount Studio-owned authoring controls in the live Lit inspector, route their
+  canonical changes through Studio commands, and make the complete first-party
+  catalog and patterns the standalone shell defaults.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`dc3119c`](https://github.com/kumwe/studio/commit/dc3119c678f3e944de913701adcc4b754b01f4e3) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Publish the portable authoring-web interaction vector schema, digest-pinned corpus, and implementation-neutral lane runner for keyboard, pointer, and explicit structural-control parity.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`2ef0ce2`](https://github.com/kumwe/studio/commit/2ef0ce27759782a67731fcb8c6dbd1636a1eaccb) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Ship the host-neutral 45-block production catalog and ten starter patterns, publish portable port
+  authoring metadata, and make Studio insertion create schema-valid first-party nodes.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`dcad5c8`](https://github.com/kumwe/studio/commit/dcad5c83a8b1756323e2b6890b36d68399554967) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Publish the versioned, machine-readable English authoring message catalog, derive the shell's typed
+  message keys from it, and verify catalog copies, keys, and named parameters as part of the contract
+  gate.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`5786796`](https://github.com/kumwe/studio/commit/57867967fe443173eeeda209df30a796bc9c311d) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add read-only model `list`/`get` to the public Blueprint host-session seam; immutable exact-coordinate
+  field-binding projection with stable diagnostics; model-driven shell selectors that preserve each field's
+  declared authoring control; and a portable binding-projection schema, corpus, reference runner, host vectors,
+  HTTP mapping, and reference-host example.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`bda990a`](https://github.com/kumwe/studio/commit/bda990abbccaae2b1d0386279b9ffbd8d561da8f) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Publish canonical chart, drawing, and exact-decimal money values plus the complete semantic web
+  renderer, CSP-scoped styling, structural safe markup, progressive enhancements, and optional exact
+  Chart.js, Mermaid, and KaTeX adapters. Include accessible progressive dialog, popover, and
+  message-notice families with Studio-owned disposable interaction behavior.
+  Add one reusable, schema-governed presentation inspector capability for responsive visibility,
+  spacing, sizing, positioning, printing, scrolling, markers, and reduced-motion-aware motion.
+  Add consolidated article, cover, badge/label, icon, navigation, description-list, countdown,
+  divider, progress, search, spinner, and canonical table families plus lightbox, offcanvas, overlay,
+  dropdown, tooltip, and explicit blob-media preview behavior.
+  Publish an exhaustive, language-neutral renderer corpus spanning all 45 blocks, progressive
+  behaviors, presentation capabilities, and security fallbacks so browser and server adapters replay
+  one semantic contract.
+
+### Patch Changes
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`1d2c89e`](https://github.com/kumwe/studio/commit/1d2c89eb580df1b2924681148f7688c376a7a3a5) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Harden the coordinated Studio release evidence boundary with stable gate criteria, strict source and artifact verification, safe complete bundle generation, and immutable review workflows.
+
+- [#34](https://github.com/kumwe/studio/pull/34) [`1d2c89e`](https://github.com/kumwe/studio/commit/1d2c89eb580df1b2924681148f7688c376a7a3a5) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Ship deterministic, lock-derived third-party notices and exact dependency license texts in every package tarball.
+
 ## 0.1.0-alpha.6
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-rich-text",
-  "version": "0.1.0-alpha.6",
+  "version": "0.1.0-alpha.9",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@editorjs/editorjs": "2.31.6",
-    "@kumwe/studio-protocol": "0.1.0-alpha.6"
+    "@kumwe/studio-protocol": "0.1.0-alpha.9"
   },
   "publishConfig": {
     "access": "public",
