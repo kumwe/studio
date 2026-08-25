@@ -10,6 +10,14 @@ Studio artifacts store the protocol's usage-specific `MediaReference`, while `Me
 host's library projection. URLs are delivery details returned by the receiving host and belong in
 neither persisted contract.
 
+`StudioMediaFieldController` provides the reusable browse/search/page/select/replace and
+paste/drop/upload workflow, including progress, cancel/retry, alternative text, decorative mode,
+caption, focal point, rendition intent, and orphan recovery. Inject a `MediaProvider` and, for
+host-authorized chunked uploads, a `MediaUploadTransport`. Dynamic host bindings are read-only.
+
+The controller's observable value contains only the stable `MediaReference`; asset projections,
+bytes, paths, delivery URLs, credentials, and upload grants never enter the artifact.
+
 ## Upload orchestration
 
 `MediaUploadController` drives the canonical media-upload-session state machine —
