@@ -13,6 +13,7 @@ import {
   type LocalName,
   type PatternDocument,
   type QualifiedName,
+  type RendererRequirement,
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
 import {
@@ -133,7 +134,7 @@ export const CORE_PRODUCTION_PATTERN_IDS: readonly [
 
 const VERSION = '1.0.0';
 const OWNER = Object.freeze({ id: 'studio.core/blocks', version: VERSION });
-const WEB_RENDERERS = Object.freeze([
+const WEB_RENDERERS: readonly RendererRequirement[] = Object.freeze([
   {
     capability: 'studio.renderer/semantic-web',
     surface: 'preview' as const,
