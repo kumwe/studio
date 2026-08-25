@@ -1,7 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getSchema } from '@tiptap/core';
 import {
-  createStudioRichTextExtensions,
   DEFAULT_RICH_TEXT_PROFILE,
   isRichTextDocumentEmpty,
   parseRichTextDocument,
@@ -24,33 +22,7 @@ describe('Studio rich text', () => {
     ).toThrow(/JSON-compatible/u);
   });
 
-  it('configures StarterKit to match the portable node and mark profile', () => {
-    const extensions = createStudioRichTextExtensions();
-    const schema = getSchema(extensions);
-
-    expect(extensions).toHaveLength(1);
-    expect(extensions[0]?.options).toMatchObject({
-      codeBlock: false,
-      link: false,
-      underline: false,
-    });
-    expect(Object.keys(schema.nodes).sort()).toEqual([
-      'blockquote',
-      'bulletList',
-      'doc',
-      'hardBreak',
-      'heading',
-      'horizontalRule',
-      'listItem',
-      'orderedList',
-      'paragraph',
-      'text',
-    ]);
-    expect(Object.keys(schema.marks).sort()).toEqual(['bold', 'code', 'italic', 'strike']);
-  });
-
-  it('rejects the same empty and conflicting structures as the configured schema', () => {
-    const schema = getSchema(createStudioRichTextExtensions());
+  it('rejects empty and conflicting structures in the portable grammar', () => {
     const invalidDocuments = [
       { content: [], type: 'doc' },
       {
@@ -83,7 +55,6 @@ describe('Studio rich text', () => {
 
     for (const document of invalidDocuments) {
       expect(() => parseRichTextDocument(document)).toThrow();
-      expect(() => schema.nodeFromJSON(document).check()).toThrow();
     }
   });
 

@@ -32,6 +32,24 @@ be raised by configuration.
 - **Renderers** map nodes and marks to their output medium and MUST NOT execute or interpolate
   document content as code, templates, or unescaped markup.
 
+## Authoring boundary
+
+`@kumwe/studio-rich-text` owns Editor.js `2.31.6` behind `StudioRichTextEditorFactory`. Hosts pass a
+canonical `StudioRichTextDocument`, a named Studio profile, and an HTML holder. They do not receive,
+store, render, or migrate Editor.js `OutputData`, plugin configuration, timestamps, block IDs, or
+HTML fragments. An invalid transient editor result leaves the last canonical value intact and
+returns `studio.rich-text/invalid-editor-state`.
+
+The default, marketing, and documentation profiles currently narrow the same portable grammar with
+different resource bounds. An unknown profile fails closed. Rich-text ports backed by a
+`static-value` are mutable; host-resolved entry, context, resource, and query bindings are read-only.
+
+Markdown and safe HTML are explicit import/export formats. Safe HTML import uses a fixed Studio tag
+ceiling (`p`, headings 2–4, blockquote, lists, separator, line break and portable inline marks),
+ignores attributes except a bounded ordered-list start, and drops active elements with their
+content. A caller may narrow that ceiling but cannot add tags. Imported HTML is converted into the
+canonical grammar and never stored or rendered directly.
+
 ## Renderer conformance
 
 Renderer conformance is defined against a canonical, language-neutral projection — never against
