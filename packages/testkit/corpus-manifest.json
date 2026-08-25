@@ -1180,7 +1180,7 @@
           "file": "chart-fallback.json"
         },
         {
-          "digest": "sha256-krLoaThBgvfJZZspN3eznM2InlMA+WwsStDAGUl3sQ4=",
+          "digest": "sha256-mmzgEQTPYj9xuxDsD23P/JyaswowSSBJRTYN2P4otgQ=",
           "file": "complete-catalog.json"
         },
         {
@@ -1188,7 +1188,7 @@
           "file": "escaped-heading.json"
         },
         {
-          "digest": "sha256-4KMn5HGQ7zXvdy6IUbpywBRIxXf+IyKl8IYWid/6Wg4=",
+          "digest": "sha256-9+HID3ZVQInu1ER13rV9QyvycfsYwmi3ZhPCMFQTcKw=",
           "file": "interactive-behaviors.json"
         },
         {
