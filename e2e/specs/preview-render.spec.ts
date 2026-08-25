@@ -57,7 +57,7 @@ test('the production renderer renders and keeps canonical two-way selection', as
   // renderer to a canonical wrapper with explicit layout intent.
   await shell
     .getByRole('complementary', { name: 'Block palette' })
-    .getByRole('button', { name: 'Section' })
+    .getByRole('button', { name: 'Section', exact: true })
     .click();
   const renderedSection = surface.locator('[data-studio-block="section"]');
   await expect(renderedSection).toHaveCount(1);
@@ -69,31 +69,32 @@ test('the production renderer renders and keeps canonical two-way selection', as
   // selection through PreviewClient.
   await shell
     .getByRole('complementary', { name: 'Outline' })
-    .getByRole('button', { name: 'Section' })
+    .getByRole('button', { name: 'Section', exact: true })
     .click();
   const highlighted = surface.locator('[data-selected="true"]');
   await expect(highlighted).toHaveCount(1);
   const marker = await highlighted.getAttribute('data-marker');
   expect(isPreviewMarker(marker)).toBe(true);
 
-  // Trusted activation travels the other way. Add block prose, keep the
-  // Section selected, then click rendered Rich text and verify that the shell
-  // resolves its marker back to the exact outline node.
+  // Trusted activation travels the other way. Add a visibly rendered
+  // semantic divider, keep the Section selected, then click it and verify
+  // that the shell resolves its marker back to the exact outline node. Empty
+  // prose intentionally has no public placeholder or click target.
   await shell
     .getByRole('complementary', { name: 'Block palette' })
-    .getByRole('button', { name: 'Rich text' })
+    .getByRole('button', { name: 'Divider', exact: true })
     .click();
-  const renderedText = surface.locator('[data-studio-block="rich-text"]');
-  await expect(renderedText).toHaveCount(1);
+  const renderedDivider = surface.locator('[data-studio-block="divider"]');
+  await expect(renderedDivider).toHaveCount(1);
   await shell
     .getByRole('complementary', { name: 'Outline' })
-    .getByRole('button', { name: 'Section' })
+    .getByRole('button', { name: 'Section', exact: true })
     .click();
-  await renderedText.click();
+  await renderedDivider.click();
   await expect(
     shell
       .getByRole('complementary', { name: 'Outline' })
-      .getByRole('button', { name: 'Rich text' }),
+      .getByRole('button', { name: 'Divider', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
 
   // A viewport switch re-renders the same canonical page and the selection
