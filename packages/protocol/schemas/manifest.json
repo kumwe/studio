@@ -9,6 +9,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json"
     },
     {
+      "digest": "sha256-hZBNrpwHkLuUu/mPeU2UWtuOXfvZgrd8MO7vB9fJWog=",
+      "file": "authoring-web-vector.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/authoring-web-vector.schema.json"
+    },
+    {
       "digest": "sha256-GCk2z8XalwUUKM6R146c7WeCj3CY00kTMRKtPjaeehs=",
       "file": "binding-projection-vector.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/binding-projection-vector.schema.json"

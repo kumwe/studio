@@ -40,7 +40,10 @@ of every published schema so generated SDKs can pin the exact corpus they were b
 Canonical command vectors and the negative-fixture corpus ship through `@kumwe/studio-testkit`.
 The protocol package also exports the single-exchange and ordered host-vector schemas. The sequence
 schema fixes the idempotency scope/preimage and its deterministic clock/render control steps; the
-portable corpora and runner-neutral digest manifest ship through the testkit.
+portable corpora and runner-neutral digest manifest ship through the testkit. The published
+`authoring-web-vector` schema similarly carries semantic keyboard, pointer and explicit-control lanes
+without selectors or component-library types; its target profile remains unclaimed until the full
+browser and accessibility matrix is reproduced.
 
 `@kumwe/studio-protocol/studio-release.json` is a byte-identical copy of the canonical workspace
 release record. It binds the exact fixed eight-package family to the wire protocol and testkit corpus

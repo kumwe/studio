@@ -52,6 +52,14 @@ const conformanceTargetDirectory = new URL(
   '../packages/testkit/conformance/rich-text/',
   import.meta.url,
 );
+const authoringWebConformanceDirectory = new URL(
+  '../schemas/conformance/authoring-web/',
+  import.meta.url,
+);
+const authoringWebConformanceTargetDirectory = new URL(
+  '../packages/testkit/conformance/authoring-web/',
+  import.meta.url,
+);
 const rendererWebConformanceDirectory = new URL(
   '../schemas/conformance/renderer-web/',
   import.meta.url,
@@ -85,6 +93,7 @@ await rm(new URL('../packages/testkit/conformance/', import.meta.url), {
   recursive: true,
 });
 await mkdir(conformanceTargetDirectory, { recursive: true });
+await mkdir(authoringWebConformanceTargetDirectory, { recursive: true });
 await mkdir(rendererWebConformanceTargetDirectory, { recursive: true });
 
 for (const entry of await readdir(sourceDirectory, { withFileTypes: true })) {
@@ -185,6 +194,14 @@ for (const entry of await readdir(conformanceDirectory, { withFileTypes: true })
   }
 }
 
+for (const entry of await readdir(authoringWebConformanceDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, authoringWebConformanceDirectory),
+      new URL(entry.name, authoringWebConformanceTargetDirectory),
+    );
+  }
+}
 for (const entry of await readdir(rendererWebConformanceDirectory, { withFileTypes: true })) {
   if (entry.isFile() && entry.name.endsWith('.json')) {
     await cp(
@@ -281,12 +298,21 @@ if (conformance.length === 0) {
     `No renderer-conformance fixtures were copied to ${join(conformanceTargetDirectory.pathname)}.`,
   );
 }
+const authoringWebConformance = (await readdir(authoringWebConformanceTargetDirectory)).filter(
+  (name) => name.endsWith('.json'),
+);
+if (authoringWebConformance.length === 0) {
+  throw new Error(
+    `No authoring-web conformance vectors were copied to ${join(authoringWebConformanceTargetDirectory.pathname)}.`,
+  );
+}
+
 const rendererWebConformance = (await readdir(rendererWebConformanceTargetDirectory)).filter(
   (name) => name.endsWith('.json'),
 );
 if (rendererWebConformance.length === 0) {
   throw new Error(
-    `No renderer-web conformance fixtures were copied to ${join(rendererWebConformanceTargetDirectory.pathname)}.`,
+    `No renderer-web conformance vectors were copied to ${join(rendererWebConformanceTargetDirectory.pathname)}.`,
   );
 }
 
@@ -349,6 +375,11 @@ const corpusGroups = [
     directory: conformanceTargetDirectory,
     name: 'rich-text-conformance',
     path: 'conformance/rich-text',
+  },
+  {
+    directory: authoringWebConformanceTargetDirectory,
+    name: 'authoring-web-conformance',
+    path: 'conformance/authoring-web',
   },
   {
     directory: rendererWebConformanceTargetDirectory,

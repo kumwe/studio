@@ -1,5 +1,6 @@
 import blockDefinitionSchemaDocument from '../schemas/block-definition.schema.json' with { type: 'json' };
 import bindingProjectionVectorSchemaDocument from '../schemas/binding-projection-vector.schema.json' with { type: 'json' };
+import authoringWebVectorSchemaDocument from '../schemas/authoring-web-vector.schema.json' with { type: 'json' };
 import blueprintSchemaDocument from '../schemas/blueprint.schema.json' with { type: 'json' };
 import commandSchemaDocument from '../schemas/command.schema.json' with { type: 'json' };
 import commandVectorSchemaDocument from '../schemas/command-vector.schema.json' with { type: 'json' };
@@ -40,6 +41,7 @@ import type { JsonSchema } from './types.js';
 
 export const blockDefinitionSchema: JsonSchema = blockDefinitionSchemaDocument;
 export const bindingProjectionVectorSchema: JsonSchema = bindingProjectionVectorSchemaDocument;
+export const authoringWebVectorSchema: JsonSchema = authoringWebVectorSchemaDocument;
 export const blueprintSchema: JsonSchema = blueprintSchemaDocument;
 export const commandSchema: JsonSchema = commandSchemaDocument;
 export const commandVectorSchema: JsonSchema = commandVectorSchemaDocument;
@@ -79,6 +81,7 @@ export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSc
 
 export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   commonSchema,
+  authoringWebVectorSchema,
   blockDefinitionSchema,
   bindingProjectionVectorSchema,
   blueprintSchema,
