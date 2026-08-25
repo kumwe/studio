@@ -12,6 +12,8 @@ import {
   BlockRegistry,
   RECIPE_MARKER_PROPERTY,
   coreProductionInitialProperties,
+  createCoreProductionBlockDefinitions,
+  createCoreProductionPatterns,
   isCoreProductionBlockType,
   permittedCommandTypes,
   projectBlueprintFieldBindings,
@@ -86,6 +88,14 @@ import {
   type StudioPreviewGeometry,
   type StudioPreviewState,
 } from './preview-surface.js';
+import {
+  STUDIO_AUTHORING_CONTROL_IDS,
+  StudioAuthoringControlRegistry,
+  type StudioAuthoringControlChange,
+  type StudioAuthoringControlHandle,
+  type StudioAuthoringControlId,
+  type StudioAuthoringControlOptions,
+} from './authoring-controls.js';
 
 export interface StudioDocumentChangeDetail {
   command: BlueprintCommand | null;
@@ -105,6 +115,12 @@ export interface StudioDirtyChangedDetail {
 
 export interface StudioViewportChangeDetail {
   viewport: ThemeViewport;
+}
+
+/** Trusted styling remains host context and is never written to a Blueprint. */
+export interface StudioScopedStyleChangeDetail {
+  nodeId: NodeId;
+  value: JsonValue;
 }
 
 interface ShellCommandEnvelope {
@@ -173,9 +189,29 @@ interface PreviewCanvasDragState {
   target?: CanvasDropTarget;
 }
 
+interface MountedAuthoringControl {
+  handle: StudioAuthoringControlHandle;
+  holder: HTMLElement;
+  signature: string;
+}
+
+interface InspectorAuthoringTarget {
+  binding?: FieldBinding;
+  control: StudioAuthoringControlId;
+  key: string;
+  kind: 'port' | 'property';
+  label: string;
+  name: string;
+  nodeId: NodeId;
+  profile?: string;
+  readOnly: boolean;
+  value: unknown;
+}
+
 export class KumweStudioElement extends LitElement {
   public static override properties = {
     announcement: { attribute: false, state: true },
+    authoringControlRegistry: { attribute: false },
     canvasDirectManipulation: { attribute: false, state: true },
     canvasGeometry: { attribute: false, state: true },
     configuration: { attribute: false },
@@ -620,6 +656,29 @@ export class KumweStudioElement extends LitElement {
       gap: 0.375rem;
     }
 
+    .inspector-authoring-row {
+      display: grid;
+      gap: 0.375rem;
+    }
+
+    .inspector-authoring-control {
+      border: 1px solid var(--studio-border);
+      border-radius: 0.375rem;
+      min-inline-size: 0;
+      overflow: auto;
+      padding: 0.5rem;
+    }
+
+    .inspector-authoring-control :is(input, select, textarea, button) {
+      font: inherit;
+      max-inline-size: 100%;
+    }
+
+    .inspector-authoring-control textarea {
+      box-sizing: border-box;
+      inline-size: 100%;
+    }
+
     .inspector-name {
       font-size: 0.8125rem;
       font-weight: 600;
@@ -749,6 +808,7 @@ export class KumweStudioElement extends LitElement {
   `;
 
   declare public configuration: ExperimentalShellConfiguration | undefined;
+  declare public authoringControlRegistry: StudioAuthoringControlRegistry | undefined;
   declare public contentModel: ContentModelDocument | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
@@ -766,9 +826,15 @@ export class KumweStudioElement extends LitElement {
   declare protected selectedNodeId: string | undefined;
 
   #activeViewportId: string | undefined;
+  readonly #authoringControls = new Map<string, MountedAuthoringControl>();
+  #authoringControlsReady: Promise<void> = Promise.resolve();
+  readonly #authoringDiagnostics = new Map<string, StudioDiagnostic>();
+  readonly #defaultAuthoringControlRegistry = new StudioAuthoringControlRegistry();
   #announcementPending = false;
   #commandSequence = 0;
   #bindingProjection: BlueprintFieldBindingProjection | undefined;
+  readonly #defaultDefinitions = createCoreProductionBlockDefinitions();
+  readonly #defaultPatterns = createCoreProductionPatterns();
   #diagnostics: StudioDiagnostic[] = [];
   #drag: CanvasDragState | undefined;
   #hoveredPreviewNodeId: NodeId | undefined;
@@ -811,6 +877,11 @@ export class KumweStudioElement extends LitElement {
 
   public get stateVersion(): number {
     return this.#session?.stateVersion ?? 0;
+  }
+
+  /** Resolves after the latest imperative custom-field lifecycle pass settles. */
+  public get authoringReady(): Promise<void> {
+    return this.#authoringControlsReady;
   }
 
   /** The single mode resolved from the wire configuration for this session. */
@@ -907,6 +978,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   public override disconnectedCallback(): void {
+    this.#destroyAuthoringControls();
     this.ownerDocument.removeEventListener('keydown', this.#onDocumentKeydown, true);
     this.teardownPreview('studio.preview/surface-disconnected');
     super.disconnectedCallback();
@@ -991,6 +1063,9 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override updated(changed: PropertyValues<this>): void {
+    if (changed.has('authoringControlRegistry')) {
+      this.#destroyAuthoringControls();
+    }
     for (const select of this.shadowRoot?.querySelectorAll<HTMLSelectElement>(
       'select[data-current-value]',
     ) ?? []) {
@@ -1027,6 +1102,9 @@ export class KumweStudioElement extends LitElement {
     ) {
       this.#schedulePreview();
     }
+    this.#authoringControlsReady = this.#authoringControlsReady
+      .catch(() => undefined)
+      .then(async () => this.#synchronizeAuthoringControls());
     const nodeId = this.#pendingFocusNodeId;
     if (nodeId === undefined) {
       return;
@@ -1043,6 +1121,9 @@ export class KumweStudioElement extends LitElement {
       this.document === undefined || this.selectedNodeId === undefined
         ? undefined
         : findOutlineLocation(this.document.roots, this.selectedNodeId)?.node;
+    const diagnostics = [...this.#diagnostics, ...this.#authoringDiagnostics.values()].sort(
+      (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
+    );
 
     return html`
       <div
@@ -1054,7 +1135,7 @@ export class KumweStudioElement extends LitElement {
         <aside class="panel" aria-label=${this.#text('studio.shell/palette-label')}>
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
           <ul class="palette">
-            ${(this.configuration?.blockDefinitions ?? []).map(
+            ${this.#activeDefinitions().map(
               (definition) => html`
                 <li>
                   <button
@@ -1069,12 +1150,12 @@ export class KumweStudioElement extends LitElement {
             )}
           </ul>
           ${
-            (this.patterns?.length ?? 0) === 0
+            this.#activePatterns().length === 0
               ? nothing
               : html`
                   <h2 class="pattern-heading">${this.#text('studio.shell/patterns-heading')}</h2>
                   <ul class="palette pattern-palette">
-                    ${this.patterns?.map(
+                    ${this.#activePatterns().map(
                       (pattern) => html`
                         <li>
                           <button
@@ -1181,12 +1262,12 @@ export class KumweStudioElement extends LitElement {
         >
           <h2>${this.#text('studio.shell/diagnostics-heading')}</h2>
           ${
-            this.#diagnostics.length === 0
+            diagnostics.length === 0
               ? html`<p class="diagnostics-empty">
                   ${this.#text('studio.shell/diagnostics-empty')}
                 </p>`
               : html`<ul class="diagnostics-list">
-                  ${this.#diagnostics.map((entry) => this.#renderDiagnostic(entry))}
+                  ${diagnostics.map((entry) => this.#renderDiagnostic(entry))}
                 </ul>`
           }
         </section>
@@ -1540,8 +1621,19 @@ export class KumweStudioElement extends LitElement {
     return entries.filter((entry) => entry.label.toLowerCase().includes(filter));
   }
 
+  #activeDefinitions(): readonly BlockDefinition[] {
+    return this.configuration?.blockDefinitions ?? this.#defaultDefinitions;
+  }
+
+  #activePatterns(): readonly PatternDocument[] {
+    return (
+      this.patterns ??
+      (this.configuration?.blockDefinitions === undefined ? this.#defaultPatterns : [])
+    );
+  }
+
   #findDefinition(node: BlueprintNode): BlockDefinition | undefined {
-    return this.configuration?.blockDefinitions.find(
+    return this.#activeDefinitions().find(
       (candidate) => candidate.type === node.type && candidate.version === node.version,
     );
   }
@@ -2385,7 +2477,7 @@ export class KumweStudioElement extends LitElement {
     if (!this.#permits('studio.command/apply-pattern') || pattern.roots.length === 0) {
       return undefined;
     }
-    const definitions = this.configuration?.blockDefinitions ?? [];
+    const definitions = this.#activeDefinitions();
     const pending = [...pattern.roots];
     while (pending.length > 0) {
       const node = pending.pop();
@@ -2538,7 +2630,7 @@ export class KumweStudioElement extends LitElement {
         },
       },
     );
-    for (const definition of this.configuration?.blockDefinitions ?? []) {
+    for (const definition of this.#activeDefinitions()) {
       entries.push({
         disabled: !this.#canInsertDefinition(definition),
         id: `insert-${definition.type}@${definition.version}`,
@@ -2550,7 +2642,7 @@ export class KumweStudioElement extends LitElement {
         },
       });
     }
-    for (const pattern of this.patterns ?? []) {
+    for (const pattern of this.#activePatterns()) {
       entries.push({
         disabled: this.#patternDestination(pattern) === undefined,
         id: `apply-pattern-${pattern.id}`,
@@ -2609,7 +2701,7 @@ export class KumweStudioElement extends LitElement {
 
   #rebuildRegistry(): void {
     const registry = new BlockRegistry();
-    for (const definition of this.configuration?.blockDefinitions ?? []) {
+    for (const definition of this.#activeDefinitions()) {
       try {
         registry.register(definition);
       } catch {
@@ -2911,10 +3003,335 @@ export class KumweStudioElement extends LitElement {
       ${this.#renderInspectorRecipes(node, !this.#permits('studio.command/batch'))}
       ${this.#renderInspectorDesign(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorProperties(node, !this.#permits('studio.command/set-property'))}
+      ${this.#renderInspectorAuthoringControls(node, readOnly)}
       ${this.#renderInspectorBindings(node, !this.#permits('studio.command/set-binding'))}
       ${this.#renderInspectorOverrides(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorLayout(node, !this.#permits('studio.command/set-size-role'))}
     `;
+  }
+
+  /**
+   * Studio-owned custom fields are rendered as stable holders and mounted in
+   * `updated()`. The imperative editor/library lifecycle therefore remains
+   * behind the authoring registry instead of becoming part of Lit templates or
+   * the public shell contract.
+   */
+  #renderInspectorAuthoringControls(
+    node: BlueprintNode,
+    readOnly: boolean,
+  ): TemplateResult | typeof nothing {
+    const targets = this.#inspectorAuthoringTargets(node, readOnly);
+    if (targets.length === 0) return nothing;
+    return html`
+      <section class="inspector-section inspector-authoring" aria-label="Studio authoring controls">
+        <h3>Authoring</h3>
+        <ul class="inspector-rows">
+          ${targets.map(
+            (target) => html`
+              <li
+                class="inspector-authoring-row"
+                data-authoring-kind=${target.kind}
+                data-authoring-name=${target.name}
+              >
+                <span class="inspector-name">${target.label}</span>
+                <div
+                  class="inspector-authoring-control"
+                  data-authoring-key=${target.key}
+                  data-authoring-control=${target.control}
+                ></div>
+              </li>
+            `,
+          )}
+        </ul>
+      </section>
+    `;
+  }
+
+  #inspectorAuthoringTargets(node: BlueprintNode, readOnly: boolean): InspectorAuthoringTarget[] {
+    const definition = this.#findDefinition(node);
+    if (definition === undefined) return [];
+    const targets: InspectorAuthoringTarget[] = [];
+    for (const propertyControl of definition.propertyControls ?? []) {
+      if (!isStudioAuthoringControlId(propertyControl.control)) continue;
+      const value =
+        propertyControl.control === STUDIO_AUTHORING_CONTROL_IDS.scopedCss
+          ? defaultAuthoringControlValue(propertyControl.control)
+          : (node.properties[propertyControl.property] ??
+            defaultAuthoringControlValue(propertyControl.control));
+      targets.push({
+        control: propertyControl.control,
+        key: `${node.id}:property:${propertyControl.property}`,
+        kind: 'property',
+        label:
+          propertyControl.label === undefined
+            ? propertyControl.help === undefined
+              ? propertyControl.property
+              : referenceText(propertyControl.help)
+            : referenceText(propertyControl.label),
+        name: propertyControl.property,
+        nodeId: node.id,
+        readOnly,
+        value,
+      });
+    }
+    for (const port of definition.ports) {
+      const metadata = port.authoring;
+      if (metadata?.control === undefined || !isStudioAuthoringControlId(metadata.control)) {
+        continue;
+      }
+      const binding = node.bindings[port.id];
+      const value =
+        binding?.source.kind === 'static-value'
+          ? binding.source.value
+          : defaultAuthoringControlValue(metadata.control);
+      targets.push({
+        ...(binding === undefined ? {} : { binding }),
+        control: metadata.control,
+        key: `${node.id}:port:${port.id}`,
+        kind: 'port',
+        label: referenceText(port.label) || port.id,
+        name: port.id,
+        nodeId: node.id,
+        ...(metadata.profile === undefined ? {} : { profile: metadata.profile }),
+        readOnly:
+          readOnly ||
+          metadata.readOnly === true ||
+          (binding !== undefined && binding.source.kind !== 'static-value'),
+        value,
+      });
+    }
+    return targets;
+  }
+
+  async #synchronizeAuthoringControls(): Promise<void> {
+    if (!this.isConnected || this.shadowRoot === null) {
+      this.#destroyAuthoringControls();
+      return;
+    }
+    const node =
+      this.document === undefined || this.selectedNodeId === undefined
+        ? undefined
+        : this.#currentInspectorNode(this.selectedNodeId);
+    const targets =
+      node === undefined ? [] : this.#inspectorAuthoringTargets(node, this.#isReadOnly());
+    const holders = new Map<string, HTMLElement>();
+    for (const holder of this.shadowRoot.querySelectorAll<HTMLElement>('[data-authoring-key]')) {
+      const key = holder.dataset.authoringKey;
+      if (key !== undefined) holders.set(key, holder);
+    }
+    const expected = new Set(targets.map((target) => target.key));
+    for (const [key, mounted] of this.#authoringControls) {
+      if (!expected.has(key) || holders.get(key) !== mounted.holder) {
+        this.#destroyAuthoringControl(key, mounted);
+      }
+    }
+    for (const key of [...this.#authoringDiagnostics.keys()]) {
+      if (!expected.has(key)) this.#authoringDiagnostics.delete(key);
+    }
+
+    const registry = this.authoringControlRegistry ?? this.#defaultAuthoringControlRegistry;
+    for (const target of targets) {
+      const holder = holders.get(target.key);
+      if (holder === undefined) continue;
+      const signature = authoringTargetSignature(target);
+      const mounted = this.#authoringControls.get(target.key);
+      if (mounted?.holder === holder && mounted.signature === signature) continue;
+      const restoreFocus =
+        mounted !== undefined &&
+        this.shadowRoot.activeElement !== null &&
+        mounted.holder.contains(this.shadowRoot.activeElement);
+      if (mounted !== undefined) this.#destroyAuthoringControl(target.key, mounted);
+      holder.replaceChildren();
+      try {
+        const options: StudioAuthoringControlOptions = {
+          ...(target.binding === undefined ? {} : { binding: target.binding }),
+          holder,
+          onChange: (change): void => {
+            this.#acceptAuthoringControlChange(target, change);
+          },
+          ...(target.profile === undefined ? {} : { profile: target.profile }),
+          readOnly: target.readOnly,
+          usage: 'studio.media/content',
+          value: structuredClone(target.value),
+        };
+        const handle = await registry.mount(target.control, options);
+        const currentNode = this.#currentInspectorNode(target.nodeId);
+        const currentTarget = currentNode
+          ? this.#inspectorAuthoringTargets(currentNode, this.#isReadOnly()).find(
+              (candidate) => candidate.key === target.key,
+            )
+          : undefined;
+        if (
+          !holder.isConnected ||
+          currentTarget === undefined ||
+          authoringTargetSignature(currentTarget) !== signature
+        ) {
+          handle.destroy();
+          continue;
+        }
+        this.#authoringControls.set(target.key, { handle, holder, signature });
+        this.#setAuthoringDiagnostic(target.key, undefined);
+        if (restoreFocus) handle.focus();
+      } catch (error) {
+        holder.replaceChildren(
+          document.createTextNode(
+            error instanceof Error
+              ? `Control unavailable: ${error.message}`
+              : 'Control unavailable.',
+          ),
+        );
+        this.#setAuthoringDiagnostic(target.key, {
+          code: 'studio.authoring/control-unavailable',
+          location: { nodeId: target.nodeId },
+          message: {
+            defaultMessage: `The ${target.label} authoring control is unavailable.`,
+            key: 'studio.authoring/control-unavailable',
+          },
+          parameters: { control: target.control, name: target.name },
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  #acceptAuthoringControlChange(
+    target: InspectorAuthoringTarget,
+    change: StudioAuthoringControlChange,
+  ): void {
+    const node = this.#currentInspectorNode(target.nodeId);
+    if (node === undefined || target.readOnly) return;
+    if (!change.valid) {
+      this.#setAuthoringDiagnostic(target.key, {
+        code: 'studio.authoring/invalid-control-value',
+        location: { nodeId: node.id },
+        message: {
+          defaultMessage: `${target.label} contains an invalid value.`,
+          key: 'studio.authoring/invalid-control-value',
+        },
+        parameters: { control: target.control, name: target.name },
+        severity: 'error',
+      });
+      return;
+    }
+    let applied: boolean;
+    if (target.kind === 'property') {
+      const value = toJsonValue(change.value);
+      if (value === undefined) {
+        this.#setAuthoringValueDiagnostic(target, node.id);
+        return;
+      }
+      if (target.control === STUDIO_AUTHORING_CONTROL_IDS.scopedCss) {
+        this.dispatchEvent(
+          new CustomEvent<StudioScopedStyleChangeDetail>('studio-scoped-style-change', {
+            bubbles: true,
+            composed: true,
+            detail: { nodeId: node.id, value },
+          }),
+        );
+        applied = true;
+      } else {
+        applied = this.#setNodeProperty(node, target.name, value, undefined);
+      }
+    } else {
+      applied = this.#setAuthoringPortValue(node, target.name, change.value);
+    }
+    if (!applied) return;
+    this.#setAuthoringDiagnostic(target.key, undefined);
+    const current = this.#currentInspectorNode(node.id);
+    const updatedTarget = current
+      ? this.#inspectorAuthoringTargets(current, this.#isReadOnly()).find(
+          (candidate) => candidate.key === target.key,
+        )
+      : undefined;
+    const mounted = this.#authoringControls.get(target.key);
+    if (mounted !== undefined && updatedTarget !== undefined) {
+      mounted.signature = authoringTargetSignature(updatedTarget);
+    }
+  }
+
+  #setAuthoringPortValue(node: BlueprintNode, port: string, input: unknown): boolean {
+    const current = node.bindings[port];
+    if (current !== undefined && current.source.kind !== 'static-value') return false;
+    if (input === undefined) {
+      if (current === undefined) return true;
+      this.#removeBinding(node, port);
+      return this.#currentInspectorNode(node.id)?.bindings[port] === undefined;
+    }
+    const value = toJsonValue(input);
+    if (value === undefined) return false;
+    const session = this.#session;
+    const document = this.document;
+    if (
+      session === undefined ||
+      document === undefined ||
+      !this.#permits('studio.command/set-binding')
+    ) {
+      return false;
+    }
+    const binding: FieldBinding =
+      current === undefined
+        ? {
+            onError: 'error',
+            onNull: 'empty',
+            source: { kind: 'static-value', value },
+            transforms: [],
+          }
+        : { ...current, source: { kind: 'static-value', value } };
+    const command: SetBindingCommand = {
+      ...this.#commandEnvelope(document, session),
+      payload: { binding, nodeId: node.id, port },
+      type: 'studio.command/set-binding',
+    };
+    if (!this.#runShellCommand(command)) return false;
+    this.#announce('studio.shell/announce-binding-set', { port });
+    return true;
+  }
+
+  #setAuthoringValueDiagnostic(target: InspectorAuthoringTarget, nodeId: NodeId): void {
+    this.#setAuthoringDiagnostic(target.key, {
+      code: 'studio.authoring/non-canonical-control-value',
+      location: { nodeId },
+      message: {
+        defaultMessage: `${target.label} did not produce bounded canonical JSON.`,
+        key: 'studio.authoring/non-canonical-control-value',
+      },
+      parameters: { control: target.control, name: target.name },
+      severity: 'error',
+    });
+  }
+
+  #setAuthoringDiagnostic(key: string, diagnostic: StudioDiagnostic | undefined): void {
+    const previous = this.#authoringDiagnostics.get(key);
+    if (diagnostic === undefined) {
+      if (previous === undefined) return;
+      this.#authoringDiagnostics.delete(key);
+      this.requestUpdate();
+      return;
+    }
+    if (
+      previous?.code === diagnostic.code &&
+      previous.message.defaultMessage === diagnostic.message.defaultMessage
+    ) {
+      return;
+    }
+    this.#authoringDiagnostics.set(key, diagnostic);
+    this.requestUpdate();
+  }
+
+  #destroyAuthoringControl(key: string, mounted: MountedAuthoringControl): void {
+    try {
+      mounted.handle.destroy();
+    } catch {
+      // A third-party adapter may have already released its browser resources.
+    }
+    this.#authoringControls.delete(key);
+  }
+
+  #destroyAuthoringControls(): void {
+    for (const [key, mounted] of this.#authoringControls) {
+      this.#destroyAuthoringControl(key, mounted);
+    }
+    this.#authoringDiagnostics.clear();
   }
 
   /** Theme recipes are atomic command batches, never an untracked style mutation. */
@@ -3570,7 +3987,14 @@ export class KumweStudioElement extends LitElement {
   }
 
   #renderInspectorProperties(node: BlueprintNode, readOnly: boolean): TemplateResult {
-    const entries = Object.entries(node.properties);
+    const customProperties = new Set(
+      (this.#findDefinition(node)?.propertyControls ?? [])
+        .filter((entry) => isStudioAuthoringControlId(entry.control))
+        .map((entry) => entry.property),
+    );
+    const entries = Object.entries(node.properties).filter(
+      ([property]) => !customProperties.has(property),
+    );
     return html`
       <section
         class="inspector-section inspector-properties"
@@ -4387,7 +4811,7 @@ export class KumweStudioElement extends LitElement {
         : projectBlueprintFieldBindings(
             this.document,
             this.contentModel,
-            this.configuration?.blockDefinitions ?? [],
+            this.#activeDefinitions(),
           );
     this.#diagnostics = [
       ...result.diagnostics,
@@ -4940,6 +5364,86 @@ const SEVERITY_RANK: Record<StudioDiagnostic['severity'], number> = {
   information: 3,
   warning: 2,
 };
+
+const STUDIO_AUTHORING_CONTROLS: ReadonlySet<string> = new Set(
+  Object.values(STUDIO_AUTHORING_CONTROL_IDS),
+);
+
+function isStudioAuthoringControlId(value: string): value is StudioAuthoringControlId {
+  return STUDIO_AUTHORING_CONTROLS.has(value);
+}
+
+function defaultAuthoringControlValue(control: StudioAuthoringControlId): unknown {
+  switch (control) {
+    case 'studio.control/rich-text':
+      return { content: [], type: 'doc' };
+    case 'studio.control/source':
+      return '';
+    case 'studio.control/chart':
+      return {
+        datasets: [{ label: 'Series 1', values: [0] }],
+        labels: ['Label 1'],
+        type: 'bar',
+      };
+    case 'studio.control/drawing':
+      return { alt: 'Drawing', height: 600, strokes: [], width: 800 };
+    case 'studio.control/money':
+      return { amount: '0', currency: 'USD' };
+    case 'studio.control/media-collection':
+      return [];
+    case 'studio.control/media-reference':
+      return undefined;
+    case 'studio.control/scoped-css':
+      return { rules: [] };
+  }
+}
+
+function authoringTargetSignature(target: InspectorAuthoringTarget): string {
+  return JSON.stringify({
+    bindingKind: target.binding?.source.kind,
+    control: target.control,
+    kind: target.kind,
+    name: target.name,
+    profile: target.profile,
+    readOnly: target.readOnly,
+    value: target.value,
+  });
+}
+
+/**
+ * Copy an editor-produced value into the bounded language-neutral JSON
+ * domain. Unsupported objects, non-finite numbers and excessive structures
+ * fail closed instead of being coerced into persisted protocol data.
+ */
+function toJsonValue(value: unknown, depth = 0): JsonValue | undefined {
+  if (depth > 32) return undefined;
+  if (value === null || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'string') return value.length <= 1_000_000 ? value : undefined;
+  if (Array.isArray(value)) {
+    if (value.length > 10_000) return undefined;
+    const result: JsonValue[] = [];
+    for (const item of value) {
+      const parsed = toJsonValue(item, depth + 1);
+      if (parsed === undefined) return undefined;
+      result.push(parsed);
+    }
+    return result;
+  }
+  if (typeof value !== 'object' || value === undefined) return undefined;
+  const prototype = Object.getPrototypeOf(value) as unknown;
+  if (prototype !== Object.prototype && prototype !== null) return undefined;
+  const entries = Object.entries(value);
+  if (entries.length > 1_000) return undefined;
+  const result: Record<string, JsonValue> = {};
+  for (const [key, item] of entries) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+    const parsed = toJsonValue(item, depth + 1);
+    if (parsed === undefined) return undefined;
+    result[key] = parsed;
+  }
+  return result;
+}
 
 function diagnosticText(entry: StudioDiagnostic): string {
   const template = referenceText(entry.message);

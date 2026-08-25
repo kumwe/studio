@@ -22,6 +22,14 @@ token edits state whether their value is base, inherited, or overridden for the 
 Importing the package has no registration side effect. Call `defineKumweStudio()` once, then use the
 `<kumwe-studio>` custom element or register the class under a host-specific tag.
 
+Studio owns its production catalog. Omit both `configuration.blockDefinitions` and `patterns` to use the
+complete first-party definitions and compatible starter patterns. An explicit array replaces the corresponding
+default; an explicitly replaced catalog does not implicitly receive incompatible first-party patterns.
+Embedding applications that extend Studio should call `createStudioStandaloneSetup(session,
+extensions)`; it places first-party entries first, appends host contributions, and rejects duplicate
+type/version or pattern/version identities. The host therefore contributes its dynamic entity blocks
+without rebuilding or privately copying Studio's page-building catalog.
+
 ## Advanced authoring controls
 
 `StudioAuthoringControlRegistry` mounts first-party page controls by the stable
@@ -30,6 +38,27 @@ values and editor-neutral injected services; hosts never configure or receive
 Editor.js, code-editor, chart, equation, or diagram runtime objects. Dynamic
 bindings are read-only and invalid transient input preserves the last canonical
 value. See the [normative control contract](../../docs/contracts/authoring-controls.md).
+
+The live inspector mounts these controls directly from each block definition's
+`propertyControls` and port `authoring` metadata. Static port edits dispatch the
+canonical `set-binding` command, property edits dispatch `set-property`, and
+dynamic bindings remain inspectable but disabled. The shell destroys stale
+instances on selection, catalog, registry, and connection changes; preserves
+focus across command-driven remounts; and turns mount or validation failures
+into Studio diagnostics. Assign an application-specific registry only when the
+host needs to inject media, upload, code-field, or trusted-preview services:
+
+```ts
+studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
+  media: { provider: mediaProvider, uploadTransport },
+});
+await studio.authoringReady;
+```
+
+Scoped CSS is the deliberate exception to property persistence: its control
+emits `studio-scoped-style-change` with `{ nodeId, value }`, and the host may
+apply that structured sheet as trusted renderer context. It is never written to
+the Blueprint.
 
 ## Localization
 
