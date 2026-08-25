@@ -169,7 +169,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/provenance.schema.json"
     },
     {
-      "digest": "sha256-obH2y6hfXwWN/8UPYtwPK//9y11VRDoUciYGksW9s6k=",
+      "digest": "sha256-oi//2JX617h+s50otcRWB4/ZTnv4iVo+gngpr73i+EA=",
       "file": "renderer-web-vector.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/renderer-web-vector.schema.json"
     },

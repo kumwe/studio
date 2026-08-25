@@ -33,6 +33,20 @@ only when it replays the same corpus.
   resolver's syntactically bounded `blob:https?` result. Active SVG/HTML media and all `data:` URLs
   still fail closed; ordinary resource, embed, and action URL sinks never inherit this authority.
 
+## Normative conformance corpus
+
+The JSON vectors in `schemas/conformance/renderer-web` are the language-neutral rendering contract,
+not examples. Their declared coverage must remain exhaustive across all 45 canonical block types,
+the nine progressive behavior families, the ten presentation capabilities, and the five security
+fallbacks. CI rejects a coverage claim whose block does not occur in that vector and rejects any
+catalog or capability that disappears from the union.
+
+Every renderer implementation, including a server-side PHP/Twig adapter, must replay these vectors
+against its own output. It may use host-native templates internally, but it must preserve the
+required semantic elements, `studio-block` classes, `data-studio-*` markers, progressive fallback,
+responsive rules, enhancement requirements, escaping, and fail-closed URL/media behavior. A host
+must not infer or redefine those rules independently.
+
 ## Optional exact adapters
 
 The Chart.js 4.5.1, Mermaid 11.17.1, and KaTeX 0.18.4 subpaths are optional lazy peers. Version

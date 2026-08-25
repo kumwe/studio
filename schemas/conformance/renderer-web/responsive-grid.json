@@ -1,5 +1,11 @@
 {
   "id": "renderer-web/responsive-grid",
+  "coverage": {
+    "blockTypes": ["studio.core/grid"],
+    "behaviors": [],
+    "presentation": ["sizing"],
+    "security": []
+  },
   "roots": [
     {
       "authoring": { "mode": "structural" },

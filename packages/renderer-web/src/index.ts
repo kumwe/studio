@@ -3,6 +3,7 @@ export {
   runRendererWebVector,
   type RendererWebVector,
   type RendererWebVectorBinding,
+  type RendererWebVectorCoverage,
   type RendererWebVectorExpectation,
   type RendererWebVectorMedia,
   type RendererWebVectorResult,
