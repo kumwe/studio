@@ -7,6 +7,7 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { assertPromotionPackageState } from './release-policy.mjs';
+import { assertLiveMain } from './reconcile-release-tag.mjs';
 import {
   inspectStagingTags,
   publishMissingApprovedArtifacts,
@@ -119,6 +120,9 @@ async function main() {
     state.releaseRecord,
     approvedArtifacts,
     preflight.missing,
+    {
+      assertPublicationStillAuthorized: () => assertLiveMain(process.env.PROMOTION_EXPECTED_SHA),
+    },
   );
 
   // A partial npm publish can leave its nonofficial tag on uploaded packages.

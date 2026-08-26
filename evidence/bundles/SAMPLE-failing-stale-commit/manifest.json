@@ -6,7 +6,9 @@
     {
       "checksum": "sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
       "mediaType": "application/json",
-      "path": "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json"
+      "path": "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json",
+      "producerTestId": "contract/canonical-corpus",
+      "role": "run/log"
     }
   ],
   "bundleId": "SAMPLE-failing-stale-commit",
@@ -14,7 +16,14 @@
     {
       "class": "contract",
       "criterionId": "gate-a/02-protocol-schemas",
-      "outcome": "positive"
+      "outcome": "positive",
+      "proof": {
+        "artifactPaths": [
+          "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json"
+        ],
+        "runIds": ["contract/canonical-corpus"],
+        "subjectIds": []
+      }
     }
   ],
   "environment": {
@@ -40,6 +49,9 @@
   },
   "runs": [
     {
+      "artifactPaths": [
+        "evidence/bundles/SAMPLE-failing-stale-commit/artifacts/contract-vectors.report.json"
+      ],
       "command": "node scripts/check-contracts.mjs",
       "endedAt": "2026-08-15T10:00:05Z",
       "exitStatus": 0,
@@ -56,5 +68,6 @@
     },
     "repository": "https://github.com/kumwe/studio",
     "workingTreeState": "clean"
-  }
+  },
+  "subjects": []
 }

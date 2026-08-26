@@ -1,0 +1,6 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "reviewer-authority-registry",
+  "status": "input-required",
+  "authorities": []
+}

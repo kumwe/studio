@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/manual-procedures.schema.json",
+  "title": "Studio manual evidence procedure registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "kind", "procedures"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "kind": { "const": "manual-procedure-registry" },
+    "procedures": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "allowSharedObservationArtifacts",
+          "artifactRole",
+          "criterionId",
+          "evidenceClass",
+          "id",
+          "laneId",
+          "observationArtifactRoles",
+          "requiredReviewerRole",
+          "requiredSteps",
+          "status"
+        ],
+        "properties": {
+          "allowSharedObservationArtifacts": { "type": "boolean" },
+          "artifactRole": {
+            "enum": ["accessibility/manual-interaction-report-v1", "manual/decision-record-v1"]
+          },
+          "criterionId": { "$ref": "#/$defs/criterionId" },
+          "evidenceClass": { "enum": ["accessibility", "manual-decision"] },
+          "id": { "$ref": "#/$defs/stableId" },
+          "laneId": { "$ref": "#/$defs/stableId" },
+          "observationArtifactRoles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": { "const": "manual/observation-v1" }
+          },
+          "requiredReviewerRole": {
+            "enum": ["accessibility", "compatibility", "data-integrity", "security"]
+          },
+          "requiredSteps": {
+            "type": "array",
+            "minItems": 5,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/stepId" }
+          },
+          "status": { "const": "input-required" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "criterionId": {
+      "type": "string",
+      "pattern": "^gate-a/[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 120
+    }
+  }
+}

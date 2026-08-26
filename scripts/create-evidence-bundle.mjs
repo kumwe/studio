@@ -15,16 +15,22 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { chromium } from '@playwright/test';
 import { parseEvidenceArguments } from './evidence-generator-input.mjs';
+import { planCriterionProofs } from './evidence-plan.mjs';
 import {
+  buildCriterionIndex,
+  buildProofAssertionIndex,
   buildProfileAssertionIndex,
   checksumFile,
-  evidenceLaneIdsForCriteria,
-  GENERIC_EVIDENCE_LANES,
-  GENERIC_LANE_EVIDENCE_CLASSES,
-  PROFILE_EVIDENCE_LANES,
+  inspectBundleEvidence,
   REQUIRED_EVIDENCE_INPUTS,
-  SPECIALIZED_EVIDENCE_LANES,
 } from './evidence-validation.mjs';
+import {
+  EVIDENCE_LANES,
+  GENERIC_EVIDENCE_LANES,
+  renderEvidenceCommand,
+} from './evidence-lanes.mjs';
+import { buildExternalSubjectAssertionIndex } from './external-evidence.mjs';
+import { buildManualProcedureIndex } from './manual-evidence.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const evidenceBundlesRoot = join(repositoryRoot, 'evidence', 'bundles');
@@ -50,21 +56,64 @@ assertCleanCheckout();
 const registry = JSON.parse(
   await readFile(join(repositoryRoot, 'evidence/gate-criteria.json'), 'utf8'),
 );
-const criterionById = new Map(
-  [...registry.gates.A, ...registry.gates.B].map((criterion) => [criterion.id, criterion]),
-);
-const allowedProfiles = new Set(registry.profileVocabulary);
+const criterionIndex = buildCriterionIndex(registry);
+if (criterionIndex.failures.length > 0) {
+  throw new Error(`Criterion registry is invalid:\n- ${criterionIndex.failures.join('\n- ')}`);
+}
 const profileAssertionRegistry = JSON.parse(
   await readFile(join(repositoryRoot, 'evidence/profile-assertions.json'), 'utf8'),
 );
-const profileAssertionIndex = buildProfileAssertionIndex(profileAssertionRegistry, allowedProfiles);
+const profileAssertionIndex = buildProfileAssertionIndex(
+  profileAssertionRegistry,
+  criterionIndex.allowedProfiles,
+);
 if (profileAssertionIndex.failures.length > 0) {
   throw new Error(
     `Profile assertion registry is invalid:\n- ${profileAssertionIndex.failures.join('\n- ')}`,
   );
 }
+const manualProcedureRegistry = JSON.parse(
+  await readFile(join(repositoryRoot, 'evidence/manual-procedures.json'), 'utf8'),
+);
+const manualProcedureIndex = buildManualProcedureIndex(
+  manualProcedureRegistry,
+  criterionIndex.criteriaById,
+);
+if (manualProcedureIndex.failures.length > 0) {
+  throw new Error(
+    `Manual procedure registry is invalid:\n- ${manualProcedureIndex.failures.join('\n- ')}`,
+  );
+}
+const externalSubjectAssertionRegistry = JSON.parse(
+  await readFile(join(repositoryRoot, 'evidence/external-subject-assertions.json'), 'utf8'),
+);
+const externalSubjectAssertionIndex = buildExternalSubjectAssertionIndex(
+  externalSubjectAssertionRegistry,
+);
+if (externalSubjectAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `External subject registry is invalid:\n- ${externalSubjectAssertionIndex.failures.join('\n- ')}`,
+  );
+}
+const proofAssertionRegistry = JSON.parse(
+  await readFile(join(repositoryRoot, 'evidence/proof-assertions.json'), 'utf8'),
+);
+const proofAssertionIndex = buildProofAssertionIndex(
+  proofAssertionRegistry,
+  criterionIndex.criteriaById,
+  {
+    externalSubjects: externalSubjectAssertionIndex.subjectsById,
+    manualProcedures: manualProcedureIndex.proceduresById,
+    profileAssertions: profileAssertionIndex.profilesById,
+  },
+);
+if (proofAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `Proof assertion registry is invalid:\n- ${proofAssertionIndex.failures.join('\n- ')}`,
+  );
+}
 for (const profile of options.profiles) {
-  if (!allowedProfiles.has(profile)) {
+  if (!criterionIndex.allowedProfiles.has(profile)) {
     throw new Error(`Profile ${profile} is not in evidence/gate-criteria.json.`);
   }
   if (profileAssertionIndex.profilesById.get(profile)?.status !== 'executable') {
@@ -75,11 +124,7 @@ const selectedAssertions = options.profiles.map((profile) =>
   profileAssertionIndex.profilesById.get(profile),
 );
 const profileLaneIds = [
-  ...new Set(
-    selectedAssertions.flatMap((assertion) =>
-      assertion.requiredRuns.filter((testId) => PROFILE_EVIDENCE_LANES[testId] !== undefined),
-    ),
-  ),
+  ...new Set(selectedAssertions.flatMap((assertion) => assertion.requiredRuns)),
 ].sort();
 const evidenceInputPaths = [
   ...new Set([
@@ -88,34 +133,25 @@ const evidenceInputPaths = [
   ]),
 ].sort();
 
-const criteria = [];
-for (const criterionId of options.criteria) {
-  const criterion = criterionById.get(criterionId);
-  if (criterion === undefined) {
-    throw new Error(`Criterion ${criterionId} is not in evidence/gate-criteria.json.`);
-  }
-  const capturedClasses = criterion.evidenceClasses.filter((evidenceClass) =>
-    GENERIC_LANE_EVIDENCE_CLASSES.has(evidenceClass),
-  );
-  if (capturedClasses.length === 0) {
-    throw new Error(
-      `Criterion ${criterionId} requires specialized or manual evidence; ` +
-        'the generic lane cannot claim an evidence class for it.',
-    );
-  }
-  for (const evidenceClass of capturedClasses) {
-    criteria.push({ class: evidenceClass, criterionId, outcome: 'positive' });
-  }
-}
-const criterionLaneIds = evidenceLaneIdsForCriteria(options.criteria);
-const lanes = [
-  ...Object.entries(GENERIC_EVIDENCE_LANES).map(([testId, command]) => ({
-    ...command,
-    testId,
-  })),
-  ...profileLaneIds.map((testId) => ({ ...PROFILE_EVIDENCE_LANES[testId], testId })),
-  ...criterionLaneIds.map((testId) => ({ ...SPECIALIZED_EVIDENCE_LANES[testId], testId })),
+const criterionClaims = planCriterionProofs(
+  options.criteria,
+  criterionIndex.criteriaById,
+  proofAssertionIndex.assertionsByKey,
+);
+const laneIds = [
+  ...new Set([
+    ...Object.keys(GENERIC_EVIDENCE_LANES),
+    ...profileLaneIds,
+    ...criterionClaims.flatMap(({ assertion }) => assertion.requiredRuns),
+  ]),
 ];
+const lanes = laneIds.map((testId) => {
+  const definition = EVIDENCE_LANES[testId];
+  if (definition?.availability !== 'executable') {
+    throw new Error(`Evidence lane ${testId} is not executable and cannot be auto-generated.`);
+  }
+  return { ...definition, testId };
+});
 
 const bundleId =
   options.id ??
@@ -127,9 +163,10 @@ const targetDirectory = join(evidenceBundlesRoot, bundleId);
 const stagingParent = join(repositoryRoot, '.cache');
 await assertTargetAbsent();
 await mkdir(stagingParent, { recursive: true });
-const stagingDirectory = await mkdtemp(join(stagingParent, 'evidence-staging-'));
+const stagingRoot = await mkdtemp(join(stagingParent, 'evidence-staging-'));
+const stagingDirectory = join(stagingRoot, 'evidence', 'bundles', bundleId);
 const artifactDirectory = join(stagingDirectory, 'artifacts');
-await mkdir(artifactDirectory);
+await mkdir(artifactDirectory, { recursive: true });
 
 try {
   const runs = [];
@@ -145,7 +182,7 @@ try {
     });
     const endedAt = new Date().toISOString();
     const exitStatus = typeof result.status === 'number' ? result.status : 1;
-    const command = renderCommand(step.command, step.args);
+    const command = renderEvidenceCommand(step.command, step.args);
     const log =
       `command: ${command}\nstartedAt: ${startedAt}\nendedAt: ${endedAt}\n` +
       `exitStatus: ${exitStatus}\nretryCount: 0\n\nstdout:\n${result.stdout ?? ''}` +
@@ -163,8 +200,11 @@ try {
       checksum: await checksumFile(join(artifactDirectory, artifactName)),
       mediaType: 'text/plain',
       path: artifactPath,
+      producerTestId: step.testId,
+      role: 'run/log',
     });
     runs.push({
+      artifactPaths: [artifactPath],
       command,
       endedAt,
       exitStatus,
@@ -190,6 +230,19 @@ try {
   assertCleanCheckout();
 
   const packageVersions = await readPackageVersions();
+  const runsById = new Map(runs.map((run) => [run.testId, run]));
+  const criteria = criterionClaims.map(({ assertion, criterionId }) => ({
+    class: assertion.class,
+    criterionId,
+    outcome: 'positive',
+    proof: {
+      artifactPaths: assertion.requiredRuns.flatMap(
+        (testId) => runsById.get(testId)?.artifactPaths ?? [],
+      ),
+      runIds: assertion.requiredRuns,
+      subjectIds: assertion.requiredSubjectIds,
+    },
+  }));
   const manifest = {
     artifactChecksums: Object.fromEntries(
       artifacts.map((artifact) => [artifact.path, artifact.checksum]),
@@ -236,16 +289,45 @@ try {
       repository: 'https://github.com/kumwe/studio',
       workingTreeState: 'clean',
     },
+    subjects: [],
   };
 
-  await assertManifestSchema(manifest);
-  await writeFile(
-    join(stagingDirectory, 'manifest.json'),
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    {
-      flag: 'wx',
+  const validators = await loadEvidenceValidators();
+  if (!validators.validateBundle(manifest)) {
+    throw new Error('Generated manifest violates its closed candidate schema.');
+  }
+  const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  const inspection = await inspectBundleEvidence(manifest, {
+    ...criterionIndex,
+    evidenceRoot: stagingRoot,
+    externalSubjectAssertions: externalSubjectAssertionIndex.subjectsById,
+    getCommitTime(candidateCommit) {
+      return candidateCommit === commit
+        ? Date.parse(git(['show', '--no-patch', '--format=%cI', candidateCommit]))
+        : Number.NaN;
     },
-  );
+    isCommitReachable: (candidateCommit) => candidateCommit === commit,
+    manualProcedures: manualProcedureIndex.proceduresById,
+    manifestBytes,
+    now: Date.now(),
+    packageVersions,
+    profileAssertions: profileAssertionIndex.profilesById,
+    proofAssertions: proofAssertionIndex.assertionsByKey,
+    repositoryRoot,
+    validateExternalAttestationSchema: validators.validateExternalAttestation,
+    validateExternalReportSchema: validators.validateExternalReport,
+    validateExternalSubjectSchema: validators.validateExternalSubject,
+    validateManualRecordSchema: validators.validateManualRecord,
+    validateReviewAttestationSchema: validators.validateReviewAttestation,
+  });
+  if (inspection.failures.length > 0) {
+    throw new Error(
+      `Generated bundle failed full semantic inspection before finalization:\n- ${inspection.failures.join('\n- ')}`,
+    );
+  }
+  await writeFile(join(stagingDirectory, 'manifest.json'), manifestBytes, {
+    flag: 'wx',
+  });
   // Generators coordinate on an ignored exclusive lock. The second target
   // check closes the normal race between the initial fast failure and rename.
   const lockPath = join(stagingParent, `evidence-${bundleId}.lock`);
@@ -254,6 +336,7 @@ try {
     lock = await open(lockPath, 'wx');
     await assertTargetAbsent();
     await rename(stagingDirectory, targetDirectory);
+    await rm(stagingRoot, { force: true, recursive: true });
   } finally {
     if (lock !== undefined) {
       await lock.close();
@@ -269,7 +352,7 @@ try {
       'The bundle is pending. A human reviewer must reproduce it and no gate outcome was recorded.\n',
   );
 } catch (error) {
-  await rm(stagingDirectory, { force: true, recursive: true });
+  await rm(stagingRoot, { force: true, recursive: true });
   if (error?.code === 'EEXIST' || error?.code === 'ENOTEMPTY') {
     throw new Error(`Evidence bundle ${bundleId} already exists and is immutable.`, {
       cause: error,
@@ -312,15 +395,33 @@ function assertSafeArtifact(bytes, testId) {
   }
 }
 
-async function assertManifestSchema(manifest) {
-  const schema = JSON.parse(
-    await readFile(join(repositoryRoot, 'evidence/schema/evidence-bundle.schema.json'), 'utf8'),
+async function loadEvidenceValidators() {
+  const schemaNames = [
+    'evidence-bundle.schema.json',
+    'external-attestation.schema.json',
+    'external-report.schema.json',
+    'external-subject.schema.json',
+    'manual-record.schema.json',
+    'review-attestation.schema.json',
+  ];
+  const schemas = await Promise.all(
+    schemaNames.map(async (name) =>
+      JSON.parse(await readFile(join(repositoryRoot, 'evidence/schema', name), 'utf8')),
+    ),
   );
   const ajv = new Ajv2020({ allErrors: true, strict: true });
-  const validate = ajv.compile(schema);
-  if (!validate(manifest)) {
-    throw new Error(`Generated manifest violates its schema: ${ajv.errorsText(validate.errors)}`);
+  for (const schema of schemas) {
+    ajv.addSchema(schema);
   }
+  const validator = (name) => ajv.getSchema(schemas[schemaNames.indexOf(name)].$id);
+  return {
+    validateBundle: validator('evidence-bundle.schema.json'),
+    validateExternalAttestation: validator('external-attestation.schema.json'),
+    validateExternalReport: validator('external-report.schema.json'),
+    validateExternalSubject: validator('external-subject.schema.json'),
+    validateManualRecord: validator('manual-record.schema.json'),
+    validateReviewAttestation: validator('review-attestation.schema.json'),
+  };
 }
 
 function git(args) {
@@ -346,10 +447,4 @@ async function readPackageVersions() {
     packageVersions[packageName] = packageManifest.version;
   }
   return packageVersions;
-}
-
-function renderCommand(command, args) {
-  return [command, ...args]
-    .map((part) => (/^[A-Za-z0-9_./:@+-]+$/u.test(part) ? part : JSON.stringify(part)))
-    .join(' ');
 }

@@ -6,6 +6,7 @@ import {
   assertPromotionPublication,
 } from '../publish-promotion.mjs';
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 
 describe('promotion publication guard', () => {
   it('accepts coordinated RC state without invoking Changesets publication', () => {
@@ -61,7 +62,7 @@ describe('promotion publication guard', () => {
 
 function record(version) {
   return {
-    claimedProfiles: ['studio.profile/engine-core'],
+    claimedProfiles: [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };

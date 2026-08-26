@@ -1,156 +1,146 @@
 import { createHash } from 'node:crypto';
 import { lstat, readFile, realpath } from 'node:fs/promises';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
+
+import {
+  commandForEvidenceLane,
+  EVIDENCE_ARTIFACT_ROLES,
+  evidenceLane,
+  REQUIRED_EVIDENCE_LANES,
+} from './evidence-lanes.mjs';
+import { collectExternalSubjectFailures } from './external-evidence.mjs';
+import { collectManualRecordFailures } from './manual-evidence.mjs';
+import { collectSignedReviewFailures } from './review-authentication.mjs';
+
+export {
+  commandForEvidenceLane,
+  EVIDENCE_ARTIFACT_ROLES,
+  EVIDENCE_LANES,
+  GENERIC_EVIDENCE_LANES,
+  PROFILE_EVIDENCE_LANES,
+  REQUIRED_EVIDENCE_LANES,
+  SPECIALIZED_EVIDENCE_LANES,
+} from './evidence-lanes.mjs';
 
 export const CANONICAL_REPOSITORY = 'https://github.com/kumwe/studio';
 
 export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
+  '.github/actions/setup-studio/action.yml',
   'evidence/environment-assertions.json',
   'evidence/environment-matrix.json',
+  'evidence/external-subject-assertions.json',
   'evidence/gate-criteria.json',
+  'evidence/manual-procedures.json',
   'evidence/profile-assertions.json',
+  'evidence/proof-assertions.json',
+  'evidence/reviewer-authorities.json',
+  'evidence/reviewer-authorities.sha256',
   'evidence/schema/environment-assertions.schema.json',
   'evidence/schema/environment-matrix.schema.json',
+  'evidence/schema/evidence-bundle.schema.json',
+  'evidence/schema/external-attestation.schema.json',
+  'evidence/schema/external-report.schema.json',
+  'evidence/schema/external-subject-assertions.schema.json',
+  'evidence/schema/external-subject.schema.json',
+  'evidence/schema/gate-criteria.schema.json',
+  'evidence/schema/gate-record.schema.json',
+  'evidence/schema/manual-procedures.schema.json',
+  'evidence/schema/manual-record.schema.json',
+  'evidence/schema/proof-assertions.schema.json',
+  'evidence/schema/review-attestation.schema.json',
+  'evidence/schema/reviewer-authorities.schema.json',
   'package.json',
   'package-lock.json',
   'packages/protocol/schemas/manifest.json',
   'packages/testkit/corpus-manifest.json',
   'release-profile-claims.json',
+  'scripts/check-evidence.mjs',
+  'scripts/create-evidence-bundle.mjs',
+  'scripts/evidence-lanes.mjs',
+  'scripts/evidence-plan.mjs',
+  'scripts/evidence-generator-input.mjs',
+  'scripts/evidence-validation.mjs',
+  'scripts/external-evidence.mjs',
+  'scripts/manual-evidence.mjs',
+  'scripts/review-authentication.mjs',
+  'scripts/prepare-promotion.mjs',
+  'scripts/promotion-plan.mjs',
+  'scripts/publish-alpha.mjs',
+  'scripts/publish-promotion.mjs',
+  'scripts/publish-staged-candidate.mjs',
+  'scripts/reconcile-release-tag.mjs',
+  'scripts/release-policy.mjs',
+  'scripts/release-record.mjs',
   'scripts/release-artifacts.mjs',
   'scripts/release-family.mjs',
   'scripts/staged-publish.mjs',
+  'scripts/cleanup-staging-tags.mjs',
+  'scripts/generate-release-notes.mjs',
+  'scripts/verify-github-release.mjs',
+  'scripts/verify-kumwe-app-proof.mjs',
+  'scripts/verify-manual-evidence.mjs',
   'scripts/verify-published-release.mjs',
+  'scripts/verify-release-gate.mjs',
   'scripts/verify-staged-release.mjs',
   'studio-release.json',
 ]);
 
-export const GENERIC_EVIDENCE_LANES = Object.freeze({
-  'quality/format': lane('npm', ['run', 'format:check']),
-  'quality/lint': lane('npm', ['run', 'lint']),
-  'quality/typecheck': lane('npm', ['run', 'typecheck']),
-  'build/workspace': lane('npm', ['run', 'build']),
-  'contract/package-boundaries': lane('node', ['scripts/check-boundaries.mjs']),
-  'contract/canonical-corpus': lane('node', ['scripts/check-contracts.mjs']),
-  'contract/release-record': lane('node', ['scripts/check-release-record.mjs']),
-  'release/package-tarballs': lane('node', ['scripts/check-packages.mjs']),
-  'evidence/authenticity': lane('node', ['scripts/check-evidence.mjs']),
-  'security/secret-scan': lane('node', ['scripts/check-secrets.mjs']),
-  'contract/requirement-registry': lane('node', ['scripts/check-requirements.mjs']),
-  'security/threat-registry': lane('node', ['scripts/check-threats.mjs']),
-  'release/changeset': lane('node', ['scripts/check-changesets.mjs']),
-  'unit/workspace': lane('npm', ['run', 'test']),
-  'accessibility/web': lane('npm', ['run', 'check:a11y', '--', '--retries=0']),
-});
-
-export const REQUIRED_EVIDENCE_LANES = Object.freeze(Object.keys(GENERIC_EVIDENCE_LANES));
-
-export const GENERIC_LANE_EVIDENCE_CLASSES = Object.freeze(
-  new Set(['accessibility', 'contract', 'property-fuzz', 'release', 'security', 'unit']),
-);
-
-export const PROFILE_EVIDENCE_LANES = Object.freeze({
-  'profile/binding-projection-v1': Object.freeze({
-    args: [
-      'run',
-      'packages/core/test/binding-projection.test.ts',
-      'packages/testkit/test/binding-projection-vectors.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/engine-core': Object.freeze({
-    args: [
-      'run',
-      'packages/core/test/canonical-vectors.test.ts',
-      'packages/core/test/command-vectors.test.ts',
-      'packages/core/test/fuzz-canonical.test.ts',
-      'packages/core/test/fuzz-commands.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/host-baseline': Object.freeze({
-    args: [
-      'run',
-      'packages/testkit/test/host-testbed.test.ts',
-      'packages/testkit/test/host-vectors.test.ts',
-      'packages/testkit/test/http-transport.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/host-baseline-v2': Object.freeze({
-    args: [
-      'run',
-      'packages/testkit/test/host-testbed.test.ts',
-      'packages/testkit/test/host-vectors.test.ts',
-      'packages/testkit/test/host-sequence-vectors.test.ts',
-      'packages/testkit/test/http-transport.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/media-policy': Object.freeze({
-    args: [
-      'run',
-      'packages/media/test/media-vectors.test.ts',
-      'packages/media/test/upload-controller.test.ts',
-      'packages/testkit/test/media-import-policy.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/preview-identity-v1': Object.freeze({
-    args: [
-      'run',
-      'packages/preview/test/preview-identity.test.ts',
-      'packages/testkit/test/preview-vectors.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/renderer-web': Object.freeze({
-    args: [
-      'run',
-      'packages/renderer-web/test/conformance.test.ts',
-      'packages/renderer-web/test/interactions.test.ts',
-      'packages/renderer-web/test/renderer.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-  'profile/schema-property': Object.freeze({
-    args: [
-      'run',
-      'packages/core/test/profile-validator.test.ts',
-      'packages/testkit/test/schema-profile-vectors.test.ts',
-      '--coverage.enabled=false',
-    ],
-    command: './node_modules/.bin/vitest',
-  }),
-});
-
-export const SPECIALIZED_EVIDENCE_LANES = Object.freeze({
-  'release/staged-registry-install': lane('npm', ['run', 'release:verify-stage']),
-});
-
-export const CRITERION_EVIDENCE_LANES = Object.freeze({
-  'gate-a/13-reproducible-evidence': Object.freeze(['release/staged-registry-install']),
-});
-
-export function evidenceLaneIdsForCriteria(criterionIds) {
-  return [
-    ...new Set(criterionIds.flatMap((criterionId) => CRITERION_EVIDENCE_LANES[criterionId] ?? [])),
-  ].sort();
-}
-
-export function commandForEvidenceLane(testId) {
-  const registered =
-    GENERIC_EVIDENCE_LANES[testId] ??
-    PROFILE_EVIDENCE_LANES[testId] ??
-    SPECIALIZED_EVIDENCE_LANES[testId];
-  return registered === undefined ? undefined : renderCommand(registered.command, registered.args);
-}
+export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
+  '.github/actions/setup-studio/action.yml',
+  'package.json',
+  'package-lock.json',
+  'evidence/environment-assertions.json',
+  'evidence/environment-matrix.json',
+  'evidence/external-subject-assertions.json',
+  'evidence/gate-criteria.json',
+  'evidence/manual-procedures.json',
+  'evidence/profile-assertions.json',
+  'evidence/proof-assertions.json',
+  'evidence/reviewer-authorities.json',
+  'evidence/reviewer-authorities.sha256',
+  'evidence/schema/environment-assertions.schema.json',
+  'evidence/schema/environment-matrix.schema.json',
+  'evidence/schema/evidence-bundle.schema.json',
+  'evidence/schema/external-attestation.schema.json',
+  'evidence/schema/external-report.schema.json',
+  'evidence/schema/external-subject-assertions.schema.json',
+  'evidence/schema/external-subject.schema.json',
+  'evidence/schema/gate-criteria.schema.json',
+  'evidence/schema/gate-record.schema.json',
+  'evidence/schema/manual-procedures.schema.json',
+  'evidence/schema/manual-record.schema.json',
+  'evidence/schema/proof-assertions.schema.json',
+  'evidence/schema/review-attestation.schema.json',
+  'evidence/schema/reviewer-authorities.schema.json',
+  'scripts/evidence-lanes.mjs',
+  'scripts/evidence-plan.mjs',
+  'scripts/evidence-generator-input.mjs',
+  'scripts/evidence-validation.mjs',
+  'scripts/external-evidence.mjs',
+  'scripts/manual-evidence.mjs',
+  'scripts/review-authentication.mjs',
+  'scripts/check-evidence.mjs',
+  'scripts/create-evidence-bundle.mjs',
+  'scripts/verify-kumwe-app-proof.mjs',
+  'scripts/verify-manual-evidence.mjs',
+  'scripts/verify-release-gate.mjs',
+  'scripts/prepare-promotion.mjs',
+  'scripts/promotion-plan.mjs',
+  'scripts/publish-alpha.mjs',
+  'scripts/publish-promotion.mjs',
+  'scripts/publish-staged-candidate.mjs',
+  'scripts/reconcile-release-tag.mjs',
+  'scripts/release-artifacts.mjs',
+  'scripts/release-family.mjs',
+  'scripts/release-policy.mjs',
+  'scripts/release-record.mjs',
+  'scripts/staged-publish.mjs',
+  'scripts/cleanup-staging-tags.mjs',
+  'scripts/generate-release-notes.mjs',
+  'scripts/verify-github-release.mjs',
+  'scripts/verify-published-release.mjs',
+]);
 
 const REVIEWER_ROLES = Object.freeze([
   'general',
@@ -205,6 +195,226 @@ export function buildCriterionIndex(registry) {
     criteriaById,
     failures,
   };
+}
+
+export function criterionProofKey(criterionId, evidenceClass) {
+  return `${criterionId}\u0000${evidenceClass}`;
+}
+
+export function buildProofAssertionIndex(
+  registry,
+  criteriaById,
+  {
+    externalSubjects = new Map(),
+    manualProcedures = new Map(),
+    profileAssertions = new Map(),
+  } = {},
+) {
+  const assertionsByKey = new Map();
+  const failures = [];
+  const profileTargetsById = new Map();
+  if (
+    registry?.contractVersion !== '0.1-draft' ||
+    registry?.kind !== 'criterion-proof-assertion-registry' ||
+    !Array.isArray(registry?.assertions) ||
+    !Array.isArray(registry?.profileTargets) ||
+    Object.keys(registry ?? {})
+      .sort()
+      .join('\n') !== 'assertions\ncontractVersion\nkind\nprofileTargets'
+  ) {
+    return {
+      assertionsByKey,
+      failures: ['criterion proof assertion registry has an invalid closed shape'],
+      profileTargetsById,
+    };
+  }
+  for (const assertion of registry.assertions) {
+    if (
+      assertion === null ||
+      typeof assertion !== 'object' ||
+      Array.isArray(assertion) ||
+      Object.keys(assertion).sort().join('\n') !==
+        'artifactRoles\navailability\nclass\ncriterionId\nmanualProcedureId\nrequiredRuns\nrequiredSubjectIds'
+    ) {
+      failures.push('criterion proof assertion entry has an invalid closed shape');
+      continue;
+    }
+    const key = criterionProofKey(assertion.criterionId, assertion.class);
+    if (assertionsByKey.has(key)) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} is duplicated`,
+      );
+      continue;
+    }
+    const criterion = criteriaById.get(assertion.criterionId);
+    if (criterion === undefined || !criterion.evidenceClasses.includes(assertion.class)) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} is outside the stable gate registry`,
+      );
+    }
+    if (
+      !Array.isArray(assertion.requiredRuns) ||
+      assertion.requiredRuns.length === 0 ||
+      new Set(assertion.requiredRuns).size !== assertion.requiredRuns.length
+    ) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} has invalid runs`,
+      );
+    }
+    const laneDefinitions = (assertion.requiredRuns ?? []).map((testId) => evidenceLane(testId));
+    if (laneDefinitions.some((definition) => definition === undefined)) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} references an unregistered lane`,
+      );
+    }
+    if (
+      !Array.isArray(assertion.artifactRoles) ||
+      assertion.artifactRoles.length === 0 ||
+      new Set(assertion.artifactRoles).size !== assertion.artifactRoles.length ||
+      assertion.artifactRoles.some((role) => !EVIDENCE_ARTIFACT_ROLES.includes(role))
+    ) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} has invalid artifact roles`,
+      );
+    }
+    const producedRoles = new Set(
+      laneDefinitions.flatMap((definition) => definition?.artifactRoles ?? []),
+    );
+    for (const role of assertion.artifactRoles ?? []) {
+      if (!producedRoles.has(role)) {
+        failures.push(
+          `criterion proof assertion ${assertion.criterionId}/${assertion.class} requires role ${role} from no registered lane`,
+        );
+      }
+    }
+    const laneAvailabilities = new Set(
+      laneDefinitions.map((definition) => definition?.availability).filter(Boolean),
+    );
+    if (
+      assertion.availability === 'executable' &&
+      !sameMembers([...laneAvailabilities], ['executable'])
+    ) {
+      failures.push(
+        `executable proof assertion ${assertion.criterionId}/${assertion.class} contains a non-executable lane`,
+      );
+    }
+    if (assertion.availability === 'manual-input' && !laneAvailabilities.has('manual-input')) {
+      failures.push(
+        `manual proof assertion ${assertion.criterionId}/${assertion.class} lacks a manual-input lane`,
+      );
+    }
+    if (assertion.availability === 'external-input' && !laneAvailabilities.has('external-input')) {
+      failures.push(
+        `external proof assertion ${assertion.criterionId}/${assertion.class} lacks an external-input lane`,
+      );
+    }
+    if (assertion.availability === 'target' && !laneAvailabilities.has('target')) {
+      failures.push(
+        `target proof assertion ${assertion.criterionId}/${assertion.class} lacks a target lane`,
+      );
+    }
+    const procedure =
+      assertion.manualProcedureId === null
+        ? undefined
+        : manualProcedures.get(assertion.manualProcedureId);
+    if (assertion.availability === 'manual-input') {
+      if (
+        procedure === undefined ||
+        procedure.criterionId !== assertion.criterionId ||
+        procedure.evidenceClass !== assertion.class ||
+        !assertion.requiredRuns.includes(procedure.laneId) ||
+        !assertion.artifactRoles.includes(procedure.artifactRole)
+      ) {
+        failures.push(
+          `manual proof assertion ${assertion.criterionId}/${assertion.class} is not bound to its exact procedure`,
+        );
+      }
+    } else if (assertion.manualProcedureId !== null) {
+      failures.push(
+        `non-manual proof assertion ${assertion.criterionId}/${assertion.class} names a procedure`,
+      );
+    }
+    if (
+      !Array.isArray(assertion.requiredSubjectIds) ||
+      new Set(assertion.requiredSubjectIds).size !== assertion.requiredSubjectIds.length
+    ) {
+      failures.push(
+        `criterion proof assertion ${assertion.criterionId}/${assertion.class} has invalid subjects`,
+      );
+    }
+    for (const subjectId of assertion.requiredSubjectIds ?? []) {
+      const subject = externalSubjects.get(subjectId);
+      if (subject === undefined || !assertion.requiredRuns.includes(subject.laneId)) {
+        failures.push(
+          `criterion proof assertion ${assertion.criterionId}/${assertion.class} is not bound to external subject ${subjectId}`,
+        );
+      }
+    }
+    assertionsByKey.set(key, assertion);
+  }
+  const expectedKeys = [...criteriaById.values()].flatMap((criterion) =>
+    criterion.evidenceClasses.map((evidenceClass) =>
+      criterionProofKey(criterion.id, evidenceClass),
+    ),
+  );
+  if (!sameMembers([...assertionsByKey.keys()], expectedKeys)) {
+    failures.push(
+      'criterion proof assertions must cover every Gate A and Gate B criterion/class exactly once',
+    );
+  }
+
+  for (const target of registry.profileTargets) {
+    if (
+      target === null ||
+      typeof target !== 'object' ||
+      Array.isArray(target) ||
+      Object.keys(target).sort().join('\n') !==
+        'artifactRoles\nid\nmanualProcedureId\nrequiredRuns\nrequiredSubjectIds\nstatus'
+    ) {
+      failures.push('profile proof target has an invalid closed shape');
+      continue;
+    }
+    if (profileTargetsById.has(target.id)) {
+      failures.push(`profile proof target ${String(target.id)} is duplicated`);
+      continue;
+    }
+    const profile = profileAssertions.get(target.id);
+    const procedure = manualProcedures.get(target.manualProcedureId);
+    if (target.id !== 'studio.profile/authoring-web' || profile?.status !== 'target') {
+      failures.push(
+        'the authoring-web proof target must remain target-only until qualification lands',
+      );
+    }
+    if (
+      target.status !== 'target' ||
+      procedure?.id !== 'accessibility/gate-a-interactions-v1' ||
+      !sameMembers(target.requiredRuns, [
+        'accessibility/manual-interactions-v1',
+        'accessibility/web',
+        'integration/kumwe-app-v1',
+      ]) ||
+      !sameMembers(target.requiredSubjectIds, ['kumwe/app']) ||
+      !sameMembers(target.artifactRoles, [
+        'accessibility/manual-interaction-report-v1',
+        'integration/external-attestation-v1',
+        'integration/external-subject-v1',
+        'integration/kumwe-app-report-v1',
+        'review/attestation-v1',
+        'review/signature-v1',
+        'run/log',
+      ]) ||
+      externalSubjects.get('kumwe/app')?.status !== 'target'
+    ) {
+      failures.push(
+        'authoring-web target must bind exact Kumwe App real-shell and manual accessibility proof',
+      );
+    }
+    profileTargetsById.set(target.id, target);
+  }
+  if (!sameMembers([...profileTargetsById.keys()], ['studio.profile/authoring-web'])) {
+    failures.push('profile proof targets must contain exactly studio.profile/authoring-web');
+  }
+  return { assertionsByKey, failures, profileTargetsById };
 }
 
 export function buildProfileAssertionIndex(registry, allowedProfiles) {
@@ -401,15 +611,28 @@ export function environmentMatchesPredicate(environment, predicate) {
   return true;
 }
 
-export async function collectBundleFailures(manifest, context) {
+export async function inspectBundleEvidence(manifest, context) {
   const failures = [];
+  const authenticatedProofKeys = new Set();
   const bundleId = manifest.bundleId;
   const bundlePrefix = `evidence/bundles/${bundleId}/artifacts/`;
+  if (!Buffer.isBuffer(context.manifestBytes)) {
+    failures.push('bundle authenticity requires the exact raw manifest bytes');
+  } else {
+    try {
+      if (!isDeepStrictEqual(JSON.parse(context.manifestBytes.toString('utf8')), manifest)) {
+        failures.push('parsed bundle manifest differs from the supplied raw manifest bytes');
+      }
+    } catch {
+      failures.push('bundle raw manifest bytes are not valid JSON');
+    }
+  }
 
   if (manifest.source.repository !== CANONICAL_REPOSITORY) {
     failures.push(`source.repository must be ${CANONICAL_REPOSITORY}`);
   }
-  if (!(await context.isCommitReachable(manifest.source.commit))) {
+  const sourceCommitReachable = await context.isCommitReachable(manifest.source.commit);
+  if (!sourceCommitReachable) {
     failures.push(
       `source.commit ${manifest.source.commit} is not the checked-out commit or a reachable ancestor`,
     );
@@ -427,26 +650,48 @@ export async function collectBundleFailures(manifest, context) {
   if (!sameMembers(lockfilePaths, ['package-lock.json'])) {
     failures.push('source.lockfileChecksums must contain exactly package-lock.json');
   }
-  await collectSourceChecksumMapFailures(
-    failures,
-    'source.lockfileChecksums',
-    manifest.source.lockfileChecksums,
-    context,
-    manifest.source.commit,
-  );
+  if (sourceCommitReachable) {
+    await collectSourceChecksumMapFailures(
+      failures,
+      'source.lockfileChecksums',
+      manifest.source.lockfileChecksums,
+      context,
+      manifest.source.commit,
+    );
+  }
+  for (const path of EVIDENCE_SEMANTIC_INPUTS) {
+    let executingChecksum;
+    try {
+      executingChecksum = await checksumFile(resolve(context.repositoryRoot, path));
+    } catch (error) {
+      failures.push(
+        `executing evidence semantic ${path} is unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      continue;
+    }
+    if (manifest.inputFixtureChecksums[path] !== executingChecksum) {
+      failures.push(
+        `source evidence semantic ${path} differs from the executing verifier; regenerate the bundle`,
+      );
+    }
+  }
 
   for (const path of REQUIRED_EVIDENCE_INPUTS) {
     if (manifest.inputFixtureChecksums[path] === undefined) {
       failures.push(`inputFixtureChecksums is missing required source input ${path}`);
     }
   }
-  await collectSourceChecksumMapFailures(
-    failures,
-    'inputFixtureChecksums',
-    manifest.inputFixtureChecksums,
-    context,
-    manifest.source.commit,
-  );
+  if (sourceCommitReachable) {
+    await collectSourceChecksumMapFailures(
+      failures,
+      'inputFixtureChecksums',
+      manifest.inputFixtureChecksums,
+      context,
+      manifest.source.commit,
+    );
+  }
   if (
     manifest.source.lockfileChecksums['package-lock.json'] !==
     manifest.inputFixtureChecksums['package-lock.json']
@@ -455,6 +700,7 @@ export async function collectBundleFailures(manifest, context) {
   }
 
   const artifactPaths = [];
+  const artifactsByPath = new Map();
   const artifactChecksums = new Map();
   for (const artifact of manifest.artifacts) {
     if (artifactChecksums.has(artifact.path)) {
@@ -462,9 +708,13 @@ export async function collectBundleFailures(manifest, context) {
       continue;
     }
     artifactPaths.push(artifact.path);
+    artifactsByPath.set(artifact.path, artifact);
     artifactChecksums.set(artifact.path, artifact.checksum);
     if (!artifact.path.startsWith(bundlePrefix)) {
       failures.push(`artifact ${artifact.path} is outside ${bundlePrefix}`);
+    }
+    if (!EVIDENCE_ARTIFACT_ROLES.includes(artifact.role)) {
+      failures.push(`artifact ${artifact.path} uses unregistered role ${String(artifact.role)}`);
     }
   }
   const checksumPaths = Object.keys(manifest.artifactChecksums);
@@ -486,7 +736,7 @@ export async function collectBundleFailures(manifest, context) {
 
   const seenCriteria = new Set();
   for (const criterion of manifest.criteria) {
-    const key = `${criterion.criterionId}\u0000${criterion.class}`;
+    const key = criterionProofKey(criterion.criterionId, criterion.class);
     if (seenCriteria.has(key)) {
       failures.push(`criterion evidence ${criterion.criterionId}/${criterion.class} is duplicated`);
     }
@@ -507,7 +757,7 @@ export async function collectBundleFailures(manifest, context) {
     }
   }
   let sourcePackageVersions = context.packageVersions;
-  if (context.getPackageVersionsForCommit !== undefined) {
+  if (sourceCommitReachable && context.getPackageVersionsForCommit !== undefined) {
     try {
       sourcePackageVersions = await context.getPackageVersionsForCommit(manifest.source.commit);
     } catch (error) {
@@ -529,12 +779,14 @@ export async function collectBundleFailures(manifest, context) {
   }
 
   const runIds = new Set();
+  const runsById = new Map();
   let latestRunTime = Number.NEGATIVE_INFINITY;
   for (const run of manifest.runs) {
     if (runIds.has(run.testId)) {
       failures.push(`run testId ${run.testId} is duplicated`);
     }
     runIds.add(run.testId);
+    runsById.set(run.testId, run);
     const startedAt = Date.parse(run.startedAt);
     const endedAt = Date.parse(run.endedAt);
     if (Number.isNaN(startedAt) || Number.isNaN(endedAt) || endedAt < startedAt) {
@@ -548,11 +800,40 @@ export async function collectBundleFailures(manifest, context) {
     if (run.retryCount !== 0) {
       failures.push(`run ${run.testId} was retried; flaky evidence is failing evidence`);
     }
+    const laneDefinition = evidenceLane(run.testId);
     const expectedCommand = commandForEvidenceLane(run.testId);
     if (expectedCommand === undefined) {
       failures.push(`run ${run.testId} is outside the closed evidence command registry`);
     } else if (run.command !== expectedCommand) {
       failures.push(`run ${run.testId} did not run its registered command`);
+    }
+    if (laneDefinition?.availability === 'target') {
+      failures.push(`run ${run.testId} remains target-only and cannot authenticate evidence`);
+    }
+    for (const path of run.artifactPaths ?? []) {
+      const artifact = artifactsByPath.get(path);
+      if (artifact === undefined) {
+        failures.push(`run ${run.testId} links unknown artifact ${path}`);
+        continue;
+      }
+      if (artifact.producerTestId !== run.testId) {
+        failures.push(
+          `artifact ${path} names producer ${artifact.producerTestId}, not linking run ${run.testId}`,
+        );
+      }
+      if (!laneDefinition?.artifactRoles.includes(artifact.role)) {
+        failures.push(`run ${run.testId} cannot produce artifact role ${String(artifact.role)}`);
+      }
+    }
+  }
+  for (const artifact of manifest.artifacts) {
+    const producer = runsById.get(artifact.producerTestId);
+    if (producer === undefined) {
+      failures.push(
+        `artifact ${artifact.path} names missing producer run ${artifact.producerTestId}`,
+      );
+    } else if (!producer.artifactPaths.includes(artifact.path)) {
+      failures.push(`artifact ${artifact.path} is not linked by its producer run`);
     }
   }
   for (const requiredLane of REQUIRED_EVIDENCE_LANES) {
@@ -560,15 +841,8 @@ export async function collectBundleFailures(manifest, context) {
       failures.push(`runs is missing mandatory lane ${requiredLane}`);
     }
   }
-  for (const requiredLane of evidenceLaneIdsForCriteria(
-    manifest.criteria.map((criterion) => criterion.criterionId),
-  )) {
-    if (!runIds.has(requiredLane)) {
-      failures.push(`runs is missing criterion-specific lane ${requiredLane}`);
-    }
-  }
   let profileAssertions = context.profileAssertions;
-  if (context.getProfileAssertionsForCommit !== undefined) {
+  if (sourceCommitReachable && context.getProfileAssertionsForCommit !== undefined) {
     try {
       profileAssertions = await context.getProfileAssertionsForCommit(manifest.source.commit);
     } catch (error) {
@@ -604,6 +878,209 @@ export async function collectBundleFailures(manifest, context) {
     }
   }
 
+  let proofContext = {
+    externalSubjectAssertions: context.externalSubjectAssertions ?? new Map(),
+    manualProcedures: context.manualProcedures ?? new Map(),
+    proofAssertions: context.proofAssertions ?? new Map(),
+  };
+  if (sourceCommitReachable && context.getProofContextForCommit !== undefined) {
+    try {
+      proofContext = await context.getProofContextForCommit(manifest.source.commit);
+    } catch (error) {
+      failures.push(
+        `proof assertions at ${manifest.source.commit} are unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  const runnerIdentities = new Set(manifest.runs.map((run) => run.runner));
+  const retainedArtifactPaths = new Set(artifactPaths);
+  const subjectsById = new Map();
+  const subjectFailuresById = new Map();
+  for (const subject of manifest.subjects ?? []) {
+    if (subjectsById.has(subject.id)) {
+      failures.push(`external subject ${subject.id} is duplicated`);
+      continue;
+    }
+    subjectsById.set(subject.id, subject);
+    const subjectFailures = [];
+    let report;
+    let attestation;
+    try {
+      const retainedSubject = await readRetainedJsonArtifact(subject.recordArtifactPath, context);
+      if (!isDeepStrictEqual(retainedSubject, subject)) {
+        subjectFailures.push(
+          `external subject ${subject.id} does not equal its checksum-bound record artifact`,
+        );
+      }
+    } catch (error) {
+      subjectFailures.push(
+        `external subject ${subject.id} record artifact is unavailable or invalid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    try {
+      report = await readRetainedJsonArtifact(subject.reportArtifactPath, context);
+    } catch (error) {
+      subjectFailures.push(
+        `external subject ${subject.id} report artifact is unavailable or invalid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    try {
+      attestation = await readRetainedJsonArtifact(subject.attestationArtifactPath, context);
+    } catch (error) {
+      subjectFailures.push(
+        `external subject ${subject.id} attestation artifact is unavailable or invalid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    subjectFailures.push(
+      ...collectExternalSubjectFailures(subject, {
+        artifactsByPath,
+        authenticatedWorkflowSubjects: context.authenticatedWorkflowSubjects,
+        artifactPaths: retainedArtifactPaths,
+        assertion: proofContext.externalSubjectAssertions.get(subject.id),
+        attestation,
+        candidateCommit: manifest.source.commit,
+        report,
+        validateAttestationSchema: context.validateExternalAttestationSchema,
+        validateReportSchema: context.validateExternalReportSchema,
+        validateSchema: context.validateExternalSubjectSchema,
+      }),
+    );
+    subjectFailuresById.set(subject.id, subjectFailures);
+    failures.push(...subjectFailures);
+  }
+
+  for (const criterion of manifest.criteria) {
+    const proofFailures = [];
+    const key = criterionProofKey(criterion.criterionId, criterion.class);
+    const assertion = proofContext.proofAssertions.get(key);
+    if (assertion === undefined) {
+      proofFailures.push(
+        `criterion ${criterion.criterionId}/${criterion.class} has no registered proof assertion`,
+      );
+    } else {
+      if (assertion.availability === 'target') {
+        proofFailures.push(
+          `criterion ${criterion.criterionId}/${criterion.class} remains target-only`,
+        );
+      }
+      if (!sameMembers(criterion.proof.runIds, assertion.requiredRuns)) {
+        proofFailures.push(
+          `criterion ${criterion.criterionId}/${criterion.class} does not bind its exact required runs`,
+        );
+      }
+      if (!sameMembers(criterion.proof.subjectIds, assertion.requiredSubjectIds)) {
+        proofFailures.push(
+          `criterion ${criterion.criterionId}/${criterion.class} does not bind its exact required subjects`,
+        );
+      }
+
+      const proofRuns = criterion.proof.runIds
+        .map((testId) => runsById.get(testId))
+        .filter(Boolean);
+      for (const testId of criterion.proof.runIds) {
+        if (!runsById.has(testId)) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} links missing run ${testId}`,
+          );
+        }
+      }
+      const expectedProofArtifactPaths = proofRuns.flatMap((run) => run.artifactPaths);
+      if (!sameMembers(criterion.proof.artifactPaths, expectedProofArtifactPaths)) {
+        proofFailures.push(
+          `criterion ${criterion.criterionId}/${criterion.class} artifact refs must exactly match its bound runs`,
+        );
+      }
+      const proofArtifacts = criterion.proof.artifactPaths
+        .map((path) => artifactsByPath.get(path))
+        .filter(Boolean);
+      for (const path of criterion.proof.artifactPaths) {
+        if (!artifactsByPath.has(path)) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} links unknown artifact ${path}`,
+          );
+        }
+      }
+      const proofArtifactRoles = new Set(proofArtifacts.map((artifact) => artifact.role));
+      for (const role of assertion.artifactRoles) {
+        if (!proofArtifactRoles.has(role)) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} lacks required artifact role ${role}`,
+          );
+        }
+      }
+
+      for (const subjectId of criterion.proof.subjectIds) {
+        if (!subjectsById.has(subjectId)) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} links missing external subject ${subjectId}`,
+          );
+        } else if ((subjectFailuresById.get(subjectId) ?? []).length > 0) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} links unauthenticated external subject ${subjectId}`,
+          );
+        }
+      }
+
+      if (assertion.manualProcedureId !== null) {
+        const procedure = proofContext.manualProcedures.get(assertion.manualProcedureId);
+        const manualArtifacts = proofArtifacts.filter(
+          (artifact) => artifact.role === procedure?.artifactRole,
+        );
+        if (procedure === undefined || manualArtifacts.length !== 1) {
+          proofFailures.push(
+            `criterion ${criterion.criterionId}/${criterion.class} must bind exactly one manual record`,
+          );
+        } else {
+          let manualRecord;
+          let manualRecordBytes;
+          try {
+            manualRecordBytes = await readRetainedArtifactBytes(manualArtifacts[0].path, context);
+            manualRecord = JSON.parse(manualRecordBytes.toString('utf8'));
+          } catch (error) {
+            proofFailures.push(
+              `manual record ${manualArtifacts[0].path} is unavailable or invalid JSON: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+          if (manualRecord !== undefined) {
+            proofFailures.push(
+              ...(await collectManualRecordFailures(manualRecord, {
+                ...context,
+                artifactsByPath,
+                artifactPaths: retainedArtifactPaths,
+                bundleId: manifest.bundleId,
+                candidateCommit: manifest.source.commit,
+                now: context.now,
+                procedure,
+                runStartedAt: runsById.get(procedure.laneId)?.startedAt,
+                runnerIdentities,
+                sourceCommitTime,
+                subjectBytes: manualRecordBytes,
+                validateSchema: context.validateManualRecordSchema,
+                verificationStartedAt: Date.parse(runsById.get(procedure.laneId)?.startedAt ?? ''),
+              })),
+            );
+          }
+        }
+      }
+    }
+    if (proofFailures.length === 0) {
+      authenticatedProofKeys.add(key);
+    } else {
+      failures.push(...proofFailures);
+    }
+  }
+
   const review = manifest.review;
   if (review.status !== 'pending') {
     const reviewedAt = Date.parse(review.reviewedAt);
@@ -623,8 +1100,41 @@ export async function collectBundleFailures(manifest, context) {
     if (review.reviewer?.kind !== 'human') {
       failures.push('review.reviewer.kind must be human');
     }
+    if (review.reviewer?.independent !== true) {
+      failures.push('bundle reproduction reviewer must hold trusted independent authority');
+    }
     if (manifest.runs.some((run) => run.runner === review.reviewer?.identity)) {
       failures.push('the reviewer must be independent of every recorded runner identity');
+    }
+    const expectedReviewPrefix = `evidence/bundles/${bundleId}/review/`;
+    if (
+      !review.authentication?.attestationPath?.startsWith(expectedReviewPrefix) ||
+      !review.authentication?.signaturePath?.startsWith(expectedReviewPrefix)
+    ) {
+      failures.push(`bundle review authentication must remain under ${expectedReviewPrefix}`);
+    }
+    if (Buffer.isBuffer(context.manifestBytes)) {
+      failures.push(
+        ...(await collectSignedReviewFailures({
+          authentication: review.authentication,
+          context,
+          expectedIssuedAt: review.reviewedAt,
+          expectedReviewer: {
+            identity: review.reviewer?.identity,
+            independent: review.reviewer?.independent,
+            roles: review.reviewer?.roles,
+          },
+          expectedSubject: {
+            bundleId,
+            candidateCommit: manifest.source.commit,
+            decision: review.status,
+            freshnessExpiresAt: review.status === 'reproduced' ? review.freshnessExpiresAt : null,
+            kind: 'bundle-review',
+            reviewedAt: review.reviewedAt,
+          },
+          subjectBytes: context.manifestBytes,
+        })),
+      );
     }
   }
   if (review.status === 'reproduced') {
@@ -644,11 +1154,26 @@ export async function collectBundleFailures(manifest, context) {
     }
   }
 
-  return failures;
+  return { authenticatedProofKeys, failures };
+}
+
+export async function collectBundleFailures(manifest, context) {
+  return (await inspectBundleEvidence(manifest, context)).failures;
 }
 
 export async function collectGateRecordFailures(record, fileName, context) {
   const failures = [];
+  if (!Buffer.isBuffer(context.recordBytes)) {
+    failures.push('gate authenticity requires the exact raw gate-record bytes');
+  } else {
+    try {
+      if (!isDeepStrictEqual(JSON.parse(context.recordBytes.toString('utf8')), record)) {
+        failures.push('parsed gate record differs from the supplied raw gate-record bytes');
+      }
+    } catch {
+      failures.push('gate raw record bytes are not valid JSON');
+    }
+  }
   const expectedFileName = `gate-${record.gate.toLowerCase()}.json`;
   if (fileName !== expectedFileName) {
     failures.push(`gate ${record.gate} record must be named ${expectedFileName}`);
@@ -725,9 +1250,10 @@ export async function collectGateRecordFailures(record, fileName, context) {
       ) {
         failures.push(`bundle ${bundleId} was reviewed after the gate decision`);
       }
-      for (const evidence of bundle.criteria) {
-        if (evidence.criterionId === criterion.criterionId) {
-          coveredClasses.add(evidence.class);
+      const authenticatedProofs = context.authenticatedProofsByBundleId?.get(bundleId);
+      for (const evidenceClass of registered.evidenceClasses) {
+        if (authenticatedProofs?.has(criterionProofKey(criterion.criterionId, evidenceClass))) {
+          coveredClasses.add(evidenceClass);
         }
       }
     }
@@ -742,6 +1268,32 @@ export async function collectGateRecordFailures(record, fileName, context) {
 
   if (!sameMembers([...linkedBundleIds], record.evidenceBundleIds)) {
     failures.push('evidenceBundleIds must exactly equal the bundles linked by criterion records');
+  }
+  const expectedGateArtifactPaths = new Set();
+  for (const bundleId of record.evidenceBundleIds) {
+    expectedGateArtifactPaths.add(`evidence/bundles/${bundleId}/manifest.json`);
+    const bundle = context.bundlesById.get(bundleId);
+    for (const artifact of bundle?.artifacts ?? []) {
+      expectedGateArtifactPaths.add(artifact.path);
+      if (record.artifactHashes[artifact.path] !== artifact.checksum) {
+        failures.push(
+          `artifactHashes must bind bundle ${bundleId} artifact ${artifact.path} to its declared checksum`,
+        );
+      }
+    }
+    for (const path of [
+      bundle?.review?.authentication?.attestationPath,
+      bundle?.review?.authentication?.signaturePath,
+    ]) {
+      if (typeof path === 'string') {
+        expectedGateArtifactPaths.add(path);
+      }
+    }
+  }
+  if (!sameMembers(Object.keys(record.artifactHashes), [...expectedGateArtifactPaths])) {
+    failures.push(
+      'artifactHashes must exactly equal every linked manifest.json and every declared bundle artifact',
+    );
   }
   if (record.decision === 'pass' && record.evidenceBundleIds.length === 0) {
     failures.push('a passing gate record must link at least one evidence bundle');
@@ -781,6 +1333,7 @@ export async function collectGateRecordFailures(record, fileName, context) {
   }
 
   const reviewerByIdentity = new Map();
+  const authenticationPaths = new Set();
   for (const reviewer of record.reviewers) {
     if (reviewerByIdentity.has(reviewer.identity)) {
       failures.push(`reviewer identity ${reviewer.identity} is duplicated`);
@@ -790,6 +1343,45 @@ export async function collectGateRecordFailures(record, fileName, context) {
       if (!REVIEWER_ROLES.includes(role)) {
         failures.push(`reviewer ${reviewer.identity} has unknown role ${role}`);
       }
+    }
+    for (const path of [
+      reviewer.authentication?.attestationPath,
+      reviewer.authentication?.signaturePath,
+    ]) {
+      if (typeof path !== 'string') continue;
+      if (authenticationPaths.has(path)) {
+        failures.push(`gate reviewer authentication path ${path} is reused`);
+      }
+      authenticationPaths.add(path);
+    }
+    const expectedReviewPrefix = `evidence/gates/reviews/gate-${record.gate.toLowerCase()}/`;
+    if (
+      !reviewer.authentication?.attestationPath?.startsWith(expectedReviewPrefix) ||
+      !reviewer.authentication?.signaturePath?.startsWith(expectedReviewPrefix)
+    ) {
+      failures.push(`gate reviewer authentication must remain under ${expectedReviewPrefix}`);
+    }
+    if (Buffer.isBuffer(context.recordBytes)) {
+      failures.push(
+        ...(await collectSignedReviewFailures({
+          authentication: reviewer.authentication,
+          context,
+          expectedIssuedAt: record.decidedAt,
+          expectedReviewer: {
+            identity: reviewer.identity,
+            independent: reviewer.independent,
+            roles: reviewer.roles,
+          },
+          expectedSubject: {
+            candidateCommit: record.sourceCommit,
+            decidedAt: record.decidedAt,
+            decision: record.decision,
+            gate: record.gate,
+            kind: 'gate-review',
+          },
+          subjectBytes: context.recordBytes,
+        })),
+      );
     }
   }
   if (!record.reviewers.some((reviewer) => reviewer.independent)) {
@@ -877,9 +1469,9 @@ async function collectSourceChecksumMapFailures(failures, member, checksums, con
       failures.push(`${member} path ${path} is not a bounded repository-relative path`);
       continue;
     }
-    let actual;
+    let sourceFile;
     try {
-      actual = await context.getSourceFileChecksum(commit, path);
+      sourceFile = await context.getSourceFileChecksum(commit, path);
     } catch (error) {
       failures.push(
         `${member} path ${path} is unavailable at ${commit}: ${
@@ -888,10 +1480,40 @@ async function collectSourceChecksumMapFailures(failures, member, checksums, con
       );
       continue;
     }
-    if (actual !== expected) {
-      failures.push(`${member} path ${path} has checksum ${String(actual)}, not ${expected}`);
+    if (
+      sourceFile === null ||
+      typeof sourceFile !== 'object' ||
+      !['100644', '100755'].includes(sourceFile.mode)
+    ) {
+      failures.push(`${member} path ${path} is not a regular tracked source file`);
+      continue;
+    }
+    if (sourceFile.checksum !== expected) {
+      failures.push(
+        `${member} path ${path} has checksum ${String(sourceFile.checksum)}, not ${expected}`,
+      );
     }
   }
+}
+
+async function readRetainedJsonArtifact(path, context) {
+  return JSON.parse(await readRetainedArtifactBytes(path, context));
+}
+
+async function readRetainedArtifactBytes(path, context) {
+  if (context.readRetainedArtifact !== undefined) {
+    return Buffer.from(await context.readRetainedArtifact(path));
+  }
+  const root = context.evidenceRoot ?? context.repositoryRoot;
+  const resolvedPath = resolve(root, path);
+  if (!isContained(root, resolvedPath)) {
+    throw new Error('artifact path escapes the evidence root');
+  }
+  const fileStat = await lstat(resolvedPath);
+  if (!fileStat.isFile() || fileStat.isSymbolicLink()) {
+    throw new Error('artifact is not a regular, non-symlink file');
+  }
+  return readFile(resolvedPath);
 }
 
 function isContained(root, candidate) {
@@ -913,17 +1535,8 @@ function sameMembers(left, right) {
 function isRepositoryRelativePath(path) {
   return (
     typeof path === 'string' &&
-    /^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:\/[A-Za-z0-9@][A-Za-z0-9._@-]*)*$/u.test(path) &&
+    (path === '.github/actions/setup-studio/action.yml' ||
+      /^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:\/[A-Za-z0-9@][A-Za-z0-9._@-]*)*$/u.test(path)) &&
     path.length <= 240
   );
-}
-
-function renderCommand(command, args) {
-  return [command, ...args]
-    .map((part) => (/^[A-Za-z0-9_./:@+-]+$/u.test(part) ? part : JSON.stringify(part)))
-    .join(' ');
-}
-
-function lane(command, args) {
-  return Object.freeze({ args: Object.freeze(args), command });
 }

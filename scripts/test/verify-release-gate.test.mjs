@@ -1,15 +1,21 @@
 import assert from 'node:assert/strict';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { commandForEvidenceLane } from '../evidence-validation.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import {
   assertCurrentCandidateCoordinate,
   assertEvidenceChangedPaths,
+  assertEvidenceSemanticEquality,
   assertLatestGateDecision,
   assertStableChangedPaths,
   assertStableEnvironmentQualification,
   assertStablePromotion,
   assertStatusGatePass,
+  EVIDENCE_SEMANTIC_PATHS,
 } from '../verify-release-gate.mjs';
 
 const packageNames = [
@@ -57,6 +63,108 @@ describe('promotion gate guards', () => {
     assert.throws(
       () => assertEvidenceChangedPaths(['scripts/verify-release-gate.mjs']),
       /outside evidence records/u,
+    );
+  });
+
+  it('refuses to reinterpret historical evidence with current verifier semantics', async (t) => {
+    const candidateRoot = await mkdtemp(join(tmpdir(), 'studio-candidate-semantics-'));
+    const executionRoot = await mkdtemp(join(tmpdir(), 'studio-execution-semantics-'));
+    t.after(() => rm(candidateRoot, { force: true, recursive: true }));
+    t.after(() => rm(executionRoot, { force: true, recursive: true }));
+    for (const path of EVIDENCE_SEMANTIC_PATHS) {
+      for (const root of [candidateRoot, executionRoot]) {
+        await mkdir(join(root, path, '..'), { recursive: true });
+        await writeFile(join(root, path), `same semantics for ${path}\n`);
+      }
+    }
+    const candidateLock = {
+      lockfileVersion: 3,
+      packages: {
+        '': { devDependencies: { ajv: '1.0.0' } },
+        'node_modules/ajv': { integrity: 'sha512-candidate', version: '1.0.0' },
+        'node_modules/@kumwe/studio-core': { link: true, resolved: 'packages/core' },
+        'packages/core': { version: '0.1.0-rc.1' },
+      },
+    };
+    const executionLock = structuredClone(candidateLock);
+    await Promise.all([
+      writeFile(join(candidateRoot, 'package-lock.json'), JSON.stringify(candidateLock)),
+      writeFile(join(executionRoot, 'package-lock.json'), JSON.stringify(executionLock)),
+    ]);
+    for (const requiredPath of [
+      '.github/actions/setup-studio/action.yml',
+      'package.json',
+      'package-lock.json',
+      'evidence/reviewer-authorities.sha256',
+      'evidence/schema/review-attestation.schema.json',
+      'evidence/schema/reviewer-authorities.schema.json',
+      'scripts/evidence-generator-input.mjs',
+      'scripts/prepare-promotion.mjs',
+      'scripts/promotion-plan.mjs',
+      'scripts/publish-promotion.mjs',
+      'scripts/publish-staged-candidate.mjs',
+      'scripts/reconcile-release-tag.mjs',
+      'scripts/release-artifacts.mjs',
+      'scripts/release-family.mjs',
+      'scripts/release-policy.mjs',
+      'scripts/release-record.mjs',
+      'scripts/review-authentication.mjs',
+      'scripts/staged-publish.mjs',
+      'scripts/verify-published-release.mjs',
+    ]) {
+      assert.ok(
+        EVIDENCE_SEMANTIC_PATHS.includes(requiredPath),
+        `${requiredPath} is outside the transitive semantic closure`,
+      );
+    }
+    await assert.doesNotReject(() => assertEvidenceSemanticEquality(candidateRoot, executionRoot));
+    for (const path of [
+      'scripts/evidence-lanes.mjs',
+      'scripts/evidence-generator-input.mjs',
+      'scripts/publish-promotion.mjs',
+      'scripts/release-policy.mjs',
+      'scripts/review-authentication.mjs',
+    ]) {
+      await writeFile(join(executionRoot, path), `changed semantics for ${path}\n`);
+      await assert.rejects(
+        () => assertEvidenceSemanticEquality(candidateRoot, executionRoot),
+        /differ from the executing release verifier/u,
+      );
+      await writeFile(join(executionRoot, path), `same semantics for ${path}\n`);
+    }
+    executionLock.packages['packages/core'].version = '0.1.0';
+    await writeFile(join(executionRoot, 'package-lock.json'), JSON.stringify(executionLock));
+    await assert.rejects(
+      () => assertEvidenceSemanticEquality(candidateRoot, executionRoot),
+      /package-lock\.json differs/u,
+    );
+    await assert.doesNotReject(() =>
+      assertEvidenceSemanticEquality(candidateRoot, executionRoot, {
+        allowWorkspaceReleaseVersionDrift: true,
+      }),
+    );
+    executionLock.packages['node_modules/ajv'].version = '2.0.0';
+    await writeFile(join(executionRoot, 'package-lock.json'), JSON.stringify(executionLock));
+    await assert.rejects(
+      () =>
+        assertEvidenceSemanticEquality(candidateRoot, executionRoot, {
+          allowWorkspaceReleaseVersionDrift: true,
+        }),
+      /external dependency closure differs/u,
+    );
+    executionLock.packages['node_modules/ajv'].version = '1.0.0';
+    await writeFile(join(executionRoot, 'package-lock.json'), JSON.stringify(executionLock));
+    await assert.doesNotReject(() =>
+      assertEvidenceSemanticEquality(candidateRoot, executionRoot, {
+        allowWorkspaceReleaseVersionDrift: true,
+      }),
+    );
+    executionLock.packages['packages/core'].version = '0.1.0-rc.1';
+    await writeFile(join(executionRoot, 'package-lock.json'), JSON.stringify(executionLock));
+    await rm(join(candidateRoot, 'scripts/publish-promotion.mjs'));
+    await assert.rejects(
+      () => assertEvidenceSemanticEquality(candidateRoot, executionRoot),
+      /must both contain scripts\/publish-promotion\.mjs/u,
     );
   });
 
@@ -281,7 +389,7 @@ describe('promotion gate guards', () => {
 
 function release(version) {
   return {
-    claimedProfiles: ['studio.profile/engine-core'],
+    claimedProfiles: [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(packageNames.map((name) => [name, version])),
     release: version,
   };

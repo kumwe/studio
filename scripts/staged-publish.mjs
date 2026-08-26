@@ -34,7 +34,11 @@ export async function publishMissingApprovedArtifacts(
   record,
   approved,
   missing,
-  { publishTarball = publishTarballWithNpm, root = repositoryRoot } = {},
+  {
+    assertPublicationStillAuthorized,
+    publishTarball = publishTarballWithNpm,
+    root = repositoryRoot,
+  } = {},
 ) {
   assertCoordinatedRelease(record);
   assertApprovedReleaseArtifacts(approved, record);
@@ -47,6 +51,9 @@ export async function publishMissingApprovedArtifacts(
     missing.some((coordinate) => !expectedCoordinates.has(coordinate))
   ) {
     throw new Error('Missing-package publication set is outside the coordinated release family.');
+  }
+  if (typeof assertPublicationStillAuthorized !== 'function') {
+    throw new Error('Staged publication requires a live release-authorization callback.');
   }
 
   // Validate every retained tarball before the first registry mutation. Each
@@ -62,6 +69,7 @@ export async function publishMissingApprovedArtifacts(
     }
     const artifact = approved.packages[name];
     await assertApprovedReleaseArtifactFile(artifact, name, root);
+    await assertPublicationStillAuthorized();
     await publishTarball({
       name,
       stagingTag,

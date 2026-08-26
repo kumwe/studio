@@ -6,9 +6,21 @@ import {
   nextRcVersion,
   parseProfileInput,
   promotionTargetVersion,
+  VERSION_TWO_RELEASE_PROFILES,
 } from '../release-policy.mjs';
 
-const profile = 'studio.profile/engine-core';
+const completeProfiles = [
+  'studio.profile/authoring-web',
+  'studio.profile/binding-projection-v1',
+  'studio.profile/engine-core',
+  'studio.profile/host-baseline',
+  'studio.profile/host-baseline-v2',
+  'studio.profile/media-policy',
+  'studio.profile/preview-identity-v1',
+  'studio.profile/renderer-web',
+  'studio.profile/schema-property',
+];
+const subsetProfile = 'studio.profile/engine-core';
 
 describe('governed release policy', () => {
   it('resets the prerelease counter for alpha.9 -> rc.1', () => {
@@ -21,13 +33,34 @@ describe('governed release policy', () => {
     assert.equal(promotionTargetVersion('stable', '0.1.0-rc.2'), '0.1.0');
   });
 
-  it('accepts only declared executable Version 2 profile claims', () => {
-    assert.deepEqual(parseProfileInput(profile, { requireNonEmpty: true }), [profile]);
-    assert.throws(
-      () => parseProfileInput('studio.profile/authoring-web', { requireNonEmpty: true }),
-      /currently executable/u,
+  it('recognizes the fixed all-nine Version 2 release profile vocabulary', () => {
+    assert.deepEqual(VERSION_TWO_RELEASE_PROFILES, completeProfiles);
+    assert.deepEqual(
+      parseProfileInput(completeProfiles.join(','), {
+        requireComplete: true,
+        requireNonEmpty: true,
+      }),
+      completeProfiles,
     );
-    assert.throws(() => parseProfileInput('', { requireNonEmpty: true }), /at least one/u);
+    assert.throws(
+      () => parseProfileInput('studio.profile/engine-dart', { requireNonEmpty: true }),
+      /fixed Version 2 release profiles/u,
+    );
+  });
+
+  it('rejects empty and partial promotion profile claims', () => {
+    assert.throws(
+      () =>
+        parseProfileInput(subsetProfile, {
+          requireComplete: true,
+          requireNonEmpty: true,
+        }),
+      /complete fixed Version 2 set/u,
+    );
+    assert.throws(
+      () => parseProfileInput('', { requireComplete: true, requireNonEmpty: true }),
+      /fixed Version 2 profile claims/u,
+    );
   });
 
   it('binds publication claims to a passing exact-candidate gate', () => {
@@ -40,9 +73,9 @@ describe('governed release policy', () => {
           decision: 'pass',
           gate: 'A',
           sourceCommit: candidateSha,
-          supportedProfiles: [profile],
+          supportedProfiles: completeProfiles,
         },
-        releaseRecord: { claimedProfiles: [profile], release: '0.1.0-rc.1' },
+        releaseRecord: { claimedProfiles: completeProfiles, release: '0.1.0-rc.1' },
       }),
     );
     assert.throws(
@@ -54,9 +87,9 @@ describe('governed release policy', () => {
             decision: 'pass',
             gate: 'A',
             sourceCommit: candidateSha,
-            supportedProfiles: [profile],
+            supportedProfiles: completeProfiles,
           },
-          releaseRecord: { claimedProfiles: [profile], release: '0.1.0-rc.1' },
+          releaseRecord: { claimedProfiles: completeProfiles, release: '0.1.0-rc.1' },
         }),
       /Gate B/u,
     );

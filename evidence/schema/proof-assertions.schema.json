@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/proof-assertions.schema.json",
+  "title": "Studio criterion proof assertion registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assertions", "contractVersion", "kind", "profileTargets"],
+  "properties": {
+    "assertions": {
+      "type": "array",
+      "minItems": 60,
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactRoles",
+          "availability",
+          "class",
+          "criterionId",
+          "manualProcedureId",
+          "requiredRuns",
+          "requiredSubjectIds"
+        ],
+        "properties": {
+          "artifactRoles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/artifactRole" }
+          },
+          "availability": {
+            "enum": ["executable", "external-input", "manual-input", "target"]
+          },
+          "class": { "$ref": "#/$defs/evidenceClass" },
+          "criterionId": { "$ref": "#/$defs/criterionId" },
+          "manualProcedureId": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+            "maxLength": 240
+          },
+          "requiredRuns": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/stableId" }
+          },
+          "requiredSubjectIds": {
+            "type": "array",
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/stableId" }
+          }
+        }
+      }
+    },
+    "contractVersion": { "const": "0.1-draft" },
+    "kind": { "const": "criterion-proof-assertion-registry" },
+    "profileTargets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactRoles",
+          "id",
+          "manualProcedureId",
+          "requiredRuns",
+          "requiredSubjectIds",
+          "status"
+        ],
+        "properties": {
+          "artifactRoles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/artifactRole" }
+          },
+          "id": { "$ref": "#/$defs/profileId" },
+          "manualProcedureId": { "$ref": "#/$defs/stableId" },
+          "requiredRuns": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 30,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/stableId" }
+          },
+          "requiredSubjectIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/stableId" }
+          },
+          "status": { "const": "target" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "artifactRole": {
+      "enum": [
+        "run/log",
+        "accessibility/manual-interaction-report-v1",
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "integration/media-rich-text-report-v1",
+        "integration/reference-host-report-v1",
+        "lifecycle/contribution-report-v1",
+        "manual/decision-record-v1",
+        "manual/observation-v1",
+        "portability/corpus-replay-v1",
+        "portability/typescript-generation-v1",
+        "release/approved-family-v1",
+        "release/clean-consumer-lock-v1",
+        "release/cyclonedx-sbom-v1",
+        "release/provenance-set-v1",
+        "release/reproducible-family-report-v1",
+        "release/signature-audit-v1",
+        "release/staged-registry-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "gate-b/criterion-proof-v1"
+      ]
+    },
+    "criterionId": {
+      "type": "string",
+      "pattern": "^gate-[ab]/[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "evidenceClass": {
+      "enum": [
+        "contract",
+        "unit",
+        "property-fuzz",
+        "integration",
+        "lifecycle",
+        "end-to-end",
+        "accessibility",
+        "security",
+        "performance",
+        "portability",
+        "release",
+        "manual-decision"
+      ]
+    },
+    "profileId": {
+      "type": "string",
+      "pattern": "^studio\\.profile/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 160
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}

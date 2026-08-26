@@ -4,10 +4,11 @@ const alphaVersionPattern =
 const rcVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.(0|[1-9][0-9]*)$/u;
 const stableVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
 
-// These are the Version 2 profiles that docs/contracts/conformance-profiles.md
-// currently marks Declared, executable. Target profiles must be promoted here
-// deliberately before a release record is allowed to advertise them.
-export const EXECUTABLE_VERSION_TWO_PROFILES = Object.freeze([
+// This is the fixed Version 2 RC/stable product surface. Preparation always
+// carries the complete set; Gate A still blocks publication while any member,
+// including authoring-web, lacks authenticated qualification evidence.
+export const VERSION_TWO_RELEASE_PROFILES = Object.freeze([
+  'studio.profile/authoring-web',
   'studio.profile/binding-projection-v1',
   'studio.profile/engine-core',
   'studio.profile/host-baseline',
@@ -18,7 +19,7 @@ export const EXECUTABLE_VERSION_TWO_PROFILES = Object.freeze([
   'studio.profile/schema-property',
 ]);
 
-const executableProfileSet = new Set(EXECUTABLE_VERSION_TWO_PROFILES);
+const releaseProfileSet = new Set(VERSION_TWO_RELEASE_PROFILES);
 
 export function classifyReleaseVersion(version) {
   if (typeof version !== 'string') {
@@ -77,7 +78,10 @@ export function isPromotionVersionTransition(sourceVersion, targetVersion) {
   return false;
 }
 
-export function parseProfileInput(value, { requireNonEmpty = false } = {}) {
+export function parseProfileInput(
+  value,
+  { requireComplete = false, requireNonEmpty = false } = {},
+) {
   const profiles =
     typeof value === 'string' && value.length > 0
       ? value.split(',').map((profile) => profile.trim())
@@ -88,16 +92,22 @@ export function parseProfileInput(value, { requireNonEmpty = false } = {}) {
   if (new Set(profiles).size !== profiles.length) {
     throw new Error('Profile input must not contain duplicates.');
   }
-  const unsupported = profiles.filter((profile) => !executableProfileSet.has(profile));
+  const unsupported = profiles.filter((profile) => !releaseProfileSet.has(profile));
   if (unsupported.length > 0) {
     throw new Error(
-      `Only currently executable Version 2 profiles may be claimed: ${unsupported.join(', ')}.`,
+      `Only fixed Version 2 release profiles may be claimed: ${unsupported.join(', ')}.`,
     );
   }
   if (requireNonEmpty && profiles.length === 0) {
-    throw new Error('Promotion requires at least one executable Version 2 profile claim.');
+    throw new Error('Promotion requires the fixed Version 2 profile claims.');
   }
-  return [...profiles].sort();
+  const normalized = [...profiles].sort();
+  if (requireComplete && normalized.join('\n') !== VERSION_TWO_RELEASE_PROFILES.join('\n')) {
+    throw new Error(
+      'Promotion profile claims must equal the complete fixed Version 2 set, including authoring-web.',
+    );
+  }
+  return normalized;
 }
 
 export function assertReleaseProfileClaims(document, options) {
@@ -153,6 +163,7 @@ export function assertPromotionEvidencePolicy({
     );
   }
   const claims = parseProfileInput(releaseRecord.claimedProfiles?.join(',') ?? '', {
+    requireComplete: true,
     requireNonEmpty: true,
   });
   const supported = [...gateRecord.supportedProfiles].sort();
@@ -183,7 +194,10 @@ export function assertPromotionPackageState({
   if (channel === 'stable' && preState !== undefined) {
     throw new Error('Stable publication requires Changesets prerelease mode to be fully exited.');
   }
-  parseProfileInput(releaseRecord.claimedProfiles?.join(',') ?? '', { requireNonEmpty: true });
+  parseProfileInput(releaseRecord.claimedProfiles?.join(',') ?? '', {
+    requireComplete: true,
+    requireNonEmpty: true,
+  });
 }
 
 export function assertSameReleaseCoordinate(currentRecord, candidateRecord) {
