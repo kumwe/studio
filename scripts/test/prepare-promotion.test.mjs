@@ -16,7 +16,7 @@ import { resetReleaseProfileClaims } from '../version-packages.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 
-test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stable', async (t) => {
+test('promotion generation transforms all eight packages alpha -> rc.1 -> stable', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'studio-prepare-promotion-'));
   t.after(() => rm(directory, { force: true, recursive: true }));
   const root = pathToFileURL(`${directory}/`);
@@ -47,6 +47,7 @@ test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stab
     new URL('.changeset/config.json', root),
     `${JSON.stringify(changesetConfig, null, 2)}\n`,
   );
+  await normalizeFixtureToAlphaPhase(root);
 
   const rcPlan = await preparePromotion(root, {
     channel: 'rc',
@@ -126,6 +127,79 @@ test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stab
     profiles: [],
   });
 });
+
+// The fixture is seeded from the live repository, whose files move through
+// alpha, rc, and stable phases as promotions merge. The transform under test
+// starts from an alpha family, so the seeded copies are rewritten to one
+// canonical alpha coordinate — otherwise this test would only pass while the
+// repository itself happens to sit in the alpha phase (and the promotion
+// workflow re-runs it against the freshly generated rc tree).
+async function normalizeFixtureToAlphaPhase(root) {
+  const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
+  const current = record.release;
+  const synthetic = `${current.split('-')[0]}-alpha.0`;
+  const familyNames = new Set(STUDIO_RELEASE_PACKAGES.map(({ name }) => name));
+  const dependencyFields = [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ];
+  const retargetPins = (manifest) => {
+    for (const field of dependencyFields) {
+      for (const name of Object.keys(manifest[field] ?? {})) {
+        if (familyNames.has(name) && manifest[field][name] === current) {
+          manifest[field][name] = synthetic;
+        }
+      }
+    }
+  };
+
+  const manifestPaths = [
+    'examples/reference-host/package.json',
+    'package.json',
+    ...STUDIO_RELEASE_PACKAGES.map(({ directory }) => `packages/${directory}/package.json`),
+  ];
+  for (const path of manifestPaths) {
+    const manifest = JSON.parse(await readFile(new URL(path, root), 'utf8'));
+    if (familyNames.has(manifest.name) && manifest.version === current) {
+      manifest.version = synthetic;
+    }
+    retargetPins(manifest);
+    await writeFile(new URL(path, root), `${JSON.stringify(manifest, null, 2)}\n`);
+  }
+
+  const lockfile = JSON.parse(await readFile(new URL('package-lock.json', root), 'utf8'));
+  for (const entry of Object.values(lockfile.packages ?? {})) {
+    if (familyNames.has(entry.name) && entry.version === current) {
+      entry.version = synthetic;
+    }
+    retargetPins(entry);
+  }
+  await writeFile(new URL('package-lock.json', root), `${JSON.stringify(lockfile, null, 2)}\n`);
+
+  record.release = synthetic;
+  record.packages = Object.fromEntries(
+    Object.keys(record.packages).map((name) => [name, synthetic]),
+  );
+  record.claimedProfiles = [];
+  const recordBytes = `${JSON.stringify(record, null, 2)}\n`;
+  for (const path of STUDIO_RELEASE_RECORD_TARGETS) {
+    await writeFile(new URL(path, root), recordBytes);
+  }
+
+  await writeFile(
+    new URL('.changeset/pre.json', root),
+    `${JSON.stringify({ mode: 'pre', tag: 'alpha' }, null, 2)}\n`,
+  );
+  await writeFile(
+    new URL('release-profile-claims.json', root),
+    `${JSON.stringify({ kind: 'studio-release-profile-claims', profiles: [] }, null, 2)}\n`,
+  );
+  for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {
+    await writeFile(new URL(`packages/${directory}/CHANGELOG.md`, root), `# ${name}\n\n`);
+  }
+}
 
 async function assertRecordCopies(root, expectedVersion) {
   const copies = await Promise.all(
