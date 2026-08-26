@@ -2,7 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
-import { collectRegistryFailures } from './verify-published-release.mjs';
+import {
+  REGISTRY_PROPAGATION_WINDOW_MS,
+  collectRegistryFailures,
+} from './verify-published-release.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
@@ -130,6 +133,7 @@ async function main() {
   // immutable coordinate has passed the full provenance check.
   const failures = await collectRegistryFailures(state.releaseRecord, {
     approvedArtifacts,
+    propagationWindowMs: REGISTRY_PROPAGATION_WINDOW_MS,
     provenanceCommit: actualSha,
     requireProvenance: true,
   });

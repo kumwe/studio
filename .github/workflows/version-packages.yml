@@ -119,11 +119,15 @@ jobs:
 
       # Newly published packages must match the locally approved bytes and
       # provenance before this workflow is allowed to move a public tag.
+      # A later main commit re-verifies bits published from an earlier one;
+      # immutable coordinates can never re-bind the newer dispatch commit, so
+      # ancestry of the checked-out head is accepted alongside the exact SHA.
       - name: Verify immutable package bits before moving the alpha tag
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
         env:
           RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_PROVENANCE_ANCESTOR_OK: 'true'
           RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
@@ -140,6 +144,7 @@ jobs:
         env:
           RELEASE_APPROVED_ARTIFACTS: 'true'
           RELEASE_DIST_TAG: alpha
+          RELEASE_PROVENANCE_ANCESTOR_OK: 'true'
           RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
