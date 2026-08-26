@@ -51,7 +51,7 @@ The Studio interface may edit coordinated drafts, but these artifacts never coll
 
 ```text
 packages/
-  protocol/      Canonical schema copies, digest manifest, and TypeScript projections
+  protocol/      Canonical schema copies, digest-bound generated TypeScript models, and runtime projections
   core/          DOM-free commands, session, contribution runtime, validation, canonical serialization
   studio-lit/    Lit authoring shell: canvas, outline, palette, inspector, live region
   preview/       Versioned host-preview messaging: client, host responder, handshake

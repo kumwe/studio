@@ -1,6 +1,10 @@
 {
   "contractVersion": "0.1-draft",
   "epoch": "https://schemas.kumwe.org/studio/v1/",
+  "generator": {
+    "name": "@kumwe/studio/schema-manifest",
+    "version": "1.0.0"
+  },
   "kind": "schema-manifest",
   "schemas": [
     {
@@ -214,9 +218,9 @@
       "id": "https://schemas.kumwe.org/studio/v1/studio-money.schema.json"
     },
     {
-      "digest": "sha256-j9yFEXw8D+metVFeVETOU0aWIUw3ga239O7m8laicwA=",
+      "digest": "sha256-+dyYyHfQcUz4n5BUNMmGODJ6J7n2ysm9/+rWpSrbODA=",
       "file": "studio-presentation.schema.json",
-      "id": "https://studio.kumwe.org/schemas/studio-presentation.schema.json"
+      "id": "https://schemas.kumwe.org/studio/v1/studio-presentation.schema.json"
     },
     {
       "digest": "sha256-8U3Im000ka2Zdfeo9J/ixmPLnMaLj3JE8vo8DrA6HMI=",
@@ -224,9 +228,9 @@
       "id": "https://schemas.kumwe.org/studio/v1/studio-release.schema.json"
     },
     {
-      "digest": "sha256-SaZ2aJmsIseN93uRa7qd60Dz7SU9+QsAa2tQZ989p0Y=",
+      "digest": "sha256-txf6OXjSyFvOcoepU01qNY2WWlTyDA3iquMVXrFC2tQ=",
       "file": "studio-table.schema.json",
-      "id": "https://studio.kumwe.org/schemas/studio-table.schema.json"
+      "id": "https://schemas.kumwe.org/studio/v1/studio-table.schema.json"
     },
     {
       "digest": "sha256-xzhCb8J2nx+K6kBMciFj1glB4Q6jT8+KUdbUBsNM4h8=",

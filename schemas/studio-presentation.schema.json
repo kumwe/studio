@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://studio.kumwe.org/schemas/studio-presentation.schema.json",
+  "$id": "https://schemas.kumwe.org/studio/v1/studio-presentation.schema.json",
   "title": "Studio presentation intent",
   "type": "object",
   "maxProperties": 12,

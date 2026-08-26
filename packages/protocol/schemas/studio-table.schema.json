@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://studio.kumwe.org/schemas/studio-table.schema.json",
+  "$id": "https://schemas.kumwe.org/studio/v1/studio-table.schema.json",
   "title": "Studio table document",
   "type": "object",
   "additionalProperties": false,

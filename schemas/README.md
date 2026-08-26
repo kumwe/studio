@@ -6,17 +6,21 @@ This directory is the canonical source for Studio's language-neutral artifact an
 
 Files copied into `packages/protocol`, generated language packages, documentation sites, release archives, or schema registries are generated artifacts. They MUST be byte-identical to, or reproducibly generated from, the files here. A package-local schema MUST NOT be edited independently.
 
-The current alpha synchronizer copies canonical schemas and fixtures, compares them byte-for-byte,
-publishes a digest-verified schema manifest, regenerates the canonical Studio release record, and
-runs strict schema/example validation. It does not yet generate TypeScript or Dart bindings. The
-Version 2 Gate A release workflow must:
+The synchronizer copies canonical schemas and fixtures, compares them byte-for-byte, publishes a
+digest-verified schema manifest, generates the complete Version 2 TypeScript model set, regenerates the
+canonical Studio release record, and runs strict schema/example validation. The repository workflow:
 
-1. validate every canonical schema against its declared meta-schema;
-2. validate all examples and conformance fixtures;
-3. generate TypeScript bindings and prove their canonical round-trip; Version 3 adds Dart bindings before a native profile claim;
-4. copy/package schemas through one deterministic command;
-5. compare packaged digests with canonical digests and fail on divergence;
-6. publish a manifest containing each `$id`, file digest, schema epoch URI, document contract revision, and generator version.
+1. validates every canonical schema against its declared meta-schema;
+2. validates all examples and conformance fixtures;
+3. generates TypeScript bindings; the enclosing check compiles them, proves bounded exact-root corpus assignability, and performs the schema-validated JSON round-trip; Version 3 adds Dart bindings before a native profile claim;
+4. copies/packages schemas through one deterministic command;
+5. compares packaged digests with canonical digests and fails on divergence;
+6. publishes a manifest containing each `$id`, file digest, schema epoch URI, document contract revision, and generator version.
+
+`npm run contracts:sync` is the single schema/corpus/release synchronization path. The focused generated-model
+commands are `npm run protocol:models:generate` and `npm run protocol:models:check`; the latter is part of
+`npm run contracts:check`. Compilation and corpus tests run later in the enclosing `npm run check`; generated
+sources are committed release inputs and must never be edited by hand.
 
 The separate [`studio-release.schema.json`](studio-release.schema.json) closes the eight-package release
 family. The generated root record and its protocol/testkit copies bind exact package versions to the wire
