@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-renderer-web",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-rc.1",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -40,9 +40,9 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.10",
-    "@kumwe/studio-protocol": "0.1.0-alpha.10",
-    "@kumwe/studio-rich-text": "0.1.0-alpha.10"
+    "@kumwe/studio-core": "0.1.0-rc.1",
+    "@kumwe/studio-protocol": "0.1.0-rc.1",
+    "@kumwe/studio-rich-text": "0.1.0-rc.1"
   },
   "peerDependencies": {
     "chart.js": "4.5.1",

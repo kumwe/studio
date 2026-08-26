@@ -9,12 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-alpha.10",
-    "@kumwe/studio-media": "0.1.0-alpha.10",
-    "@kumwe/studio-preview": "0.1.0-alpha.10",
-    "@kumwe/studio-protocol": "0.1.0-alpha.10",
-    "@kumwe/studio-renderer-web": "0.1.0-alpha.10",
-    "@kumwe/studio": "0.1.0-alpha.10"
+    "@kumwe/studio-core": "0.1.0-rc.1",
+    "@kumwe/studio-media": "0.1.0-rc.1",
+    "@kumwe/studio-preview": "0.1.0-rc.1",
+    "@kumwe/studio-protocol": "0.1.0-rc.1",
+    "@kumwe/studio-renderer-web": "0.1.0-rc.1",
+    "@kumwe/studio": "0.1.0-rc.1"
   },
   "devDependencies": {
     "vite": "8.2.1"

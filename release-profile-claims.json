@@ -1,4 +1,14 @@
 {
   "kind": "studio-release-profile-claims",
-  "profiles": []
+  "profiles": [
+    "studio.profile/authoring-web",
+    "studio.profile/binding-projection-v1",
+    "studio.profile/engine-core",
+    "studio.profile/host-baseline",
+    "studio.profile/host-baseline-v2",
+    "studio.profile/media-policy",
+    "studio.profile/preview-identity-v1",
+    "studio.profile/renderer-web",
+    "studio.profile/schema-property"
+  ]
 }
