@@ -6,7 +6,14 @@ const ignoredChangesetFiles = new Set(['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'R
 
 export async function inspectReleasePlan(root = repositoryRoot) {
   const changesetDirectory = new URL('.changeset/', root);
-  const preState = JSON.parse(await readFile(new URL('pre.json', changesetDirectory), 'utf8'));
+  let preState;
+  try {
+    preState = JSON.parse(await readFile(new URL('pre.json', changesetDirectory), 'utf8'));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw error;
+    }
+  }
   const entries = await readdir(changesetDirectory, { withFileTypes: true });
   const pendingChangesets = entries
     .filter(
@@ -16,14 +23,36 @@ export async function inspectReleasePlan(root = repositoryRoot) {
     .map((entry) => entry.name.slice(0, -'.md'.length))
     .sort();
 
-  if (preState === null || typeof preState !== 'object' || Array.isArray(preState)) {
-    throw new Error('.changeset/pre.json must contain an object.');
+  if (preState !== undefined) {
+    if (preState === null || typeof preState !== 'object' || Array.isArray(preState)) {
+      throw new Error('.changeset/pre.json must contain an object.');
+    }
+    if (preState.mode !== 'pre' && preState.mode !== 'exit') {
+      throw new Error('.changeset/pre.json mode must be "pre" or "exit".');
+    }
+    if (typeof preState.tag !== 'string' || preState.tag.length === 0) {
+      throw new Error('.changeset/pre.json tag must be a non-empty string.');
+    }
   }
-  if (preState.mode !== 'pre' && preState.mode !== 'exit') {
-    throw new Error('.changeset/pre.json mode must be "pre" or "exit".');
+
+  if (preState !== undefined && (preState.mode !== 'pre' || preState.tag !== 'alpha')) {
+    return {
+      channel: preState.tag,
+      hasPendingChangesets: pendingChangesets.length > 0,
+      operation: 'inactive',
+      pendingChangesets,
+      preMode: preState.mode,
+    };
   }
-  if (typeof preState.tag !== 'string' || preState.tag.length === 0) {
-    throw new Error('.changeset/pre.json tag must be a non-empty string.');
+
+  if (preState === undefined) {
+    return {
+      channel: 'alpha',
+      hasPendingChangesets: pendingChangesets.length > 0,
+      operation: pendingChangesets.length > 0 ? 'version' : 'inactive',
+      pendingChangesets,
+      preMode: pendingChangesets.length > 0 ? 'enter' : 'none',
+    };
   }
 
   return {
@@ -60,7 +89,7 @@ async function main() {
   }
 
   console.log(
-    `Release plan: ${plan.operation} on ${plan.channel}; ` +
+    `Release plan: ${plan.operation} on ${plan.channel} (${plan.preMode}); ` +
       `${plan.pendingChangesets.length} pending changeset(s).`,
   );
 }

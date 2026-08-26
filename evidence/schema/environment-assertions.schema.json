@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/environment-assertions.schema.json",
+  "title": "Studio environment assertion registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "environments", "kind"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/environmentAssertion" }
+    },
+    "kind": { "const": "environment-assertion-registry" }
+  },
+  "$defs": {
+    "environmentAssertion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "variants"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stableId" },
+        "status": { "enum": ["executable", "target"] },
+        "variants": {
+          "type": "array",
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/variant" }
+        }
+      }
+    },
+    "environmentPredicate": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "browser": { "$ref": "#/$defs/metadataValue" },
+        "browserPrefix": { "$ref": "#/$defs/metadataValue" },
+        "database": { "$ref": "#/$defs/metadataValue" },
+        "dart": { "$ref": "#/$defs/metadataValue" },
+        "flutter": { "$ref": "#/$defs/metadataValue" },
+        "host": { "$ref": "#/$defs/metadataValue" },
+        "nodeMajor": { "type": "integer", "minimum": 1, "maximum": 999 },
+        "npm": { "$ref": "#/$defs/metadataValue" },
+        "os": { "$ref": "#/$defs/metadataValue" },
+        "php": { "$ref": "#/$defs/metadataValue" },
+        "variant": { "$ref": "#/$defs/metadataValue" }
+      }
+    },
+    "metadataValue": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._ /+()-]*(?![\\s\\S])",
+      "maxLength": 100
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 100
+    },
+    "testId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    },
+    "variant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "id", "requiredRuns"],
+      "properties": {
+        "environment": { "$ref": "#/$defs/environmentPredicate" },
+        "id": { "$ref": "#/$defs/stableId" },
+        "requiredRuns": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/testId" }
+        }
+      }
+    }
+  }
+}

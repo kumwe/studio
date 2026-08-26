@@ -1,69 +1,422 @@
-name: Release readiness (publication disabled)
+name: Governed RC and stable promotion
 
 on:
   workflow_dispatch:
     inputs:
-      candidate_sha:
-        description: Exact 40-character commit SHA of the accepted candidate
+      expected_main_sha:
+        description: Exact lowercase 40-character SHA currently at the head of main
         required: true
         type: string
-      gate_record_sha:
-        description: Exact later commit containing the proposed Gate B record and bundles
+      channel:
+        description: Promotion channel to prepare or publish
         required: true
+        type: choice
+        options:
+          - rc
+          - stable
+      profiles:
+        description: Comma-separated executable profile IDs (RC preparation only)
+        required: false
+        default: ''
+        type: string
+      candidate_sha:
+        description: Qualified immutable RC SHA (publication and stable preparation only)
+        required: false
+        default: ''
+        type: string
+      gate_record_sha:
+        description: Later main commit containing the accepted gate record and reproduced bundles
+        required: false
+        default: ''
         type: string
 
 concurrency:
-  group: release-readiness
+  group: governed-studio-promotion
   cancel-in-progress: false
 
-permissions:
-  contents: read
-
 jobs:
-  verify:
-    name: Exercise the draft Gate B readiness guard
+  plan:
+    name: Validate exact main and classify the promotion
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      channel: ${{ steps.plan.outputs.channel }}
+      gate: ${{ steps.plan.outputs.gate }}
+      operation: ${{ steps.plan.outputs.operation }}
+      profiles: ${{ steps.plan.outputs.profiles }}
+      source_version: ${{ steps.plan.outputs.source_version }}
+      target_version: ${{ steps.plan.outputs.target_version }}
     steps:
-      - name: Validate immutable commit inputs
+      - name: Check out exact main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.expected_main_sha }}
+
+      - name: Validate immutable dispatch target
         shell: bash
         env:
-          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
-          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
         run: |
           set -euo pipefail
-          [[ "$STUDIO_RELEASE_CANDIDATE_SHA" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$STUDIO_GATE_RECORD_COMMIT" =~ ^[a-f0-9]{40}$ ]]
-          [[ "$STUDIO_GATE_RECORD_COMMIT" != "$STUDIO_RELEASE_CANDIDATE_SHA" ]]
-
-      - name: Check out exact candidate
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-          ref: ${{ inputs.candidate_sha }}
-
-      - name: Check out immutable later draft Gate B evidence
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: .release-evidence
-          persist-credentials: false
-          fetch-depth: 0
-          ref: ${{ inputs.gate_record_sha }}
-          sparse-checkout: evidence
+          [[ "$EXPECTED_MAIN_SHA" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$GITHUB_REF" == "refs/heads/main" ]]
+          [[ "$GITHUB_SHA" == "$EXPECTED_MAIN_SHA" ]]
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_MAIN_SHA" ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
 
       - name: Set up Studio
         uses: ./.github/actions/setup-studio
 
-      - name: Verify the draft gate record and repository checks
+      - name: Run repository quality gate
+        run: npm run check
+
+      - name: Classify preparation, correction, or publication
+        id: plan
+        run: npm run release:promotion-plan
+        env:
+          PROMOTION_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PROMOTION_CHANNEL: ${{ inputs.channel }}
+          PROMOTION_GATE_RECORD_SHA: ${{ inputs.gate_record_sha }}
+          PROMOTION_PROFILES: ${{ inputs.profiles }}
+
+  prepare:
+    name: Prepare the reviewed whole-family promotion PR
+    needs: plan
+    if: needs.plan.outputs.operation == 'prepare' || needs.plan.outputs.operation == 'correct'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out exact main commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.expected_main_sha }}
+
+      - name: Check out qualified RC for stable preparation
+        if: inputs.channel == 'stable'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: .qualified-candidate
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha }}
+
+      - name: Check out accepted evidence for stable preparation
+        if: inputs.channel == 'stable'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: .release-evidence
+          persist-credentials: false
+          ref: ${{ inputs.gate_record_sha }}
+
+      - name: Revalidate current main before generating a pull request
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
+          git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
+
+      - name: Set up Studio
+        uses: ./.github/actions/setup-studio
+
+      - name: Verify Gate B before preparing stable metadata
+        if: inputs.channel == 'stable'
         run: npm run release:readiness
         env:
-          STUDIO_GATE_B_RECORD: .release-evidence/evidence/gates/gate-b.json
+          STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
           STUDIO_GATE_EVIDENCE_ROOT: .release-evidence
           STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
+          STUDIO_PROMOTION_PHASE: prepare
+          STUDIO_PUBLISH_SOURCE_SHA: ${{ inputs.expected_main_sha }}
+          STUDIO_QUALIFIED_CANDIDATE_ROOT: .qualified-candidate
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          STUDIO_RELEASE_CHANNEL: stable
 
-      - name: Confirm publication remains disabled
+      - name: Generate coordinated promotion metadata
+        run: npm run release:prepare
+        env:
+          PROMOTION_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          PROMOTION_CHANNEL: ${{ inputs.channel }}
+          PROMOTION_GATE_RECORD_SHA: ${{ inputs.gate_record_sha }}
+          PROMOTION_PROFILES: ${{ inputs.profiles }}
+
+      - name: Verify generated promotion tree
+        run: npm run check
+
+      - name: Create or recover the promotion pull request
+        shell: bash
+        env:
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_VERSION: ${{ needs.plan.outputs.target_version }}
         run: |
-          echo "Registry publication is disabled until Gate B is accepted and ST-11 explicitly enables trusted publication."
-          test -z "$(node -p 'require("./package.json").scripts.release ?? ""')"
+          set -euo pipefail
+          branch="release/promote-${CHANNEL}-${TARGET_VERSION//./-}"
+          title="chore: promote Studio to ${TARGET_VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A -- \
+            .changeset \
+            examples/reference-host/package.json \
+            package-lock.json \
+            packages/core/CHANGELOG.md packages/core/package.json \
+            packages/media/CHANGELOG.md packages/media/package.json \
+            packages/preview/CHANGELOG.md packages/preview/package.json \
+            packages/protocol/CHANGELOG.md packages/protocol/package.json packages/protocol/studio-release.json \
+            packages/renderer-web/CHANGELOG.md packages/renderer-web/package.json \
+            packages/rich-text/CHANGELOG.md packages/rich-text/package.json \
+            packages/studio-lit/CHANGELOG.md packages/studio-lit/package.json \
+            packages/testkit/CHANGELOG.md packages/testkit/package.json packages/testkit/studio-release.json \
+            release-profile-claims.json studio-release.json
+          git diff --cached --check
+          git commit -m "$title"
+          if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/heads/$branch:refs/remotes/origin/$branch"
+            [[ "$(git rev-parse HEAD^{tree})" == "$(git rev-parse refs/remotes/origin/$branch^{tree})" ]] || {
+              echo "::error::Existing promotion branch has a different generated tree; inspect it before retrying."
+              exit 1
+            }
+          else
+            gh auth setup-git
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          pr_url="$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')"
+          if [[ -n "$pr_url" ]]; then
+            echo "$pr_url"
+          else
+            gh pr create --base main --head "$branch" --title "$title" --body \
+              "Generated whole-family ${CHANNEL} promotion. Merge only after required review and CI pass."
+          fi
+
+  stage:
+    name: Quarantine the immutable RC for Gate A evidence
+    needs: plan
+    if: needs.plan.outputs.operation == 'stage'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: studio-rc
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out exact RC candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.expected_main_sha }}
+
+      - name: Revalidate exact main after protected approval
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_MAIN_SHA" ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
+
+      - name: Set up Studio
+        uses: ./.github/actions/setup-studio
+
+      - name: Re-run the repository quality gate after approval
+        run: npm run check
+
+      - name: Generate approved local package tarball digests
+        run: npm run release:artifacts
+
+      - name: Verify npm authentication
+        run: |
+          set -euo pipefail
+          test -n "$NODE_AUTH_TOKEN"
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish or recover the RC quarantine family
+        run: npm run release:publish-stage
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+          PROMOTION_CHANNEL: rc
+          PROMOTION_EXPECTED_SHA: ${{ inputs.expected_main_sha }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+
+      - name: Prove exact provenance and clean public-registry installation
+        run: npm run release:verify-stage
+        env:
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+
+  publish:
+    name: Publish the immutable qualified package family
+    needs: plan
+    if: needs.plan.outputs.operation == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: studio-${{ inputs.channel }}
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out immutable publication source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+
+      - name: Check out qualified RC for stable publication
+        if: inputs.channel == 'stable'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: .qualified-candidate
+          persist-credentials: false
+          ref: ${{ inputs.candidate_sha }}
+
+      - name: Check out accepted evidence
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: .release-evidence
+          persist-credentials: false
+          ref: ${{ inputs.gate_record_sha }}
+
+      - name: Revalidate current main after protected approval
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
+          git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
+
+      - name: Set up Studio
+        uses: ./.github/actions/setup-studio
+
+      - name: Revalidate immutable evidence and package state
+        run: npm run release:readiness
+        env:
+          STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          STUDIO_GATE_EVIDENCE_ROOT: .release-evidence
+          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
+          STUDIO_PROMOTION_PHASE: publish
+          STUDIO_PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+          STUDIO_QUALIFIED_CANDIDATE_ROOT: ${{ inputs.channel == 'stable' && '.qualified-candidate' || '.' }}
+          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
+
+      - name: Generate approved local package tarball digests
+        run: npm run release:artifacts
+
+      # Registry credentials are intentionally unavailable to plan and prepare.
+      - name: Verify npm authentication
+        run: |
+          set -euo pipefail
+          test -n "$NODE_AUTH_TOKEN"
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish missing approved tarballs to a non-channel staging tag
+        run: npm run release:publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+          PROMOTION_CHANNEL: ${{ inputs.channel }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          STUDIO_GATE_EVIDENCE_ROOT: .release-evidence
+          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
+          STUDIO_PROMOTION_PHASE: publish
+          STUDIO_PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+          STUDIO_QUALIFIED_CANDIDATE_ROOT: ${{ inputs.channel == 'stable' && '.qualified-candidate' || '.' }}
+          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
+
+      # Do not move a public channel tag until every newly published package
+      # has been compared with the approved local tarball and provenance.
+      - name: Verify immutable package bits before moving the channel tag
+        run: npm run release:verify-published
+        env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+          RELEASE_REQUIRE_PROVENANCE: 'true'
+
+      - name: Reconcile the channel distribution tag
+        run: npm run release:reconcile-tag
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PROMOTION_CHANNEL: ${{ inputs.channel }}
+          STUDIO_EXPECTED_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
+
+      - name: Verify the complete registry release, provenance, and channel tag
+        run: npm run release:verify-published
+        env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_DIST_TAG: ${{ inputs.channel == 'stable' && 'latest' || 'rc' }}
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+          RELEASE_REQUIRE_PROVENANCE: 'true'
+
+      - name: Generate immutable GitHub release notes
+        run: npm run release:notes > release-notes.md
+        env:
+          PROMOTION_CHANNEL: ${{ inputs.channel }}
+          PROMOTION_GATE_RECORD_SHA: ${{ inputs.gate_record_sha }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          PROMOTION_PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+
+      - name: Create or verify the GitHub release
+        shell: bash
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RELEASE_CHANNEL: ${{ inputs.channel }}
+          GITHUB_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
+          PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
+          VERSION: ${{ needs.plan.outputs.target_version }}
+        run: |
+          set -euo pipefail
+          tag="studio-v${VERSION}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md)
+            if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
+              git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+              [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
+              release_args+=(--verify-tag)
+            else
+              release_args+=(--target "$PUBLISH_SOURCE_SHA")
+            fi
+            if [[ "$CHANNEL" == "rc" ]]; then
+              release_args+=(--prerelease)
+            fi
+            gh release create "${release_args[@]}"
+          fi
+          gh release view "$tag" --json body,isDraft,isPrerelease,name,tagName \
+            > .release-artifacts/github-release.json
+          node scripts/verify-github-release.mjs
+          git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+          [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
+
+      - name: Remove the non-channel staging tag after complete success
+        run: npm run release:cleanup-staging
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

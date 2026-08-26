@@ -2,14 +2,11 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_PACKAGE_NAMES } from './release-family.mjs';
+import { assertReleaseProfileClaims } from './release-policy.mjs';
 
 const semanticVersionPattern =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/u;
 const integrityPattern = /^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=$/u;
-
-// A profile belongs here only after its exact replay and independent review are
-// represented by immutable evidence. The current programme has no such claim.
-export const CURRENT_CLAIMED_PROFILES = Object.freeze([]);
 
 export async function readStudioReleaseInputs(repositoryRoot) {
   const packages = {};
@@ -31,9 +28,12 @@ export async function readStudioReleaseInputs(repositoryRoot) {
   const corpusManifest = await readFile(
     new URL('packages/testkit/corpus-manifest.json', repositoryRoot),
   );
+  const profileClaims = JSON.parse(
+    await readFile(new URL('release-profile-claims.json', repositoryRoot), 'utf8'),
+  );
 
   return {
-    claimedProfiles: [...CURRENT_CLAIMED_PROFILES],
+    claimedProfiles: assertReleaseProfileClaims(profileClaims),
     contractVersion,
     corpusManifestDigest: sha256Integrity(corpusManifest),
     packages,

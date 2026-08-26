@@ -1,11 +1,22 @@
 import { execFile } from 'node:child_process';
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
+
+import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
+import { assertCoordinatedRelease } from './release-record.mjs';
+import { isPromotionVersionTransition } from './release-policy.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const changesetDirectory = new URL('../.changeset/', import.meta.url);
+const dependencyFields = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+];
+const releasePackageNames = new Set(STUDIO_RELEASE_PACKAGES.map(({ name }) => name));
 
 const unconsumedChangesets = await listUnconsumedChangesets();
 const baseRef = await resolveBaseRef();
@@ -27,6 +38,10 @@ if (baseRef === undefined) {
   const publishablePaths = changedPaths.filter((path) => isPublishablePath(path)).sort();
   if (publishablePaths.length === 0) {
     console.log(`Changeset check passed: no publishable changes relative to ${baseRef}.`);
+  } else if (await isGovernedPromotion(baseRef, publishablePaths)) {
+    console.log(
+      `Changeset check passed: the fixed eight-package family is undergoing a generated governed promotion relative to ${baseRef}.`,
+    );
   } else if (unconsumedChangesets.length > 0) {
     console.log(
       `Changeset check passed: ${publishablePaths.length} publishable path(s) changed relative ` +
@@ -38,6 +53,43 @@ if (baseRef === undefined) {
         `${publishablePaths.map((path) => `  ${path}`).join('\n')}\n` +
         'Add one with: npx changeset',
     );
+  }
+}
+
+async function isGovernedPromotion(base, publishablePaths) {
+  const expectedPaths = STUDIO_RELEASE_PACKAGES.map(
+    ({ directory }) => `packages/${directory}/package.json`,
+  ).sort();
+  if (publishablePaths.join('\n') !== expectedPaths.join('\n')) {
+    return false;
+  }
+  try {
+    const source = JSON.parse(await git(['show', `${base}:studio-release.json`]));
+    const target = JSON.parse(await readFile(new URL('../studio-release.json', import.meta.url)));
+    assertCoordinatedRelease(source);
+    assertCoordinatedRelease(target);
+    if (!isPromotionVersionTransition(source.release, target.release)) {
+      return false;
+    }
+    for (const { directory } of STUDIO_RELEASE_PACKAGES) {
+      const path = `packages/${directory}/package.json`;
+      const before = JSON.parse(await git(['show', `${base}:${path}`]));
+      const after = JSON.parse(await readFile(new URL(`../${path}`, import.meta.url)));
+      after.version = source.release;
+      for (const field of dependencyFields) {
+        for (const name of Object.keys(after[field] ?? {})) {
+          if (releasePackageNames.has(name) && after[field][name] === target.release) {
+            after[field][name] = source.release;
+          }
+        }
+      }
+      if (JSON.stringify(after) !== JSON.stringify(before)) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
   }
 }
 

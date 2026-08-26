@@ -4,9 +4,13 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
+  buildEnvironmentAssertionIndex,
+  buildProfileAssertionIndex,
+  checksumIntegrity,
   collectBundleFailures,
   collectGateRecordFailures,
 } from './evidence-validation.mjs';
+import { assertCoordinatedRelease } from './release-record.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const schemaDirectory = new URL('../evidence/schema/', import.meta.url);
@@ -14,6 +18,7 @@ const bundleDirectory = new URL('../evidence/bundles/', import.meta.url);
 const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 
 const schemaFiles = [
+  'environment-assertions.schema.json',
   'environment-matrix.schema.json',
   'evidence-bundle.schema.json',
   'gate-criteria.schema.json',
@@ -35,6 +40,7 @@ for (const schema of schemas) {
   ajv.addSchema(schema);
 }
 const validateBundle = getValidator('evidence-bundle.schema.json');
+const validateEnvironmentAssertions = getValidator('environment-assertions.schema.json');
 const validateGateCriteria = getValidator('gate-criteria.schema.json');
 const validateGateRecord = getValidator('gate-record.schema.json');
 const validateEnvironmentMatrix = getValidator('environment-matrix.schema.json');
@@ -59,6 +65,25 @@ for (const environment of environmentMatrix.environments) {
     );
   }
 }
+const environmentAssertionRegistry = JSON.parse(
+  await readFile(new URL('../evidence/environment-assertions.json', import.meta.url), 'utf8'),
+);
+if (!validateEnvironmentAssertions(environmentAssertionRegistry)) {
+  throw new Error(
+    `The environment assertion registry violates its schema: ${ajv.errorsText(
+      validateEnvironmentAssertions.errors,
+    )}`,
+  );
+}
+const environmentAssertionIndex = buildEnvironmentAssertionIndex(
+  environmentAssertionRegistry,
+  environmentMatrix,
+);
+if (environmentAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `The environment assertion registry is invalid:\n- ${environmentAssertionIndex.failures.join('\n- ')}`,
+  );
+}
 
 const registry = JSON.parse(
   await readFile(new URL('../evidence/gate-criteria.json', import.meta.url), 'utf8'),
@@ -72,6 +97,18 @@ const criterionIndex = buildCriterionIndex(registry);
 if (criterionIndex.failures.length > 0) {
   throw new Error(
     `The gate criterion registry is invalid:\n- ${criterionIndex.failures.join('\n- ')}`,
+  );
+}
+const profileAssertionRegistry = JSON.parse(
+  await readFile(new URL('../evidence/profile-assertions.json', import.meta.url), 'utf8'),
+);
+const profileAssertionIndex = buildProfileAssertionIndex(
+  profileAssertionRegistry,
+  criterionIndex.allowedProfiles,
+);
+if (profileAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `The profile assertion registry is invalid:\n- ${profileAssertionIndex.failures.join('\n- ')}`,
   );
 }
 const roadmap = await readFile(new URL('../docs/roadmap/README.md', import.meta.url), 'utf8');
@@ -99,9 +136,13 @@ if (!/^[a-f0-9]{40}$/u.test(checkedOutCommit)) {
 const validationContext = {
   ...criterionIndex,
   getCommitTime,
+  getPackageVersionsForCommit,
+  getProfileAssertionsForCommit,
+  getSourceFileChecksum,
   isCommitReachable,
   now: Date.now(),
   packageVersions: releaseRecord.packages,
+  profileAssertions: profileAssertionIndex.profilesById,
   repositoryRoot,
 };
 
@@ -194,7 +235,8 @@ for (const gate of ['A', 'B']) {
 }
 
 console.log(
-  `${schemaFiles.length} evidence schemas, ${registry.gates.A.length + registry.gates.B.length} ` +
+  `${schemaFiles.length} evidence schemas, ${environmentAssertionIndex.assertionsById.size} environment assertions, ` +
+    `${registry.gates.A.length + registry.gates.B.length} ` +
     `registered gate criteria, ${bundleNames.length} bundle manifests ` +
     `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
     `${environmentMatrix.environments.length} environment-matrix entries verified.`,
@@ -231,6 +273,36 @@ function getCommitTime(commit) {
   } catch {
     return Number.NaN;
   }
+}
+
+function getPackageVersionsForCommit(commit) {
+  const record = JSON.parse(git(['show', `${commit}:studio-release.json`]));
+  assertCoordinatedRelease(record);
+  return record.packages;
+}
+
+function getProfileAssertionsForCommit(commit) {
+  const sourceCriteria = JSON.parse(git(['show', `${commit}:evidence/gate-criteria.json`]));
+  const sourceCriterionIndex = buildCriterionIndex(sourceCriteria);
+  if (sourceCriterionIndex.failures.length > 0) {
+    throw new Error(sourceCriterionIndex.failures.join('; '));
+  }
+  const source = JSON.parse(git(['show', `${commit}:evidence/profile-assertions.json`]));
+  const index = buildProfileAssertionIndex(source, sourceCriterionIndex.allowedProfiles);
+  if (index.failures.length > 0) {
+    throw new Error(index.failures.join('; '));
+  }
+  return index.profilesById;
+}
+
+function getSourceFileChecksum(commit, path) {
+  const entry = git(['ls-tree', commit, '--', path]);
+  if (!/^100(?:644|755) blob [a-f0-9]{40}\t/u.test(entry)) {
+    throw new Error('source path is absent or is not a regular tracked file');
+  }
+  return checksumIntegrity(
+    execFileSync('git', ['show', `${commit}:${path}`], { cwd: repositoryRoot }),
+  );
 }
 
 function getValidator(schemaFile) {

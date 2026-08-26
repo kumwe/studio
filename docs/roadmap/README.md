@@ -188,7 +188,7 @@ Gate A passes only when all criteria are met:
 10. **`gate-a/10-host-playbooks`** — The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
 11. **`gate-a/11-evolution-release-policy`** — Compatibility, deprecation, migration, and release policies are accepted.
 12. **`gate-a/12-accessible-interactions`** — Accessibility and non-drag interaction requirements are executable as conformance assertions.
-13. **`gate-a/13-reproducible-evidence`** — Gate evidence is reproducible from a clean checkout and independently reviewed.
+13. **`gate-a/13-reproducible-evidence`** — Gate evidence is reproducible from a clean checkout and independently reviewed; its release lane proves the exact quarantined RC registry family, source provenance, and credential-free clean install before the official `rc` channel can move.
 14. **`gate-a/14-no-high-risk-contradiction`** — No unresolved critical or high-risk contradiction remains in a public contract.
 
 ## Gate B acceptance criteria

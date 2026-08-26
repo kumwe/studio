@@ -47,8 +47,8 @@
             "maxItems": 50,
             "items": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
-              "maxLength": 100
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?:#[A-Za-z0-9][A-Za-z0-9._:/-]*)?(?![\\s\\S])",
+              "maxLength": 361
             }
           }
         }

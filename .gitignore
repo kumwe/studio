@@ -9,4 +9,6 @@ coverage/
 .env.*
 !.env.example
 .release-evidence/
+.release-artifacts/
+.qualified-candidate/
 .evidence-tests.json

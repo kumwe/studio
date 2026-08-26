@@ -1,0 +1,99 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "profile-assertion-registry",
+  "profiles": [
+    {
+      "id": "studio.profile/binding-projection-v1",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/core/test/binding-projection.test.ts",
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/binding-projection-vectors.test.ts"
+      ],
+      "requiredRuns": ["profile/binding-projection-v1"]
+    },
+    {
+      "id": "studio.profile/engine-core",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/core/test/canonical-vectors.test.ts",
+        "packages/core/test/command-vectors.test.ts",
+        "packages/core/test/fuzz-canonical.test.ts",
+        "packages/core/test/fuzz-commands.test.ts",
+        "packages/testkit/corpus-manifest.json"
+      ],
+      "requiredRuns": ["profile/engine-core"]
+    },
+    {
+      "id": "studio.profile/host-baseline",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/host-testbed.test.ts",
+        "packages/testkit/test/host-vectors.test.ts",
+        "packages/testkit/test/http-transport.test.ts"
+      ],
+      "requiredRuns": ["profile/host-baseline"]
+    },
+    {
+      "id": "studio.profile/host-baseline-v2",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/host-sequence-vectors.test.ts",
+        "packages/testkit/test/host-testbed.test.ts",
+        "packages/testkit/test/host-vectors.test.ts",
+        "packages/testkit/test/http-transport.test.ts"
+      ],
+      "requiredRuns": ["profile/host-baseline-v2"]
+    },
+    {
+      "id": "studio.profile/media-policy",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/media/test/media-vectors.test.ts",
+        "packages/media/test/upload-controller.test.ts",
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/media-import-policy.test.ts"
+      ],
+      "requiredRuns": ["profile/media-policy"]
+    },
+    {
+      "id": "studio.profile/preview-identity-v1",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/preview/test/preview-identity.test.ts",
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/preview-vectors.test.ts"
+      ],
+      "requiredRuns": ["profile/preview-identity-v1"]
+    },
+    {
+      "id": "studio.profile/renderer-web",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/renderer-web/test/conformance.test.ts",
+        "packages/renderer-web/test/interactions.test.ts",
+        "packages/renderer-web/test/renderer.test.ts",
+        "packages/testkit/corpus-manifest.json"
+      ],
+      "requiredRuns": ["profile/renderer-web", "accessibility/web"]
+    },
+    {
+      "id": "studio.profile/schema-property",
+      "status": "executable",
+      "requiredInputs": [
+        "packages/core/test/profile-validator.test.ts",
+        "packages/testkit/corpus-manifest.json",
+        "packages/testkit/test/schema-profile-vectors.test.ts"
+      ],
+      "requiredRuns": ["profile/schema-property"]
+    },
+    {
+      "id": "studio.profile/authoring-web",
+      "status": "target",
+      "requiredInputs": [],
+      "requiredRuns": []
+    }
+  ]
+}

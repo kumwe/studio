@@ -1,0 +1,217 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "environment-assertion-registry",
+  "environments": [
+    {
+      "id": "node-npm-workspace",
+      "status": "executable",
+      "variants": [
+        {
+          "id": "node24-npm11-linux",
+          "requiredRuns": ["quality/typecheck", "build/workspace"],
+          "environment": { "nodeMajor": 24, "npm": "11.9.0", "os": "linux-x64" }
+        }
+      ]
+    },
+    {
+      "id": "chromium-desktop",
+      "status": "target",
+      "variants": [
+        {
+          "id": "current-linux",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "Chromium-",
+            "os": "linux-x64",
+            "variant": "current"
+          }
+        },
+        {
+          "id": "preceding-linux",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "Chromium-",
+            "os": "linux-x64",
+            "variant": "preceding"
+          }
+        }
+      ]
+    },
+    {
+      "id": "firefox-desktop",
+      "status": "target",
+      "variants": [
+        {
+          "id": "current-linux",
+          "requiredRuns": [],
+          "environment": { "browserPrefix": "Firefox-", "os": "linux-x64", "variant": "current" }
+        },
+        {
+          "id": "preceding-linux",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "Firefox-",
+            "os": "linux-x64",
+            "variant": "preceding"
+          }
+        }
+      ]
+    },
+    {
+      "id": "webkit-desktop",
+      "status": "target",
+      "variants": [
+        {
+          "id": "current-macos",
+          "requiredRuns": [],
+          "environment": { "browserPrefix": "WebKit-", "os": "darwin-arm64", "variant": "current" }
+        },
+        {
+          "id": "preceding-macos",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "WebKit-",
+            "os": "darwin-arm64",
+            "variant": "preceding"
+          }
+        }
+      ]
+    },
+    {
+      "id": "android-chrome",
+      "status": "target",
+      "variants": [
+        {
+          "id": "current",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "Chrome Mobile-",
+            "os": "android",
+            "variant": "current"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ios-safari",
+      "status": "target",
+      "variants": [
+        {
+          "id": "current",
+          "requiredRuns": [],
+          "environment": {
+            "browserPrefix": "Mobile Safari-",
+            "os": "ios",
+            "variant": "current"
+          }
+        }
+      ]
+    },
+    {
+      "id": "desktop-os",
+      "status": "target",
+      "variants": [
+        {
+          "id": "linux",
+          "requiredRuns": [],
+          "environment": { "os": "linux-x64", "variant": "linux" }
+        },
+        {
+          "id": "macos",
+          "requiredRuns": [],
+          "environment": { "os": "darwin-arm64", "variant": "macos" }
+        },
+        {
+          "id": "windows",
+          "requiredRuns": [],
+          "environment": { "os": "win32-x64", "variant": "windows" }
+        }
+      ]
+    },
+    {
+      "id": "dart-flutter",
+      "status": "target",
+      "variants": [
+        {
+          "id": "version3-current",
+          "requiredRuns": [],
+          "environment": { "variant": "version3-current" }
+        },
+        {
+          "id": "version3-preceding",
+          "requiredRuns": [],
+          "environment": { "variant": "version3-preceding" }
+        }
+      ]
+    },
+    {
+      "id": "npm-clean-consumer",
+      "status": "target",
+      "variants": [
+        {
+          "id": "node24-npm11-linux",
+          "requiredRuns": [],
+          "environment": {
+            "host": "npm-clean-consumer",
+            "nodeMajor": 24,
+            "npm": "11.9.0",
+            "os": "linux-x64"
+          }
+        }
+      ]
+    },
+    {
+      "id": "generic-reference-host",
+      "status": "executable",
+      "variants": [
+        {
+          "id": "host-baseline-v2",
+          "requiredRuns": ["profile/host-baseline-v2"],
+          "environment": {
+            "browser": "Chromium-141.0.7390.37",
+            "host": "generic-reference-host",
+            "nodeMajor": 24,
+            "npm": "11.9.0",
+            "os": "linux-x64"
+          }
+        }
+      ]
+    },
+    {
+      "id": "kumwe-app-host",
+      "status": "target",
+      "variants": [
+        {
+          "id": "mariadb",
+          "requiredRuns": [],
+          "environment": {
+            "database": "MariaDB-12.3.2",
+            "host": "kumwe-app",
+            "os": "linux-x64",
+            "php": "8.5"
+          }
+        },
+        {
+          "id": "mysql",
+          "requiredRuns": [],
+          "environment": {
+            "database": "MySQL-8.4",
+            "host": "kumwe-app",
+            "os": "linux-x64",
+            "php": "8.5"
+          }
+        },
+        {
+          "id": "postgresql",
+          "requiredRuns": [],
+          "environment": {
+            "database": "PostgreSQL-17",
+            "host": "kumwe-app",
+            "os": "linux-x64",
+            "php": "8.5"
+          }
+        }
+      ]
+    }
+  ]
+}

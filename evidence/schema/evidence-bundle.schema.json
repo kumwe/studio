@@ -76,11 +76,15 @@
       "required": ["node", "npm", "os"],
       "properties": {
         "browser": { "$ref": "#/$defs/versionLabel" },
+        "database": { "$ref": "#/$defs/versionLabel" },
         "dart": { "$ref": "#/$defs/versionLabel" },
         "flutter": { "$ref": "#/$defs/versionLabel" },
+        "host": { "$ref": "#/$defs/versionLabel" },
         "node": { "$ref": "#/$defs/versionLabel" },
         "npm": { "$ref": "#/$defs/versionLabel" },
         "os": { "$ref": "#/$defs/versionLabel" },
+        "php": { "$ref": "#/$defs/versionLabel" },
+        "variant": { "$ref": "#/$defs/versionLabel" },
         "packageVersions": {
           "type": "object",
           "maxProperties": 500,

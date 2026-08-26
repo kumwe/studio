@@ -50,8 +50,8 @@ grants a capability.
 Consume the exact eight versions in the published `studio-release.json`; verify its corpus digest before
 replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
 first-party definitions are not a deployable integration. The current candidate tree must first pass the
-protected coordinated publish workflow; its checked-in staggered alpha record is not a substitute for npm
-availability.
+protected coordinated publish workflow; its checked-in coordinated `0.1.0-alpha.9` record is not a substitute
+for verified npm availability.
 
 The browser host then starts from Studio's supported additive bootstrap rather than recreating the page-builder
 catalog:

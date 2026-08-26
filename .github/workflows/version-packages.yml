@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   version:
-    name: Maintain the alpha version PR or publish its merged coordinate
+    name: Maintain alpha, publish it, or pause outside the alpha train
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -65,15 +65,24 @@ jobs:
         shell: bash
         env:
           RELEASE_CHANNEL: ${{ steps.plan.outputs.channel }}
+          RELEASE_OPERATION: ${{ steps.plan.outputs.operation }}
           RELEASE_PRE_MODE: ${{ steps.plan.outputs.pre_mode }}
         run: |
           set -euo pipefail
-          [[ "$RELEASE_CHANNEL" == "alpha" ]]
-          [[ "$RELEASE_PRE_MODE" == "pre" ]]
+          if [[ "$RELEASE_OPERATION" == "inactive" ]]; then
+            echo "Alpha train is paused while RC is active, or idle until the next post-stable Changeset."
+          else
+            [[ "$RELEASE_CHANNEL" == "alpha" ]]
+            [[ "$RELEASE_PRE_MODE" == "pre" || "$RELEASE_PRE_MODE" == "enter" ]]
+          fi
 
       # Authenticate only on the actual publish path. This lets a missing or
       # rotated token fail publication clearly without blocking creation of the
       # recoverable alpha version PR.
+      - name: Generate approved local package tarball digests
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:artifacts
+
       - name: Verify npm authentication
         if: steps.plan.outputs.operation == 'publish'
         run: |
@@ -85,28 +94,57 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # With pending changesets this maintains the version pull request; once
-      # that pull request merges, the guarded script publishes only a numeric
-      # alpha coordinate. Beta, RC, and stable promotion cannot pass this path.
-      - name: Create or update version pull request, or publish
+      # Changesets owns version calculation and the generated version PR only.
+      # Registry publication uses the retained, locally approved tarballs below
+      # so Changesets cannot move alpha/latest or create releases before proof.
+      - name: Create or update the version pull request
         id: release
+        if: steps.plan.outputs.operation == 'version'
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
+          create-github-releases: false
           pr-title: 'chore: version Studio packages'
-          publish-script: npm run release:publish-alpha
+          push-git-tags: false
           version-script: npm run version-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ steps.plan.outputs.operation == 'publish' && steps.plan.outputs.channel == 'alpha' && steps.plan.outputs.pre_mode == 'pre' && secrets.NPM_TOKEN || '' }}
 
-      - name: Verify the complete published release set
+      - name: Publish missing approved tarballs to a non-channel staging tag
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:publish-alpha
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+
+      # Newly published packages must match the locally approved bytes and
+      # provenance before this workflow is allowed to move a public tag.
+      - name: Verify immutable package bits before moving the alpha tag
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
+        env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
+          RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
+          RELEASE_REQUIRE_PROVENANCE: 'true'
 
-      # Runs on every publish attempt, even when the requested versions were
-      # already present, so a recovery run also repairs distribution-tag drift.
       - name: Reconcile the alpha dist-tag
         if: steps.plan.outputs.operation == 'publish'
         run: node scripts/reconcile-alpha-tag.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify the complete published release set, provenance, and alpha tag
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:verify-published
+        env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_DIST_TAG: alpha
+          RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
+          RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
+          RELEASE_REQUIRE_PROVENANCE: 'true'
+
+      - name: Remove the non-channel staging tag after complete success
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:cleanup-staging
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -9,18 +9,39 @@ The machinery is implemented, but no real bundle has been reproduced and no gate
 
 ## Layout
 
-| Path                                 | Content                                                              |
-| ------------------------------------ | -------------------------------------------------------------------- |
-| `gate-criteria.json`                 | Stable criterion IDs, required evidence classes, profile vocabulary  |
-| `schema/gate-criteria.schema.json`   | Closed schema for the criterion registry                             |
-| `schema/evidence-bundle.schema.json` | Closed schema for one immutable bundle manifest                      |
-| `schema/gate-record.schema.json`     | Closed schema for a multi-bundle, per-criterion gate decision        |
-| `bundles/<bundleId>/manifest.json`   | One manifest; regular files below `artifacts/` are its exact outputs |
-| `gates/gate-<a\|b>.json`             | Gate records; none exist, so both gates remain unassessed            |
+| Path                                        | Content                                                                   |
+| ------------------------------------------- | ------------------------------------------------------------------------- |
+| `gate-criteria.json`                        | Stable criterion IDs, required evidence classes, profile vocabulary       |
+| `profile-assertions.json`                   | Exact source inputs and executable test lanes for every profile           |
+| `environment-assertions.json`               | Closed executable/target mapping for every environment-matrix identity    |
+| `schema/environment-assertions.schema.json` | Closed schema for environment commands, variants, and metadata predicates |
+| `schema/gate-criteria.schema.json`          | Closed schema for the criterion registry                                  |
+| `schema/evidence-bundle.schema.json`        | Closed schema for one immutable bundle manifest                           |
+| `schema/gate-record.schema.json`            | Closed schema for a multi-bundle, per-criterion gate decision             |
+| `bundles/<bundleId>/manifest.json`          | One manifest; regular files below `artifacts/` are its exact outputs      |
+| `gates/gate-<a\|b>.json`                    | Gate records; none exist, so both gates remain unassessed                 |
 
-The eight entries in `gate-criteria.json#profileVocabulary` are allowable Version 2 identifiers, not
-support claims. Only `supportedProfiles` in a valid, reviewed gate record can participate in a claim,
-and `STATUS.md` still controls programme status.
+The entries in `gate-criteria.json#profileVocabulary` are allowable Version 2 identifiers, not support claims.
+`profile-assertions.json` is a closed executable registry: a claimed profile must record every named source
+input and pass every exact registered lane. A profile label on a generic bundle cannot authorize a claim, and
+the target-only authoring profile has no executable mapping. Only `supportedProfiles` in a valid, reviewed gate
+record can participate in a claim, and `STATUS.md` still controls programme status.
+
+All executable run IDs use one closed command registry shared by the generator and validator. Unknown lanes,
+label-only lanes, command substitutions, nonzero exits, and retries fail authenticity. Environment
+qualification is also executable: every `coveredBy` value resolves as `<bundleId>#<testId>`, the run command
+must be the registered command, and its bundle metadata must satisfy the exact governed variant. Unsupported
+browser/mobile/desktop, clean-consumer, and Kumwe App database variants remain `target`; they cannot claim
+qualification and they block Version 2 stable release. The target-only Dart/Flutter row belongs to Version 3
+and does not block Version 2.
+
+Some criteria impose additional closed lanes. Any bundle that names
+`gate-a/13-reproducible-evidence` must contain `release/staged-registry-install` with the exact registered
+`npm run release:verify-stage` command. That command repacks the exact candidate, compares all eight tarballs
+and their provenance with npm, requires the coordinate-scoped quarantine tag, installs the exact family into
+a fresh credential-free consumer, verifies both embedded release-record copies, and runs npm's signature
+audit. A generic `release` label cannot replace this proof. The RC quarantine must remain available until the
+Gate A review and official RC publication complete; it is not the official `rc` channel or a support claim.
 
 Directories prefixed `SAMPLE-` are deliberately failing specimens. They stay schema-valid, must fail
 authenticity, and may never be referenced by a gate. A sample that starts passing causes the lane to
@@ -30,7 +51,10 @@ fail.
 
 - The bundle directory name equals `bundleId`. `SAMPLE-` is reserved and rejected by the generator.
 - The canonical repository URL, exact source commit, clean source state, lockfile, release record,
-  criterion registry, protocol manifest, and testkit corpus manifest are recorded.
+  criterion/profile/environment registries and schemas, protocol manifest, testkit corpus manifest, and
+  profile-specific test inputs are recorded. Retained bundles authenticate these inputs and package versions
+  against their own source commit, not whatever RC correction or stable metadata happens to be at current
+  `HEAD`.
 - Every checksum is `sha256-` SRI over the exact bytes. Artifact array entries and
   `artifactChecksums` have identical path/checksum membership.
 - Recorded paths are bounded repository-relative paths. Validators resolve them, refuse traversal and
@@ -49,8 +73,9 @@ review, not accepted retention.
 
 ## Validation
 
-`node scripts/check-evidence.mjs` runs through `contracts:check`. It validates all four evidence
-schemas, registry/document ID parity, the environment matrix, bundle authenticity, and gate semantics.
+`node scripts/check-evidence.mjs` runs through `contracts:check`. It validates all five evidence schemas,
+registry/document ID parity, the environment matrix and its closed assertion registry, bundle authenticity,
+and gate semantics.
 For a gate it additionally requires:
 
 - the exact registered criterion set, once each, with `met`, `not-met`, or `not-assessed`;
@@ -60,6 +85,8 @@ For a gate it additionally requires:
 - a `met` criterion to carry every required evidence class across its linked bundles;
 - supported and excluded profiles to be disjoint and partition the Version 2 vocabulary, with evidence
   for each supported profile;
+- every stable environment `coveredBy` value to use `<bundleId>#<testId>` and resolve to a linked,
+  independently reproduced bundle containing the governed passing lane for that environment;
 - exact reachable artifact hashes, two distinct human reviewers, one independent reviewer, and named
   accessibility, security, compatibility, and data-integrity reviewers with matching roles; and
 - a passing decision to have every criterion met and no unresolved critical/high defect.
@@ -81,11 +108,12 @@ node scripts/create-evidence-bundle.mjs \
   --runner local/clean-room
 ```
 
-The script accepts no shell fragments: every flag is unique and bounded, the package and bundle ID are
-validated before filesystem access, criteria and profiles must exist in the registry, and unknown or
-missing flags fail. It runs format, lint, typecheck, build, all nine contract/governance scripts, the
-complete unit/Node test command, and the Chromium accessibility lane with zero retries. Each lane gets a
-bounded, credential-scanned log artifact.
+Before selecting Gate A criterion 13, run the protected RC quarantine operation documented in
+[`CONTRIBUTING.md`](../CONTRIBUTING.md); otherwise its criterion-specific lane fails closed. The script accepts no shell fragments:
+every flag is unique and bounded, the package and bundle ID are validated before filesystem access, criteria
+and profiles must exist in the registry, and unknown or missing flags fail. It runs format, lint, typecheck,
+build, all contract/governance scripts, the complete unit/Node test command, and the Chromium accessibility
+lane with zero retries. Each lane gets a bounded, credential-scanned log artifact.
 
 The generated manifest has nonempty mechanical criterion/class entries and
 `review: { "status": "pending" }`. These criterion entries describe evidence modality (`positive`,

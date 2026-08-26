@@ -69,6 +69,13 @@ change; it does not silently rewrite an existing gate record.
 | `gate-a/13-reproducible-evidence`      | release, manual-decision     |
 | `gate-a/14-no-high-risk-contradiction` | security, manual-decision    |
 
+For `gate-a/13-reproducible-evidence`, the `release` class is not satisfied by the generic quality or package
+dry-run lanes alone. The bundle must execute the closed `release/staged-registry-install` command against the
+exact frozen RC. That command requires all eight candidate tarballs and source-bound provenance under the
+coordinate-scoped quarantine tag, then proves an unauthenticated clean install, embedded release records, and
+npm signatures. Quarantine does not move the official `rc` tag or create a release; it remains until Gate A is
+reviewed and the official publication succeeds.
+
 | Gate B identifier                     | Required evidence classes        |
 | ------------------------------------- | -------------------------------- |
 | `gate-b/01-contract-implementation`   | contract, integration            |
