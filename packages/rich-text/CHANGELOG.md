@@ -1,5 +1,11 @@
 # @kumwe/studio-rich-text
 
+## 0.1.0-rc.1
+
+### Release Candidate
+
+- Promote the reviewed coordinated package family from `0.1.0-alpha.10` to the first immutable release candidate. Runtime behavior is unchanged by this version transform.
+
 ## 0.1.0-alpha.10
 
 ### Patch Changes
