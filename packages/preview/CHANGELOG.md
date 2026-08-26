@@ -1,5 +1,21 @@
 # @kumwe/studio-preview
 
+## 0.1.0-alpha.10
+
+### Patch Changes
+
+- [#41](https://github.com/kumwe/studio/pull/41) [`f0a6fb8`](https://github.com/kumwe/studio/commit/f0a6fb8527846da0d5d6f204edf06159e72f2510) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Bind Gate A and Gate B evidence to an exact all-gates proof registry, registered runs, checksum-retained
+  artifact producers and roles, closed manual procedures, and authenticated external subjects. Human bundle,
+  manual, and gate decisions now require detached SSH signatures from reviewer authorities whose registry has an
+  exact checked-in structural pin and a separately matching protected release digest. RC publication is controlled
+  by the exact current-main verifier/publisher and external dependency closure, with live-main checks before each
+  registry or channel mutation. RC and stable promotion require the complete fixed nine-profile Version 2 claim
+  set, including `authoring-web`; specialized proofs remain target-only until their real producers, Kumwe App
+  grounding, and independently signed records exist.
+- Updated dependencies [[`f0a6fb8`](https://github.com/kumwe/studio/commit/f0a6fb8527846da0d5d6f204edf06159e72f2510), [`c55a995`](https://github.com/kumwe/studio/commit/c55a99565aede83fff5b8097cba97d94dc2b006a)]:
+  - @kumwe/studio-core@0.1.0-alpha.10
+  - @kumwe/studio-protocol@0.1.0-alpha.10
+
 ## 0.1.0-alpha.9
 
 ### Minor Changes

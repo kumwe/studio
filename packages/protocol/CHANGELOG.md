@@ -1,5 +1,30 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-alpha.10
+
+### Minor Changes
+
+- [#40](https://github.com/kumwe/studio/pull/40) [`c55a995`](https://github.com/kumwe/studio/commit/c55a99565aede83fff5b8097cba97d94dc2b006a) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Publish deterministic schema-generated TypeScript models for all 47 Version 2 protocol schemas and their
+  reusable definitions. Bind the generated surface to the exact schema-manifest digest, epoch, document
+  contract revision, and generator version; expose a schema-validated JSON round-trip boundary; and fail CI
+  when schemas, the complete runtime registry, or checked-in generated sources drift.
+  Use locale-independent ordering, model array minimum/prefix and open-member semantics without excluding valid
+  documents, fail closed on regex-key schemas, and directly compile the applicable corpus against exact roots
+  within an explicit TypeScript recursion boundary.
+  Normalize the two remaining presentation/table schema identifiers into the declared `/studio/v1/` epoch so
+  the recorded coordinate describes every generated model truthfully.
+
+### Patch Changes
+
+- [#41](https://github.com/kumwe/studio/pull/41) [`f0a6fb8`](https://github.com/kumwe/studio/commit/f0a6fb8527846da0d5d6f204edf06159e72f2510) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Bind Gate A and Gate B evidence to an exact all-gates proof registry, registered runs, checksum-retained
+  artifact producers and roles, closed manual procedures, and authenticated external subjects. Human bundle,
+  manual, and gate decisions now require detached SSH signatures from reviewer authorities whose registry has an
+  exact checked-in structural pin and a separately matching protected release digest. RC publication is controlled
+  by the exact current-main verifier/publisher and external dependency closure, with live-main checks before each
+  registry or channel mutation. RC and stable promotion require the complete fixed nine-profile Version 2 claim
+  set, including `authoring-web`; specialized proofs remain target-only until their real producers, Kumwe App
+  grounding, and independently signed records exist.
+
 ## 0.1.0-alpha.9
 
 ### Minor Changes
