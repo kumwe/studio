@@ -29,6 +29,19 @@ const ADVANCED = parseRichTextDocument(
   ).document,
 );
 
+const MINIMAL = parseRichTextDocument({
+  content: [
+    { type: 'paragraph' },
+    { attrs: { level: 2 }, type: 'heading' },
+    { content: [{ type: 'paragraph' }], type: 'blockquote' },
+    {
+      content: [{ content: [{ type: 'paragraph' }], type: 'listItem' }],
+      type: 'bulletList',
+    },
+  ],
+  type: 'doc',
+});
+
 describe('Studio strict-CSP rich-text surface', () => {
   it('snapshots the advanced first-party corpus without semantic loss', async () => {
     const holder = document.createElement('div');
@@ -38,6 +51,20 @@ describe('Studio strict-CSP rich-text surface', () => {
     ).create({ holder, value: ADVANCED });
 
     expect(await editor.save()).toEqual(ADVANCED);
+    expect(holder.querySelector('style,script,[style]')).toBeNull();
+
+    editor.destroy();
+    holder.remove();
+  });
+
+  it('preserves optional-field absence in a minimal read-only snapshot', async () => {
+    const holder = document.createElement('div');
+    document.body.append(holder);
+    const editor = await new StudioRichTextEditorFactory(
+      new StudioStrictCspRichTextSurfaceAdapter(),
+    ).create({ holder, readOnly: true, value: MINIMAL });
+
+    expect(await editor.save()).toEqual(MINIMAL);
     expect(holder.querySelector('style,script,[style]')).toBeNull();
 
     editor.destroy();

@@ -228,8 +228,9 @@ describe('semantic web renderer', () => {
     expect(output.html).toContain(
       '<aside data-studio-rich-text-callout data-studio-tone="warning"><p><mark data-studio-tone="danger">Callout</mark></p></aside>',
     );
+    expect(output.html).toContain('<ul data-studio-rich-text-checklist>');
     expect(output.html).toContain(
-      '<ul data-studio-rich-text-checklist><li data-studio-rich-text-checklist-item data-studio-checked="true" data-studio-level="2">',
+      'data-studio-rich-text-checklist-item data-studio-checked="true" data-studio-level="2" aria-level="3"',
     );
     expect(output.html).toContain(
       '<table data-studio-rich-text-table><thead><tr><th scope="col">Column</th></tr></thead>',
@@ -320,14 +321,21 @@ describe('semantic web renderer', () => {
       node('first', CORE_PRODUCTION_BLOCK_TYPES.chart),
       node('second', CORE_PRODUCTION_BLOCK_TYPES.chart),
     ];
+    let inFlight = 0;
+    let maximumInFlight = 0;
     const output = await renderStudioWeb(
       { roots },
       {
         resolveBinding: async (candidate, port) => {
           if (port !== 'chart') return undefined;
+          inFlight += 1;
+          maximumInFlight = Math.max(maximumInFlight, inFlight);
           if (candidate.id === 'first') {
             await new Promise((resolve) => setTimeout(resolve, 20));
+          } else {
+            await Promise.resolve();
           }
+          inFlight -= 1;
           return chartValue;
         },
       },
@@ -337,6 +345,94 @@ describe('semantic web renderer', () => {
     expect(output.html.indexOf('data-studio-node="first"')).toBeLessThan(
       output.html.indexOf('data-studio-node="second"'),
     );
+    expect(maximumInFlight).toBe(2);
+  });
+
+  it('collects parent and child enhancement jobs in Blueprint pre-order', async () => {
+    const parent = node(
+      'parent',
+      CORE_PRODUCTION_BLOCK_TYPES.stack,
+      {},
+      { items: [node('child', CORE_PRODUCTION_BLOCK_TYPES.chart)] },
+    );
+    parent.properties.design = { animation: 'fade' };
+    const output = await renderStudioWeb(
+      {
+        roots: [parent],
+      },
+      {
+        resolveBinding: (_candidate, port) =>
+          Promise.resolve(
+            port === 'chart'
+              ? {
+                  datasets: [{ label: 'Series', values: [1] }],
+                  labels: ['A'],
+                  type: 'bar',
+                }
+              : undefined,
+          ),
+      },
+    );
+
+    expect(output.enhancements.map((item) => item.nodeId)).toEqual(['parent', 'child']);
+    expect(output.enhancements.map((item) => item.kind)).toEqual(['motion', 'chart']);
+  });
+
+  it('renders checklist depth as nested semantic lists with accessible item levels', async () => {
+    const checklist: JsonObject = {
+      content: [
+        {
+          attrs: { checked: false, level: 0 },
+          content: [{ text: 'Parent', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: true, level: 1 },
+          content: [{ text: 'Child', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 2 },
+          content: [{ text: 'Grandchild', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 1 },
+          content: [{ text: 'Sibling child', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 0 },
+          content: [{ text: 'Root sibling', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    };
+    const output = await renderStudioWeb({
+      roots: [
+        node('nested-checklist', CORE_PRODUCTION_BLOCK_TYPES.richText, {
+          content: { content: [checklist], type: 'doc' },
+        }),
+      ],
+    });
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const items = [...host.querySelectorAll<HTMLElement>('[data-studio-rich-text-checklist-item]')];
+
+    expect(items.map((item) => item.getAttribute('aria-level'))).toEqual(['1', '2', '3', '2', '1']);
+    expect(items[1]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[0],
+    );
+    expect(items[2]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[1],
+    );
+    expect(items[3]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[0],
+    );
+    expect(items[4]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBeNull();
+    expect(items[1]?.querySelector('label')?.textContent).toBe('Child');
+    expect(items[1]?.querySelector<HTMLInputElement>('input')?.checked).toBe(true);
   });
 
   it('keeps a slideshow usable before enhancement and describes trusted behavior separately', async () => {

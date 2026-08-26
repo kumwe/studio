@@ -157,7 +157,10 @@ export class StudioParagraphTool extends InlineToolBase {
   }
 
   public save(): { node: StudioRichTextNode } {
-    return { node: { content: this.saveInline(), type: 'paragraph' } };
+    const node = structuredClone(this.node);
+    const content = this.saveInline();
+    if (!sameCanonical(node.content ?? [], content)) node.content = content;
+    return { node };
   }
 }
 
@@ -188,13 +191,12 @@ export class StudioHeaderTool extends InlineToolBase {
   }
 
   public save(): { node: StudioRichTextNode } {
-    return {
-      node: {
-        attrs: { level: Number(this.#level?.value ?? this.node.attrs?.level ?? 2) },
-        content: this.saveInline(),
-        type: 'heading',
-      },
-    };
+    const node = structuredClone(this.node);
+    const level = Number(this.#level?.value ?? this.node.attrs?.level ?? 2);
+    if (level !== Number(this.node.attrs?.level ?? 2)) node.attrs = { level };
+    const content = this.saveInline();
+    if (!sameCanonical(node.content ?? [], content)) node.content = content;
+    return { node };
   }
 }
 
@@ -316,11 +318,12 @@ export class StudioCodeTool {
 }
 
 interface ListRow {
-  blocks: StudioRichTextNode[];
-  containerStart?: number;
-  containerType: 'bulletList' | 'orderedList';
   depth: number;
-  editableBlockIndex: number;
+  editableBlock: StudioRichTextNode;
+  item: StudioRichTextNode;
+  ownerItem?: StudioRichTextNode;
+  parentList: StudioRichTextNode;
+  parentListParent?: StudioRichTextNode;
   syntheticEditable: boolean;
 }
 
@@ -329,14 +332,8 @@ export class StudioListTool {
   public static readonly toolbox = { icon: '•', title: 'List' } as const;
   readonly #readOnly: boolean;
   readonly #node: StudioRichTextNode;
-  readonly #initialOrdered: boolean;
-  readonly #initialRows: ListRow[];
-  readonly #initialStart: number;
-  #ordered: boolean;
   #rows: ListRow[];
   #root?: HTMLElement;
-  #start: number;
-  #structureChanged = false;
 
   public constructor(options: ToolOptions) {
     const node = structuredClone(
@@ -347,12 +344,7 @@ export class StudioListTool {
     );
     this.#node = node;
     this.#readOnly = options.readOnly === true;
-    this.#ordered = node.type === 'orderedList';
-    this.#start = Number(node.attrs?.start ?? 1);
     this.#rows = flattenList(node);
-    this.#initialOrdered = this.#ordered;
-    this.#initialStart = this.#start;
-    this.#initialRows = structuredClone(this.#rows);
   }
 
   public render(): HTMLElement {
@@ -363,17 +355,7 @@ export class StudioListTool {
 
   public save(): { node: StudioRichTextNode } {
     this.#syncRows();
-    if (
-      this.#ordered === this.#initialOrdered &&
-      this.#start === this.#initialStart &&
-      sameCanonical(this.#rows, this.#initialRows)
-    ) {
-      return { node: structuredClone(this.#node) };
-    }
-    if (!this.#structureChanged) {
-      return { node: mergeListEdits(this.#node, this.#rows, this.#ordered, this.#start) };
-    }
-    return { node: buildList(this.#rows, this.#ordered, this.#start) };
+    return { node: structuredClone(this.#node) };
   }
 
   #renderRows(): void {
@@ -383,25 +365,37 @@ export class StudioListTool {
     const style = selectControl(
       'List style',
       ['bullet', 'ordered'],
-      this.#ordered ? 'ordered' : 'bullet',
+      this.#node.type === 'orderedList' ? 'ordered' : 'bullet',
       this.#readOnly,
     );
     style.addEventListener('change', () => {
       this.#syncRows();
-      this.#ordered = style.value === 'ordered';
+      const ordered = style.value === 'ordered';
+      const start = orderedListStart(this.#node);
+      this.#node.type = ordered ? 'orderedList' : 'bulletList';
+      if (ordered && start !== 1) this.#node.attrs = { start };
+      else delete this.#node.attrs;
       this.#renderRows();
     });
     root.append(style);
-    if (this.#ordered) {
-      const start = textInput('Ordered list start', String(this.#start), this.#readOnly);
+    if (this.#node.type === 'orderedList') {
+      const start = textInput(
+        'Ordered list start',
+        String(orderedListStart(this.#node)),
+        this.#readOnly,
+      );
       start.type = 'number';
       start.min = '1';
       start.max = '1000000';
       start.addEventListener('change', () => {
-        this.#start = Math.max(1, Math.min(1_000_000, Number(start.value) || 1));
+        const value = Math.max(1, Math.min(1_000_000, Number(start.value) || 1));
+        if (value === orderedListStart(this.#node)) return;
+        if (value === 1) delete this.#node.attrs;
+        else this.#node.attrs = { start: value };
       });
       root.append(start);
     }
+    this.#rows = flattenList(this.#node);
     const list = document.createElement('ol');
     list.setAttribute('aria-label', 'List items');
     for (const [index, row] of this.#rows.entries()) {
@@ -411,18 +405,18 @@ export class StudioListTool {
       item.setAttribute('aria-level', String(row.depth + 1));
       const field = inlineField(
         `List item ${index + 1}`,
-        row.blocks[row.editableBlockIndex]?.content ?? [],
+        row.editableBlock.content ?? [],
         this.#readOnly,
       );
       field.dataset.listText = String(index);
       item.append(field);
       if (!this.#readOnly) {
         item.append(
-          rowButton('Move item up', () => this.#move(index, -1), index === 0),
-          rowButton('Move item down', () => this.#move(index, 1), index === this.#rows.length - 1),
-          rowButton('Indent item', () => this.#indent(index, 1), row.depth >= 4 || index === 0),
-          rowButton('Outdent item', () => this.#indent(index, -1), row.depth === 0),
-          rowButton('Remove item', () => this.#remove(index), this.#rows.length === 1),
+          rowButton('Move item up', () => this.#move(index, -1), !canMoveListRow(row, -1)),
+          rowButton('Move item down', () => this.#move(index, 1), !canMoveListRow(row, 1)),
+          rowButton('Indent item', () => this.#indent(index), !canIndentListRow(row)),
+          rowButton('Outdent item', () => this.#outdent(index), row.ownerItem === undefined),
+          rowButton('Remove item', () => this.#remove(index), !canRemoveListRow(row, this.#node)),
         );
       }
       list.append(item);
@@ -435,52 +429,110 @@ export class StudioListTool {
     for (const field of this.#root?.querySelectorAll<HTMLElement>('[data-list-text]') ?? []) {
       const index = Number(field.dataset.listText);
       const row = this.#rows[index];
-      const block = row?.blocks[row.editableBlockIndex];
-      if (block !== undefined) block.content = readInline(field);
+      if (row === undefined) continue;
+      const content = readInline(field);
+      if (row.syntheticEditable) {
+        if (content.length > 0) {
+          row.editableBlock.content = content;
+          row.item.content = [row.editableBlock, ...(row.item.content ?? [])];
+          row.syntheticEditable = false;
+        }
+      } else if (!sameCanonical(row.editableBlock.content ?? [], content)) {
+        row.editableBlock.content = content;
+      }
     }
   }
 
   #add(): void {
     this.#syncRows();
     if (this.#rows.length < 500)
-      this.#rows.push({
-        blocks: [{ type: 'paragraph' }],
-        containerType: this.#ordered ? 'orderedList' : 'bulletList',
-        depth: 0,
-        editableBlockIndex: 0,
-        syntheticEditable: false,
-      });
-    this.#structureChanged = true;
+      this.#node.content = [
+        ...(this.#node.content ?? []),
+        {
+          content: [{ type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ];
     this.#renderRows();
   }
 
-  #indent(index: number, delta: number): void {
+  #indent(index: number): void {
     this.#syncRows();
     const row = this.#rows[index];
-    if (row !== undefined) {
-      const depth = Math.max(0, Math.min(4, row.depth + delta));
-      if (depth !== row.depth) this.#structureChanged = true;
-      row.depth = depth;
-    }
+    if (row === undefined || !canIndentListRow(row)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    const previous = siblings[itemIndex - 1];
+    if (previous === undefined) return;
+    siblings.splice(itemIndex, 1);
+    const existing = previous.content?.at(-1);
+    const nested =
+      existing?.type === row.parentList.type
+        ? existing
+        : {
+            ...(row.parentList.type === 'orderedList' && row.parentList.attrs !== undefined
+              ? { attrs: structuredClone(row.parentList.attrs) }
+              : {}),
+            content: [],
+            type: row.parentList.type,
+          };
+    if (nested !== existing) previous.content = [...(previous.content ?? []), nested];
+    nested.content = [...(nested.content ?? []), row.item];
     this.#renderRows();
   }
 
-  #move(index: number, delta: number): void {
+  #outdent(index: number): void {
     this.#syncRows();
-    const target = index + delta;
-    if (target >= 0 && target < this.#rows.length) {
-      const [row] = this.#rows.splice(index, 1);
-      if (row !== undefined) this.#rows.splice(target, 0, row);
-      this.#structureChanged = true;
+    const row = this.#rows[index];
+    if (row?.ownerItem === undefined || row.parentListParent === undefined) {
+      return;
     }
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    if (itemIndex < 0) return;
+    const trailing = siblings.splice(itemIndex + 1);
+    siblings.splice(itemIndex, 1);
+    if (trailing.length > 0) {
+      row.item.content = [
+        ...(row.item.content ?? []),
+        {
+          ...(row.parentList.type === 'orderedList' && row.parentList.attrs !== undefined
+            ? { attrs: structuredClone(row.parentList.attrs) }
+            : {}),
+          content: trailing,
+          type: row.parentList.type,
+        },
+      ];
+    }
+    if (siblings.length === 0) removeListFromItem(row.ownerItem, row.parentList);
+    const parentSiblings = row.parentListParent.content ?? [];
+    const ownerIndex = parentSiblings.indexOf(row.ownerItem);
+    if (ownerIndex < 0) return;
+    parentSiblings.splice(ownerIndex + 1, 0, row.item);
+    this.#renderRows();
+  }
+
+  #move(index: number, delta: -1 | 1): void {
+    this.#syncRows();
+    const row = this.#rows[index];
+    if (row === undefined || !canMoveListRow(row, delta)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    const [item] = siblings.splice(itemIndex, 1);
+    if (item !== undefined) siblings.splice(itemIndex + delta, 0, item);
     this.#renderRows();
   }
 
   #remove(index: number): void {
     this.#syncRows();
-    if (this.#rows.length > 1) {
-      this.#rows.splice(index, 1);
-      this.#structureChanged = true;
+    const row = this.#rows[index];
+    if (row === undefined || !canRemoveListRow(row, this.#node)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    if (itemIndex < 0) return;
+    siblings.splice(itemIndex, 1);
+    if (siblings.length === 0 && row.ownerItem !== undefined) {
+      removeListFromItem(row.ownerItem, row.parentList);
     }
     this.#renderRows();
   }
@@ -923,124 +975,58 @@ function pastePlainText(event: ClipboardEvent): void {
   range.collapse(false);
 }
 
-function flattenList(node: StudioRichTextNode, depth = 0): ListRow[] {
+function flattenList(
+  node: StudioRichTextNode,
+  depth = 0,
+  ownerItem?: StudioRichTextNode,
+  parentListParent?: StudioRichTextNode,
+): ListRow[] {
   const rows: ListRow[] = [];
   for (const item of node.content ?? []) {
-    const blocks = structuredClone(
-      (item.content ?? []).filter(
-        (block) => block.type !== 'bulletList' && block.type !== 'orderedList',
-      ),
-    );
-    let editableBlockIndex = blocks.findIndex(
+    const existingEditable = (item.content ?? []).find(
       (block) => block.type === 'paragraph' || block.type === 'heading',
     );
-    const syntheticEditable = editableBlockIndex < 0;
-    if (editableBlockIndex < 0) {
-      blocks.unshift({ type: 'paragraph' });
-      editableBlockIndex = 0;
-    }
+    const editableBlock = existingEditable ?? { type: 'paragraph' };
     rows.push({
-      blocks,
-      ...(node.type === 'orderedList' && node.attrs?.start !== undefined
-        ? { containerStart: Number(node.attrs.start) }
-        : {}),
-      containerType: node.type === 'orderedList' ? 'orderedList' : 'bulletList',
       depth,
-      editableBlockIndex,
-      syntheticEditable,
+      editableBlock,
+      item,
+      ...(ownerItem === undefined ? {} : { ownerItem }),
+      parentList: node,
+      ...(parentListParent === undefined ? {} : { parentListParent }),
+      syntheticEditable: existingEditable === undefined,
     });
     for (const nested of item.content ?? []) {
       if (nested.type === 'bulletList' || nested.type === 'orderedList')
-        rows.push(...flattenList(nested, Math.min(4, depth + 1)));
+        rows.push(...flattenList(nested, depth + 1, item, node));
     }
   }
-  return rows.length > 0
-    ? rows
-    : [
-        {
-          blocks: [{ type: 'paragraph' }],
-          containerType: node.type === 'orderedList' ? 'orderedList' : 'bulletList',
-          depth: 0,
-          editableBlockIndex: 0,
-          syntheticEditable: true,
-        },
-      ];
+  return rows;
 }
 
-function mergeListEdits(
-  original: StudioRichTextNode,
-  rows: readonly ListRow[],
-  ordered: boolean,
-  start: number,
-): StudioRichTextNode {
-  const node = structuredClone(original);
-  let rowIndex = 0;
-  const visit = (list: StudioRichTextNode): void => {
-    for (const item of list.content ?? []) {
-      const row = rows[rowIndex];
-      rowIndex += 1;
-      if (row === undefined) continue;
-      const replacements = row.blocks.slice(row.syntheticEditable ? 1 : 0);
-      let replacementIndex = 0;
-      const content: StudioRichTextNode[] = [];
-      const synthetic = row.syntheticEditable ? row.blocks[0] : undefined;
-      if (synthetic !== undefined && (synthetic.content?.length ?? 0) > 0) {
-        content.push(structuredClone(synthetic));
-      }
-      for (const block of item.content ?? []) {
-        if (block.type === 'bulletList' || block.type === 'orderedList') {
-          visit(block);
-          content.push(block);
-          continue;
-        }
-        content.push(structuredClone(replacements[replacementIndex] ?? block));
-        replacementIndex += 1;
-      }
-      item.content = content;
-    }
-  };
-  visit(node);
-  if (
-    ordered === (original.type === 'orderedList') &&
-    start === Number(original.attrs?.start ?? 1)
-  ) {
-    return node;
-  }
-  node.type = ordered ? 'orderedList' : 'bulletList';
-  if (ordered && start !== 1) node.attrs = { start: Math.max(1, Math.min(1_000_000, start)) };
-  else delete node.attrs;
-  return node;
+function orderedListStart(node: Readonly<StudioRichTextNode>): number {
+  const value = Number(node.attrs?.start ?? 1);
+  return Number.isSafeInteger(value) && value >= 1 && value <= 1_000_000 ? value : 1;
 }
 
-function buildList(rows: readonly ListRow[], ordered: boolean, start: number): StudioRichTextNode {
-  const type = ordered ? 'orderedList' : 'bulletList';
-  const root: StudioRichTextNode = { content: [], type };
-  if (ordered && start !== 1) root.attrs = { start: Math.max(1, Math.min(1_000_000, start)) };
-  const lists: StudioRichTextNode[] = [root];
-  for (const [index, row] of rows.entries()) {
-    const depth = Math.min(row.depth, index === 0 ? 0 : (rows[index - 1]?.depth ?? 0) + 1);
-    while (lists.length > depth + 1) lists.pop();
-    while (lists.length < depth + 1) {
-      const parent = lists.at(-1);
-      const parentItem = parent?.content?.at(-1);
-      if (parentItem === undefined) break;
-      const nestedRow = row;
-      const nested: StudioRichTextNode = {
-        ...(nestedRow.containerType === 'orderedList' && nestedRow.containerStart !== undefined
-          ? { attrs: { start: nestedRow.containerStart } }
-          : {}),
-        content: [],
-        type: nestedRow.containerType,
-      };
-      parentItem.content = [...(parentItem.content ?? []), nested];
-      lists.push(nested);
-    }
-    lists.at(-1)?.content?.push({
-      content: structuredClone(row.blocks),
-      type: 'listItem',
-    });
-  }
-  return root;
+function canMoveListRow(row: Readonly<ListRow>, delta: -1 | 1): boolean {
+  const siblings = row.parentList.content ?? [];
+  const index = siblings.indexOf(row.item);
+  return index >= 0 && index + delta >= 0 && index + delta < siblings.length;
+}
+
+function canIndentListRow(row: Readonly<ListRow>): boolean {
+  if (row.depth >= 4) return false;
+  const siblings = row.parentList.content ?? [];
+  return siblings.indexOf(row.item) > 0;
+}
+
+function canRemoveListRow(row: Readonly<ListRow>, root: Readonly<StudioRichTextNode>): boolean {
+  return row.parentList !== root || (root.content?.length ?? 0) > 1;
+}
+
+function removeListFromItem(item: StudioRichTextNode, list: StudioRichTextNode): void {
+  item.content = (item.content ?? []).filter((block) => block !== list);
 }
 
 function editableBlockContent(blocks: readonly StudioRichTextNode[]): StudioRichTextNode[] {

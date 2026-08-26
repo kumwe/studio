@@ -111,8 +111,8 @@ async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Pr
   const scope = scopeFor(node.id);
   const scopedSheet = state.context.scopedStyles?.[node.id];
   if (scopedSheet !== undefined) state.css.push(compileStudioScopedStyleSheet(scope, scopedSheet));
-  const content = await renderType(node, scope, state);
   const presentation = presentationAttributes(node, scope, state);
+  const content = await renderType(node, scope, state);
   const attributes = `data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}"${presentation}`;
   if (node.type === CORE_PRODUCTION_BLOCK_TYPES.descriptionItem) {
     return `<div data-studio-description-item ${attributes}>${content}</div>`;
@@ -127,9 +127,18 @@ async function renderNodes(
   nodes: readonly Readonly<BlueprintNode>[],
   state: RenderState,
 ): Promise<string[]> {
-  const rendered: string[] = [];
-  for (const node of nodes) rendered.push(await renderNode(node, state));
-  return rendered;
+  const rendered = await Promise.all(
+    nodes.map(async (node) => {
+      const local: RenderState = { context: state.context, css: [], enhancements: [] };
+      const html = await renderNode(node, local);
+      return { css: local.css, enhancements: local.enhancements, html };
+    }),
+  );
+  for (const result of rendered) {
+    state.css.push(...result.css);
+    state.enhancements.push(...result.enhancements);
+  }
+  return rendered.map((result) => result.html);
 }
 
 async function renderType(
@@ -711,10 +720,10 @@ async function navigation(
     ? candidate
     : 'nav';
   const accessibleLabel = stringValue(await bindingValue(node, 'label', state)) || 'Navigation';
-  const items = await renderNodes(node.slots.items ?? [], state);
   if ((node.slots.items ?? []).some((item) => (item.slots.children ?? []).length > 0)) {
     state.enhancements.push({ kind: 'navigation', nodeId: node.id, scope });
   }
+  const items = await renderNodes(node.slots.items ?? [], state);
   return `<nav data-studio-navigation="${presentation}" aria-label="${escapeAttribute(accessibleLabel)}"><ul>${items.join('')}</ul></nav>`;
 }
 
@@ -865,12 +874,9 @@ function renderRichTextNode(node: Readonly<StudioRichTextNode>): string {
     case 'listItem':
       return `<li>${childrenValue}</li>`;
     case 'checklist':
-      return `<ul data-studio-rich-text-checklist>${childrenValue}</ul>`;
-    case 'checklistItem': {
-      const checked = node.attrs?.checked === true;
-      const level = richTextChecklistLevel(node.attrs?.level);
-      return `<li data-studio-rich-text-checklist-item data-studio-checked="${String(checked)}" data-studio-level="${level}"><input type="checkbox" disabled aria-label="${checked ? 'Completed item' : 'Incomplete item'}"${checked ? ' checked' : ''}>${childrenValue}</li>`;
-    }
+      return renderRichTextChecklist(node);
+    case 'checklistItem':
+      return renderRichTextChecklistItem(node, richTextChecklistLevel(node.attrs?.level), []);
     case 'table':
       return renderRichTextTable(node);
     case 'tableRow':
@@ -920,6 +926,72 @@ function renderRichTextTable(node: Readonly<StudioRichTextNode>): string {
     return `<table data-studio-rich-text-table>${heading === undefined ? '' : `<thead>${renderRow(heading, true)}</thead>`}${body.length === 0 ? '' : `<tbody>${body.map((row) => renderRow(row, false)).join('')}</tbody>`}</table>`;
   }
   return `<table data-studio-rich-text-table><tbody>${rows.map((row) => renderRow(row, false)).join('')}</tbody></table>`;
+}
+
+interface RichTextChecklistTreeItem {
+  children: RichTextChecklistTreeItem[];
+  level: 0 | 1 | 2 | 3 | 4;
+  node?: Readonly<StudioRichTextNode>;
+}
+
+function renderRichTextChecklist(node: Readonly<StudioRichTextNode>): string {
+  const root: RichTextChecklistTreeItem[] = [];
+  const levels: RichTextChecklistTreeItem[][] = [root];
+  for (const item of node.content ?? []) {
+    const level = richTextChecklistLevel(item.attrs?.level);
+    levels.length = Math.min(level + 1, levels.length);
+    while (levels.length <= level) {
+      const parentItems = levels.at(-1);
+      if (parentItems === undefined) break;
+      let parent = parentItems.at(-1);
+      if (parent === undefined) {
+        parent = {
+          children: [],
+          level: Math.min(4, levels.length - 1) as 0 | 1 | 2 | 3 | 4,
+        };
+        parentItems.push(parent);
+      }
+      levels.push(parent.children);
+    }
+    levels[level]?.push({ children: [], level, node: item });
+  }
+  return `<ul data-studio-rich-text-checklist>${renderRichTextChecklistItems(root)}</ul>`;
+}
+
+function renderRichTextChecklistItems(items: readonly RichTextChecklistTreeItem[]): string {
+  return items
+    .map((item) => {
+      const children =
+        item.children.length === 0
+          ? ''
+          : `<ul data-studio-rich-text-checklist-level="${item.level + 1}">${renderRichTextChecklistItems(item.children)}</ul>`;
+      return item.node === undefined
+        ? `<li role="none" data-studio-rich-text-checklist-bridge>${children}</li>`
+        : renderRichTextChecklistItem(item.node, item.level, item.children);
+    })
+    .join('');
+}
+
+function renderRichTextChecklistItem(
+  node: Readonly<StudioRichTextNode>,
+  level: 0 | 1 | 2 | 3 | 4,
+  children: readonly RichTextChecklistTreeItem[],
+): string {
+  const checked = node.attrs?.checked === true;
+  const content = (node.content ?? []).map(renderRichTextNode).join('');
+  const fallbackLabel = richTextNodeHasText(node) ? '' : ' aria-label="Checklist item"';
+  const nested =
+    children.length === 0
+      ? ''
+      : `<ul data-studio-rich-text-checklist-level="${level + 1}">${renderRichTextChecklistItems(children)}</ul>`;
+  return `<li data-studio-rich-text-checklist-item data-studio-checked="${String(checked)}" data-studio-level="${level}" aria-level="${level + 1}"><label><input type="checkbox" disabled${fallbackLabel}${checked ? ' checked' : ''}><span data-studio-rich-text-checklist-content>${content}</span></label>${nested}</li>`;
+}
+
+function richTextNodeHasText(node: Readonly<StudioRichTextNode>): boolean {
+  return (node.content ?? []).some(
+    (child) =>
+      (child.type === 'text' && (child.text?.length ?? 0) > 0) || richTextNodeHasText(child),
+  );
 }
 
 function richTextCalloutTone(

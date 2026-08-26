@@ -5,8 +5,10 @@ import {
   fromStudioEditorJsBlocks,
   StudioChecklistTool,
   StudioCodeTool,
+  StudioHeaderTool,
   StudioListTool,
   StudioMarkerTool,
+  StudioParagraphTool,
   StudioTableTool,
   studioEditorJsTools,
   toStudioEditorJsBlocks,
@@ -15,6 +17,7 @@ import {
   parseRichTextDocument,
   projectRichText,
   type StudioRichTextDocument,
+  type StudioRichTextNode,
 } from '../src/index.js';
 
 const ADVANCED = parseRichTextDocument(
@@ -146,6 +149,91 @@ const STRUCTURAL_RICH_TEXT: StudioRichTextDocument = {
   type: 'doc',
 };
 
+const MINIMAL_RICH_TEXT = parseRichTextDocument({
+  content: [
+    { type: 'paragraph' },
+    { attrs: { level: 2 }, type: 'heading' },
+    { content: [{ type: 'paragraph' }], type: 'blockquote' },
+    {
+      content: [{ content: [{ type: 'paragraph' }], type: 'listItem' }],
+      type: 'bulletList',
+    },
+    {
+      content: [{ content: [{ type: 'paragraph' }], type: 'listItem' }],
+      type: 'orderedList',
+    },
+    { type: 'horizontalRule' },
+    {
+      content: [{ attrs: { checked: false, level: 0 }, type: 'checklistItem' }],
+      type: 'checklist',
+    },
+    {
+      attrs: { header: false },
+      content: [{ content: [{ type: 'tableCell' }], type: 'tableRow' }],
+      type: 'table',
+    },
+    {
+      attrs: { tone: 'info' },
+      content: [{ type: 'paragraph' }],
+      type: 'callout',
+    },
+    { attrs: { language: 'text' }, text: '', type: 'codeBlock' },
+  ],
+  type: 'doc',
+});
+
+const MIXED_NESTED_LIST = parseRichTextDocument({
+  content: [
+    {
+      content: [
+        {
+          content: [
+            { content: [{ text: 'Parent', type: 'text' }], type: 'paragraph' },
+            {
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: 'Bullet child', type: 'text' }],
+                      type: 'paragraph',
+                    },
+                  ],
+                  type: 'listItem',
+                },
+              ],
+              type: 'bulletList',
+            },
+            { content: [{ text: 'Middle', type: 'text' }], type: 'paragraph' },
+            {
+              attrs: { start: 7 },
+              content: [
+                {
+                  content: [
+                    {
+                      content: [{ text: 'Ordered child', type: 'text' }],
+                      type: 'paragraph',
+                    },
+                  ],
+                  type: 'listItem',
+                },
+              ],
+              type: 'orderedList',
+            },
+            { content: [{ text: 'After', type: 'text' }], type: 'paragraph' },
+          ],
+          type: 'listItem',
+        },
+        {
+          content: [{ content: [{ text: 'Sibling', type: 'text' }], type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ],
+      type: 'bulletList',
+    },
+  ],
+  type: 'doc',
+}).content[0];
+
 function markedInline(prefix: string): StudioRichTextDocument['content'] {
   return [
     { marks: [{ type: 'bold' }], text: `${prefix} bold`, type: 'text' },
@@ -178,7 +266,7 @@ describe('first-party Editor.js tool boundary', () => {
 
   it('round-trips the advanced corpus and nested first-party nodes through rendered tools', () => {
     const tools = studioEditorJsTools();
-    for (const value of [ADVANCED, STRUCTURAL_RICH_TEXT]) {
+    for (const value of [ADVANCED, STRUCTURAL_RICH_TEXT, MINIMAL_RICH_TEXT]) {
       const canonical = parseRichTextDocument(value);
       for (const block of toStudioEditorJsBlocks(canonical)) {
         const Tool = tools[block.type];
@@ -189,6 +277,118 @@ describe('first-party Editor.js tool boundary', () => {
         );
       }
     }
+  });
+
+  it('keeps every nested list boundary intact when adding an unrelated root item', () => {
+    if (MIXED_NESTED_LIST === undefined) throw new Error('Missing mixed nested list fixture.');
+    const tool = new StudioListTool({ data: { node: MIXED_NESTED_LIST } });
+    const root = tool.render();
+    root.querySelector<HTMLButtonElement>('[aria-label="Add list item"]')?.click();
+    const saved = tool.save().node;
+
+    expect(saved.content?.slice(0, 2)).toEqual(MIXED_NESTED_LIST.content);
+    expect(saved.content?.[2]).toEqual({
+      content: [{ type: 'paragraph' }],
+      type: 'listItem',
+    });
+  });
+
+  it('moves and removes a list parent together with its complete nested subtree', () => {
+    if (MIXED_NESTED_LIST === undefined) throw new Error('Missing mixed nested list fixture.');
+    const moving = new StudioListTool({ data: { node: MIXED_NESTED_LIST } });
+    const movingRoot = moving.render();
+    movingRoot
+      .querySelector<HTMLButtonElement>('[data-index="0"] [aria-label="Move item down"]')
+      ?.click();
+    const moved = moving.save().node;
+    expect(moved.content?.[0]).toEqual(MIXED_NESTED_LIST.content?.[1]);
+    expect(moved.content?.[1]).toEqual(MIXED_NESTED_LIST.content?.[0]);
+
+    const removing = new StudioListTool({ data: { node: MIXED_NESTED_LIST } });
+    const removingRoot = removing.render();
+    removingRoot
+      .querySelector<HTMLButtonElement>('[data-index="0"] [aria-label="Remove item"]')
+      ?.click();
+    expect(removing.save().node.content).toEqual([MIXED_NESTED_LIST.content?.[1]]);
+  });
+
+  it('indents a root subtree without merging pre-existing nested list boundaries', () => {
+    if (MIXED_NESTED_LIST === undefined) throw new Error('Missing mixed nested list fixture.');
+    const tool = new StudioListTool({ data: { node: MIXED_NESTED_LIST } });
+    const root = tool.render();
+    root.querySelector<HTMLButtonElement>('[data-index="3"] [aria-label="Indent item"]')?.click();
+    const saved = tool.save().node;
+    const originalParent = MIXED_NESTED_LIST.content?.[0];
+    const originalSibling = MIXED_NESTED_LIST.content?.[1];
+
+    expect(saved.content).toHaveLength(1);
+    expect(saved.content?.[0]?.content?.slice(0, 5)).toEqual(originalParent?.content);
+    expect(saved.content?.[0]?.content?.[5]).toEqual({
+      content: [originalSibling],
+      type: 'bulletList',
+    });
+  });
+
+  it('outdents an item atomically and keeps trailing siblings in their exact list boundary', () => {
+    if (MIXED_NESTED_LIST === undefined) throw new Error('Missing mixed nested list fixture.');
+    const source = structuredClone(MIXED_NESTED_LIST);
+    const parent = source.content?.[0];
+    const ordered = parent?.content?.[3];
+    if (ordered?.type !== 'orderedList') throw new Error('Missing nested ordered-list fixture.');
+    const trailing: StudioRichTextNode = {
+      content: [{ content: [{ text: 'Trailing', type: 'text' }], type: 'paragraph' }],
+      type: 'listItem',
+    };
+    ordered.content = [...(ordered.content ?? []), structuredClone(trailing)];
+    const lifted = structuredClone(ordered.content?.[0]);
+    if (lifted === undefined) throw new Error('Missing item to outdent.');
+    const rootSibling = structuredClone(source.content?.[1]);
+    const tool = new StudioListTool({ data: { node: source } });
+    const root = tool.render();
+    root.querySelector<HTMLButtonElement>('[data-index="2"] [aria-label="Outdent item"]')?.click();
+    const saved = tool.save().node;
+
+    expect(saved.content).toHaveLength(3);
+    expect(saved.content?.[0]?.content).toEqual([
+      parent?.content?.[0],
+      parent?.content?.[1],
+      parent?.content?.[2],
+      parent?.content?.[4],
+    ]);
+    expect(saved.content?.[1]?.content).toEqual([
+      ...(lifted?.content ?? []),
+      { attrs: { start: 7 }, content: [trailing], type: 'orderedList' },
+    ]);
+    expect(saved.content?.[2]).toEqual(rootSibling);
+  });
+
+  it('does not materialize optional content during minimal or read-only tool snapshots', () => {
+    const paragraph = { type: 'paragraph' } as const;
+    const paragraphTool = new StudioParagraphTool({ data: { node: paragraph }, readOnly: true });
+    paragraphTool.render();
+    expect(paragraphTool.save().node).toEqual(paragraph);
+
+    const heading = { attrs: { level: 2 }, type: 'heading' } as const;
+    const headingTool = new StudioHeaderTool({ data: { node: heading }, readOnly: true });
+    headingTool.render();
+    expect(headingTool.save().node).toEqual(heading);
+
+    const list = MINIMAL_RICH_TEXT.content.find((node) => node.type === 'bulletList');
+    if (list === undefined) throw new Error('Missing minimal list fixture.');
+    const listTool = new StudioListTool({ data: { node: list }, readOnly: true });
+    listTool.render();
+    expect(listTool.save().node).toEqual(list);
+  });
+
+  it('keeps a defensive synthetic list editor outside the persisted node', () => {
+    const atomicOnly: StudioRichTextNode = {
+      content: [{ content: [{ type: 'horizontalRule' }], type: 'listItem' }],
+      type: 'bulletList',
+    };
+    const tool = new StudioListTool({ data: { node: atomicOnly }, readOnly: true });
+    tool.render();
+
+    expect(tool.save().node).toEqual(atomicOnly);
   });
 
   it('changes list presentation without moving or flattening interleaved canonical blocks', () => {

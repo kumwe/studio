@@ -616,6 +616,9 @@
       "data-studio-rich-text-callout data-studio-tone=\"warning\"",
       "<mark data-studio-tone=\"accent\">Mind the gap</mark>",
       "data-studio-rich-text-checklist-item data-studio-checked=\"true\" data-studio-level=\"1\"",
+      "data-studio-level=\"1\" aria-level=\"2\"",
+      "data-studio-rich-text-checklist-level=\"1\"",
+      "<label><input type=\"checkbox\" disabled checked><span data-studio-rich-text-checklist-content>Done</span></label>",
       "<table data-studio-rich-text-table><thead>",
       "<pre><code data-language=\"typescript\">const n = 42;</code></pre>"
     ],

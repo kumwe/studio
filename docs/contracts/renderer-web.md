@@ -22,8 +22,9 @@ only when it replays the same corpus.
 - Charts retain an accessible data table; math and diagrams retain their escaped source; drawings are
   rendered from bounded point/stroke data.
 - Portable rich text renders every governed block, inline node, and mark as semantic HTML. Callout and
-  highlight tones remain bounded `data-studio-tone` values; checklist state and depth, table headers,
-  hard breaks, and inert code language/source remain explicit in the output.
+  highlight tones remain bounded `data-studio-tone` values; checklist state and depth render as
+  labelled native checkboxes in nested lists with explicit accessible levels; table headers, hard
+  breaks, and inert code language/source remain explicit in the output.
 - Styles are node-scoped through a bounded, lossless encoding of the schema-valid node ID, so distinct
   nodes cannot share CSS or trusted enhancement targets. Public scope input and a CSP nonce are
   validated before either is emitted. No authored JavaScript, handler, URL-bearing CSS, SVG source, or
