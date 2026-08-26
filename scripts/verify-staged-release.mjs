@@ -13,7 +13,10 @@ import {
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { classifyReleaseVersion } from './release-policy.mjs';
 import { stagingTagForVersion } from './staged-publish.mjs';
-import { collectRegistryFailures } from './verify-published-release.mjs';
+import {
+  REGISTRY_PROPAGATION_WINDOW_MS,
+  collectRegistryFailures,
+} from './verify-published-release.mjs';
 import { isCredentialBearingUrl } from './lib/secret-detector.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -383,6 +386,7 @@ async function main() {
   const failures = await collectRegistryFailures(record, {
     approvedArtifacts,
     distTag: stagingTagForVersion(record.release),
+    propagationWindowMs: REGISTRY_PROPAGATION_WINDOW_MS,
     provenanceCommit: actualSha,
     requireProvenance: true,
   });
