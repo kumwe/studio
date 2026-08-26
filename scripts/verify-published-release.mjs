@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, assertApprovedReleaseArtifacts } from './release-artifacts.mjs';
@@ -20,6 +20,7 @@ const REGISTRY_POLL_INTERVAL_MS = 10_000;
 export async function collectRegistryEvidence(
   record,
   {
+    acceptProvenanceCommit,
     approvedArtifacts,
     distTag,
     fetchAttestations = readAttestations,
@@ -92,13 +93,14 @@ export async function collectRegistryEvidence(
         try {
           attestationDocument = await fetchAttestations(manifest.dist.attestations.url);
           failures.push(
-            ...collectProvenanceFailures(attestationDocument, {
+            ...(await collectProvenanceFailures(attestationDocument, {
+              acceptProvenanceCommit,
               approved,
               name,
               provenanceCommit,
               version,
               workflowPath: provenanceWorkflow,
-            }),
+            })),
           );
         } catch (error) {
           failures.push(
@@ -147,10 +149,11 @@ export async function collectRegistryFailures(record, options = {}) {
   return (await collectRegistryEvidence(record, options)).failures;
 }
 
-export function collectProvenanceFailures(
+export async function collectProvenanceFailures(
   document,
-  { approved, name, provenanceCommit, version, workflowPath },
+  { acceptProvenanceCommit, approved, name, provenanceCommit, version, workflowPath },
 ) {
+  const acceptCommit = acceptProvenanceCommit ?? (async (commit) => commit === provenanceCommit);
   const failures = [];
   const entries = Array.isArray(document?.attestations) ? document.attestations : [];
   const statements = entries
@@ -185,14 +188,21 @@ export function collectProvenanceFailures(
     failures.push(`${name}@${version} provenance does not name the governed main release workflow`);
   }
   const dependencies = statement.predicate?.buildDefinition?.resolvedDependencies;
-  if (
-    !Array.isArray(dependencies) ||
-    !dependencies.some(
+  const mainCommits = (Array.isArray(dependencies) ? dependencies : [])
+    .filter(
       (dependency) =>
         dependency.uri === 'git+https://github.com/kumwe/studio@refs/heads/main' &&
-        dependency.digest?.gitCommit === provenanceCommit,
+        typeof dependency.digest?.gitCommit === 'string',
     )
-  ) {
+    .map((dependency) => dependency.digest.gitCommit);
+  let boundToAcceptedCommit = false;
+  for (const commit of mainCommits) {
+    if (await acceptCommit(commit)) {
+      boundToAcceptedCommit = true;
+      break;
+    }
+  }
+  if (!boundToAcceptedCommit) {
     failures.push(
       `${name}@${version} provenance does not bind dispatch commit ${provenanceCommit}`,
     );
@@ -211,6 +221,26 @@ async function defaultSleep(milliseconds) {
   await new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+}
+
+// Registry coordinates are immutable, so bits published from an earlier main
+// commit can never re-bind a later dispatch commit. Re-verification therefore
+// accepts provenance bound to any ancestor of the checked-out main head: the
+// byte-exact comparison against locally rebuilt tarballs and the exact
+// workflow, ref, and builder assertions still hold, so acceptance continues
+// to prove the registry bits came from this repository's governed history.
+async function isAncestorOfCheckedOutHead(commit) {
+  if (!/^[a-f0-9]{40}$/u.test(commit)) {
+    return false;
+  }
+  try {
+    await execFileAsync('git', ['merge-base', '--is-ancestor', commit, 'HEAD'], {
+      cwd: fileURLToPath(new URL('../', import.meta.url)),
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function readNpmJson(arguments_) {
@@ -257,7 +287,14 @@ async function main() {
       await readFile(new URL(`../${APPROVED_ARTIFACT_PATH}`, import.meta.url), 'utf8'),
     );
   }
+  let acceptProvenanceCommit;
+  if (process.env.RELEASE_PROVENANCE_ANCESTOR_OK === 'true') {
+    acceptProvenanceCommit = async (commit) =>
+      commit === process.env.RELEASE_PROVENANCE_COMMIT ||
+      (await isAncestorOfCheckedOutHead(commit));
+  }
   const failures = await collectRegistryFailures(record, {
+    acceptProvenanceCommit,
     approvedArtifacts,
     distTag: process.env.RELEASE_DIST_TAG,
     propagationWindowMs: REGISTRY_PROPAGATION_WINDOW_MS,

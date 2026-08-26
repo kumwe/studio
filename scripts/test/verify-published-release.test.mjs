@@ -66,6 +66,42 @@ describe('post-publication registry verification', () => {
     );
   });
 
+  it('accepts provenance bound to an accepted ancestor commit during re-verification', async () => {
+    const publishedCommit = 'b'.repeat(40);
+    const failures = await collectRegistryFailures(record, {
+      acceptProvenanceCommit: async (commit) =>
+        commit === provenanceCommit || commit === publishedCommit,
+      approvedArtifacts,
+      distTag: 'rc',
+      fetchAttestations: async (url) => {
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        return provenance(name, approvedArtifacts.packages[name], publishedCommit);
+      },
+      npmJson: registryManifest,
+      provenanceCommit,
+      requireProvenance: true,
+    });
+    assert.deepEqual(failures, []);
+  });
+
+  it('still rejects unaccepted commits when an acceptance policy is supplied', async () => {
+    const failures = await collectRegistryFailures(record, {
+      acceptProvenanceCommit: async (commit) => commit === provenanceCommit,
+      approvedArtifacts,
+      fetchAttestations: async (url) => {
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        return provenance(name, approvedArtifacts.packages[name], 'c'.repeat(40));
+      },
+      npmJson: registryManifest,
+      provenanceCommit,
+      requireProvenance: true,
+    });
+    assert.equal(
+      failures.filter((failure) => failure.includes('does not bind dispatch commit')).length,
+      8,
+    );
+  });
+
   it('rejects provenance for another source commit even when the tarball subject matches', async () => {
     const failures = await collectRegistryFailures(record, {
       approvedArtifacts,
