@@ -18,6 +18,7 @@ The registered identifiers in this release family are:
 - `studio.control/chart`
 - `studio.control/drawing`
 - `studio.control/money`
+- `studio.control/table`
 - `studio.control/scoped-css`
 
 Profiles are closed. Rich text accepts only the named profiles exported by
@@ -80,6 +81,11 @@ limits. It never exposes Chart.js options. The money control edits an exact
 decimal string and an uppercase three-letter currency without a binary-float
 conversion. Invalid transient input preserves and reports the last valid
 canonical value.
+
+The table control edits only `studio.table/canonical` values through labelled
+caption, heading, cell, row, and column controls. It preserves the schema's
+column and row bounds, keeps every cell as inert text, and never persists DOM
+table markup or executable content.
 
 `studio.control/scoped-css` is a trusted host styling control, not a Blueprint
 field. It parses only named node parts and the renderer's fixed property/value

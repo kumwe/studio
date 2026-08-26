@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
 import { collectRegistryFailures } from '../verify-published-release.mjs';
 
@@ -14,9 +14,12 @@ const record = {
 const approvedArtifacts = {
   kind: 'studio-approved-package-artifacts',
   packages: Object.fromEntries(
-    STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [
+    STUDIO_RELEASE_PACKAGES.map(({ directory, name }) => [
       name,
-      artifactFromBytes(Buffer.from(`approved:${name}@${version}`), version),
+      {
+        ...artifactFromBytes(Buffer.from(`approved:${name}@${version}`), version),
+        path: `.release-artifacts/packages/${directory}.tgz`,
+      },
     ]),
   ),
   release: version,
@@ -90,6 +93,36 @@ describe('post-publication registry verification', () => {
       requireProvenance: true,
     });
     assert.equal(failures.length, 16);
+  });
+
+  it('can preflight existing provenance without treating absent coordinates as verified', async () => {
+    const present = STUDIO_RELEASE_PACKAGES[0].name;
+    const failures = await collectRegistryFailures(record, {
+      approvedArtifacts,
+      fetchAttestations: async () =>
+        provenance(present, approvedArtifacts.packages[present], 'b'.repeat(40)),
+      npmJson: async (arguments_) => {
+        const spec = arguments_[1];
+        if (spec !== `${present}@${version}`) throw new Error('E404');
+        const artifact = approvedArtifacts.packages[present];
+        return {
+          dist: {
+            attestations: {
+              url: 'https://registry.npmjs.org/-/npm/v1/attestations/test',
+            },
+            integrity: artifact.integrity,
+            shasum: artifact.shasum,
+          },
+          version,
+        };
+      },
+      provenanceCommit,
+      requireProvenance: true,
+      skipMissing: true,
+    });
+    assert.deepEqual(failures, [
+      `${present}@${version} provenance does not bind dispatch commit ${provenanceCommit}`,
+    ]);
   });
 });
 

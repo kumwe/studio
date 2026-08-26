@@ -55,9 +55,12 @@ canonical grammar and never stored or rendered directly.
 The built-in Editor.js toolbox maps one-to-one to canonical paragraph, heading, quote, separator,
 bounded nested list, nested checklist, table, callout, and inert code nodes. List/checklist and table
 tools expose explicit add, remove, reorder/indent, row, column, and header controls; all controls are
-keyboard reachable and disabled in read-only mode. The semantic marker stores a named theme tone,
-not an arbitrary color. Tool registration is closed: an Editor.js block with an unknown or
-mismatched type fails validation and cannot enter canonical content.
+keyboard reachable and disabled in read-only mode. Nested-list actions operate on complete item
+subtrees and preserve distinct list containers plus their position among other item blocks. A
+render/read/save cycle preserves the exact canonical optional-field representation when no edit was
+made. The semantic marker stores a named theme tone, not an arbitrary color. Tool registration is
+closed: an Editor.js block with an unknown or mismatched type fails validation and cannot enter
+canonical content.
 
 Editor.js remains the default private browser surface. A host that enforces a style policy without
 inline styles and Trusted Types without a `default` policy explicitly sets

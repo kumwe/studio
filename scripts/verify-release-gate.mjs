@@ -7,9 +7,12 @@ import Ajv2020 from 'ajv/dist/2020.js';
 
 import {
   buildCriterionIndex,
+  buildEnvironmentAssertionIndex,
   buildProfileAssertionIndex,
+  commandForEvidenceLane,
   collectBundleFailures,
   collectGateRecordFailures,
+  environmentMatchesPredicate,
 } from './evidence-validation.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_RECORD_TARGETS } from './release-family.mjs';
@@ -56,19 +59,6 @@ const stableGeneratorInputPaths = Object.freeze([
   'packages/testkit/corpus-manifest.json',
 ]);
 
-const stableEnvironmentLanes = Object.freeze({
-  'android-chrome': new Set(['environment/android-chrome']),
-  'chromium-desktop': new Set(['accessibility/web']),
-  'desktop-os': new Set(['environment/desktop-os']),
-  'firefox-desktop': new Set(['environment/firefox-desktop']),
-  'generic-reference-host': new Set(['profile/host-baseline', 'profile/host-baseline-v2']),
-  'ios-safari': new Set(['environment/ios-safari']),
-  'kumwe-app-host': new Set(['environment/kumwe-app-host']),
-  'node-npm-workspace': new Set(['quality/typecheck', 'build/workspace']),
-  'npm-clean-consumer': new Set(['environment/npm-clean-consumer']),
-  'webkit-desktop': new Set(['environment/webkit-desktop']),
-});
-
 export function assertStatusGatePass(status, gate) {
   const rows = status
     .split('\n')
@@ -79,8 +69,8 @@ export function assertStatusGatePass(status, gate) {
         .slice(1, -1)
         .map((cell) => cell.trim()),
     )
-    .filter((cells) => cells[0] === `Gate ${gate}`);
-  const states = rows.map((cells) => cells.map(classifyGateState).filter(Boolean));
+    .filter((cells) => statusRowGate(cells[0]) === gate);
+  const states = rows.map((cells) => cells.flatMap(classifyGateStates));
   if (
     rows.length === 0 ||
     states.some((rowStates) => rowStates.length !== 1) ||
@@ -98,6 +88,7 @@ export function assertStableEnvironmentQualification(
   matrix,
   candidateMatrix = matrix,
   acceptedBundles = new Map(),
+  assertionsById = new Map(),
 ) {
   const candidateById = new Map(
     candidateMatrix.environments.map((environment) => [environment.id, environment]),
@@ -125,53 +116,99 @@ export function assertStableEnvironmentQualification(
         .join(', ')}.`,
     );
   }
-  const blockers = [...candidateById.keys()]
-    .filter((id) => id !== 'dart-flutter')
-    .filter((id) => {
-      const environment = qualifiedById.get(id);
-      return (
-        environment.status !== 'qualified' ||
-        !Array.isArray(environment.coveredBy) ||
-        environment.coveredBy.length === 0
-      );
-    });
-  if (blockers.length > 0) {
-    throw new Error(
-      `Stable publication requires every Version 2 environment to be qualified: ${blockers.join(', ')}.`,
-    );
+  if (
+    assertionsById.size !== candidateById.size ||
+    [...candidateById.keys()].some((id) => !assertionsById.has(id))
+  ) {
+    throw new Error('Stable qualification requires a closed assertion for every environment.');
   }
-  for (const id of [...candidateById.keys()].filter(
-    (candidateId) => candidateId !== 'dart-flutter',
-  )) {
+  const targetBlockers = [];
+  const incomplete = [];
+  for (const id of candidateById.keys()) {
     const environment = qualifiedById.get(id);
-    const allowedLanes = stableEnvironmentLanes[id];
-    if (allowedLanes === undefined) {
-      throw new Error(`Stable environment ${id} has no governed evidence-lane policy.`);
-    }
-    for (const reference of environment.coveredBy) {
-      const separator = reference.indexOf('#');
-      const bundleId = separator > 0 ? reference.slice(0, separator) : '';
-      const testId = separator > 0 ? reference.slice(separator + 1) : '';
-      const bundle = acceptedBundles.get(bundleId);
-      if (
-        bundle === undefined ||
-        !allowedLanes.has(testId) ||
-        !bundle.runs?.some(
-          (run) => run.testId === testId && run.exitStatus === 0 && run.retryCount === 0,
-        )
-      ) {
+    const assertion = assertionsById.get(id);
+    if (assertion.status !== 'executable') {
+      if (environment.status === 'qualified') {
         throw new Error(
-          `Stable environment ${id} coverage ${reference} does not resolve to an accepted reproduced bundle and governed passing lane.`,
+          `Stable environment ${id} is still target-only and cannot claim qualified status.`,
         );
       }
-      if (
-        id === 'chromium-desktop' &&
-        !/^Chromium(?:-|\b)/u.test(bundle.environment?.browser ?? '')
-      ) {
-        throw new Error(`Stable environment ${id} requires a Chromium evidence environment.`);
+      if (id !== 'dart-flutter') {
+        targetBlockers.push(id);
+      }
+      continue;
+    }
+    if (
+      environment.status !== 'qualified' ||
+      !Array.isArray(environment.coveredBy) ||
+      environment.coveredBy.length === 0
+    ) {
+      incomplete.push(id);
+      continue;
+    }
+    const resolvedReferences = environment.coveredBy.map((reference) =>
+      resolveEnvironmentReference(id, reference, acceptedBundles),
+    );
+    for (const resolved of resolvedReferences) {
+      const matchingVariant = assertion.variants.find(
+        (variant) =>
+          variant.requiredRuns.includes(resolved.testId) &&
+          environmentMatchesPredicate(resolved.bundle.environment, variant.environment),
+      );
+      if (matchingVariant === undefined) {
+        throw new Error(
+          `Stable environment ${id} coverage ${resolved.reference} does not match a governed variant.`,
+        );
+      }
+    }
+    for (const variant of assertion.variants) {
+      for (const testId of variant.requiredRuns) {
+        if (
+          !resolvedReferences.some(
+            (resolved) =>
+              resolved.testId === testId &&
+              environmentMatchesPredicate(resolved.bundle.environment, variant.environment),
+          )
+        ) {
+          throw new Error(
+            `Stable environment ${id} lacks ${variant.id} coverage for registered lane ${testId}.`,
+          );
+        }
       }
     }
   }
+  if (incomplete.length > 0) {
+    throw new Error(
+      `Stable publication requires every executable Version 2 environment to be qualified: ${incomplete.join(', ')}.`,
+    );
+  }
+  if (targetBlockers.length > 0) {
+    throw new Error(
+      `Stable publication is blocked by target-only Version 2 environments: ${targetBlockers.join(', ')}.`,
+    );
+  }
+}
+
+function resolveEnvironmentReference(id, reference, acceptedBundles) {
+  const separator = reference.indexOf('#');
+  const bundleId = separator > 0 ? reference.slice(0, separator) : '';
+  const testId = separator > 0 ? reference.slice(separator + 1) : '';
+  const bundle = acceptedBundles.get(bundleId);
+  const run = bundle?.runs?.find((candidate) => candidate.testId === testId);
+  const expectedCommand = commandForEvidenceLane(testId);
+  if (
+    bundle === undefined ||
+    run === undefined ||
+    expectedCommand === undefined ||
+    run.command !== expectedCommand ||
+    run.exitStatus !== 0 ||
+    run.retryCount !== 0
+  ) {
+    throw new Error(
+      `Stable environment ${id} coverage ${reference} does not resolve to an accepted reproduced bundle and registered passing lane.`,
+    );
+  }
+  return { bundle, reference, testId };
 }
 
 export function assertCurrentCandidateCoordinate(currentRecord, candidateRecord) {
@@ -313,6 +350,12 @@ export async function verifyReleaseGate({
   const bundleSchema = JSON.parse(
     await readFile(resolve(candidateRoot, 'evidence/schema/evidence-bundle.schema.json'), 'utf8'),
   );
+  const environmentAssertionSchema = JSON.parse(
+    await readFile(
+      resolve(candidateRoot, 'evidence/schema/environment-assertions.schema.json'),
+      'utf8',
+    ),
+  );
   const gateSchema = JSON.parse(
     await readFile(resolve(candidateRoot, 'evidence/schema/gate-record.schema.json'), 'utf8'),
   );
@@ -324,6 +367,7 @@ export async function verifyReleaseGate({
   );
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   const validateBundle = ajv.compile(bundleSchema);
+  const validateEnvironmentAssertions = ajv.compile(environmentAssertionSchema);
   const validateGate = ajv.compile(gateSchema);
   const validateEnvironmentMatrix = ajv.compile(environmentMatrixSchema);
   const candidateReleaseRecord = JSON.parse(
@@ -387,20 +431,35 @@ export async function verifyReleaseGate({
   }
 
   if (channel === 'stable') {
-    const [candidateEnvironmentMatrix, environmentMatrix] = await Promise.all([
-      readJson(resolve(candidateRoot, 'evidence/environment-matrix.json')),
-      readJson(resolve(evidenceRoot, 'evidence/environment-matrix.json')),
-    ]);
+    const [candidateEnvironmentMatrix, environmentMatrix, environmentAssertions] =
+      await Promise.all([
+        readJson(resolve(candidateRoot, 'evidence/environment-matrix.json')),
+        readJson(resolve(evidenceRoot, 'evidence/environment-matrix.json')),
+        readJson(resolve(candidateRoot, 'evidence/environment-assertions.json')),
+      ]);
     if (
       !validateEnvironmentMatrix(candidateEnvironmentMatrix) ||
-      !validateEnvironmentMatrix(environmentMatrix)
+      !validateEnvironmentMatrix(environmentMatrix) ||
+      !validateEnvironmentAssertions(environmentAssertions)
     ) {
-      throw new Error('The stable environment matrix violates the candidate schema.');
+      throw new Error(
+        'The stable environment qualification records violate the candidate schemas.',
+      );
+    }
+    const environmentAssertionIndex = buildEnvironmentAssertionIndex(
+      environmentAssertions,
+      candidateEnvironmentMatrix,
+    );
+    if (environmentAssertionIndex.failures.length > 0) {
+      throw new Error(
+        `The stable environment assertion registry is invalid:\n- ${environmentAssertionIndex.failures.join('\n- ')}`,
+      );
     }
     assertStableEnvironmentQualification(
       environmentMatrix,
       candidateEnvironmentMatrix,
       acceptedBundles,
+      environmentAssertionIndex.assertionsById,
     );
     if (phase === 'publish') {
       const stableReleaseRecord = JSON.parse(
@@ -594,23 +653,25 @@ function gitBytes(cwd, arguments_) {
   return execFileSync('git', arguments_, { cwd });
 }
 
-function classifyGateState(cell) {
-  if (/^Pass(?:ed)?(?:\s|$)/iu.test(cell)) {
-    return 'pass';
+function statusRowGate(cell) {
+  const match = /^(?:Gate\s+([AB])|([AB])\s+[—-])/iu.exec(cell);
+  return match?.[1]?.toUpperCase() ?? match?.[2]?.toUpperCase();
+}
+
+function classifyGateStates(cell) {
+  const states = [];
+  for (const [state, pattern] of [
+    ['not-assessed', /\bNot assessed\b/iu],
+    ['blocked', /\bBlocked\b/iu],
+    ['failed', /\bFail(?:ed)?\b/iu],
+    ['revoked', /\bRevoked\b/iu],
+    ['pass', /\bPass(?:ed)?\b/iu],
+  ]) {
+    if (pattern.test(cell)) {
+      states.push(state);
+    }
   }
-  if (/^Not assessed(?:\s|;|$)/iu.test(cell)) {
-    return 'not-assessed';
-  }
-  if (/^Blocked(?:\s|;|$)/iu.test(cell)) {
-    return 'blocked';
-  }
-  if (/^Fail(?:ed)?(?:\s|;|$)/iu.test(cell)) {
-    return 'failed';
-  }
-  if (/^Revoked(?:\s|;|$)/iu.test(cell)) {
-    return 'revoked';
-  }
-  return undefined;
+  return states;
 }
 
 async function readJson(path) {

@@ -217,9 +217,9 @@
       "dialog",
       "popover",
       "notice",
-      "countdown",
       "slideshow",
       "lightbox",
+      "countdown",
       "navigation"
     ]
   }

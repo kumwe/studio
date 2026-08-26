@@ -1,45 +1,68 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { changesetsPublishArguments } from '../publish-promotion.mjs';
+import {
+  assertOfficialRegistryPreflight,
+  assertPromotionPublication,
+} from '../publish-promotion.mjs';
+import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
 
-describe('Changesets v3 promotion invocation', () => {
-  it('lets prerelease mode select rc and uses an explicit latest tag only after pre mode exits', () => {
-    assert.deepEqual(changesetsPublishArguments('rc'), []);
-    assert.deepEqual(changesetsPublishArguments('stable'), ['--tag', 'latest']);
-    assert.throws(() => changesetsPublishArguments('beta'), /rc or stable/u);
+describe('promotion publication guard', () => {
+  it('accepts coordinated RC state without invoking Changesets publication', () => {
+    assert.doesNotThrow(() =>
+      assertPromotionPublication({
+        channel: 'rc',
+        pendingChangesets: [],
+        preState: { mode: 'pre', tag: 'rc' },
+        releaseRecord: record('0.1.0-rc.1'),
+      }),
+    );
   });
 
-  it('simulates the installed Changesets prerelease guard against a custom rc tag', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'studio-changesets-pre-'));
-    try {
-      await mkdir(join(root, '.changeset'));
-      await Promise.all([
-        writeFile(
-          join(root, 'package.json'),
-          `${JSON.stringify({ name: 'changesets-pre-fixture', version: '0.1.0-rc.1' })}\n`,
-        ),
-        writeFile(
-          join(root, '.changeset', 'pre.json'),
-          `${JSON.stringify({
-            changesets: [],
-            initialVersions: { 'changesets-pre-fixture': '0.1.0-alpha.9' },
-            mode: 'pre',
-            tag: 'rc',
-          })}\n`,
-        ),
-      ]);
-      const cliPackageUrl = import.meta.resolve('@changesets/cli/package.json');
-      const { publish } = await import(new URL('dist/publish.mjs', cliPackageUrl));
-      await assert.rejects(
-        publish({ cwd: root, gitTag: false, tag: 'rc' }),
-        /process exited with code: 1/u,
-      );
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
+  it('requires an RC to exist in quarantine before official channel mutation', () => {
+    assert.doesNotThrow(() => assertOfficialRegistryPreflight('rc', { failures: [], missing: [] }));
+    assert.throws(
+      () =>
+        assertOfficialRegistryPreflight('rc', {
+          failures: [],
+          missing: ['@kumwe/studio-core@0.1.0-rc.1'],
+        }),
+      /quarantine staging first/u,
+    );
+    assert.doesNotThrow(() =>
+      assertOfficialRegistryPreflight('stable', {
+        failures: [],
+        missing: ['@kumwe/studio-core@0.1.0'],
+      }),
+    );
+  });
+
+  it('accepts coordinated stable state only after prerelease mode exits', () => {
+    assert.doesNotThrow(() =>
+      assertPromotionPublication({
+        channel: 'stable',
+        pendingChangesets: [],
+        preState: undefined,
+        releaseRecord: record('0.1.0'),
+      }),
+    );
+    assert.throws(
+      () =>
+        assertPromotionPublication({
+          channel: 'stable',
+          pendingChangesets: [],
+          preState: { mode: 'pre', tag: 'rc' },
+          releaseRecord: record('0.1.0'),
+        }),
+      /fully exited/u,
+    );
   });
 });
+
+function record(version) {
+  return {
+    claimedProfiles: ['studio.profile/engine-core'],
+    packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
+    release: version,
+  };
+}

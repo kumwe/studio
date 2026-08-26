@@ -18,9 +18,12 @@ import { parseEvidenceArguments } from './evidence-generator-input.mjs';
 import {
   buildProfileAssertionIndex,
   checksumFile,
+  evidenceLaneIdsForCriteria,
+  GENERIC_EVIDENCE_LANES,
   GENERIC_LANE_EVIDENCE_CLASSES,
   PROFILE_EVIDENCE_LANES,
   REQUIRED_EVIDENCE_INPUTS,
+  SPECIALIZED_EVIDENCE_LANES,
 } from './evidence-validation.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -34,64 +37,6 @@ const SECRET_PATTERNS = [
   /\bAuthorization:\s*Bearer\s+\S+/iu,
   /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/u,
 ];
-
-const LANES = Object.freeze([
-  { args: ['run', 'format:check'], command: 'npm', testId: 'quality/format' },
-  { args: ['run', 'lint'], command: 'npm', testId: 'quality/lint' },
-  { args: ['run', 'typecheck'], command: 'npm', testId: 'quality/typecheck' },
-  { args: ['run', 'build'], command: 'npm', testId: 'build/workspace' },
-  {
-    args: ['scripts/check-boundaries.mjs'],
-    command: 'node',
-    testId: 'contract/package-boundaries',
-  },
-  {
-    args: ['scripts/check-contracts.mjs'],
-    command: 'node',
-    testId: 'contract/canonical-corpus',
-  },
-  {
-    args: ['scripts/check-release-record.mjs'],
-    command: 'node',
-    testId: 'contract/release-record',
-  },
-  {
-    args: ['scripts/check-packages.mjs'],
-    command: 'node',
-    testId: 'release/package-tarballs',
-  },
-  {
-    args: ['scripts/check-evidence.mjs'],
-    command: 'node',
-    testId: 'evidence/authenticity',
-  },
-  {
-    args: ['scripts/check-secrets.mjs'],
-    command: 'node',
-    testId: 'security/secret-scan',
-  },
-  {
-    args: ['scripts/check-requirements.mjs'],
-    command: 'node',
-    testId: 'contract/requirement-registry',
-  },
-  {
-    args: ['scripts/check-threats.mjs'],
-    command: 'node',
-    testId: 'security/threat-registry',
-  },
-  {
-    args: ['scripts/check-changesets.mjs'],
-    command: 'node',
-    testId: 'release/changeset',
-  },
-  { args: ['run', 'test'], command: 'npm', testId: 'unit/workspace' },
-  {
-    args: ['run', 'check:a11y', '--', '--retries=0'],
-    command: 'npm',
-    testId: 'accessibility/web',
-  },
-]);
 
 const options = parseEvidenceArguments(process.argv.slice(2));
 const commit = git(['rev-parse', 'HEAD']);
@@ -136,10 +81,6 @@ const profileLaneIds = [
     ),
   ),
 ].sort();
-const lanes = [
-  ...LANES,
-  ...profileLaneIds.map((testId) => ({ ...PROFILE_EVIDENCE_LANES[testId], testId })),
-];
 const evidenceInputPaths = [
   ...new Set([
     ...REQUIRED_EVIDENCE_INPUTS,
@@ -166,6 +107,15 @@ for (const criterionId of options.criteria) {
     criteria.push({ class: evidenceClass, criterionId, outcome: 'positive' });
   }
 }
+const criterionLaneIds = evidenceLaneIdsForCriteria(options.criteria);
+const lanes = [
+  ...Object.entries(GENERIC_EVIDENCE_LANES).map(([testId, command]) => ({
+    ...command,
+    testId,
+  })),
+  ...profileLaneIds.map((testId) => ({ ...PROFILE_EVIDENCE_LANES[testId], testId })),
+  ...criterionLaneIds.map((testId) => ({ ...SPECIALIZED_EVIDENCE_LANES[testId], testId })),
+];
 
 const bundleId =
   options.id ??
@@ -249,6 +199,11 @@ try {
     criteria,
     environment: {
       browser: readBrowserVersion(),
+      ...(options.profiles.some((profile) =>
+        ['studio.profile/host-baseline', 'studio.profile/host-baseline-v2'].includes(profile),
+      )
+        ? { host: 'generic-reference-host' }
+        : {}),
       node: process.versions.node,
       npm: execFileSync('npm', ['--version'], { encoding: 'utf8' }).trim(),
       os: `${process.platform}-${process.arch}`,

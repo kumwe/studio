@@ -15,20 +15,27 @@ readiness for the whole product.
 | `rc`                 | Immutable candidate for gate/release evidence                                             | Only release-blocking corrections; every rebuild creates a new candidate |
 | Stable               | Gate B-qualified supported release set                                                    | Semantic version, compatibility and support policies apply               |
 
+The coordinate-scoped `studio-stage-<version>` tag is a quarantine mechanism, not a channel or support claim.
+It makes one frozen `rc.N` family installable for Gate A evidence without moving `rc` or `latest` and without
+creating a Git tag or GitHub release.
+
 Gate A normally publishes a contract release candidate, not a stable production package. The first stable
 release is impossible before Gate B.
 
 The `alpha` channel is live: the release train versions merged Changesets and publishes the coordinated
 workspace packages to the `alpha` distribution tag with provenance. No `alpha` carries a support or
 compatibility claim. The single manual **Governed RC and stable promotion** workflow implements preparation
-and protected publication, but it fails closed until the exact candidate has accepted, independently
-reproduced evidence, immutable artifact hashes, required human review, and an authoritative passing gate in
+and protected publication. After a reviewed RC metadata PR merges, its protected quarantine operation may
+publish the exact candidate only under its nonofficial staging tag so release evidence can inspect real npm
+bits and provenance. Opening the official `rc` channel still fails closed until that exact candidate has
+accepted, independently reproduced evidence, required human review, and an authoritative passing gate in
 `docs/roadmap/STATUS.md`. The `beta` channel has no automated publisher. A local prerelease version is
 scaffolding and MUST NOT be published manually around these controls.
 
 The **Evidence bundle** workflow only creates pending qualification material. It cannot publish, make a gate
-decision, or authenticate to npm. Gate A is currently not assessed and Gate B is blocked, so neither RC nor
-stable publication can pass today; this is the intended result until real evidence is accepted.
+decision, or authenticate to npm. Gate A criterion 13 requires its exact quarantined-registry install lane;
+generic release labels cannot satisfy it. Gate A is currently not assessed and Gate B is blocked, so the
+official `rc` and stable channels cannot open today even though a frozen RC may be quarantined for evidence.
 
 The checked-in `studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
 one alpha version. That record is not proof that the packages are available from npm. Every publisher verifies
@@ -89,10 +96,12 @@ builds.
 6. Build packages/examples/docs twice in isolated environments and compare expected deterministic outputs.
 7. Generate SBOM and provenance; scan source, history, dependencies, artifacts and fixtures for secrets and
    vulnerabilities.
-8. Pack the fixed npm family and install it into clean generic, Kumwe App, and TypeScript consumers without
-   workspace links. Add Dart clean consumers for a Version 3 native claim.
+8. Pack the fixed npm family, publish the frozen RC only under its coordinate-scoped quarantine tag, verify
+   exact registry integrity and source provenance, and install every exact package in a fresh credential-free
+   consumer without workspace links. Add Dart clean consumers for a Version 3 native claim.
 9. Regenerate and verify the canonical release record, then create the content-addressed evidence bundle.
-10. Sign/attest the candidate and enter evidence review. The candidate bits do not change during review.
+10. Sign/attest the candidate and enter evidence review. The candidate bits and quarantine tag do not change
+    during review.
 
 If a fix is required, create a new commit, versioned candidate, manifest and affected evidence. A mutable
 “latest RC” is not review evidence.
@@ -100,11 +109,23 @@ If a fix is required, create a new commit, versioned candidate, manifest and aff
 The exact operator inputs, preparation/publication split, and retry procedure are normative operational
 instructions in [`CONTRIBUTING.md`](../../CONTRIBUTING.md). Preparation creates a reviewed PR and never receives
 npm credentials. Publication occurs only after merge in the protected `studio-rc` or `studio-stable`
-environment. It deterministically packs the eight approved candidates before authentication, requires any
-already-present registry artifact to match those exact bytes, revalidates the latest gate state on current
-`main`, and is idempotent after a partial registry publish or token rotation.
+environment. RC quarantine deterministically packs the eight approved candidates before authentication,
+requires any already-present registry artifact to match those exact bytes, revalidates the exact current
+`main` candidate state, and is idempotent after a partial registry publish or token rotation. It verifies all eight exact
+registry artifacts, source-bound provenance, embedded release records, and a clean unauthenticated consumer,
+then retains the quarantine tags for evidence without moving `rc` or creating a release. Changesets owns
+version calculation and version PRs only. Official RC publication requires every coordinate to exist already;
+after Gate A it verifies the same candidate provenance, moves `rc`, creates the source-bound GitHub prerelease,
+verifies again, and only then removes the quarantine tags. Stable publication uses the same retained-tarball
+discipline. Alpha never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
+`latest`.
 
 ## Publication
+
+Official RC publication requires a passing Gate A record for the exact quarantined candidate and refuses to
+upload any missing RC coordinate. This prevents Gate A from being manufactured by the publication it is meant
+to authorize. Only after the full staged family and its independently reproduced evidence pass may `rc` move
+or a GitHub prerelease be created.
 
 Stable publication requires:
 
@@ -115,6 +136,11 @@ Stable publication requires:
 - package/archive checksum verification after registry download;
 - documentation and examples deployed from the same release set; and
 - a post-publication clean-consumer smoke test before announcement.
+
+Each claimed environment must also have an executable entry in
+`evidence/environment-assertions.json`. Its exact lane commands and required browser, OS, toolchain, host, PHP,
+and database metadata must be present in independently reproduced bundles. Target-only Version 2 matrix entries
+remain explicit stable blockers; their labels cannot be promoted into support claims.
 
 Long-lived registry tokens are avoided where trusted publishing is available. Release credentials are never
 available to pull-request workflows or untrusted package code.
@@ -138,6 +164,9 @@ when released as a patch.
 ## Failure and rollback
 
 - Stop publication if any registry artifact differs from the approved checksum or lacks provenance.
+- On a partial quarantine upload or token failure, retry the stage operation with the same frozen RC SHA and
+  coordinate. Missing packages are uploaded, matching packages are reused, and a conflicting staging tag or
+  immutable version fails closed. Do not clean the stage tag before evidence acceptance.
 - The npm attestation endpoint is checked for the exact package/version/tarball subject and expected GitHub
   workflow repository, path, ref, and commit. This structural source binding does not replace independent
   cryptographic verification: the registry verifies attestations at publication, and npm's supported

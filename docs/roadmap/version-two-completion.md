@@ -75,12 +75,15 @@ and the deferral is recorded as a decision rather than an omission.
 
 **Repository state:** the fixed-family configuration, generated record, drift checks, and guarded
 version/publish workflow are implemented. PR #36 merged the checked-in record and all eight manifests at
-`0.1.0-alpha.9`; that source coordinate is not by itself a registry publication claim. The recovery run after
-the npm-token rotation must publish and verify all eight exact packages without creating another version PR.
+`0.1.0-alpha.9`; PR #38 then added a truthful patch Changeset. The alpha train must first consume that
+Changeset through the generated whole-family version PR, producing the next numeric coordinate (expected
+`0.1.0-alpha.10`). Only the following exact-current-main run may recover the npm-token failure by publishing
+and verifying all eight packages; the superseded `alpha.9` source must not be published around the Changeset.
 
 The old registry baseline remains staggered, so a host still cannot say "we integrate Studio _x_" until the
-coordinated `alpha.9` family is published and verified. The source tree now gives all eight packages a single
-release coordinate.
+coordinated post-PR38 `alpha.N` family is published and verified. The source tree gives all eight packages a
+single release coordinate, while `npm run release:plan` remains the authority on whether the next operation is
+`version` or `publish`.
 
 1. Add a workspace-level release identifier — a `studio-release.json` at the repository root carrying
    the release name, the exact version of each of the eight packages, the protocol wire version, the
@@ -341,19 +344,21 @@ claim rests on it.
 **Acceptance.** A fabricated gate record fails; the generator emits a schema-valid bundle; every
 criterion is either covered or named as uncovered.
 
-### `ST-11` — Ratify the contract and open the beta channel
+### `ST-11` — Ratify the contract and open the governed RC channel
 
 1. Replace the `0.1-draft` discriminator with the ratified epoch, declare the supported wire-version
    range, and record the compatibility policy — this is `M2-08`'s scope.
-2. Produce the Gate A evidence bundle at one commit and route it through review. **This step needs a
+2. Merge the deterministic `rc.1` metadata PR, quarantine its exact tarballs under the nonofficial
+   coordinate-scoped staging tag, and produce the Gate A evidence bundle at that commit. The reproducibility
+   criterion must prove the exact registry bits, provenance, and clean install before review. **This step needs a
    second human**: the evidence model requires two reviewers, one independent of the work-package
    owners, and states that an automated contributor is never a reviewer. Today the repository has one
    human author. No amount of implementation removes this.
-3. On acceptance, promote the release channel from `alpha` to `beta` and publish the supported profile
-   set at that release coordinate.
+3. On acceptance, move only that verified coordinate to the official `rc` tag and create its source-bound
+   GitHub prerelease. `beta` remains a compatibility concept, not a second publication workflow.
 
 **Acceptance.** A ratified protocol version, an accepted Gate A bundle with two reviewer attestations,
-and a `beta` channel a host can depend on.
+and an immutable official RC family a host can qualify against.
 
 ---
 

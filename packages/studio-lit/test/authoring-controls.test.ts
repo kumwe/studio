@@ -296,6 +296,40 @@ describe('first-party page authoring controls', () => {
     root.remove();
   });
 
+  it.each(['body', 'toString', 'constructor', 'hasOwnProperty', '__proto__'])(
+    'rejects non-own structured scoped CSS target %s at the authoring boundary',
+    async (target) => {
+      const root = holder();
+      await expect(
+        new StudioAuthoringControlRegistry().mount('studio.control/scoped-css', {
+          holder: root,
+          value: { rules: [{ declarations: { color: 'red' }, target }] },
+        }),
+      ).rejects.toThrow(/target .* is not allowed/u);
+      root.remove();
+    },
+  );
+
+  it('rejects a structured scoped CSS target inherited through prototype pollution', async () => {
+    const root = holder();
+    const target = 'pollutedScopedTarget';
+    Object.defineProperty(Object.prototype, target, {
+      configurable: true,
+      value: ' body',
+    });
+    try {
+      await expect(
+        new StudioAuthoringControlRegistry().mount('studio.control/scoped-css', {
+          holder: root,
+          value: { rules: [{ declarations: { color: 'red' }, target }] },
+        }),
+      ).rejects.toThrow(/target .* is not allowed/u);
+    } finally {
+      Reflect.deleteProperty(Object.prototype, target);
+      root.remove();
+    }
+  });
+
   it('disables page controls for dynamic bindings', async () => {
     const root = holder();
     const control = await new StudioAuthoringControlRegistry().mount('studio.control/money', {

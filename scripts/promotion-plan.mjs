@@ -94,19 +94,26 @@ export async function inspectPromotionPlan(
     if (preState?.mode !== 'pre' || preState.tag !== 'rc') {
       throw new Error('RC correction requires the active rc prerelease train.');
     }
-    if (pendingChangesets.length === 0) {
+    if (profiles.length > 0) {
       throw new Error(
-        'No RC correction Changesets are pending. Supply candidate/evidence SHAs to publish instead.',
+        'RC staging and corrections preserve the existing profile claims; profiles must be empty.',
       );
+    }
+    if (pendingChangesets.length === 0) {
+      return {
+        channel,
+        gate: requiredGateForChannel(channel),
+        operation: 'stage',
+        profiles: parseProfileInput(record.claimedProfiles.join(','), {
+          requireNonEmpty: true,
+        }),
+        sourceVersion: record.release,
+        targetVersion: record.release,
+      };
     }
     const releaseTypes = await readPendingReleaseTypes(root, pendingChangesets);
     if (releaseTypes.length === 0 || releaseTypes.some((type) => type !== 'patch')) {
       throw new Error('RC corrections require non-empty patch-only Changesets.');
-    }
-    if (profiles.length > 0) {
-      throw new Error(
-        'RC corrections preserve the existing profile claims; profiles must be empty.',
-      );
     }
     return {
       channel,

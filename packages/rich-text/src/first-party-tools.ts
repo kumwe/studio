@@ -136,8 +136,10 @@ abstract class InlineToolBase {
     return field;
   }
 
-  protected saveInline(): StudioRichTextNode[] {
-    return this.field === undefined ? [] : readInline(this.field);
+  protected saveInline(original: readonly StudioRichTextNode[]): StudioRichTextNode[] {
+    return this.field === undefined
+      ? structuredClone([...original])
+      : preserveInlineRepresentation(original, readInline(this.field));
   }
 
   public abstract render(): HTMLElement;
@@ -157,7 +159,10 @@ export class StudioParagraphTool extends InlineToolBase {
   }
 
   public save(): { node: StudioRichTextNode } {
-    return { node: { content: this.saveInline(), type: 'paragraph' } };
+    const node = structuredClone(this.node);
+    const content = this.saveInline(node.content ?? []);
+    if (!sameCanonical(node.content ?? [], content)) node.content = content;
+    return { node };
   }
 }
 
@@ -173,28 +178,33 @@ export class StudioHeaderTool extends InlineToolBase {
   public render(): HTMLElement {
     const group = editorGroup('Heading');
     const level = document.createElement('select');
+    const selectedLevel =
+      this.node.attrs?.level === 3 || this.node.attrs?.level === 4 ? this.node.attrs.level : 2;
     level.setAttribute('aria-label', 'Heading level');
     level.disabled = this.readOnly;
     for (const value of [2, 3, 4]) {
       const option = document.createElement('option');
       option.value = String(value);
       option.textContent = `Heading ${value}`;
-      option.selected = this.node.attrs?.level === value;
+      option.selected = selectedLevel === value;
       level.append(option);
     }
+    // happy-dom does not consistently preserve pre-append option.selected state.
+    // Set the select itself after its options exist so no-op saves retain the
+    // canonical heading level in both browser and headless DOM implementations.
+    level.value = String(selectedLevel);
     this.#level = level;
     group.append(level, this.renderInline('Heading text', this.node.content ?? []));
     return group;
   }
 
   public save(): { node: StudioRichTextNode } {
-    return {
-      node: {
-        attrs: { level: Number(this.#level?.value ?? this.node.attrs?.level ?? 2) },
-        content: this.saveInline(),
-        type: 'heading',
-      },
-    };
+    const node = structuredClone(this.node);
+    const level = Number(this.#level?.value ?? this.node.attrs?.level ?? 2);
+    if (level !== Number(this.node.attrs?.level ?? 2)) node.attrs = { level };
+    const content = this.saveInline(node.content ?? []);
+    if (!sameCanonical(node.content ?? [], content)) node.content = content;
+    return { node };
   }
 }
 
@@ -207,13 +217,14 @@ export class StudioQuoteTool extends InlineToolBase {
   }
 
   public render(): HTMLElement {
-    return this.renderInline('Quotation', this.node.content?.[0]?.content ?? []);
+    return this.renderInline('Quotation', editableBlockContent(this.node.content ?? []));
   }
 
   public save(): { node: StudioRichTextNode } {
-    return {
-      node: { content: [{ content: this.saveInline(), type: 'paragraph' }], type: 'blockquote' },
-    };
+    const node = structuredClone(this.node);
+    const content = editableBlockContent(node.content ?? []);
+    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline(content));
+    return { node };
   }
 }
 
@@ -255,19 +266,17 @@ export class StudioCalloutTool extends InlineToolBase {
     );
     group.append(
       this.#tone,
-      this.renderInline('Callout text', this.node.content?.[0]?.content ?? []),
+      this.renderInline('Callout text', editableBlockContent(this.node.content ?? [])),
     );
     return group;
   }
 
   public save(): { node: StudioRichTextNode } {
-    return {
-      node: {
-        attrs: { tone: this.#tone?.value ?? 'info' },
-        content: [{ content: this.saveInline(), type: 'paragraph' }],
-        type: 'callout',
-      },
-    };
+    const node = structuredClone(this.node);
+    node.attrs = { tone: this.#tone?.value ?? 'info' };
+    const content = editableBlockContent(node.content ?? []);
+    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline(content));
+    return { node };
   }
 }
 
@@ -320,26 +329,31 @@ export class StudioCodeTool {
 
 interface ListRow {
   depth: number;
-  text: string;
+  editableBlock: StudioRichTextNode;
+  item: StudioRichTextNode;
+  ownerItem?: StudioRichTextNode;
+  parentList: StudioRichTextNode;
+  parentListParent?: StudioRichTextNode;
+  syntheticEditable: boolean;
 }
 
 export class StudioListTool {
   public static readonly isReadOnlySupported: boolean = true;
   public static readonly toolbox = { icon: '•', title: 'List' } as const;
   readonly #readOnly: boolean;
-  #ordered: boolean;
+  readonly #node: StudioRichTextNode;
   #rows: ListRow[];
   #root?: HTMLElement;
-  #start: number;
 
   public constructor(options: ToolOptions) {
-    const node = options.data?.node ?? {
-      content: [{ content: [{ type: 'paragraph' }], type: 'listItem' }],
-      type: 'bulletList',
-    };
+    const node = structuredClone(
+      options.data?.node ?? {
+        content: [{ content: [{ type: 'paragraph' }], type: 'listItem' }],
+        type: 'bulletList',
+      },
+    );
+    this.#node = node;
     this.#readOnly = options.readOnly === true;
-    this.#ordered = node.type === 'orderedList';
-    this.#start = Number(node.attrs?.start ?? 1);
     this.#rows = flattenList(node);
   }
 
@@ -351,7 +365,7 @@ export class StudioListTool {
 
   public save(): { node: StudioRichTextNode } {
     this.#syncRows();
-    return { node: buildList(this.#rows, this.#ordered, this.#start) };
+    return { node: structuredClone(this.#node) };
   }
 
   #renderRows(): void {
@@ -361,24 +375,37 @@ export class StudioListTool {
     const style = selectControl(
       'List style',
       ['bullet', 'ordered'],
-      this.#ordered ? 'ordered' : 'bullet',
+      this.#node.type === 'orderedList' ? 'ordered' : 'bullet',
       this.#readOnly,
     );
     style.addEventListener('change', () => {
-      this.#ordered = style.value === 'ordered';
+      this.#syncRows();
+      const ordered = style.value === 'ordered';
+      const start = orderedListStart(this.#node);
+      this.#node.type = ordered ? 'orderedList' : 'bulletList';
+      if (ordered && start !== 1) this.#node.attrs = { start };
+      else delete this.#node.attrs;
       this.#renderRows();
     });
     root.append(style);
-    if (this.#ordered) {
-      const start = textInput('Ordered list start', String(this.#start), this.#readOnly);
+    if (this.#node.type === 'orderedList') {
+      const start = textInput(
+        'Ordered list start',
+        String(orderedListStart(this.#node)),
+        this.#readOnly,
+      );
       start.type = 'number';
       start.min = '1';
       start.max = '1000000';
       start.addEventListener('change', () => {
-        this.#start = Math.max(1, Math.min(1_000_000, Number(start.value) || 1));
+        const value = Math.max(1, Math.min(1_000_000, Number(start.value) || 1));
+        if (value === orderedListStart(this.#node)) return;
+        if (value === 1) delete this.#node.attrs;
+        else this.#node.attrs = { start: value };
       });
       root.append(start);
     }
+    this.#rows = flattenList(this.#node);
     const list = document.createElement('ol');
     list.setAttribute('aria-label', 'List items');
     for (const [index, row] of this.#rows.entries()) {
@@ -386,16 +413,20 @@ export class StudioListTool {
       item.dataset.index = String(index);
       item.dataset.studioDepth = String(row.depth);
       item.setAttribute('aria-level', String(row.depth + 1));
-      const input = textInput(`List item ${index + 1}`, row.text, this.#readOnly);
-      input.dataset.listText = String(index);
-      item.append(input);
+      const field = inlineField(
+        `List item ${index + 1}`,
+        row.editableBlock.content ?? [],
+        this.#readOnly,
+      );
+      field.dataset.listText = String(index);
+      item.append(field);
       if (!this.#readOnly) {
         item.append(
-          rowButton('Move item up', () => this.#move(index, -1), index === 0),
-          rowButton('Move item down', () => this.#move(index, 1), index === this.#rows.length - 1),
-          rowButton('Indent item', () => this.#indent(index, 1), row.depth >= 4 || index === 0),
-          rowButton('Outdent item', () => this.#indent(index, -1), row.depth === 0),
-          rowButton('Remove item', () => this.#remove(index), this.#rows.length === 1),
+          rowButton('Move item up', () => this.#move(index, -1), !canMoveListRow(row, -1)),
+          rowButton('Move item down', () => this.#move(index, 1), !canMoveListRow(row, 1)),
+          rowButton('Indent item', () => this.#indent(index), !canIndentListRow(row)),
+          rowButton('Outdent item', () => this.#outdent(index), row.ownerItem === undefined),
+          rowButton('Remove item', () => this.#remove(index), !canRemoveListRow(row, this.#node)),
         );
       }
       list.append(item);
@@ -405,65 +436,163 @@ export class StudioListTool {
   }
 
   #syncRows(): void {
-    for (const input of this.#root?.querySelectorAll<HTMLInputElement>('[data-list-text]') ?? []) {
-      const index = Number(input.dataset.listText);
+    for (const field of this.#root?.querySelectorAll<HTMLElement>('[data-list-text]') ?? []) {
+      const index = Number(field.dataset.listText);
       const row = this.#rows[index];
-      if (row !== undefined) row.text = input.value.slice(0, 20_000);
+      if (row === undefined) continue;
+      const content = preserveInlineRepresentation(
+        row.editableBlock.content ?? [],
+        readInline(field),
+      );
+      if (row.syntheticEditable) {
+        if (content.length > 0) {
+          row.editableBlock.content = content;
+          row.item.content = [row.editableBlock, ...(row.item.content ?? [])];
+          row.syntheticEditable = false;
+        }
+      } else if (!sameCanonical(row.editableBlock.content ?? [], content)) {
+        row.editableBlock.content = content;
+      }
     }
   }
 
   #add(): void {
     this.#syncRows();
-    if (this.#rows.length < 500) this.#rows.push({ depth: 0, text: '' });
+    if (this.#rows.length < 500)
+      this.#node.content = [
+        ...(this.#node.content ?? []),
+        {
+          content: [{ type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ];
     this.#renderRows();
   }
 
-  #indent(index: number, delta: number): void {
+  #indent(index: number): void {
     this.#syncRows();
     const row = this.#rows[index];
-    if (row !== undefined) row.depth = Math.max(0, Math.min(4, row.depth + delta));
+    if (row === undefined || !canIndentListRow(row)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    const previous = siblings[itemIndex - 1];
+    if (previous === undefined) return;
+    siblings.splice(itemIndex, 1);
+    const existing = previous.content?.at(-1);
+    const nested =
+      existing?.type === row.parentList.type
+        ? existing
+        : {
+            ...(row.parentList.type === 'orderedList' && row.parentList.attrs !== undefined
+              ? { attrs: structuredClone(row.parentList.attrs) }
+              : {}),
+            content: [],
+            type: row.parentList.type,
+          };
+    if (nested !== existing) previous.content = [...(previous.content ?? []), nested];
+    nested.content = [...(nested.content ?? []), row.item];
     this.#renderRows();
   }
 
-  #move(index: number, delta: number): void {
+  #outdent(index: number): void {
     this.#syncRows();
-    const target = index + delta;
-    if (target >= 0 && target < this.#rows.length) {
-      const [row] = this.#rows.splice(index, 1);
-      if (row !== undefined) this.#rows.splice(target, 0, row);
+    const row = this.#rows[index];
+    if (row?.ownerItem === undefined || row.parentListParent === undefined) {
+      return;
     }
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    if (itemIndex < 0) return;
+    const trailing = siblings.splice(itemIndex + 1);
+    siblings.splice(itemIndex, 1);
+    if (trailing.length > 0) {
+      row.item.content = [
+        ...(row.item.content ?? []),
+        {
+          ...(row.parentList.type === 'orderedList' && row.parentList.attrs !== undefined
+            ? { attrs: structuredClone(row.parentList.attrs) }
+            : {}),
+          content: trailing,
+          type: row.parentList.type,
+        },
+      ];
+    }
+    if (siblings.length === 0) removeListFromItem(row.ownerItem, row.parentList);
+    const parentSiblings = row.parentListParent.content ?? [];
+    const ownerIndex = parentSiblings.indexOf(row.ownerItem);
+    if (ownerIndex < 0) return;
+    parentSiblings.splice(ownerIndex + 1, 0, row.item);
+    this.#renderRows();
+  }
+
+  #move(index: number, delta: -1 | 1): void {
+    this.#syncRows();
+    const row = this.#rows[index];
+    if (row === undefined || !canMoveListRow(row, delta)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    const [item] = siblings.splice(itemIndex, 1);
+    if (item !== undefined) siblings.splice(itemIndex + delta, 0, item);
     this.#renderRows();
   }
 
   #remove(index: number): void {
     this.#syncRows();
-    if (this.#rows.length > 1) this.#rows.splice(index, 1);
+    const row = this.#rows[index];
+    if (row === undefined || !canRemoveListRow(row, this.#node)) return;
+    const siblings = row.parentList.content ?? [];
+    const itemIndex = siblings.indexOf(row.item);
+    if (itemIndex < 0) return;
+    siblings.splice(itemIndex, 1);
+    if (siblings.length === 0 && row.ownerItem !== undefined) {
+      removeListFromItem(row.ownerItem, row.parentList);
+    }
     this.#renderRows();
   }
 }
 
-interface CheckRow extends ListRow {
+interface CheckRow {
   checked: boolean;
+  content: StudioRichTextNode[];
+  contentPresent: boolean;
+  depth: number;
 }
 
 export class StudioChecklistTool {
   public static readonly isReadOnlySupported: boolean = true;
   public static readonly toolbox = { icon: '☑', title: 'Checklist' } as const;
   readonly #readOnly: boolean;
+  readonly #initialRows: CheckRow[];
+  readonly #node: StudioRichTextNode;
   #root?: HTMLElement;
   #rows: CheckRow[];
 
   public constructor(options: ToolOptions) {
     this.#readOnly = options.readOnly === true;
-    const content = options.data?.node?.content ?? [];
+    this.#node = structuredClone(
+      options.data?.node ?? {
+        content: [{ attrs: { checked: false, level: 0 }, type: 'checklistItem' }],
+        type: 'checklist',
+      },
+    );
+    const content = this.#node.content ?? [];
     this.#rows =
       content.length > 0
         ? content.map((item) => ({
             checked: item.attrs?.checked === true,
+            content: structuredClone(item.content ?? []),
+            contentPresent: item.content !== undefined,
             depth: Number(item.attrs?.level ?? 0),
-            text: inlineText(item.content ?? []),
           }))
-        : [{ checked: false, depth: 0, text: '' }];
+        : [
+            {
+              checked: false,
+              content: [],
+              contentPresent: false,
+              depth: 0,
+            },
+          ];
+    this.#initialRows = structuredClone(this.#rows);
   }
 
   public render(): HTMLElement {
@@ -474,11 +603,16 @@ export class StudioChecklistTool {
 
   public save(): { node: StudioRichTextNode } {
     this.#syncRows();
+    if (sameCanonical(this.#rows, this.#initialRows)) {
+      return { node: structuredClone(this.#node) };
+    }
     return {
       node: {
         content: this.#rows.map((row) => ({
           attrs: { checked: row.checked, level: row.depth },
-          content: row.text.length > 0 ? [{ text: row.text, type: 'text' }] : [],
+          ...(row.contentPresent || row.content.length > 0
+            ? { content: structuredClone(row.content) }
+            : {}),
           type: 'checklistItem',
         })),
         type: 'checklist',
@@ -500,9 +634,12 @@ export class StudioChecklistTool {
       checked.disabled = this.#readOnly;
       checked.dataset.checkState = String(index);
       checked.setAttribute('aria-label', `Checklist item ${index + 1} complete`);
-      const text = textInput(`Checklist item ${index + 1}`, row.text, this.#readOnly);
-      text.dataset.checkText = String(index);
-      group.append(checked, text);
+      const field = inlineField(`Checklist item ${index + 1}`, row.content, this.#readOnly);
+      field.dataset.checkText = String(index);
+      field.addEventListener('input', () => {
+        row.contentPresent = true;
+      });
+      group.append(checked, field);
       if (!this.#readOnly) {
         group.append(
           rowButton('Move item up', () => this.#move(index, -1), index === 0),
@@ -518,9 +655,11 @@ export class StudioChecklistTool {
   }
 
   #syncRows(): void {
-    for (const input of this.#root?.querySelectorAll<HTMLInputElement>('[data-check-text]') ?? []) {
-      const row = this.#rows[Number(input.dataset.checkText)];
-      if (row !== undefined) row.text = input.value.slice(0, 20_000);
+    for (const field of this.#root?.querySelectorAll<HTMLElement>('[data-check-text]') ?? []) {
+      const row = this.#rows[Number(field.dataset.checkText)];
+      if (row !== undefined) {
+        row.content = preserveInlineRepresentation(row.content, readInline(field));
+      }
     }
     for (const input of this.#root?.querySelectorAll<HTMLInputElement>('[data-check-state]') ??
       []) {
@@ -531,7 +670,13 @@ export class StudioChecklistTool {
 
   #add(): void {
     this.#syncRows();
-    if (this.#rows.length < 500) this.#rows.push({ checked: false, depth: 0, text: '' });
+    if (this.#rows.length < 500)
+      this.#rows.push({
+        checked: false,
+        content: [],
+        contentPresent: false,
+        depth: 0,
+      });
     this.#renderRows();
   }
   #indent(index: number, delta: number): void {
@@ -560,22 +705,40 @@ export class StudioTableTool {
   public static readonly isReadOnlySupported: boolean = true;
   public static readonly toolbox = { icon: '▦', title: 'Table' } as const;
   readonly #readOnly: boolean;
-  #cells: string[][];
+  readonly #initialCells: TableCellModel[][];
+  readonly #initialHeader: boolean;
+  readonly #node: StudioRichTextNode;
+  #cells: TableCellModel[][];
   #header: boolean;
   #root?: HTMLElement;
 
   public constructor(options: ToolOptions) {
     this.#readOnly = options.readOnly === true;
-    const node = options.data?.node;
-    this.#header = node?.attrs?.header === true;
-    this.#cells = (node?.content ?? []).map((row) =>
-      (row.content ?? []).map((cell) => inlineText(cell.content ?? [])),
+    this.#node = structuredClone(
+      options.data?.node ?? {
+        attrs: { header: false },
+        content: [
+          {
+            content: [{ type: 'tableCell' }, { type: 'tableCell' }],
+            type: 'tableRow',
+          },
+          {
+            content: [{ type: 'tableCell' }, { type: 'tableCell' }],
+            type: 'tableRow',
+          },
+        ],
+        type: 'table',
+      },
     );
-    if (this.#cells.length === 0)
-      this.#cells = [
-        ['', ''],
-        ['', ''],
-      ];
+    this.#header = this.#node.attrs?.header === true;
+    this.#cells = (this.#node.content ?? []).map((row) =>
+      (row.content ?? []).map((cell) => ({
+        content: structuredClone(cell.content ?? []),
+        contentPresent: cell.content !== undefined,
+      })),
+    );
+    this.#initialHeader = this.#header;
+    this.#initialCells = structuredClone(this.#cells);
   }
 
   public render(): HTMLElement {
@@ -586,12 +749,17 @@ export class StudioTableTool {
 
   public save(): { node: StudioRichTextNode } {
     this.#syncCells();
+    if (this.#header === this.#initialHeader && sameCanonical(this.#cells, this.#initialCells)) {
+      return { node: structuredClone(this.#node) };
+    }
     return {
       node: {
         attrs: { header: this.#header },
         content: this.#cells.map((row) => ({
-          content: row.map((text) => ({
-            content: text.length > 0 ? [{ text, type: 'text' }] : [],
+          content: row.map((cell) => ({
+            ...(cell.contentPresent || cell.content.length > 0
+              ? { content: structuredClone(cell.content) }
+              : {}),
             type: 'tableCell',
           })),
           type: 'tableRow',
@@ -620,13 +788,16 @@ export class StudioTableTool {
       const tr = document.createElement('tr');
       for (const [columnIndex, value] of row.entries()) {
         const cell = document.createElement(rowIndex === 0 && this.#header ? 'th' : 'td');
-        const input = textInput(
+        const field = inlineField(
           `Row ${rowIndex + 1}, column ${columnIndex + 1}`,
-          value,
+          value.content,
           this.#readOnly,
         );
-        input.dataset.tableCell = `${rowIndex}:${columnIndex}`;
-        cell.append(input);
+        field.dataset.tableCell = `${rowIndex}:${columnIndex}`;
+        field.addEventListener('input', () => {
+          value.contentPresent = true;
+        });
+        cell.append(field);
         tr.append(cell);
       }
       table.append(tr);
@@ -653,23 +824,34 @@ export class StudioTableTool {
   #resize(rows: number, columns: number): void {
     this.#syncCells();
     if (rows > 0 && this.#cells.length < 200)
-      this.#cells.push(Array(this.#cells[0]?.length ?? 1).fill('') as string[]);
+      this.#cells.push(
+        Array.from({ length: this.#cells[0]?.length ?? 1 }, () => ({
+          content: [],
+          contentPresent: false,
+        })),
+      );
     if (rows < 0 && this.#cells.length > 1) this.#cells.pop();
     if (columns > 0 && (this.#cells[0]?.length ?? 0) < 50)
-      for (const row of this.#cells) row.push('');
+      for (const row of this.#cells) row.push({ content: [], contentPresent: false });
     if (columns < 0 && (this.#cells[0]?.length ?? 0) > 1) for (const row of this.#cells) row.pop();
     this.#renderTable();
   }
 
   #syncCells(): void {
-    for (const input of this.#root?.querySelectorAll<HTMLInputElement>('[data-table-cell]') ?? []) {
-      const [row, column] = (input.dataset.tableCell ?? '').split(':').map(Number);
+    for (const field of this.#root?.querySelectorAll<HTMLElement>('[data-table-cell]') ?? []) {
+      const [row, column] = (field.dataset.tableCell ?? '').split(':').map(Number);
       const targetRow = row === undefined ? undefined : this.#cells[row];
-      if (targetRow !== undefined && column !== undefined && targetRow[column] !== undefined) {
-        targetRow[column] = input.value.slice(0, 20_000);
+      const targetCell = column === undefined ? undefined : targetRow?.[column];
+      if (targetCell !== undefined) {
+        targetCell.content = preserveInlineRepresentation(targetCell.content, readInline(field));
       }
     }
   }
+}
+
+interface TableCellModel {
+  content: StudioRichTextNode[];
+  contentPresent: boolean;
 }
 
 /** Editor.js inline tool for a bounded semantic highlight tone. */
@@ -734,7 +916,7 @@ function appendInline(parent: Node, node: StudioRichTextNode): void {
   }
   if (node.type !== 'text' || (node.text ?? '').length === 0) return;
   let child: Node = document.createTextNode(node.text ?? '');
-  for (const mark of node.marks ?? []) {
+  for (const mark of [...(node.marks ?? [])].reverse()) {
     const element = document.createElement(markElement(mark));
     if (mark.type === 'highlight')
       element.dataset.studioTone = stringAttribute(mark.attrs?.tone, 'accent');
@@ -778,6 +960,52 @@ function readInline(parent: Node): StudioRichTextNode[] {
   return result;
 }
 
+interface InlineProjectionBreak {
+  kind: 'hard-break';
+}
+
+interface InlineProjectionText {
+  kind: 'text';
+  marks: string[];
+  text: string;
+}
+
+type InlineProjection = InlineProjectionBreak | InlineProjectionText;
+
+function preserveInlineRepresentation(
+  original: readonly StudioRichTextNode[],
+  rendered: StudioRichTextNode[],
+): StudioRichTextNode[] {
+  return sameCanonical(projectInline(original), projectInline(rendered))
+    ? structuredClone([...original])
+    : rendered;
+}
+
+function projectInline(content: readonly StudioRichTextNode[]): InlineProjection[] {
+  const projection: InlineProjection[] = [];
+  for (const node of content) {
+    if (node.type === 'hardBreak') {
+      projection.push({ kind: 'hard-break' });
+      continue;
+    }
+    if (node.type !== 'text') continue;
+    const marks = (node.marks ?? [])
+      .map((mark) => {
+        if (mark.type !== 'highlight') return mark.type;
+        const tone = mark.attrs?.tone;
+        return `${mark.type}:${typeof tone === 'string' ? tone : ''}`;
+      })
+      .sort();
+    const previous = projection.at(-1);
+    if (previous?.kind === 'text' && sameCanonical(previous.marks, marks)) {
+      previous.text += node.text ?? '';
+    } else {
+      projection.push({ kind: 'text', marks, text: node.text ?? '' });
+    }
+  }
+  return projection;
+}
+
 function canonicalMark(element: Element): StudioRichTextMark | undefined {
   if (element.localName === 'strong' || element.localName === 'b') return { type: 'bold' };
   if (element.localName === 'em' || element.localName === 'i') return { type: 'italic' };
@@ -808,49 +1036,118 @@ function pastePlainText(event: ClipboardEvent): void {
   range.collapse(false);
 }
 
-function flattenList(node: StudioRichTextNode, depth = 0): ListRow[] {
+function flattenList(
+  node: StudioRichTextNode,
+  depth = 0,
+  ownerItem?: StudioRichTextNode,
+  parentListParent?: StudioRichTextNode,
+): ListRow[] {
   const rows: ListRow[] = [];
   for (const item of node.content ?? []) {
-    rows.push({ depth, text: inlineText(item.content?.[0]?.content ?? []) });
-    for (const nested of item.content?.slice(1) ?? []) {
-      if (nested.type === 'bulletList' || nested.type === 'orderedList')
-        rows.push(...flattenList(nested, Math.min(4, depth + 1)));
-    }
-  }
-  return rows.length > 0 ? rows : [{ depth: 0, text: '' }];
-}
-
-function buildList(rows: readonly ListRow[], ordered: boolean, start: number): StudioRichTextNode {
-  const type = ordered ? 'orderedList' : 'bulletList';
-  const root: StudioRichTextNode = { content: [], type };
-  if (ordered && start !== 1) root.attrs = { start: Math.max(1, Math.min(1_000_000, start)) };
-  const lists: StudioRichTextNode[] = [root];
-  for (const [index, row] of rows.entries()) {
-    const depth = Math.min(row.depth, index === 0 ? 0 : (rows[index - 1]?.depth ?? 0) + 1);
-    while (lists.length > depth + 1) lists.pop();
-    while (lists.length < depth + 1) {
-      const parent = lists.at(-1);
-      const parentItem = parent?.content?.at(-1);
-      if (parentItem === undefined) break;
-      const nested: StudioRichTextNode = { content: [], type };
-      parentItem.content = [...(parentItem.content ?? []), nested];
-      lists.push(nested);
-    }
-    lists.at(-1)?.content?.push({
-      content: [
-        {
-          content: row.text.length > 0 ? [{ text: row.text, type: 'text' }] : [],
-          type: 'paragraph',
-        },
-      ],
-      type: 'listItem',
+    const existingEditable = (item.content ?? []).find(
+      (block) => block.type === 'paragraph' || block.type === 'heading',
+    );
+    const editableBlock = existingEditable ?? { type: 'paragraph' };
+    rows.push({
+      depth,
+      editableBlock,
+      item,
+      ...(ownerItem === undefined ? {} : { ownerItem }),
+      parentList: node,
+      ...(parentListParent === undefined ? {} : { parentListParent }),
+      syntheticEditable: existingEditable === undefined,
     });
+    for (const nested of item.content ?? []) {
+      if (nested.type === 'bulletList' || nested.type === 'orderedList')
+        rows.push(...flattenList(nested, depth + 1, item, node));
+    }
   }
-  return root;
+  return rows;
 }
 
-function inlineText(nodes: readonly StudioRichTextNode[]): string {
-  return nodes.map((node) => (node.type === 'hardBreak' ? '\n' : (node.text ?? ''))).join('');
+function orderedListStart(node: Readonly<StudioRichTextNode>): number {
+  const value = Number(node.attrs?.start ?? 1);
+  return Number.isSafeInteger(value) && value >= 1 && value <= 1_000_000 ? value : 1;
+}
+
+function canMoveListRow(row: Readonly<ListRow>, delta: -1 | 1): boolean {
+  const siblings = row.parentList.content ?? [];
+  const index = siblings.indexOf(row.item);
+  return index >= 0 && index + delta >= 0 && index + delta < siblings.length;
+}
+
+function canIndentListRow(row: Readonly<ListRow>): boolean {
+  if (row.depth >= 4) return false;
+  const siblings = row.parentList.content ?? [];
+  return siblings.indexOf(row.item) > 0;
+}
+
+function canRemoveListRow(row: Readonly<ListRow>, root: Readonly<StudioRichTextNode>): boolean {
+  return row.parentList !== root || (root.content?.length ?? 0) > 1;
+}
+
+function removeListFromItem(item: StudioRichTextNode, list: StudioRichTextNode): void {
+  item.content = (item.content ?? []).filter((block) => block !== list);
+}
+
+function editableBlockContent(blocks: readonly StudioRichTextNode[]): StudioRichTextNode[] {
+  return (
+    blocks.find((block) => block.type === 'paragraph' || block.type === 'heading')?.content ?? []
+  );
+}
+
+function mergeEditableBlockContent(
+  blocks: readonly StudioRichTextNode[],
+  content: readonly StudioRichTextNode[],
+): StudioRichTextNode[] {
+  const result = structuredClone([...blocks]);
+  const index = result.findIndex((block) => block.type === 'paragraph' || block.type === 'heading');
+  if (index < 0) {
+    if (content.length > 0)
+      result.unshift({ content: structuredClone([...content]), type: 'paragraph' });
+    return result;
+  }
+  const block = result[index];
+  if (block !== undefined && !sameCanonical(block.content ?? [], content)) {
+    block.content = structuredClone([...content]);
+  }
+  return result;
+}
+
+function inlineField(
+  label: string,
+  content: readonly StudioRichTextNode[],
+  readOnly: boolean,
+): HTMLDivElement {
+  const field = document.createElement('div');
+  field.className = 'studio-rich-text-field';
+  field.contentEditable = readOnly ? 'false' : 'true';
+  field.setAttribute('aria-label', label);
+  field.setAttribute('aria-multiline', 'true');
+  field.setAttribute('role', 'textbox');
+  field.spellcheck = true;
+  for (const inline of content) appendInline(field, inline);
+  field.addEventListener('paste', pastePlainText);
+  return field;
+}
+
+function sameCanonical(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => sameCanonical(value, right[index]))
+    );
+  }
+  if (!isRecord(left) || !isRecord(right)) return false;
+  const leftKeys = Object.keys(left).sort();
+  const rightKeys = Object.keys(right).sort();
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every((key, index) => key === rightKeys[index] && sameCanonical(left[key], right[key]))
+  );
 }
 
 function editorGroup(label: string): HTMLDivElement {
@@ -885,6 +1182,7 @@ function selectControl(
     option.selected = value === selected;
     select.append(option);
   }
+  select.value = selected;
   return select;
 }
 

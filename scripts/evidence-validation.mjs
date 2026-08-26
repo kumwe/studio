@@ -5,32 +5,44 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 export const CANONICAL_REPOSITORY = 'https://github.com/kumwe/studio';
 
 export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
+  'evidence/environment-assertions.json',
+  'evidence/environment-matrix.json',
   'evidence/gate-criteria.json',
   'evidence/profile-assertions.json',
+  'evidence/schema/environment-assertions.schema.json',
+  'evidence/schema/environment-matrix.schema.json',
+  'package.json',
   'package-lock.json',
   'packages/protocol/schemas/manifest.json',
   'packages/testkit/corpus-manifest.json',
   'release-profile-claims.json',
+  'scripts/release-artifacts.mjs',
+  'scripts/release-family.mjs',
+  'scripts/staged-publish.mjs',
+  'scripts/verify-published-release.mjs',
+  'scripts/verify-staged-release.mjs',
   'studio-release.json',
 ]);
 
-export const REQUIRED_EVIDENCE_LANES = Object.freeze([
-  'quality/format',
-  'quality/lint',
-  'quality/typecheck',
-  'build/workspace',
-  'contract/package-boundaries',
-  'contract/canonical-corpus',
-  'contract/release-record',
-  'release/package-tarballs',
-  'evidence/authenticity',
-  'security/secret-scan',
-  'contract/requirement-registry',
-  'security/threat-registry',
-  'release/changeset',
-  'unit/workspace',
-  'accessibility/web',
-]);
+export const GENERIC_EVIDENCE_LANES = Object.freeze({
+  'quality/format': lane('npm', ['run', 'format:check']),
+  'quality/lint': lane('npm', ['run', 'lint']),
+  'quality/typecheck': lane('npm', ['run', 'typecheck']),
+  'build/workspace': lane('npm', ['run', 'build']),
+  'contract/package-boundaries': lane('node', ['scripts/check-boundaries.mjs']),
+  'contract/canonical-corpus': lane('node', ['scripts/check-contracts.mjs']),
+  'contract/release-record': lane('node', ['scripts/check-release-record.mjs']),
+  'release/package-tarballs': lane('node', ['scripts/check-packages.mjs']),
+  'evidence/authenticity': lane('node', ['scripts/check-evidence.mjs']),
+  'security/secret-scan': lane('node', ['scripts/check-secrets.mjs']),
+  'contract/requirement-registry': lane('node', ['scripts/check-requirements.mjs']),
+  'security/threat-registry': lane('node', ['scripts/check-threats.mjs']),
+  'release/changeset': lane('node', ['scripts/check-changesets.mjs']),
+  'unit/workspace': lane('npm', ['run', 'test']),
+  'accessibility/web': lane('npm', ['run', 'check:a11y', '--', '--retries=0']),
+});
+
+export const REQUIRED_EVIDENCE_LANES = Object.freeze(Object.keys(GENERIC_EVIDENCE_LANES));
 
 export const GENERIC_LANE_EVIDENCE_CLASSES = Object.freeze(
   new Set(['accessibility', 'contract', 'property-fuzz', 'release', 'security', 'unit']),
@@ -117,6 +129,28 @@ export const PROFILE_EVIDENCE_LANES = Object.freeze({
     command: './node_modules/.bin/vitest',
   }),
 });
+
+export const SPECIALIZED_EVIDENCE_LANES = Object.freeze({
+  'release/staged-registry-install': lane('npm', ['run', 'release:verify-stage']),
+});
+
+export const CRITERION_EVIDENCE_LANES = Object.freeze({
+  'gate-a/13-reproducible-evidence': Object.freeze(['release/staged-registry-install']),
+});
+
+export function evidenceLaneIdsForCriteria(criterionIds) {
+  return [
+    ...new Set(criterionIds.flatMap((criterionId) => CRITERION_EVIDENCE_LANES[criterionId] ?? [])),
+  ].sort();
+}
+
+export function commandForEvidenceLane(testId) {
+  const registered =
+    GENERIC_EVIDENCE_LANES[testId] ??
+    PROFILE_EVIDENCE_LANES[testId] ??
+    SPECIALIZED_EVIDENCE_LANES[testId];
+  return registered === undefined ? undefined : renderCommand(registered.command, registered.args);
+}
 
 const REVIEWER_ROLES = Object.freeze([
   'general',
@@ -217,9 +251,7 @@ export function buildProfileAssertionIndex(registry, allowedProfiles) {
     const hasValidRuns =
       Array.isArray(profile.requiredRuns) &&
       new Set(requiredRuns).size === requiredRuns.length &&
-      requiredRuns.every(
-        (testId) => testId === 'accessibility/web' || PROFILE_EVIDENCE_LANES[testId] !== undefined,
-      );
+      requiredRuns.every((testId) => commandForEvidenceLane(testId) !== undefined);
     if (!hasValidInputs) {
       failures.push(`profile assertion ${String(profile.id)} has invalid requiredInputs`);
     }
@@ -245,6 +277,128 @@ export function buildProfileAssertionIndex(registry, allowedProfiles) {
     failures.push('profile assertion registry must cover the complete profile vocabulary');
   }
   return { failures, profilesById };
+}
+
+export function buildEnvironmentAssertionIndex(registry, environmentMatrix) {
+  const failures = [];
+  const assertionsById = new Map();
+  if (
+    registry?.contractVersion !== '0.1-draft' ||
+    registry?.kind !== 'environment-assertion-registry' ||
+    !Array.isArray(registry?.environments) ||
+    Object.keys(registry ?? {})
+      .sort()
+      .join('\n') !== 'contractVersion\nenvironments\nkind'
+  ) {
+    return {
+      assertionsById,
+      failures: ['environment assertion registry has an invalid closed shape'],
+    };
+  }
+  for (const assertion of registry.environments) {
+    if (
+      assertion === null ||
+      typeof assertion !== 'object' ||
+      Array.isArray(assertion) ||
+      Object.keys(assertion).sort().join('\n') !== 'id\nstatus\nvariants' ||
+      !Array.isArray(assertion.variants)
+    ) {
+      failures.push('environment assertion entry has an invalid closed shape');
+      continue;
+    }
+    if (assertionsById.has(assertion.id)) {
+      failures.push(`environment assertion ${String(assertion.id)} is duplicated`);
+      continue;
+    }
+    if (!['executable', 'target'].includes(assertion.status)) {
+      failures.push(
+        `environment assertion ${String(assertion.id)} has invalid status ${String(assertion.status)}`,
+      );
+    }
+    const variants = new Set();
+    for (const variant of assertion.variants) {
+      if (variants.has(variant?.id)) {
+        failures.push(
+          `environment assertion ${String(assertion.id)} variant ${String(variant?.id)} is duplicated`,
+        );
+      }
+      variants.add(variant?.id);
+      const requiredRuns = Array.isArray(variant?.requiredRuns) ? variant.requiredRuns : [];
+      if (
+        variant?.environment?.browser !== undefined &&
+        variant.environment.browserPrefix !== undefined
+      ) {
+        failures.push(
+          `environment assertion ${String(assertion.id)} variant ${String(variant?.id)} cannot combine browser and browserPrefix`,
+        );
+      }
+      if (
+        new Set(requiredRuns).size !== requiredRuns.length ||
+        requiredRuns.some((testId) => commandForEvidenceLane(testId) === undefined)
+      ) {
+        failures.push(
+          `environment assertion ${String(assertion.id)} variant ${String(variant?.id)} references an unregistered lane`,
+        );
+      }
+      if (assertion.status === 'executable' && requiredRuns.length === 0) {
+        failures.push(
+          `executable environment ${String(assertion.id)} variant ${String(variant?.id)} requires registered runs`,
+        );
+      }
+      if (assertion.status === 'target' && requiredRuns.length > 0) {
+        failures.push(
+          `target environment ${String(assertion.id)} cannot advertise executable runs`,
+        );
+      }
+    }
+    if (assertion.status === 'executable' && assertion.variants.length === 0) {
+      failures.push(`executable environment ${String(assertion.id)} requires variants`);
+    }
+    if (typeof assertion.id === 'string') {
+      assertionsById.set(assertion.id, assertion);
+    }
+  }
+  const matrixIds = Array.isArray(environmentMatrix?.environments)
+    ? environmentMatrix.environments.map((environment) => environment.id)
+    : [];
+  if (
+    new Set(matrixIds).size !== matrixIds.length ||
+    [...new Set(matrixIds)].sort().join('\n') !== [...assertionsById.keys()].sort().join('\n')
+  ) {
+    failures.push('environment assertion registry must cover every matrix identity exactly once');
+  }
+  return { assertionsById, failures };
+}
+
+export function environmentMatchesPredicate(environment, predicate) {
+  if (
+    predicate.browserPrefix !== undefined &&
+    !String(environment?.browser ?? '').startsWith(predicate.browserPrefix)
+  ) {
+    return false;
+  }
+  for (const member of [
+    'browser',
+    'database',
+    'dart',
+    'flutter',
+    'host',
+    'npm',
+    'os',
+    'php',
+    'variant',
+  ]) {
+    if (predicate[member] !== undefined && environment?.[member] !== predicate[member]) {
+      return false;
+    }
+  }
+  if (predicate.nodeMajor !== undefined) {
+    const match = /^v?([0-9]+)(?:\.|$)/u.exec(String(environment?.node ?? ''));
+    if (match === null || Number(match[1]) !== predicate.nodeMajor) {
+      return false;
+    }
+  }
+  return true;
 }
 
 export async function collectBundleFailures(manifest, context) {
@@ -394,10 +548,23 @@ export async function collectBundleFailures(manifest, context) {
     if (run.retryCount !== 0) {
       failures.push(`run ${run.testId} was retried; flaky evidence is failing evidence`);
     }
+    const expectedCommand = commandForEvidenceLane(run.testId);
+    if (expectedCommand === undefined) {
+      failures.push(`run ${run.testId} is outside the closed evidence command registry`);
+    } else if (run.command !== expectedCommand) {
+      failures.push(`run ${run.testId} did not run its registered command`);
+    }
   }
   for (const requiredLane of REQUIRED_EVIDENCE_LANES) {
     if (!runIds.has(requiredLane)) {
       failures.push(`runs is missing mandatory lane ${requiredLane}`);
+    }
+  }
+  for (const requiredLane of evidenceLaneIdsForCriteria(
+    manifest.criteria.map((criterion) => criterion.criterionId),
+  )) {
+    if (!runIds.has(requiredLane)) {
+      failures.push(`runs is missing criterion-specific lane ${requiredLane}`);
     }
   }
   let profileAssertions = context.profileAssertions;
@@ -430,11 +597,8 @@ export async function collectBundleFailures(manifest, context) {
         failures.push(`profile ${profileId} is missing required assertion lane ${testId}`);
         continue;
       }
-      const expected = PROFILE_EVIDENCE_LANES[testId];
-      if (
-        expected !== undefined &&
-        run.command !== renderCommand(expected.command, expected.args)
-      ) {
+      const expectedCommand = commandForEvidenceLane(testId);
+      if (expectedCommand === undefined || run.command !== expectedCommand) {
         failures.push(`profile ${profileId} lane ${testId} did not run its registered command`);
       }
     }
@@ -758,4 +922,8 @@ function renderCommand(command, args) {
   return [command, ...args]
     .map((part) => (/^[A-Za-z0-9_./:@+-]+$/u.test(part) ? part : JSON.stringify(part)))
     .join(' ');
+}
+
+function lane(command, args) {
+  return Object.freeze({ args: Object.freeze(args), command });
 }

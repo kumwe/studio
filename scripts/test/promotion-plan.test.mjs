@@ -36,6 +36,23 @@ describe('promotion plan', () => {
     assert.deepEqual(plan.profiles, [profile]);
   });
 
+  it('stages an immutable RC for Gate A evidence without accepting gate inputs', async () => {
+    const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
+    const plan = await inspectPromotionPlan(root, { channel: 'rc' });
+    assert.equal(plan.operation, 'stage');
+    assert.equal(plan.sourceVersion, '0.1.0-rc.1');
+    assert.equal(plan.targetVersion, '0.1.0-rc.1');
+    assert.deepEqual(plan.profiles, [profile]);
+  });
+
+  it('rejects profile overrides while staging an immutable RC', async () => {
+    const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
+    await assert.rejects(
+      inspectPromotionPlan(root, { channel: 'rc', profiles: profile }),
+      /staging and corrections preserve/u,
+    );
+  });
+
   it('rejects feature-sized changes in the immutable RC correction lane', async () => {
     const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' }, ['feature.md']);
     await writeFile(

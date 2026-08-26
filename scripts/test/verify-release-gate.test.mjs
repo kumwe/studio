@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { commandForEvidenceLane } from '../evidence-validation.mjs';
 import {
   assertCurrentCandidateCoordinate,
   assertEvidenceChangedPaths,
@@ -25,6 +26,12 @@ const packageNames = [
 describe('promotion gate guards', () => {
   it('treats STATUS as an explicit fail-closed gate authority', () => {
     assert.doesNotThrow(() => assertStatusGatePass('| Gate A | Pass | evidence |', 'A'));
+    assert.doesNotThrow(() =>
+      assertStatusGatePass(
+        '| Gate B | Pass | evidence |\n| B — implemented, qualified, shippable | 18 | Pass |',
+        'B',
+      ),
+    );
     assert.throws(
       () => assertStatusGatePass('| Gate A | Not assessed | none |', 'A'),
       /publication is blocked/u,
@@ -32,7 +39,7 @@ describe('promotion gate guards', () => {
     assert.throws(
       () =>
         assertStatusGatePass(
-          '| Gate A | Pass | accepted |\n| Gate A | 14 criteria | Revoked | superseded |',
+          '| Gate A | Pass | accepted |\n| A — integration contract established | 14 criteria | Revoked | superseded |',
           'A',
         ),
       /unambiguously/u,
@@ -72,37 +79,61 @@ describe('promotion gate guards', () => {
         },
       ],
     };
-    assert.doesNotThrow(() =>
-      assertStableEnvironmentQualification(
+    const assertions = new Map([
+      [
+        'chromium-desktop',
         {
-          environments: [
+          id: 'chromium-desktop',
+          status: 'executable',
+          variants: [
             {
-              coveredBy: ['bundle-one#accessibility/web'],
-              id: 'chromium-desktop',
-              kind: 'browser',
-              requirement: 'Current Chromium',
-              status: 'qualified',
-            },
-            {
-              coveredBy: [],
-              id: 'dart-flutter',
-              kind: 'toolchain',
-              requirement: 'Version 3 Dart target',
-              status: 'target',
+              environment: {
+                browserPrefix: 'Chromium-',
+                os: 'linux-x64',
+                variant: 'current',
+              },
+              id: 'current-linux',
+              requiredRuns: ['accessibility/web'],
             },
           ],
         },
-        candidate,
-        new Map([
-          [
-            'bundle-one',
+      ],
+      ['dart-flutter', { id: 'dart-flutter', status: 'target', variants: [] }],
+    ]);
+    const accepted = new Map([
+      [
+        'bundle-one',
+        {
+          environment: {
+            browser: 'Chromium-141.0.0.0',
+            os: 'linux-x64',
+            variant: 'current',
+          },
+          runs: [
             {
-              environment: { browser: 'Chromium-141.0.0.0' },
-              runs: [{ exitStatus: 0, retryCount: 0, testId: 'accessibility/web' }],
+              command: commandForEvidenceLane('accessibility/web'),
+              exitStatus: 0,
+              retryCount: 0,
+              testId: 'accessibility/web',
             },
           ],
-        ]),
-      ),
+        },
+      ],
+    ]);
+    const qualified = {
+      environments: [
+        {
+          coveredBy: ['bundle-one#accessibility/web'],
+          id: 'chromium-desktop',
+          kind: 'browser',
+          requirement: 'Current Chromium',
+          status: 'qualified',
+        },
+        candidate.environments[1],
+      ],
+    };
+    assert.doesNotThrow(() =>
+      assertStableEnvironmentQualification(qualified, candidate, accepted, assertions),
     );
     assert.throws(
       () =>
@@ -120,6 +151,8 @@ describe('promotion gate guards', () => {
             ],
           },
           candidate,
+          new Map(),
+          assertions,
         ),
       /chromium-desktop/u,
     );
@@ -128,6 +161,8 @@ describe('promotion gate guards', () => {
         assertStableEnvironmentQualification(
           { environments: [candidate.environments[1]] },
           candidate,
+          new Map(),
+          assertions,
         ),
       /preserve every/u,
     );
@@ -148,8 +183,64 @@ describe('promotion gate guards', () => {
           },
           candidate,
           new Map(),
+          assertions,
         ),
-      /does not resolve/u,
+      /registered passing lane/u,
+    );
+
+    const forged = structuredClone(qualified);
+    accepted.get('bundle-one').runs[0].command = 'true';
+    assert.throws(
+      () => assertStableEnvironmentQualification(forged, candidate, accepted, assertions),
+      /registered passing lane/u,
+    );
+  });
+
+  it('rejects Linux Chromium labels as target-only iOS qualification', () => {
+    const candidate = {
+      environments: [
+        {
+          coveredBy: [],
+          id: 'ios-safari',
+          kind: 'browser',
+          requirement: 'Current iOS Safari',
+          status: 'target',
+        },
+      ],
+    };
+    const qualified = {
+      environments: [
+        {
+          ...candidate.environments[0],
+          coveredBy: ['linux#accessibility/web'],
+          status: 'qualified',
+        },
+      ],
+    };
+    assert.throws(
+      () =>
+        assertStableEnvironmentQualification(
+          qualified,
+          candidate,
+          new Map([
+            [
+              'linux',
+              {
+                environment: { browser: 'Chromium-141', os: 'linux-x64' },
+                runs: [
+                  {
+                    command: 'true',
+                    exitStatus: 0,
+                    retryCount: 0,
+                    testId: 'accessibility/web',
+                  },
+                ],
+              },
+            ],
+          ]),
+          new Map([['ios-safari', { id: 'ios-safari', status: 'target', variants: [] }]]),
+        ),
+      /target-only/u,
     );
   });
 

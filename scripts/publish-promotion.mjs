@@ -1,11 +1,11 @@
-import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { assertPromotionPackageState } from './release-policy.mjs';
+import { publishMissingApprovedArtifacts } from './staged-publish.mjs';
 import { verifyReleaseGateFromEnvironment } from './verify-release-gate.mjs';
 
 const repositoryRoot = new URL('../', import.meta.url);
@@ -16,16 +16,17 @@ export function assertPromotionPublication(input) {
   assertPromotionPackageState(input);
 }
 
-export function changesetsPublishArguments(channel) {
-  if (channel === 'rc') {
-    // Changesets v3 reads the rc tag from .changeset/pre.json and rejects any
-    // explicit --tag while pre mode is active.
-    return [];
+export function assertOfficialRegistryPreflight(channel, preflight) {
+  if (preflight.failures.length > 0) {
+    throw new Error(
+      `Existing registry packages differ from the approved immutable candidate:\n- ${preflight.failures.join('\n- ')}`,
+    );
   }
-  if (channel === 'stable') {
-    return ['--tag', 'latest'];
+  if (channel === 'rc' && preflight.missing.length > 0) {
+    throw new Error(
+      'Official RC publication requires the complete candidate family to have passed quarantine staging first.',
+    );
   }
-  throw new Error(`Promotion channel must be rc or stable; received ${String(channel)}.`);
 }
 
 async function inspectPublicationState(root, channel) {
@@ -71,31 +72,20 @@ async function main() {
     await readFile(new URL(APPROVED_ARTIFACT_PATH, repositoryRoot), 'utf8'),
   );
   const preflight = await inspectExistingRegistryArtifacts(state.releaseRecord, approvedArtifacts);
-  if (preflight.failures.length > 0) {
-    throw new Error(
-      `Existing registry packages differ from the approved immutable candidate:\n- ${preflight.failures.join('\n- ')}`,
-    );
-  }
+  assertOfficialRegistryPreflight(channel, preflight);
   console.log(
     `Registry preflight: ${preflight.missing.length} package(s) remain unpublished; ` +
       `${STUDIO_RELEASE_PACKAGES.length - preflight.missing.length} existing package(s) match exactly.`,
   );
-  const repositoryPath = fileURLToPath(repositoryRoot);
-  const releaseCheck = fileURLToPath(new URL('./check-release-record.mjs', import.meta.url));
-  const changesetsCli = fileURLToPath(
-    new URL('../node_modules/@changesets/cli/bin.js', import.meta.url),
+  const result = await publishMissingApprovedArtifacts(
+    state.releaseRecord,
+    approvedArtifacts,
+    preflight.missing,
   );
-
-  execFileSync(process.execPath, [releaseCheck, '--require-coordinated'], {
-    cwd: repositoryPath,
-    stdio: 'inherit',
-  });
-  execFileSync(
-    process.execPath,
-    [changesetsCli, 'publish', ...changesetsPublishArguments(channel)],
-    { cwd: repositoryPath, stdio: 'inherit' },
+  console.log(
+    `Staging publication for ${state.releaseRecord.release} on ${channel}: ` +
+      `${result.published.length} package(s) uploaded to ${result.stagingTag}.`,
   );
-  console.log(`Publication attempted for ${state.releaseRecord.release} on ${channel}.`);
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

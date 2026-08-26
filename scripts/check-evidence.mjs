@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
+  buildEnvironmentAssertionIndex,
   buildProfileAssertionIndex,
   checksumIntegrity,
   collectBundleFailures,
@@ -17,6 +18,7 @@ const bundleDirectory = new URL('../evidence/bundles/', import.meta.url);
 const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 
 const schemaFiles = [
+  'environment-assertions.schema.json',
   'environment-matrix.schema.json',
   'evidence-bundle.schema.json',
   'gate-criteria.schema.json',
@@ -38,6 +40,7 @@ for (const schema of schemas) {
   ajv.addSchema(schema);
 }
 const validateBundle = getValidator('evidence-bundle.schema.json');
+const validateEnvironmentAssertions = getValidator('environment-assertions.schema.json');
 const validateGateCriteria = getValidator('gate-criteria.schema.json');
 const validateGateRecord = getValidator('gate-record.schema.json');
 const validateEnvironmentMatrix = getValidator('environment-matrix.schema.json');
@@ -61,6 +64,25 @@ for (const environment of environmentMatrix.environments) {
       `Environment ${environment.id} claims qualified status without any covering evidence lane.`,
     );
   }
+}
+const environmentAssertionRegistry = JSON.parse(
+  await readFile(new URL('../evidence/environment-assertions.json', import.meta.url), 'utf8'),
+);
+if (!validateEnvironmentAssertions(environmentAssertionRegistry)) {
+  throw new Error(
+    `The environment assertion registry violates its schema: ${ajv.errorsText(
+      validateEnvironmentAssertions.errors,
+    )}`,
+  );
+}
+const environmentAssertionIndex = buildEnvironmentAssertionIndex(
+  environmentAssertionRegistry,
+  environmentMatrix,
+);
+if (environmentAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `The environment assertion registry is invalid:\n- ${environmentAssertionIndex.failures.join('\n- ')}`,
+  );
 }
 
 const registry = JSON.parse(
@@ -213,7 +235,8 @@ for (const gate of ['A', 'B']) {
 }
 
 console.log(
-  `${schemaFiles.length} evidence schemas, ${registry.gates.A.length + registry.gates.B.length} ` +
+  `${schemaFiles.length} evidence schemas, ${environmentAssertionIndex.assertionsById.size} environment assertions, ` +
+    `${registry.gates.A.length + registry.gates.B.length} ` +
     `registered gate criteria, ${bundleNames.length} bundle manifests ` +
     `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
     `${environmentMatrix.environments.length} environment-matrix entries verified.`,

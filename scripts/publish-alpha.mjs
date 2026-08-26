@@ -1,10 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { inspectReleasePlan } from './release-plan.mjs';
+import { publishMissingApprovedArtifacts } from './staged-publish.mjs';
 
 const alphaVersionPattern =
   /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-alpha\.(0|[1-9][0-9]*)$/u;
@@ -50,20 +50,14 @@ async function main() {
       `${Object.keys(record.packages).length - preflight.missing.length} existing package(s) match exactly.`,
   );
 
-  const repositoryPath = fileURLToPath(repositoryRoot);
-  const releaseCheck = fileURLToPath(new URL('./check-release-record.mjs', import.meta.url));
-  const changesetsCli = fileURLToPath(
-    new URL('../node_modules/@changesets/cli/bin.js', import.meta.url),
+  const result = await publishMissingApprovedArtifacts(
+    record,
+    approvedArtifacts,
+    preflight.missing,
   );
-
-  execFileSync(process.execPath, [releaseCheck, '--require-coordinated'], {
-    cwd: repositoryPath,
-    stdio: 'inherit',
-  });
-  execFileSync(process.execPath, [changesetsCli, 'publish'], {
-    cwd: repositoryPath,
-    stdio: 'inherit',
-  });
+  console.log(
+    `Alpha staging publication complete: ${result.published.length} package(s) uploaded to ${result.stagingTag}.`,
+  );
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

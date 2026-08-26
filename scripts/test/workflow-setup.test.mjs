@@ -6,7 +6,7 @@ import test from 'node:test';
 const workflows = new Map([
   ['ci.yml', 2],
   ['evidence-bundle.yml', 1],
-  ['release.yml', 3],
+  ['release.yml', 4],
   ['version-packages.yml', 1],
 ]);
 const workflowRoot = fileURLToPath(new URL('../../.github/workflows/', import.meta.url));
@@ -44,6 +44,9 @@ test('publish workflows approve exact local tarballs before npm authentication',
 test('publish workflows prove new registry bits before moving distribution tags', async () => {
   for (const name of ['release.yml', 'version-packages.yml']) {
     const source = await readFile(`${workflowRoot}${name}`, 'utf8');
+    const stagingPublication = source.indexOf(
+      'name: Publish missing approved tarballs to a non-channel staging tag',
+    );
     const preTagVerification = source.indexOf(
       name === 'release.yml'
         ? 'name: Verify immutable package bits before moving the channel tag'
@@ -59,8 +62,32 @@ test('publish workflows prove new registry bits before moving distribution tags'
         ? 'name: Verify the complete registry release, provenance, and channel tag'
         : 'name: Verify the complete published release set, provenance, and alpha tag',
     );
+    const cleanup = source.indexOf(
+      'name: Remove the non-channel staging tag after complete success',
+    );
+    assert.ok(stagingPublication >= 0, `${name} has no staging-only publication step`);
     assert.ok(preTagVerification >= 0, `${name} has no pre-tag artifact verification`);
+    assert.ok(
+      stagingPublication < preTagVerification,
+      `${name} does not verify after staging publication`,
+    );
     assert.ok(preTagVerification < reconciliation, `${name} moves the tag before bit verification`);
     assert.ok(reconciliation < finalVerification, `${name} does not verify the reconciled tag`);
+    assert.ok(finalVerification < cleanup, `${name} cleans staging before the final channel proof`);
+    if (name === 'release.yml') {
+      assert.ok(
+        source.indexOf('node scripts/verify-github-release.mjs') < cleanup,
+        'release.yml cleans staging before exact GitHub release recovery verification',
+      );
+    }
   }
+});
+
+test('Changesets action is version-PR-only and cannot publish tags or GitHub releases', async () => {
+  const source = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
+  assert.match(source, /if: steps\.plan\.outputs\.operation == 'version'/u);
+  assert.match(source, /create-github-releases: false/u);
+  assert.match(source, /push-git-tags: false/u);
+  assert.doesNotMatch(source, /publish-script:/u);
+  assert.match(source, /run: npm run release:publish-alpha/u);
 });

@@ -21,8 +21,14 @@ only when it replays the same corpus.
   reduced-motion policy apply after the trusted enhancer activates.
 - Charts retain an accessible data table; math and diagrams retain their escaped source; drawings are
   rendered from bounded point/stroke data.
-- Styles are node-scoped. A CSP nonce is validated before it is emitted. No authored JavaScript,
-  handler, URL-bearing CSS, SVG source, or library configuration is accepted.
+- Portable rich text renders every governed block, inline node, and mark as semantic HTML. Callout and
+  highlight tones remain bounded `data-studio-tone` values; checklist state and depth render as
+  labelled native checkboxes in nested lists with explicit accessible levels; table headers, hard
+  breaks, and inert code language/source remain explicit in the output.
+- Styles are node-scoped through a bounded, lossless encoding of the schema-valid node ID, so distinct
+  nodes cannot share CSS or trusted enhancement targets. Public scope input and a CSP nonce are
+  validated before either is emitted. No authored JavaScript, handler, URL-bearing CSS, SVG source, or
+  library configuration is accepted.
 - The closed presentation intent maps to renderer-owned CSS. Motion is installed only by the
   disposable enhancer, respects reduced-motion preferences, and leaves content visible when
   JavaScript is absent. Parallax offsets are bounded and never accept authored measurements.
@@ -32,6 +38,8 @@ only when it replays the same corpus.
 - `allowBlobMedia` defaults to false. When explicitly enabled it applies only to a trusted media
   resolver's syntactically bounded `blob:https?` result. Active SVG/HTML media and all `data:` URLs
   still fail closed; ordinary resource, embed, and action URL sinks never inherit this authority.
+- Root and slot traversal is deterministic. Async host binding or media resolution cannot reorder the
+  returned HTML, scoped CSS, or trusted enhancement jobs relative to Blueprint document order.
 
 ## Normative conformance corpus
 

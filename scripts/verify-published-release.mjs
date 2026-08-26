@@ -19,6 +19,7 @@ export async function collectRegistryFailures(
     provenanceCommit,
     provenanceWorkflow = '.github/workflows/release.yml',
     requireProvenance = false,
+    skipMissing = false,
   } = {},
 ) {
   assertCoordinatedRelease(record);
@@ -32,7 +33,7 @@ export async function collectRegistryFailures(
     try {
       manifest = await npmJson(['view', `${name}@${version}`, '--json']);
     } catch {
-      failures.push(`${name}@${version} is absent from npm`);
+      if (!skipMissing) failures.push(`${name}@${version} is absent from npm`);
       continue;
     }
     if (manifest.version !== version) {

@@ -94,21 +94,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      # With pending changesets this maintains the version pull request; once
-      # that pull request merges, the guarded script publishes only a numeric
-      # alpha coordinate. Beta, RC, and stable promotion cannot pass this path.
-      - name: Create or update version pull request, or publish
+      # Changesets owns version calculation and the generated version PR only.
+      # Registry publication uses the retained, locally approved tarballs below
+      # so Changesets cannot move alpha/latest or create releases before proof.
+      - name: Create or update the version pull request
         id: release
-        if: steps.plan.outputs.operation != 'inactive'
+        if: steps.plan.outputs.operation == 'version'
         uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         with:
+          create-github-releases: false
           pr-title: 'chore: version Studio packages'
-          publish-script: npm run release:publish-alpha
+          push-git-tags: false
           version-script: npm run version-packages
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: ${{ steps.plan.outputs.operation == 'publish' && 'true' || 'false' }}
-          NODE_AUTH_TOKEN: ${{ steps.plan.outputs.operation == 'publish' && steps.plan.outputs.channel == 'alpha' && steps.plan.outputs.pre_mode == 'pre' && secrets.NPM_TOKEN || '' }}
+
+      - name: Publish missing approved tarballs to a non-channel staging tag
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:publish-alpha
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
 
       # Newly published packages must match the locally approved bytes and
       # provenance before this workflow is allowed to move a public tag.
@@ -136,3 +142,9 @@ jobs:
           RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
+
+      - name: Remove the non-channel staging tag after complete success
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:cleanup-staging
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

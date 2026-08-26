@@ -203,6 +203,65 @@ jobs:
               "Generated whole-family ${CHANNEL} promotion. Merge only after required review and CI pass."
           fi
 
+  stage:
+    name: Quarantine the immutable RC for Gate A evidence
+    needs: plan
+    if: needs.plan.outputs.operation == 'stage'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: studio-rc
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out exact RC candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ inputs.expected_main_sha }}
+
+      - name: Revalidate exact main after protected approval
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_MAIN_SHA" ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
+
+      - name: Set up Studio
+        uses: ./.github/actions/setup-studio
+
+      - name: Re-run the repository quality gate after approval
+        run: npm run check
+
+      - name: Generate approved local package tarball digests
+        run: npm run release:artifacts
+
+      - name: Verify npm authentication
+        run: |
+          set -euo pipefail
+          test -n "$NODE_AUTH_TOKEN"
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish or recover the RC quarantine family
+        run: npm run release:publish-stage
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+          PROMOTION_CHANNEL: rc
+          PROMOTION_EXPECTED_SHA: ${{ inputs.expected_main_sha }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+
+      - name: Prove exact provenance and clean public-registry installation
+        run: npm run release:verify-stage
+        env:
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+
   publish:
     name: Publish the immutable qualified package family
     needs: plan
@@ -275,7 +334,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish missing packages with npm provenance
+      - name: Publish missing approved tarballs to a non-channel staging tag
         run: npm run release:publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -298,7 +357,7 @@ jobs:
         env:
           RELEASE_APPROVED_ARTIFACTS: 'true'
           RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
-          RELEASE_PROVENANCE_COMMIT: ${{ inputs.expected_main_sha }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
           RELEASE_REQUIRE_PROVENANCE: 'true'
 
       - name: Reconcile the channel distribution tag
@@ -314,7 +373,7 @@ jobs:
           RELEASE_APPROVED_ARTIFACTS: 'true'
           RELEASE_DIST_TAG: ${{ inputs.channel == 'stable' && 'latest' || 'rc' }}
           RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
-          RELEASE_PROVENANCE_COMMIT: ${{ inputs.expected_main_sha }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
           RELEASE_REQUIRE_PROVENANCE: 'true'
 
       - name: Generate immutable GitHub release notes
@@ -356,3 +415,8 @@ jobs:
           node scripts/verify-github-release.mjs
           git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
           [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
+
+      - name: Remove the non-channel staging tag after complete success
+        run: npm run release:cleanup-staging
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

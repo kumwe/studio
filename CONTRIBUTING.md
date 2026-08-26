@@ -98,39 +98,52 @@ flowchart TD
     D --> E["Publish and verify alpha.N"]
     E --> F["Pin exact family in hosts"]
     F --> G["Prepare immutable rc.1 PR"]
-    G --> H["Reproduce and accept Gate A evidence"]
-    H --> I["Protected RC publication"]
-    I --> J["Gate B-qualified stable PR and publication"]
+    G --> H["Quarantine exact rc.N"]
+    H --> I["Reproduce and accept Gate A evidence"]
+    I --> J["Open official rc channel"]
+    J --> K["Gate B-qualified stable release"]
 ```
 
 1. Normal merges accumulate Changesets on `main`.
 2. **Alpha release train** runs on every `main` push. With pending Changesets it opens or updates the generated
    version PR without receiving npm credentials.
 3. Merging that generated PR consumes the Changesets. The next train run authenticates, accepts only a
-   coordinated numeric `alpha.N`, publishes all eight packages, verifies the complete set from npm, and repairs
-   the `alpha` tag.
+   coordinated numeric `alpha.N`, uploads the exact approved tarballs under a version-scoped
+   `studio-stage-*` tag, verifies the complete set and provenance from npm, and only then repairs the `alpha`
+   tag. Changesets never publishes, creates a Git tag, or creates a GitHub release.
 4. If a run was deleted or failed after credential rotation, manually dispatch **Alpha release train** from
    branch `main` with the exact current 40-character `main` SHA. A stale SHA or another branch fails closed.
 5. Hosts pin that exact release and verify `studio-release.json` plus the corpus digest before integration
    qualification.
 6. **Governed RC and stable promotion** is the only manual promotion entry point. RC preparation generates a
-   reviewable PR for all eight packages. The explicit numeric transform makes `0.1.0-alpha.9` become
-   `0.1.0-rc.1`; changing only the Changesets tag is forbidden because that would produce `rc.10`.
-7. **Evidence bundle** is supporting machinery, never a publisher. Generate bundles against the merged,
-   immutable RC candidate; reproduce them independently; commit the accepted records in a later commit; and
-   update `docs/roadmap/STATUS.md` only through the documented human review process.
-8. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
+   reviewable PR for all eight packages. The explicit numeric transform makes any `0.1.0-alpha.N` become
+   `0.1.0-rc.1`; changing only the Changesets tag is forbidden because it carries the alpha counter forward.
+7. After the promotion PR merges, dispatch the same workflow with the exact RC `expected_main_sha`,
+   `channel=rc`, and empty profiles/evidence SHAs. The protected `studio-rc` job publishes the immutable
+   tarballs only under the coordinate-scoped `studio-stage-*` quarantine tag, verifies exact bits and source
+   provenance, then installs all eight exact packages in a fresh unauthenticated npm consumer and audits their
+   signatures. It does not move `rc` or `latest`, create a Git tag, or create a GitHub release. Because npm
+   versions are immutable, run this only for the reviewed, frozen candidate; exact retries are idempotent.
+8. **Evidence bundle** is supporting machinery, never a publisher. Generate bundles against that merged,
+   quarantined RC candidate; Gate A criterion 13 executes the exact staged-registry clean-install proof.
+   Reproduce bundles independently, commit accepted records in a later commit, and update
+   `docs/roadmap/STATUS.md` only through the documented human review process. Retain the quarantine tag until
+   official RC publication completes.
+9. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
    revalidates Gate A, the candidate/evidence ancestry, executable profile assertions, current `main`, all eight
    package pins, exact locally packed tarballs, npm provenance, the `rc` tag, and the GitHub release. Local
-   artifacts and the registry preflight are prepared before `NPM_TOKEN` is made available.
-9. A release-blocking RC correction carries non-empty, patch-only Changesets. Dispatching the same workflow
-   with `channel` `rc` and no evidence SHAs creates the next generated coordinate (`rc.1` to `rc.2`). Feature,
-   minor, and major work returns to the next alpha train. The corrected candidate needs fresh evidence; an RC
-   is never overwritten.
-10. Gate B qualifies the published RC. The promotion workflow first verifies Gate A and Gate B and creates the
+   artifacts and the registry preflight are prepared before `NPM_TOKEN` is made available. Official RC
+   publication refuses to upload a missing coordinate: all eight exact packages must already have passed the
+   quarantine proof. Only this operation moves `rc`, creates the source-bound GitHub release, and removes the
+   quarantine tags after complete success.
+10. A release-blocking RC correction carries non-empty, patch-only Changesets. Dispatching the same workflow
+    with `channel` `rc` and no evidence SHAs creates the next generated coordinate (`rc.1` to `rc.2`). Feature,
+    minor, and major work returns to the next alpha train. The corrected candidate needs fresh evidence; an RC
+    is never overwritten.
+11. Gate B qualifies the published RC. The promotion workflow first verifies Gate A and Gate B and creates the
     deterministic stable metadata PR, then a second exact-SHA dispatch publishes from its merged commit through
     the protected `studio-stable` environment and the npm `latest` tag.
-11. Stable removes Changesets prerelease state. The alpha workflow then waits without error; the first later
+12. Stable removes Changesets prerelease state. The alpha workflow then waits without error; the first later
     feature Changeset enters a fresh alpha train automatically, so release development does not dead-end. The
     Changeset selects the next semantic base (`0.1.0` plus a patch Changeset becomes `0.1.1-alpha.0`), and later
     version PRs on that train advance the numeric `alpha.N` counter.
@@ -141,6 +154,7 @@ flowchart TD
 | --------------------------- | ---------------------------------------------------------- | --------- | --------------------------------------------- | ----------------------------------------------- |
 | Prepare `rc.1`              | Exact current alpha `main`                                 | `rc`      | Non-empty comma-separated executable profiles | Both empty                                      |
 | Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                         | Both empty                                      |
+| Stage RC for Gate A proof   | Exact current frozen RC candidate at `main`                | `rc`      | Empty                                         | Both empty                                      |
 | Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                         | Exact RC candidate, then later evidence commit  |
 | Prepare stable              | Exact current RC `main` containing accepted Gate A and B   | `stable`  | Empty                                         | Gate B-qualified RC, then later evidence commit |
 | Publish stable              | Exact merged stable-promotion commit at `main`             | `stable`  | Empty                                         | Gate B-qualified RC, then its evidence commit   |
@@ -155,17 +169,31 @@ the passing gate record. A profile label is not evidence: `evidence/profile-asse
 inputs and exact test lanes that each claim must reproduce. `studio.profile/authoring-web` is still a target and
 is rejected.
 
-The repository currently records Gate A as **Not assessed** and Gate B as **Blocked**. Therefore the promotion
-workflow is implemented but correctly refuses RC or stable publication today. Do not add placeholder claims,
-sample bundles, or invented gate records to make it pass.
+Stable environment claims follow the same rule. `evidence/environment-assertions.json` covers every
+`evidence/environment-matrix.json` identity and binds each executable variant to exact commands plus required
+browser, operating-system, toolchain, host, PHP, and database metadata. At present only `node-npm-workspace` and
+`generic-reference-host` have executable mappings. Chromium, Firefox, WebKit, Android, iOS, the three desktop
+operating systems, a clean npm consumer, and the Kumwe App MariaDB/MySQL/PostgreSQL matrix remain target-only
+and therefore block stable qualification. Dart/Flutter remains a non-blocking Version 3 target. A label such as
+iOS backed by a Linux Chromium run cannot qualify.
 
-Preparation never receives npm credentials. Publication is retry-safe: all eight packages are packed before
-authentication, and an already-published package is accepted only when its registry integrity and shasum equal
-the approved local tarball and its npm attestation names the expected package bytes and workflow source. Tags
-are reconciled only after the complete family verifies. An existing GitHub release must have the exact tag,
-title, notes, source commit, draft state, and prerelease state. After rotating `NPM_TOKEN`, repeat the publish
-dispatch with the same candidate/evidence pair and exact current `main` SHA. If `main` moved, review the new
-head and dispatch with that exact SHA; a superseded candidate or gate record fails closed.
+The repository currently records Gate A as **Not assessed** and Gate B as **Blocked**. Therefore the promotion
+workflow may prepare and quarantine an RC for exact registry evidence, but it correctly refuses to open the
+official `rc` channel or publish stable today. A quarantine coordinate is not a support claim or a GitHub
+release. Do not add placeholder claims, sample bundles, or invented gate records to make publication pass.
+
+Preparation never receives npm credentials. Publication is retry-safe: all eight packages are packed once
+before authentication and those exact retained bytes are rehashed immediately before upload. Missing packages
+are published directly from the approved `.tgz` files under a nonofficial, version-scoped staging tag; an
+already-published package is accepted only when its registry integrity and shasum equal the approved local
+tarball and its npm attestation names the expected package bytes and workflow source. No official `alpha`,
+`rc`, or `latest` tag moves until the complete family passes that verification. After channel reconciliation,
+the workflow verifies the family again and removes only its own staging tag. Alpha reconciliation also removes
+an erroneous prerelease `latest` tag left by legacy publication, but never overwrites or removes a stable
+`latest`. An existing GitHub release must have the exact tag, title, notes, source commit, draft state, and
+prerelease state. After rotating `NPM_TOKEN`, repeat the failed stage or official-publish dispatch with the same
+exact inputs. If `main` moved, review the new head and dispatch with that exact SHA; a
+superseded candidate or gate record fails closed.
 
 Repository administrators must configure `studio-rc` and `studio-stable` as protected GitHub environments with
 required maintainers/reviewers and deployment restricted to `main`. `NPM_TOKEN` must be scoped for publish and

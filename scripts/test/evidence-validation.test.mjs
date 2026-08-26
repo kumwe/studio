@@ -7,8 +7,10 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
+  buildEnvironmentAssertionIndex,
   buildProfileAssertionIndex,
   checksumFile,
+  commandForEvidenceLane,
   collectBundleFailures,
   collectChecksumMapFailures,
   collectGateRecordFailures,
@@ -27,6 +29,12 @@ const profileAssertionRegistry = JSON.parse(
 const profileAssertionIndex = buildProfileAssertionIndex(
   profileAssertionRegistry,
   criterionIndex.allowedProfiles,
+);
+const environmentMatrix = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/environment-matrix.json`, 'utf8'),
+);
+const environmentAssertionRegistry = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/environment-assertions.json`, 'utf8'),
 );
 const SOURCE_COMMIT = 'a'.repeat(40);
 const NOW = Date.parse('2026-08-24T12:00:00Z');
@@ -67,6 +75,26 @@ test('profile assertion registry fails closed on malformed assertion arrays', ()
   assert.ok(index.failures.some((failure) => failure.includes('invalid requiredRuns')));
 });
 
+test('environment assertions cover the matrix and keep unsupported variants non-executable', async () => {
+  const schema = JSON.parse(
+    await readFile(`${repositoryRoot}/evidence/schema/environment-assertions.schema.json`, 'utf8'),
+  );
+  const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema);
+  assert.equal(validate(environmentAssertionRegistry), true, JSON.stringify(validate.errors));
+  const index = buildEnvironmentAssertionIndex(environmentAssertionRegistry, environmentMatrix);
+  assert.deepEqual(index.failures, []);
+  assert.equal(index.assertionsById.size, environmentMatrix.environments.length);
+  assert.equal(index.assertionsById.get('ios-safari').status, 'target');
+  assert.equal(index.assertionsById.get('kumwe-app-host').variants.length, 3);
+  assert.deepEqual(index.assertionsById.get('generic-reference-host').variants[0].environment, {
+    browser: 'Chromium-141.0.7390.37',
+    host: 'generic-reference-host',
+    nodeMajor: 24,
+    npm: '11.9.0',
+    os: 'linux-x64',
+  });
+});
+
 test('a profile label cannot substitute for its registered executable assertions', async (t) => {
   const fixture = await createBundleFixture(t);
   const manifest = structuredClone(fixture.manifest);
@@ -76,6 +104,58 @@ test('a profile label cannot substitute for its registered executable assertions
     profileAssertions: profileAssertionIndex.profilesById,
   });
   assert.ok(failures.some((failure) => failure.includes('renderer-web is missing required')));
+});
+
+test('mandatory lane labels cannot substitute for their exact registered commands', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const manifest = structuredClone(fixture.manifest);
+  manifest.runs.find((run) => run.testId === 'accessibility/web').command = 'true';
+  const failures = await collectBundleFailures(manifest, fixture.context);
+  assert.ok(failures.includes('run accessibility/web did not run its registered command'));
+
+  const unknown = structuredClone(fixture.manifest);
+  unknown.runs.push({
+    ...unknown.runs[0],
+    testId: 'unregistered/label-only-lane',
+  });
+  const unknownFailures = await collectBundleFailures(unknown, fixture.context);
+  assert.ok(
+    unknownFailures.includes(
+      'run unregistered/label-only-lane is outside the closed evidence command registry',
+    ),
+  );
+});
+
+test('Gate A reproducibility requires the exact quarantined-registry install lane', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const manifest = structuredClone(fixture.manifest);
+  manifest.criteria = [
+    {
+      class: 'release',
+      criterionId: 'gate-a/13-reproducible-evidence',
+      outcome: 'positive',
+    },
+  ];
+  const missingFailures = await collectBundleFailures(manifest, fixture.context);
+  assert.ok(
+    missingFailures.includes(
+      'runs is missing criterion-specific lane release/staged-registry-install',
+    ),
+  );
+
+  manifest.runs.push({
+    ...manifest.runs[0],
+    command: 'true',
+    testId: 'release/staged-registry-install',
+  });
+  const fakeFailures = await collectBundleFailures(manifest, fixture.context);
+  assert.ok(
+    fakeFailures.includes('run release/staged-registry-install did not run its registered command'),
+  );
+
+  manifest.runs.at(-1).command = commandForEvidenceLane('release/staged-registry-install');
+  const exactFailures = await collectBundleFailures(manifest, fixture.context);
+  assert.ok(!exactFailures.some((failure) => failure.includes('staged-registry-install')));
 });
 
 test('retained RC evidence authenticates source inputs and versions at its own commit', async (t) => {
@@ -235,10 +315,15 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   assert.match(releaseWorkflow, /environment: studio-\$\{\{ inputs\.channel \}\}/u);
   assert.match(releaseWorkflow, /NPM_CONFIG_PROVENANCE: 'true'/u);
   assert.doesNotMatch(
-    releaseWorkflow.split('\n  publish:')[0],
+    releaseWorkflow.split('\n  stage:')[0],
     /NPM_TOKEN|NODE_AUTH_TOKEN/u,
     'plan and preparation must never receive npm credentials',
   );
+  const stageJob = releaseWorkflow.split('\n  stage:')[1].split('\n  publish:')[0];
+  assert.match(stageJob, /environment: studio-rc/u);
+  assert.match(stageJob, /npm run release:publish-stage/u);
+  assert.match(stageJob, /npm run release:verify-stage/u);
+  assert.doesNotMatch(stageJob, /release:reconcile-tag|release:cleanup-staging|gh release/u);
 
   const setupAction = await readFile(
     `${repositoryRoot}/.github/actions/setup-studio/action.yml`,
@@ -267,7 +352,7 @@ async function createBundleFixture(t) {
     ),
   );
   const runs = REQUIRED_EVIDENCE_LANES.map((testId, index) => ({
-    command: `node lane-${index}.mjs`,
+    command: commandForEvidenceLane(testId),
     endedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:01Z`,
     exitStatus: 0,
     retryCount: 0,
