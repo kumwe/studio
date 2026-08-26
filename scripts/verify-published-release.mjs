@@ -90,8 +90,25 @@ export async function collectRegistryEvidence(
       if (approved === undefined || !/^[a-f0-9]{40}$/u.test(provenanceCommit ?? '')) {
         failures.push(`${name}@${version} lacks approved provenance verification inputs`);
       } else {
-        try {
-          attestationDocument = await fetchAttestations(manifest.dist.attestations.url);
+        // The attestation endpoint replicates independently of the manifest
+        // and can 404 for a while after a publish the manifest already shows.
+        for (;;) {
+          try {
+            attestationDocument = await fetchAttestations(manifest.dist.attestations.url);
+            break;
+          } catch (error) {
+            if (now() >= propagationDeadline) {
+              failures.push(
+                `${name}@${version} provenance could not be read: ${
+                  error instanceof Error ? error.message : String(error)
+                }`,
+              );
+              break;
+            }
+            await sleep(REGISTRY_POLL_INTERVAL_MS);
+          }
+        }
+        if (attestationDocument !== undefined) {
           failures.push(
             ...(await collectProvenanceFailures(attestationDocument, {
               acceptProvenanceCommit,
@@ -101,12 +118,6 @@ export async function collectRegistryEvidence(
               version,
               workflowPath: provenanceWorkflow,
             })),
-          );
-        } catch (error) {
-          failures.push(
-            `${name}@${version} provenance could not be read: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
           );
         }
       }

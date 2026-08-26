@@ -191,6 +191,50 @@ describe('post-publication registry verification', () => {
     assert.ok(clock.slept > 0);
   });
 
+  it('tolerates attestation endpoint lag before failing provenance reads', async () => {
+    const clock = fakeClock();
+    let attestationReads = 0;
+    const failures = await collectRegistryFailures(record, {
+      approvedArtifacts,
+      fetchAttestations: async (url) => {
+        if ((attestationReads += 1) <= 2) {
+          throw new Error('npm attestation endpoint returned 404');
+        }
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        return provenance(name, approvedArtifacts.packages[name], provenanceCommit);
+      },
+      now: clock.now,
+      npmJson: registryManifest,
+      propagationWindowMs: 300_000,
+      provenanceCommit,
+      requireProvenance: true,
+      sleep: clock.sleep,
+    });
+    assert.deepEqual(failures, []);
+    assert.ok(attestationReads > 2);
+    assert.ok(clock.slept > 0);
+  });
+
+  it('still fails provenance reads once the propagation window closes', async () => {
+    const clock = fakeClock();
+    const failures = await collectRegistryFailures(record, {
+      approvedArtifacts,
+      fetchAttestations: async () => {
+        throw new Error('npm attestation endpoint returned 404');
+      },
+      now: clock.now,
+      npmJson: registryManifest,
+      propagationWindowMs: 60_000,
+      provenanceCommit,
+      requireProvenance: true,
+      sleep: clock.sleep,
+    });
+    assert.equal(
+      failures.filter((failure) => failure.includes('provenance could not be read')).length,
+      8,
+    );
+  });
+
   it('still reports absence and drift once the propagation window closes', async () => {
     const clock = fakeClock();
     const failures = await collectRegistryFailures(record, {
