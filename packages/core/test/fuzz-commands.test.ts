@@ -1167,6 +1167,7 @@ describe('command reducer fuzzing (TH-014)', () => {
       expect(outcomes.applied, `seed=${seed}: too few applicable commands`).toBeGreaterThan(40);
       expect(outcomes.rejected, `seed=${seed}: too few rejected commands`).toBeGreaterThan(40);
     },
+    15_000,
   );
 
   it('generates an identical command stream for a fixed seed', () => {

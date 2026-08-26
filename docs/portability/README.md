@@ -43,6 +43,25 @@ Cross-language documents and messages follow one canonical profile:
 Generated SDKs record the schema epoch, document contract revision, supported wire-protocol range, schema
 digest, and generator version. Hand-edited generated files are not release inputs.
 
+The Version 2 TypeScript projection is generated into `@kumwe/studio-protocol` from all 47 files in
+`schemas/`. `GeneratedProtocolModelMap` supplies the filename-to-root-type mapping, while
+`GENERATED_TYPESCRIPT_MODEL_METADATA` binds it to the exact schema-manifest bytes. The contract sync path
+regenerates it; `contracts:check` performs a clean byte comparison and confirms the runtime schema registry
+and manifest have the complete file set. The enclosing `npm run check` typecheck compiles the generated source,
+and its test phase schema-validates and round-trips every applicable positive example, vector, conformance
+fixture, corpus manifest, and release record.
+
+That round-trip proves preservation across the TypeScript JSON boundary, not semantic validation. Consumers
+must still apply the matching published schema and the normative behavior contracts. A TypeScript construct
+that cannot soundly represent a refinement deliberately remains broader rather than falsely excluding valid
+JSON; no generated root degenerates to an `any`/`unknown` placeholder.
+
+The compiler phase also synthesizes direct filename-to-root assignments for 234 of the 236 corpus literals.
+The two maximum-JSON-depth schema-profile vectors deliberately reach a TypeScript 6 recursive-comparison
+limit; their named boundary test must produce `TS2321` until the compiler can compare them, while both remain
+inside the all-document runtime schema and JSON-round-trip lane. This boundary is explicit and cannot silently
+turn into a cast or placeholder.
+
 ## Capability negotiation
 
 Every client/host pair negotiates:

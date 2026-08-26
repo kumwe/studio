@@ -51,7 +51,12 @@ capability.
 
 - Meta-validate every schema and prohibit unresolved references.
 - Maintain valid, invalid, boundary, malicious, prior-version and migration fixtures.
-- Generate TypeScript models and verify a clean regeneration diff; add the same Dart lane before a Version 3 native profile is claimed.
+- Generate all Version 2 TypeScript protocol models with `npm run protocol:models:generate`; the normal
+  `contracts:check` lane runs `protocol:models:check` and verifies exact schema-registry parity and manifest
+  provenance. The enclosing `npm run check` typecheck compiles generated sources, while its test phase proves
+  exact-root literal assignability within the documented compiler-depth boundary and schema-validates plus
+  JSON-round-trips all 236 applicable positive documents. Add the same Dart lane before a Version 3 native
+  profile is claimed.
 - Validate examples and documentation snippets against the exact schema/version they describe.
 - Run public API/schema compatibility diff against every supported release.
 - Map each normative `MUST`/`MUST NOT` statement to an executable assertion or an identified manual procedure.

@@ -25,7 +25,7 @@ The application shell composes packages but does not become a service locator. H
 
 ## Public exports
 
-Every package must define explicit exports. Deep imports into private source paths are unsupported. Public types are exported separately where the package manager permits it. Browser packages publish ESM and type declarations; there is no CommonJS compatibility promise unless a release explicitly declares one.
+Every package must define explicit exports. Deep imports into private source paths are unsupported. Public types are exported separately where the package manager permits it. Browser packages publish ESM and type declarations; there is no CommonJS compatibility promise unless a release explicitly declares one. `studio-protocol` exports the complete canonical schema registry plus generated `Generated*` models and provenance metadata from its root; consumers do not deep-import the checked-in generated file.
 
 Package side effects are prohibited except custom-element registration entry points whose names make registration explicit. Importing a protocol, core, SDK, or test package must not mutate globals.
 

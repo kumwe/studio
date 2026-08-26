@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { buildSchemaManifest, serializeSchemaManifest } from './lib/schema-manifest.mjs';
+
 const sourceDirectory = new URL('../schemas/', import.meta.url);
 const targetDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
 const exampleDirectory = new URL('../schemas/examples/', import.meta.url);
@@ -320,22 +322,10 @@ const manifestEntries = [];
 for (const name of copied.sort()) {
   const bytes = await readFile(new URL(name, sourceDirectory));
   const schema = JSON.parse(bytes.toString('utf8'));
-  manifestEntries.push({
-    digest: `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
-    file: name,
-    id: schema.$id,
-  });
+  manifestEntries.push({ bytes, file: name, schema });
 }
-const manifest = {
-  contractVersion: '0.1-draft',
-  epoch: 'https://schemas.kumwe.org/studio/v1/',
-  kind: 'schema-manifest',
-  schemas: manifestEntries,
-};
-await writeFile(
-  new URL('manifest.json', targetDirectory),
-  `${JSON.stringify(manifest, null, 2)}\n`,
-);
+const manifest = buildSchemaManifest(manifestEntries);
+await writeFile(new URL('manifest.json', targetDirectory), serializeSchemaManifest(manifest));
 
 // The corpus manifest lets a host verify a vendored copy of the whole corpus,
 // not only the schemas: a digest that differs by one byte is the difference

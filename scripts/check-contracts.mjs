@@ -3,6 +3,12 @@ import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
 
+import {
+  DOCUMENT_CONTRACT_REVISION,
+  SCHEMA_EPOCH,
+  SCHEMA_MANIFEST_GENERATOR,
+} from './lib/schema-manifest.mjs';
+
 const rootSchemaDirectory = new URL('../schemas/', import.meta.url);
 const packageSchemaDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
 const rootExampleDirectory = new URL('../schemas/examples/', import.meta.url);
@@ -263,7 +269,10 @@ const manifest = JSON.parse(
 );
 if (
   manifest.kind !== 'schema-manifest' ||
-  manifest.epoch !== 'https://schemas.kumwe.org/studio/v1/' ||
+  manifest.contractVersion !== DOCUMENT_CONTRACT_REVISION ||
+  manifest.epoch !== SCHEMA_EPOCH ||
+  manifest.generator?.name !== SCHEMA_MANIFEST_GENERATOR.name ||
+  manifest.generator?.version !== SCHEMA_MANIFEST_GENERATOR.version ||
   !Array.isArray(manifest.schemas)
 ) {
   throw new Error('The published schema manifest is malformed.');

@@ -6,14 +6,17 @@ export {
 } from './guards.js';
 export { HostPortFailure, isHostPortFailure } from './host-failure.js';
 export {
+  authoringMessageCatalogSchema,
   authoringWebVectorSchema,
   blockDefinitionSchema,
   bindingProjectionVectorSchema,
   blueprintSchema,
   commandSchema,
   commandVectorSchema,
+  canonicalVectorSchema,
   commonSchema,
   contentModelSchema,
+  corpusManifestSchema,
   designVocabularySchema,
   entrySchema,
   fieldAdapterSchema,
@@ -29,6 +32,7 @@ export {
   mediaReferenceSchema,
   mediaUploadGrantSchema,
   mediaUploadSessionSchema,
+  mediaVectorSchema,
   migrationSchema,
   patternSchema,
   pluginManifestSchema,
@@ -37,6 +41,7 @@ export {
   rendererWebVectorSchema,
   protocolSchemas,
   provenanceSchema,
+  richTextProjectionSchema,
   richTextSchema,
   schemaProfileSchema,
   schemaProfileVectorSchema,
@@ -45,10 +50,17 @@ export {
   studioDrawingSchema,
   studioMoneySchema,
   studioPresentationSchema,
+  studioReleaseSchema,
   studioTableSchema,
   themeSchema,
   unresolvedContributionSchema,
 } from './schemas.js';
+export {
+  GENERATED_PROTOCOL_SCHEMA_FILES,
+  GENERATED_TYPESCRIPT_MODEL_METADATA,
+  roundTripGeneratedProtocolModel,
+} from './generated/schema-models.js';
+export type * from './generated/schema-models.js';
 export {
   STUDIO_CONTRACT_VERSION,
   STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,

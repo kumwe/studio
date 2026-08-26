@@ -80,6 +80,11 @@ and production-browser lane.
 | `npm run release:plan`           | Whether alpha will version, publish, pause for RC, or wait to open the next post-stable train                                                  |
 | `npm run release:promotion-plan` | Validates and classifies the manual RC/stable operation selected through `PROMOTION_*` environment inputs                                      |
 
+Canonical schema changes use `npm run contracts:sync`; this also refreshes the package copies, manifest,
+generated TypeScript models, corpus manifest, and release record. Do not edit generated models directly.
+`npm run protocol:models:generate` and `npm run protocol:models:check` are focused diagnostic commands inside
+that one lifecycle, not alternate contract or release paths.
+
 Passing tests proves repository behavior; it does not by itself claim a conformance profile or pass Gate A/B.
 Accepted gate status lives only in `docs/roadmap/STATUS.md` and requires immutable reproduced evidence and the
 specified human review.
