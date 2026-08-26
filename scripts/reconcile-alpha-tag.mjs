@@ -20,6 +20,7 @@ export async function reconcileAlphaTags(
 ) {
   const failures = [];
   const latestRemoved = [];
+  const latestRetained = [];
   const moved = [];
   const unchanged = [];
   const unpublished = [];
@@ -36,7 +37,18 @@ export async function reconcileAlphaTags(
         await removeTag(name, 'latest');
         latestRemoved.push(`${name}@${latest}`);
       } catch (error) {
-        failures.push(`${name} latest: ${error instanceof Error ? error.message : String(error)}`);
+        // The public registry refuses to delete the latest dist-tag outright
+        // (403 on DELETE), so an all-prerelease family cannot shed the tag
+        // npm assigned on first publish. A refusal that provably left the
+        // tag exactly where it was is registry policy, not drift; any other
+        // removal failure still blocks reconciliation.
+        if ((await npmValue(['view', name, 'dist-tags.latest'])) === latest) {
+          latestRetained.push(`${name}@${latest}`);
+        } else {
+          failures.push(
+            `${name} latest: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }
     }
 
@@ -53,17 +65,10 @@ export async function reconcileAlphaTags(
     }
   }
 
-  for (const { name } of packages) {
-    const latest = await npmValue(['view', name, 'dist-tags.latest']);
-    if (isErroneousPrereleaseLatest(latest)) {
-      failures.push(`${name} latest still points to prerelease ${latest}`);
-    }
-  }
-
   if (failures.length > 0) {
     throw new Error(`Could not reconcile alpha registry tags:\n- ${failures.join('\n- ')}`);
   }
-  return { latestRemoved, moved, unchanged, unpublished };
+  return { latestRemoved, latestRetained, moved, unchanged, unpublished };
 }
 
 async function readNpmValue(arguments_) {
@@ -99,6 +104,9 @@ async function main() {
   for (const line of result.latestRemoved) {
     console.log(`Removed erroneous prerelease latest ${line}`);
   }
+  for (const line of result.latestRetained) {
+    console.warn(`Registry refused to delete prerelease latest ${line}; tag retained`);
+  }
   for (const line of result.moved) {
     console.log(`Moved alpha ${line}`);
   }
@@ -107,7 +115,8 @@ async function main() {
   }
   console.log(
     `Alpha tags reconciled: ${result.moved.length} moved, ${result.unchanged.length} already correct, ` +
-      `${result.latestRemoved.length} prerelease latest removed, ${result.unpublished.length} unpublished.`,
+      `${result.latestRemoved.length} prerelease latest removed, ` +
+      `${result.latestRetained.length} retained by registry policy, ${result.unpublished.length} unpublished.`,
   );
 }
 
