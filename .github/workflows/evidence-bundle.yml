@@ -1,8 +1,9 @@
 name: Evidence bundle
 
 # Produces a pending evidence bundle for an exact candidate on an independent
-# runner. It does not reproduce evidence, record a human review, assess a gate,
-# or create a support/profile claim.
+# runner. Internal producers emit fixed, versioned structured outputs; this
+# workflow does not fabricate external/manual output, reproduce evidence,
+# record a human review, assess a gate, or create a support/profile claim.
 
 on:
   workflow_dispatch:
@@ -16,7 +17,7 @@ on:
         required: true
         type: string
       criteria:
-        description: Comma-separated Gate A IDs whose complete proof assertions are executable.
+        description: Comma-separated Gate A IDs; executable classes run and other classes remain explicit pending intake.
         required: true
         type: string
       profiles:
@@ -35,7 +36,7 @@ jobs:
   bundle:
     name: Produce pending evidence bundle
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - name: Validate dispatch inputs before checkout
         shell: bash
@@ -81,6 +82,8 @@ jobs:
           arguments=(
             --candidate "$EVIDENCE_CANDIDATE_SHA"
             --criteria "$EVIDENCE_CRITERIA"
+            --execution-attempt "$EVIDENCE_RUN_ATTEMPT"
+            --execution-id "github-actions/${EVIDENCE_RUN_ID}"
             --id "$bundle_id"
             --package "$EVIDENCE_WORK_PACKAGE"
             --runner "github-actions/${EVIDENCE_RUN_ID}/${EVIDENCE_RUN_ATTEMPT}"

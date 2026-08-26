@@ -30,7 +30,7 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Generate software bill of materials
+      - name: Smoke-check npm dependency SBOM generation (not release evidence)
         run: |
           npm sbom --sbom-format cyclonedx --omit dev > sbom.cdx.json
           node -e "JSON.parse(require('fs').readFileSync('sbom.cdx.json','utf8'))"

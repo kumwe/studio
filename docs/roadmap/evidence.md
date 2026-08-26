@@ -30,6 +30,21 @@ pinned reviewer registry may sign reproduction or rejection, and only a separate
 assign `met`, `not-met`, or `not-assessed`. Reviewer identity, role, or independence strings in the evidence
 JSON are not authority.
 
+Generation is class-scoped. For every requested criterion, the pending manifest records all of its required
+classes and the exact available and missing runs, subjects, or manual procedure. Every executable class runs
+even when the criterion also contains a `manual-input`, `external-input`, or target class; only a class whose
+complete registered contract ran receives a proof claim. This preserves useful machine evidence without
+misrepresenting the criterion as complete. A later gate may mark the criterion `met` only when authenticated,
+reviewed bundles cover every class in `evidence/gate-criteria.json`.
+
+Manual and external classes enter through the closed `evidence-intake-v1` envelope and
+`npm run evidence:assemble -- --pending <bundle-directory> --intake <intake.json>`. The envelope binds the
+exact bundle, candidate commit/tree, work package, execution/run identities, criterion/class/lane, artifact
+roles, paths, media types, and checksums. The assembler invokes the registered verifier in a credential-free
+environment and retains its real output in a new immutable bundle. It never fabricates a human observation,
+reviewer authority/signature, external workflow result, reproduction decision, or gate outcome; review remains
+pending after assembly.
+
 ## Evidence classes
 
 | Class             | What it proves                                                      | Minimum form                                                                                                                                    |
@@ -77,6 +92,13 @@ exact frozen RC. That command requires all eight candidate tarballs and source-b
 coordinate-scoped quarantine tag, then proves an unauthenticated clean install, embedded release records, and
 npm signatures. Quarantine does not move the official `rc` tag or create a release; it remains until Gate A is
 reviewed and the official publication succeeds.
+
+Internal structured evidence uses `evidence/producer-contracts.json` plus versioned producer-output and
+CycloneDX schemas. Each fixed output is canonical, checksum-retained, and bound to the exact candidate commit,
+coordinated eight-package map, release record, protocol schema manifest, and corpus manifest. Lifecycle and
+TypeScript portability are executable classes; reference-host and media/rich-text outputs are executable
+components of integration proof, while the integration classes remain unavailable without authenticated App
+input. The release class is executable, but criterion 13 still requires its independent manual-decision class.
 
 | Gate B identifier                     | Required evidence classes        |
 | ------------------------------------- | -------------------------------- |
@@ -145,11 +167,11 @@ A criterion has exactly one gate outcome:
   selected raw artifacts. Merely reading the CI badge is not reproduction.
 - Flaky evidence is failing evidence. A retry is recorded and must be classified and corrected before a gate.
 
-The exact clean-room checkout, toolchain checks, Chromium installation, generator invocation, and
-post-generation validation command are maintained in `evidence/README.md`. The generator uses fixed
-argument vectors rather than a shell, stages outside the bundle tree, and records all mandatory quality,
-contract, unit, build, and accessibility lanes with zero retries. Its result remains pending until the
-human procedure is complete.
+The exact clean-room checkout, toolchain checks, Chromium installation, generator invocation, intake assembly,
+and post-generation validation commands are maintained in `evidence/README.md`. The generator and assembler
+use fixed argument vectors rather than a shell, stage outside the bundle tree, and retain only bounded,
+credential-scanned output. A class-scoped result remains pending until all required inputs, independent
+reproduction, and human review are complete.
 
 The current-main release controller also compares the candidate's exact verifier/publisher source closure,
 setup action, and byte-identical npm lockfile before RC authorization. Stable preparation may change only the
@@ -202,6 +224,10 @@ This model is instantiated in the repository:
   manual decisions and accessibility;
 - `evidence/external-subject-assertions.json` and its subject schema — exact cross-repository workflow,
   source, candidate, and package-family binding for Kumwe App evidence;
+- `evidence/schema/evidence-intake-v1.schema.json` and `scripts/assemble-evidence-bundle.mjs` — closed,
+  checksum-bound manual/external intake and immutable credential-free assembly;
+- `evidence/producer-contracts.json`, its registry schema, the producer-output schema, and the CycloneDX schema —
+  exact internal lane/output contracts and closed per-role content;
 - `evidence/reviewer-authorities.json`, its exact `.sha256` companion, and the review-attestation/authority
   schemas — public reviewer keys/roles and signed-review format; repository pinning proves structure and
   signatures, while release authority remains inert without the matching protected external digest;
@@ -229,10 +255,13 @@ authentication, and imported release-policy helpers must also equal the executin
 keeps the acceptance proof executable: missing, fabricated, stale,
 or self-certified evidence cannot pass a gate.
 
-The registry deliberately keeps the specialized lifecycle, host/media integration, TypeScript portability,
-release-family/SBOM, every Gate B binding, and Kumwe App lanes non-executable until each producer has a closed
-semantic schema and validator for every structured artifact role. It also keeps
+The registry now makes the internal lifecycle, TypeScript portability, and release-family/SBOM/staged-registry
+producers executable. Reference-host and media/rich-text producers are also executable. Their outputs are
+retained in class-scoped pending bundles even while dependent integration classes remain `external-input`
+until grounded App evidence arrives; no executable sibling class is discarded and no unavailable class is
+claimed. Every Gate B binding and Kumwe App lane remains non-executable. The registry also keeps
 `studio.profile/authoring-web` as a target bound to both an exact Kumwe App real-shell subject and the complete
 manual accessibility procedure. Neither a profile label nor the existing automated browser lane can promote
 that target. RC/stable metadata nevertheless freezes the complete fixed nine-profile Version 2 surface, so
-`authoring-web` must be completed rather than omitted before official RC publication.
+`authoring-web` must be completed rather than omitted before official RC publication. Acceptance always
+requires all registered classes; neither internal output nor intake bytes alone can manufacture human proof.

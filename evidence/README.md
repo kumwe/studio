@@ -4,8 +4,10 @@ This directory is the executable form of the acceptance model in
 `docs/roadmap/evidence.md`. It defines stable Gate A and Gate B criteria, bundle and decision schemas,
 strict source/artifact validation, and deliberately failing specimens.
 
-The proof-binding and signed-review machinery is implemented. Specialized producers identified below are
-still explicit targets, no real bundle has been reproduced, and no gate record exists.
+The proof-binding and signed-review machinery is implemented. Phase 2 adds closed, versioned contracts and
+deterministic internal producers for lifecycle, reference-host HTTP, media/rich-text, TypeScript portability,
+the reproducible eight-package family, CycloneDX SBOM, and staged-registry proof. No real bundle has yet been
+independently reproduced or accepted, and no gate record exists.
 `docs/roadmap/STATUS.md` remains the sole gate authority: Gate A is not assessed and Gate B is blocked.
 
 ## Layout
@@ -16,6 +18,7 @@ still explicit targets, no real bundle has been reproduced, and no gate record e
 | `profile-assertions.json`                   | Exact source inputs and executable test lanes for every profile           |
 | `environment-assertions.json`               | Closed executable/target mapping for every environment-matrix identity    |
 | `proof-assertions.json`                     | Exact runs, roles, subjects, and availability for every Gate A/B class    |
+| `producer-contracts.json`                   | Fixed lane, filename, media type, role, and schema for producer outputs   |
 | `manual-procedures.json`                    | Closed human procedures; each step and reviewer role is mandatory         |
 | `external-subject-assertions.json`          | Exact external repository/workflow/source/package-family bindings         |
 | `reviewer-authorities.json`                 | Public reviewer keys/roles                                                |
@@ -23,6 +26,9 @@ still explicit targets, no real bundle has been reproduced, and no gate record e
 | `schema/environment-assertions.schema.json` | Closed schema for environment commands, variants, and metadata predicates |
 | `schema/gate-criteria.schema.json`          | Closed schema for the criterion registry                                  |
 | `schema/evidence-bundle.schema.json`        | Closed schema for one immutable bundle manifest                           |
+| `schema/evidence-intake-v1.schema.json`     | Closed checksum-bound manual/external intake envelope                     |
+| `schema/producer-output-v1.schema.json`     | Closed per-role schema for internal structured evidence                   |
+| `schema/cyclonedx-sbom-v1.schema.json`      | Closed deterministic CycloneDX candidate graph                            |
 | `schema/gate-record.schema.json`            | Closed schema for a multi-bundle, per-criterion gate decision             |
 | `bundles/<bundleId>/manifest.json`          | One manifest; regular files below `artifacts/` are its exact outputs      |
 | `gates/gate-<a\|b>.json`                    | Gate records; none exist, so Gate A is unassessed and Gate B is blocked   |
@@ -47,16 +53,23 @@ browser/mobile/desktop, clean-consumer, and Kumwe App database variants remain `
 qualification and they block Version 2 stable release. The target-only Dart/Flutter row belongs to Version 3
 and does not block Version 2.
 
-Specialized Gate A classes and all 32 Gate B criterion/class bindings are explicit targets, not gaps hidden
-behind labels. Contribution lifecycle,
-reference-host integration, rich-text/media integration, TypeScript portability, reproducible-family/SBOM,
-and Kumwe App real-shell producers remain `target` or `external-input` until their registered scripts and
-authenticated outputs land. Manual decisions and accessibility use registered procedures and require a
-checksum-bound record from a human with the exact role, complete step set, and identity independent of every
-runner. Gate A criterion 13 additionally binds the staged-registry command, but that command alone cannot
-satisfy the release class: all registered family, provenance, SBOM, reproducibility, clean-consumer,
-signature, and staged-registry artifacts are required. The RC quarantine is not the official `rc` channel or
-a support claim.
+All 32 Gate B criterion/class bindings remain explicit targets, not gaps hidden behind labels. The internal
+contribution-lifecycle and TypeScript-portability classes are executable. The reference-host and
+rich-text/media producers are executable components of criteria whose integration class also requires
+authenticated Kumwe App real-shell output. A requested criterion therefore produces a class-scoped pending
+bundle: every executable class runs and is retained even when a sibling class is `manual-input`,
+`external-input`, or `target`. The pending scope names every required class and its available and missing
+runs; only a fully executed class receives a proof claim. Acceptance still requires every class registered for
+the criterion across authenticated, reviewed bundles.
+
+Manual decisions and accessibility use registered procedures and require a checksum-bound record from a
+human with the exact role, complete step set, and identity independent of every runner. External classes
+likewise require their registered signed subject, report, attestation, and review authentication. These bytes
+enter only through the closed intake/assembly route; an internal producer never fabricates a human observation
+or external result. Gate A criterion 13 additionally binds the staged-registry command, but that command alone
+cannot satisfy the criterion: its independent manual-decision class is still required, and the release class
+itself requires all registered family, provenance, SBOM, reproducibility, clean-consumer, signature, and
+staged-registry artifacts. The RC quarantine is not the official `rc` channel or a support claim.
 
 `studio.profile/authoring-web` remains an explicit target within the mandatory nine-profile product surface.
 Its future executable route is closed over the
@@ -91,8 +104,9 @@ fail.
 - Recorded paths are bounded repository-relative paths. Validators resolve them, refuse traversal and
   symlinks, require bounded mode-`0644` review files and regular tracked source modes, and verify the resolved
   path remains inside the selected checkout.
-- Every real bundle carries all mandatory lane IDs with ordered timestamps, exit status zero, and zero
-  retries. Retried evidence is failing evidence.
+- Every generated claim carries all mandatory lane IDs for its class with ordered timestamps, exit status
+  zero, and zero retries. Pending scope retains unavailable class/run IDs explicitly; it does not convert them
+  into claims. Retried evidence is failing evidence.
 - The generator stages outside `evidence/bundles/`, rechecks `HEAD` and cleanliness after all commands,
   validates its manifest, and atomically renames it into place. An existing bundle is never replaced.
 - A changed input, artifact, commit, package version, profile, or review produces a new bundle; a
@@ -125,16 +139,17 @@ For a gate it additionally requires:
   accessibility, security, compatibility, and data-integrity reviewers with authority for those roles; and
 - a passing decision to have every criterion met and no unresolved critical/high defect.
 
-When no record exists, the command prints every stable criterion as uncovered and leaves the gate
-unassessed. It never manufactures a record or changes `STATUS.md`. Without the protected external digest it
+When no record exists, the command reports structural coverage as absent. That diagnostic is not a programme
+decision: it never manufactures a record or changes `STATUS.md`, whose authoritative states remain Gate A
+**Not assessed** and Gate B **Blocked**. Without the protected external digest it
 can validate registry checksums, signatures, records, and artifact closure for CI, but it explicitly reports
 any signed gate as structurally verified and still release-unassessed. Only the protected release verifier can
 authorize the decision.
 
 ## Producing a pending bundle
 
-Install the locked Chromium first, then identify one or more criterion IDs for which every registered proof
-class is currently executable:
+Install the locked Chromium first, then identify one or more criterion IDs that include at least one currently
+executable registered lane:
 
 ```bash
 ./node_modules/.bin/playwright install --with-deps chromium
@@ -145,14 +160,20 @@ node scripts/create-evidence-bundle.mjs \
   --runner local/clean-room
 ```
 
-The generator plans claims from `proof-assertions.json` and refuses a criterion unless every required class is
-currently executable. It never emits a partial criterion: lifecycle, integration, portability, accessibility,
-release, and manual-decision criteria remain unavailable until their exact specialized/manual/external inputs
-exist. Gate A criterion 13 therefore cannot be generated merely by running quarantine. The script accepts no shell fragments:
-every flag is unique and bounded, the package and bundle ID are validated before filesystem access, criteria
-and profiles must exist in the registry, and unknown or missing flags fail. It runs format, lint, typecheck,
-build, all contract/governance scripts, the complete unit/Node test command, and the Chromium accessibility
-lane with zero retries. Each lane gets a bounded, credential-scanned log artifact.
+The generator plans class scope from `proof-assertions.json`. It records every requested criterion/class and
+runs the union of executable lanes even when the same criterion also requires manual or external input. It
+emits proof claims only for classes whose complete registered run/subject contract is available; unavailable
+classes remain explicit in `scope.proofs` with their status and missing run, subject, or procedure binding. It
+refuses only a requested scope with no executable producer lane. Landed lifecycle and portability producers can
+therefore be retained now; integration still needs authenticated App input, and accessibility and
+manual-decision classes still need their registered human records. The release producer is executable, but
+Gate A criterion 13 still requires independent manual reproduction in addition to quarantine.
+
+The script accepts no shell fragments: every flag is unique and bounded, the package and bundle ID are
+validated before filesystem access, criteria and profiles must exist in the registry, and unknown or missing
+flags fail. It runs format, lint, typecheck, build, all contract/governance scripts, the complete unit/Node test
+command, and the Chromium accessibility lane with zero retries. Each lane gets a bounded, credential-scanned
+log artifact.
 
 The generated manifest has nonempty mechanical criterion/class entries with exact proof references and
 `review: { "status": "pending" }`. These criterion entries describe evidence modality (`positive`,
@@ -162,6 +183,32 @@ write `met`, cannot mark reproduction, and cannot accept a gate.
 The `Evidence bundle` workflow accepts an exact candidate SHA, validates dispatch values before
 checkout, installs the locked toolchain and Chromium, derives an immutable server-side bundle ID, and
 uploads only the generated directory. A badge or downloaded workflow artifact is not reproduction.
+
+## Completing manual or external classes
+
+Manual and external evidence is assembled into a downloaded pending bundle through one closed command:
+
+```bash
+npm run evidence:assemble -- \
+  --pending <downloaded-pending-bundle-directory> \
+  --intake <evidence-intake-v1.json>
+```
+
+The intake document must validate against `schema/evidence-intake-v1.schema.json`. Its bundle ID, candidate
+commit and tree, work package, execution ID/attempt/runner, criterion, class, lane, and per-run identity must
+match the pending manifest and registry exactly. Every source artifact declares its checksum, media type,
+role, and destination below that exact bundle's `artifacts/` directory. Manual input must contain the closed
+procedure record, signed review attestation, detached signature, and captured observation required by the
+lane. External input must contain the registered subject, report, attestation, signed human review,
+detached signature, and exact source/lockfile/package-family bindings. The assembler rejects undeclared,
+substituted, extra, escaping, symlinked, oversized, checksum-mismatched, or secret-bearing bytes.
+
+Assembly copies into a new immutable bundle target, runs the registered manual or external verifier with a
+credential-free environment, retains its real log, and changes only the completed class from pending scope to
+a generated proof claim. It does not edit the downloaded pending bundle and leaves bundle review
+`status: pending`. It cannot invent a person's observations, signature, authority, independence, or an
+external workflow result. A criterion becomes acceptable only after every required class is authenticated,
+independently reproduced, reviewed, and linked by the later gate decision.
 
 ## Reviewer clean-room procedure
 
@@ -221,13 +268,18 @@ exactly equal the pinned authority. Reproduction still does not set a gate outco
    repeats validation with `STUDIO_REVIEWER_AUTHORITY_SHA256`; a failing record may preserve `not-assessed`,
    while a passing record may not.
 
-## Phase 2 producer prerequisites
+## Phase 2 producer contracts
 
-Changing a target lane to executable is a separate reviewed implementation increment. It requires a closed
-semantic schema and validator for every non-log artifact role, a deterministic producer for that role, and
-adversarial tests proving that arbitrary bytes, renamed outputs, and producer substitutions fail. This applies
-to lifecycle, reference-host, media/rich-text, TypeScript portability, release-family/SBOM/staged-registry, and
-every Gate B target lane.
+`producer-contracts.json` fixes each internal output's lane, filename, media type, role, and versioned schema.
+The generator gives a producer an exclusive output directory, requires exact regular-file membership, retains
+canonical JSON bytes and checksums, and binds each document to the candidate commit, coordinated package map,
+release record, protocol schema manifest, and corpus manifest. The validator replays those semantics from the
+frozen candidate and rejects arbitrary bytes, renamed or extra outputs, symlinks, role/producer substitution,
+incomplete package families, SBOM drift, and staged-versus-approved digest drift.
+
+Gate B remains target-only until equivalent per-role contracts and producers land. Manual decisions,
+accessibility observations, the authoring shell, and external-host evidence are authenticated intake contracts;
+an automated Studio producer never fabricates them.
 
 The Kumwe App lane remains target-only until Studio verifies independently authenticated GitHub workflow
 provenance for the exact App repository, ref, commit, tree, workflow path and commit, run ID/attempt, command,

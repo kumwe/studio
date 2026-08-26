@@ -101,9 +101,12 @@ export async function collectManualRecordFailures(record, context) {
   if (
     record.bundleId !== context.bundleId ||
     record.candidateCommit !== context.candidateCommit ||
+    record.candidateTree !== context.candidateTree ||
     record.criterionId !== procedure.criterionId ||
     record.evidenceClass !== procedure.evidenceClass ||
-    record.procedureId !== procedure.id
+    record.procedureId !== procedure.id ||
+    record.workPackage !== context.workPackage ||
+    !sameExecution(record.execution, context.execution)
   ) {
     failures.push('manual evidence record is not bound to its candidate, criterion, and procedure');
   }
@@ -213,20 +216,32 @@ export async function collectManualRecordFailures(record, context) {
       expectedSubject: {
         bundleId: record.bundleId,
         candidateCommit: record.candidateCommit,
+        candidateTree: record.candidateTree,
         criterionId: record.criterionId,
         decision: record.outcome,
         evidenceClass: record.evidenceClass,
+        execution: record.execution,
         kind: 'manual-review',
         laneId: procedure.laneId,
         procedureChecksum: record.procedureChecksum,
         procedureId: record.procedureId,
         runStartedAt: context.runStartedAt,
+        workPackage: record.workPackage,
       },
       requiredRole: procedure.requiredReviewerRole,
       subjectBytes: context.subjectBytes,
     })),
   );
   return failures;
+}
+
+function sameExecution(left, right) {
+  return (
+    left?.attempt === right?.attempt &&
+    left?.id === right?.id &&
+    left?.runId === right?.runId &&
+    left?.runner === right?.runner
+  );
 }
 
 function sameMembers(left, right) {

@@ -237,6 +237,7 @@ export async function collectSignedReviewFailures({
       attestationBytes,
       authority,
       signaturePath,
+      temporaryParent: context.temporaryRoot,
     });
   } catch {
     failures.push(`review attestation signature is not valid for ${authority.identity}`);
@@ -281,8 +282,10 @@ async function resolveClosedReviewFile(path, context, maximumBytes) {
   return resolved;
 }
 
-async function verifySshSignature({ attestationBytes, authority, signaturePath }) {
-  const temporaryRoot = await mkdtemp(join(tmpdir(), 'studio-review-authority-'));
+async function verifySshSignature({ attestationBytes, authority, signaturePath, temporaryParent }) {
+  const temporaryRoot = await mkdtemp(
+    join(temporaryParent ?? tmpdir(), 'studio-review-authority-'),
+  );
   const allowedSignersPath = join(temporaryRoot, 'allowed_signers');
   try {
     const allowedSigners = authority.publicKeys

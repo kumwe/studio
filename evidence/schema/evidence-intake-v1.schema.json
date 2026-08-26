@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/evidence-intake-v1.schema.json",
+  "title": "Studio authenticated evidence intake version 1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "bundleId",
+    "candidateCommit",
+    "candidateTree",
+    "contractVersion",
+    "entries",
+    "execution",
+    "kind",
+    "pendingExecution",
+    "workPackage"
+  ],
+  "properties": {
+    "bundleId": { "$ref": "#/$defs/bundleId" },
+    "candidateCommit": { "$ref": "#/$defs/commitSha" },
+    "candidateTree": { "$ref": "#/$defs/commitSha" },
+    "contractVersion": { "const": "1.0.0" },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifacts",
+          "class",
+          "criterionId",
+          "kind",
+          "laneId",
+          "runId",
+          "verificationStartedAt"
+        ],
+        "properties": {
+          "artifacts": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["checksum", "mediaType", "role", "sourcePath", "targetPath"],
+              "properties": {
+                "checksum": { "$ref": "#/$defs/sha256Integrity" },
+                "mediaType": {
+                  "type": "string",
+                  "pattern": "^[a-z]+/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(?![\\s\\S])",
+                  "maxLength": 120
+                },
+                "role": { "$ref": "#/$defs/stableId" },
+                "sourcePath": { "$ref": "#/$defs/relativePath" },
+                "targetPath": { "$ref": "#/$defs/relativePath" }
+              }
+            }
+          },
+          "class": { "enum": ["accessibility", "integration", "manual-decision"] },
+          "criterionId": { "$ref": "#/$defs/stableId" },
+          "kind": { "enum": ["manual", "external"] },
+          "laneId": { "$ref": "#/$defs/stableId" },
+          "runId": { "$ref": "#/$defs/stableId" },
+          "verificationStartedAt": { "$ref": "#/$defs/rfc3339Timestamp" }
+        }
+      }
+    },
+    "execution": { "$ref": "#/$defs/execution" },
+    "kind": { "const": "studio-evidence-intake" },
+    "pendingExecution": { "$ref": "#/$defs/execution" },
+    "workPackage": { "$ref": "#/$defs/workPackage" }
+  },
+  "$defs": {
+    "bundleId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 120
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "id", "runner"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "id": { "$ref": "#/$defs/stableId" },
+        "runner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+        }
+      }
+    },
+    "relativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "rfc3339Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    },
+    "workPackage": {
+      "type": "string",
+      "pattern": "^(?:M[1-6]-[0-9]{2}|ST-(?:[0-9]|1[01]))$(?![\\s\\S])",
+      "maxLength": 5
+    }
+  }
+}

@@ -16,8 +16,15 @@ const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
 async function main() {
   const procedureId = parseProcedureArgument(process.argv.slice(2));
-  const recordPath = await resolveRegularInput(process.env.STUDIO_MANUAL_EVIDENCE_PATH);
-  const manifestPath = await resolveRegularInput(process.env.STUDIO_MANUAL_BUNDLE_MANIFEST_PATH);
+  const evidenceRoot = await resolveEvidenceRoot(process.env.STUDIO_EVIDENCE_ROOT);
+  const recordPath = await resolveRegularInput(
+    evidenceRoot,
+    process.env.STUDIO_MANUAL_EVIDENCE_PATH,
+  );
+  const manifestPath = await resolveRegularInput(
+    evidenceRoot,
+    process.env.STUDIO_MANUAL_BUNDLE_MANIFEST_PATH,
+  );
   const [recordBytes, manifestBytes] = await Promise.all([
     readFile(recordPath),
     readFile(manifestPath),
@@ -80,8 +87,15 @@ async function main() {
     artifactsByPath,
     bundleId: manifest.bundleId,
     candidateCommit,
-    evidenceRoot: repositoryRoot,
+    candidateTree: manifest.source?.tree,
+    evidenceRoot,
     now: Date.now(),
+    execution: {
+      attempt: run?.executionAttempt,
+      id: run?.executionId,
+      runId: run?.runId,
+      runner: run?.runner,
+    },
     procedure,
     reviewerAuthorities: authorityIndex.authoritiesByIdentity,
     reviewerAuthorityStructuralPinVerified: true,
@@ -95,6 +109,7 @@ async function main() {
     validateSchema,
     validateReviewAttestationSchema,
     verificationStartedAt: Date.parse(run?.startedAt ?? ''),
+    workPackage: manifest.workPackage,
   });
   if (failures.length > 0) {
     throw new Error(`Manual evidence record failed verification:\n- ${failures.join('\n- ')}`);
@@ -130,19 +145,34 @@ function parseRunnerIdentities(value) {
   return identities;
 }
 
-async function resolveRegularInput(value) {
+async function resolveEvidenceRoot(value) {
+  const candidate = value === undefined ? repositoryRoot : resolve(repositoryRoot, value);
+  if (!isContained(repositoryRoot, candidate)) {
+    throw new Error('STUDIO_EVIDENCE_ROOT must remain inside the repository.');
+  }
+  const stat = await lstat(candidate);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) {
+    throw new Error('STUDIO_EVIDENCE_ROOT must be a regular, non-symlink directory.');
+  }
+  if (!isContained(await realpath(repositoryRoot), await realpath(candidate))) {
+    throw new Error('STUDIO_EVIDENCE_ROOT resolves outside the repository.');
+  }
+  return candidate;
+}
+
+async function resolveRegularInput(root, value) {
   if (value === undefined || value.length === 0 || value.includes('\0')) {
     throw new Error('Manual evidence paths must name retained regular files.');
   }
-  const candidate = resolve(repositoryRoot, value);
-  if (!isContained(repositoryRoot, candidate) || isAbsolute(value)) {
+  const candidate = resolve(root, value);
+  if (!isContained(root, candidate) || isAbsolute(value)) {
     throw new Error('The manual evidence input must be a repository-relative path.');
   }
   const stat = await lstat(candidate);
   if (!stat.isFile() || stat.isSymbolicLink()) {
     throw new Error('The manual evidence input must be a regular, non-symlink file.');
   }
-  if (!isContained(await realpath(repositoryRoot), await realpath(candidate))) {
+  if (!isContained(await realpath(root), await realpath(candidate))) {
     throw new Error('The manual evidence input resolves outside the repository.');
   }
   return candidate;

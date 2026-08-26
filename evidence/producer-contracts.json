@@ -1,0 +1,90 @@
+{
+  "contractVersion": "1.0.0",
+  "kind": "studio-evidence-producer-contract-registry",
+  "contracts": [
+    {
+      "laneId": "lifecycle/contribution-runtime-v1",
+      "mediaType": "application/json",
+      "outputFile": "contribution-report.json",
+      "role": "lifecycle/contribution-report-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "integration/reference-host-http-v1",
+      "mediaType": "application/json",
+      "outputFile": "reference-host-report.json",
+      "role": "integration/reference-host-report-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "integration/media-rich-text-v1",
+      "mediaType": "application/json",
+      "outputFile": "media-rich-text-report.json",
+      "role": "integration/media-rich-text-report-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "portability/typescript-corpus-v2",
+      "mediaType": "application/json",
+      "outputFile": "typescript-generation.json",
+      "role": "portability/typescript-generation-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "portability/typescript-corpus-v2",
+      "mediaType": "application/json",
+      "outputFile": "corpus-replay.json",
+      "role": "portability/corpus-replay-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/reproducible-family-v1",
+      "mediaType": "application/json",
+      "outputFile": "approved-family.json",
+      "role": "release/approved-family-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/reproducible-family-v1",
+      "mediaType": "application/json",
+      "outputFile": "reproducible-family-report.json",
+      "role": "release/reproducible-family-report-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/sbom-v1",
+      "mediaType": "application/vnd.cyclonedx+json",
+      "outputFile": "studio-family.cdx.json",
+      "role": "release/cyclonedx-sbom-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/cyclonedx-sbom-v1.schema.json"
+    },
+    {
+      "laneId": "release/staged-registry-install",
+      "mediaType": "application/json",
+      "outputFile": "clean-consumer-lock.json",
+      "role": "release/clean-consumer-lock-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/staged-registry-install",
+      "mediaType": "application/json",
+      "outputFile": "provenance-set.json",
+      "role": "release/provenance-set-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/staged-registry-install",
+      "mediaType": "application/json",
+      "outputFile": "signature-audit.json",
+      "role": "release/signature-audit-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    },
+    {
+      "laneId": "release/staged-registry-install",
+      "mediaType": "application/json",
+      "outputFile": "staged-registry-report.json",
+      "role": "release/staged-registry-report-v1",
+      "schemaId": "https://schemas.kumwe.org/studio/evidence/producer-output-v1.schema.json"
+    }
+  ]
+}

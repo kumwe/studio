@@ -22,7 +22,8 @@ Describe the user or integrator problem and the outcome of this change.
 - [ ] Normative documentation and schemas agree
 - [ ] Valid and invalid fixtures cover the change
 - [ ] Unit, integration, or conformance tests added
-- [ ] `npm run check`, `npm test`, and `npm run build` pass
+- [ ] The single contributor gate, `npm run verify`, passes
+- [ ] `npm run release:plan` was reviewed for the expected release impact/channel
 - [ ] Changeset added for published-package impact
 - [ ] Roadmap/status claims include reproducible evidence
 

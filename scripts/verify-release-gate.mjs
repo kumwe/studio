@@ -20,6 +20,7 @@ import {
 } from './evidence-validation.mjs';
 import { buildExternalSubjectAssertionIndex } from './external-evidence.mjs';
 import { buildManualProcedureIndex } from './manual-evidence.mjs';
+import { buildProducerContractIndex } from './producer-evidence.mjs';
 import {
   assertReviewerAuthorityReleaseTrust,
   assertReviewerAuthorityStructuralPin,
@@ -38,9 +39,11 @@ import {
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const shaPattern = /^[a-f0-9]{40}$/u;
 const candidateEvidenceSchemaNames = Object.freeze([
+  'cyclonedx-sbom-v1.schema.json',
   'environment-assertions.schema.json',
   'environment-matrix.schema.json',
   'evidence-bundle.schema.json',
+  'evidence-intake-v1.schema.json',
   'external-attestation.schema.json',
   'external-report.schema.json',
   'external-subject-assertions.schema.json',
@@ -50,6 +53,8 @@ const candidateEvidenceSchemaNames = Object.freeze([
   'manual-procedures.schema.json',
   'manual-record.schema.json',
   'proof-assertions.schema.json',
+  'producer-contracts.schema.json',
+  'producer-output-v1.schema.json',
   'review-attestation.schema.json',
   'reviewer-authorities.schema.json',
 ]);
@@ -806,16 +811,23 @@ async function loadCandidateEvidenceSemantics(candidateRoot) {
   const validateManualProcedures = validator('manual-procedures.schema.json');
   const validateExternalSubjectAssertions = validator('external-subject-assertions.schema.json');
   const validateProofAssertions = validator('proof-assertions.schema.json');
+  const validateProducerContracts = validator('producer-contracts.schema.json');
   const validateReviewerAuthorities = validator('reviewer-authorities.schema.json');
-  const [registry, profileAssertionRegistry, manualProcedureRegistry, externalSubjectRegistry] =
-    await Promise.all(
-      [
-        'gate-criteria.json',
-        'profile-assertions.json',
-        'manual-procedures.json',
-        'external-subject-assertions.json',
-      ].map((name) => readJson(resolve(candidateRoot, 'evidence', name))),
-    );
+  const [
+    registry,
+    profileAssertionRegistry,
+    manualProcedureRegistry,
+    externalSubjectRegistry,
+    producerContractRegistry,
+  ] = await Promise.all(
+    [
+      'gate-criteria.json',
+      'profile-assertions.json',
+      'manual-procedures.json',
+      'external-subject-assertions.json',
+      'producer-contracts.json',
+    ].map((name) => readJson(resolve(candidateRoot, 'evidence', name))),
+  );
   const proofAssertionRegistry = await readJson(
     resolve(candidateRoot, 'evidence/proof-assertions.json'),
   );
@@ -835,6 +847,7 @@ async function loadCandidateEvidenceSemantics(candidateRoot) {
     [validateManualProcedures(manualProcedureRegistry), 'manual procedure registry'],
     [validateExternalSubjectAssertions(externalSubjectRegistry), 'external subject registry'],
     [validateProofAssertions(proofAssertionRegistry), 'proof assertion registry'],
+    [validateProducerContracts(producerContractRegistry), 'producer contract registry'],
     [validateReviewerAuthorities(reviewerAuthorityRegistry), 'reviewer authority registry'],
   ]) {
     if (!valid) {
@@ -861,12 +874,16 @@ async function loadCandidateEvidenceSemantics(candidateRoot) {
     },
   );
   const reviewerAuthorityIndex = buildReviewerAuthorityIndex(reviewerAuthorityRegistry);
+  const producerContractIndex = buildProducerContractIndex(producerContractRegistry, {
+    schemaIds: new Set([...schemas.values()].map(({ $id }) => $id)),
+  });
   const registryFailures = [
     ...criterionIndex.failures,
     ...profileAssertionIndex.failures,
     ...manualProcedureIndex.failures,
     ...externalSubjectIndex.failures,
     ...proofAssertionIndex.failures,
+    ...producerContractIndex.failures,
     ...reviewerAuthorityIndex.failures,
   ];
   if (registryFailures.length > 0) {
@@ -879,6 +896,7 @@ async function loadCandidateEvidenceSemantics(candidateRoot) {
     externalSubjectAssertions: externalSubjectIndex.subjectsById,
     manualProcedures: manualProcedureIndex.proceduresById,
     profileAssertions: profileAssertionIndex.profilesById,
+    producerContractIndex,
     proofAssertions: proofAssertionIndex.assertionsByKey,
     registry,
     reviewerAuthorities: reviewerAuthorityIndex.authoritiesByIdentity,
@@ -890,6 +908,10 @@ async function loadCandidateEvidenceSemantics(candidateRoot) {
     validateExternalSubject: validator('external-subject.schema.json'),
     validateGate: validator('gate-record.schema.json'),
     validateManualRecord: validator('manual-record.schema.json'),
+    validateProducerSchema(schemaId, document) {
+      const validate = ajv.getSchema(schemaId);
+      return validate !== undefined && validate(document);
+    },
     validateReviewAttestation: validator('review-attestation.schema.json'),
   };
 }
@@ -913,6 +935,7 @@ export async function loadGateRecord({
     externalSubjectAssertions,
     manualProcedures,
     profileAssertions,
+    producerContractIndex,
     proofAssertions,
     registry,
     reviewerAuthorities,
@@ -924,6 +947,7 @@ export async function loadGateRecord({
     validateExternalSubject,
     validateGate,
     validateManualRecord,
+    validateProducerSchema,
     validateReviewAttestation,
   } = semantics;
   assertReviewerAuthorityReleaseTrust(
@@ -938,6 +962,7 @@ export async function loadGateRecord({
   if (!isDeepStrictEqual(candidateReleaseRecord.packages, packageVersions)) {
     throw new Error('Gate package versions do not equal the exact candidate release record.');
   }
+  const packageLock = await readJson(resolve(candidateRoot, 'package-lock.json'));
   const fileName = `gate-${gate.toLowerCase()}.json`;
   let record;
   let recordBytes;
@@ -965,6 +990,10 @@ export async function loadGateRecord({
       }
       return Date.parse(git(candidateRoot, ['show', '--no-patch', '--format=%cI', commit]));
     },
+    getCommitTree(commit) {
+      if (commit !== candidateSha) return undefined;
+      return git(candidateRoot, ['rev-parse', `${commit}^{tree}`]);
+    },
     isCommitReachable(commit) {
       return commit === candidateSha;
     },
@@ -982,6 +1011,16 @@ export async function loadGateRecord({
         mode: match[1],
       };
     },
+    async getSourceFileBytes(commit, path) {
+      if (commit !== candidateSha) {
+        throw new Error('source commit differs from the qualified candidate');
+      }
+      const entry = git(candidateRoot, ['ls-tree', commit, '--', path]);
+      if (!/^(100(?:644|755)) blob [a-f0-9]{40}\t/u.test(entry)) {
+        throw new Error('source path is absent or is not a regular tracked file');
+      }
+      return gitBytes(candidateRoot, ['show', `${commit}:${path}`]);
+    },
     async getProfileAssertionsForCommit(commit) {
       if (commit !== candidateSha) {
         throw new Error('source commit differs from the qualified candidate');
@@ -996,9 +1035,11 @@ export async function loadGateRecord({
     },
     manualProcedures,
     now: Date.now(),
+    packageLock,
     packageVersions,
     profileAssertions,
     proofAssertions,
+    producerContractIndex,
     reviewerAuthorities,
     reviewerAuthorityReleaseTrustVerified: true,
     reviewerAuthorityStructuralPinVerified: true,
@@ -1007,6 +1048,7 @@ export async function loadGateRecord({
     validateExternalReportSchema: validateExternalReport,
     validateExternalSubjectSchema: validateExternalSubject,
     validateManualRecordSchema: validateManualRecord,
+    validateProducerSchema,
     validateReviewAttestationSchema: validateReviewAttestation,
   };
   const bundlesById = new Map();

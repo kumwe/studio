@@ -36,7 +36,7 @@ later packages are judged against the product profile they actually ship.
 | 2   | Contribution runtime activated blocks only   | `ST-3`         | Implemented for all six canonical kinds with immutable generations, lifecycle and SDK parity             | Independent host/extension replay and evidence                       |
 | 3   | No live preview surface                      | `ST-4`         | Implemented with host-staged binding, handshake, coalescing, selection, measured geometry and fallback   | Qualified framed-host CSP and independent evidence                   |
 | 4   | No visual canvas or layout/catalog runtime   | `ST-6`, `ST-7` | Implemented with four layout blocks, 45 production blocks, ten patterns and measured direct manipulation | Complete `authoring-web` profile/manual matrix and App journey       |
-| 5   | No coherent released package set             | `ST-1`         | Eight-package fixed group, release record and guarded workflows implemented                              | Merge, coordinated version/publish, and registry verification        |
+| 5   | No coherent released package set             | `ST-1`         | Eight-package fixed group, merged `alpha.10` record and guarded workflows implemented                    | Recover coordinated publication and complete registry verification   |
 
 The runtime wave also implements `M5-01`–`M5-03`: private Editor.js rich-text authoring, safe HTML/Markdown
 codecs, Studio media and resource controls, complete semantic web rendering, progressive behaviors, and an
@@ -75,13 +75,16 @@ and the deferral is recorded as a decision rather than an omission.
 
 **Repository state:** the fixed-family configuration, generated record, drift checks, and guarded
 version/publish workflow are implemented. PR #36 merged the checked-in record and all eight manifests at
-`0.1.0-alpha.9`; PR #38 then added a truthful patch Changeset. The alpha train must first consume that
-Changeset through the generated whole-family version PR, producing the next numeric coordinate (expected
-`0.1.0-alpha.10`). Only the following exact-current-main run may recover the npm-token failure by publishing
-and verifying all eight packages; the superseded `alpha.9` source must not be published around the Changeset.
+`0.1.0-alpha.9`; PR #38 added a truthful patch Changeset; and PR #39 consumed it into coordinated
+`0.1.0-alpha.10` metadata. Current merged `main` is
+`5cf3b24f77553d718decd53fe96256952c554591`. Alpha run `32929849656`, attempt 2 failed at **Verify npm
+authentication**, so publish, channel reconciliation, and final registry verification were skipped and no
+`alpha.10` package was published. Recover only from that exact current-main SHA after placing `NPM_TOKEN` in a
+repository Actions secret or an organization Actions secret granted to `kumwe/studio`; the superseded
+`alpha.9` source must not be published.
 
 The old registry baseline remains staggered, so a host still cannot say "we integrate Studio _x_" until the
-coordinated post-PR38 `alpha.N` family is published and verified. The source tree gives all eight packages a
+coordinated `alpha.10` family is published and verified. The source tree gives all eight packages a
 single release coordinate, while `npm run release:plan` remains the authority on whether the next operation is
 `version` or `publish`.
 
@@ -322,9 +325,10 @@ unpublished key reaches the interface.
 
 ### `ST-10` — Close the evidence lane's holes
 
-**Repository state:** implemented as evidence infrastructure only. The registry, strict semantic
-validator, safe complete generator lane, negative regression suite, and immutable workflows are present.
-No real bundle has been reproduced, no gate record exists, and neither gate or profile status changed.
+**Repository state:** implemented as evidence infrastructure only. The registry, strict semantic validator,
+class-scoped pending generator, closed authenticated manual/external intake assembler, negative regression
+suite, and immutable workflows are present. No real bundle has been reproduced, no gate record exists, and
+neither gate nor profile status changed.
 
 The earlier lane accepted evidence it should refuse. These controls are now required before any gate
 claim rests on it.
@@ -332,17 +336,21 @@ claim rests on it.
 1. `check-evidence.mjs` resolves every referenced non-sample bundle, refuses unknown or mismatched source
    commits, authenticates exact files and checksums, and verifies per-criterion evidence-class coverage;
    the former fabricated zero-commit record is a negative regression case.
-2. The generator writes nonempty mechanical criterion/class entries plus an explicit pending review,
-   schema-validates before an atomic create, and never records a gate outcome or reproduction.
+2. The generator records every requested criterion/class in pending scope, executes every available internal
+   class even when a sibling needs manual/external input, writes claims only for complete executed classes,
+   schema-validates before an atomic create, and never records a gate outcome or reproduction. The closed
+   assembler accepts only checksum-bound, signed intake with exact candidate/bundle/execution/run identities,
+   runs its registered credential-free verifier, and cannot manufacture human proof.
 3. All fourteen Gate A and eighteen Gate B criteria have stable identifiers and evidence-class mappings;
    document/registry drift fails and an absent record prints every criterion as uncovered.
 4. The bundle lane includes format, lint, typecheck, build, every governance script, the complete unit
    command, and Chromium accessibility with zero retries and bounded credential-scanned logs.
-5. `evidence/README.md` carries the exact clean-room procedure, human review boundary, freshness rules,
-   and durable-retention requirement.
+5. `evidence/README.md` carries the exact clean-room generation and `evidence:assemble` procedure, human review
+   boundary, freshness rules, and durable-retention requirement.
 
-**Acceptance.** A fabricated gate record fails; the generator emits a schema-valid bundle; every
-criterion is either covered or named as uncovered.
+**Acceptance.** A fabricated gate record fails; generation/assembly emits a schema-valid immutable bundle;
+every criterion/class is either authentically covered or named as pending, and a criterion cannot pass until
+all of its registered classes are covered and reviewed.
 
 ### `ST-11` — Ratify the contract and open the governed RC channel
 

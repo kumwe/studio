@@ -77,23 +77,34 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 
 ## Local development
 
-Kumwe Studio targets Node.js 24 or newer for development, build, test, and package publication. Published web packages are browser ES modules; a production host is not required to run Node.js.
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is the authoritative bootstrap and qualification path. Use the pinned
+Node.js 24 baseline and npm 11.9.0, install the locked dependencies and Playwright Chromium, then run the
+environment diagnostic before editing:
 
 ```bash
+npm install --global npm@11.9.0
 npm ci
-npm run check
+npx playwright install chromium
+npm run doctor
 ```
 
-The lockfile is authoritative. Do not replace exact protocol fixtures or weaken a failing gate to make a build pass.
+Hand work off only after the single contributor gate passes:
 
-Run the standalone reference host in development mode and open the URL Vite prints (normally
+```bash
+npm run verify
+```
+
+The lockfile is authoritative. Do not replace exact protocol fixtures or weaken a failing gate to make a build
+pass. Published web packages are browser ES modules; a production host is not required to run Node.js.
+
+Optional usage after bootstrap: run the standalone reference host in development mode and open the URL Vite prints (normally
 `http://localhost:5173`):
 
 ```bash
 npm run dev
 ```
 
-For a production-like local smoke test, build every package and serve the generated reference-host
+For an optional production-like local smoke test, build every package and serve the generated reference-host
 bundle with its pinned Content Security Policy:
 
 ```bash

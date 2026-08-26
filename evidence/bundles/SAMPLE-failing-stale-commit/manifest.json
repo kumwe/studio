@@ -26,6 +26,12 @@
       }
     }
   ],
+  "execution": {
+    "attempt": 1,
+    "id": "sample/execution",
+    "runner": "sample/github-actions"
+  },
+  "intakeExecutions": [],
   "environment": {
     "browser": "Chromium-141.0.7390.37",
     "node": "24.6.0",
@@ -54,20 +60,50 @@
       ],
       "command": "node scripts/check-contracts.mjs",
       "endedAt": "2026-08-15T10:00:05Z",
+      "executionAttempt": 1,
+      "executionId": "sample/execution",
       "exitStatus": 0,
       "retryCount": 0,
+      "runId": "sample/execution/run-001",
       "runner": "sample/github-actions",
       "startedAt": "2026-08-15T10:00:00Z",
       "testId": "contract/canonical-corpus"
     }
   ],
+  "scope": {
+    "proofs": [
+      {
+        "availableRunIds": ["contract/canonical-corpus"],
+        "class": "contract",
+        "criterionId": "gate-a/02-protocol-schemas",
+        "manualProcedureId": null,
+        "missingRunIds": ["profile/schema-property"],
+        "requiredRunIds": ["contract/canonical-corpus", "profile/schema-property"],
+        "requiredSubjectIds": [],
+        "status": "generated"
+      },
+      {
+        "availableRunIds": [],
+        "class": "security",
+        "criterionId": "gate-a/02-protocol-schemas",
+        "manualProcedureId": null,
+        "missingRunIds": ["security/threat-registry"],
+        "requiredRunIds": ["security/threat-registry"],
+        "requiredSubjectIds": [],
+        "status": "generated"
+      }
+    ],
+    "requestedCriteria": ["gate-a/02-protocol-schemas"]
+  },
   "source": {
     "commit": "0000000000000000000000000000000000000000",
     "lockfileChecksums": {
       "package-lock.json": "sha256-eHOJqG5z4oaI9xMzMWD9bm3ajrT8MuE0X+7mhJCoC/0="
     },
     "repository": "https://github.com/kumwe/studio",
+    "tree": "0000000000000000000000000000000000000000",
     "workingTreeState": "clean"
   },
-  "subjects": []
+  "subjects": [],
+  "workPackage": "M2-01"
 }

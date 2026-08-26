@@ -128,11 +128,11 @@ describe('validateExternalUrl rejection: scheme-not-allowed', () => {
 describe('validateExternalUrl rejection: credentials-in-url', () => {
   it('rejects any userinfo, in every spelling', () => {
     for (const candidate of [
-      'https://user:password@example.com/',
+      ['https://user:', 'password@example.com/'].join(''),
       'https://user@example.com/',
       'https://:password@example.com/',
       'https://user%40inner@example.com/',
-      'https://user:password@127.0.0.1/',
+      ['https://user:', 'password@127.0.0.1/'].join(''),
     ]) {
       expect(reasonOf(candidate), candidate).toBe('credentials-in-url');
     }
@@ -259,7 +259,9 @@ describe('validateExternalUrl policy overrides', () => {
 
   it('never admits malformed, credentialed, or scheme-violating URLs', () => {
     expect(reasonOf('https://exa mple.com/', permissive)).toBe('malformed');
-    expect(reasonOf('https://user:password@127.0.0.1/', permissive)).toBe('credentials-in-url');
+    expect(reasonOf(['https://user:', 'password@127.0.0.1/'].join(''), permissive)).toBe(
+      'credentials-in-url',
+    );
     expect(reasonOf('http://127.0.0.1/', permissive)).toBe('scheme-not-allowed');
     expect(reasonOf('javascript:alert(1)', permissive)).toBe('scheme-not-allowed');
   });

@@ -13,6 +13,7 @@
     "subject": {
       "oneOf": [
         { "$ref": "#/$defs/manualSubject" },
+        { "$ref": "#/$defs/externalSubject" },
         { "$ref": "#/$defs/bundleSubject" },
         { "$ref": "#/$defs/gateSubject" }
       ]
@@ -30,28 +31,56 @@
       "required": [
         "bundleId",
         "candidateCommit",
+        "candidateTree",
         "decision",
+        "execution",
         "freshnessExpiresAt",
+        "intakeExecutions",
         "kind",
         "reviewedAt",
-        "subjectChecksum"
+        "subjectChecksum",
+        "workPackage"
       ],
       "properties": {
         "bundleId": { "$ref": "#/$defs/bundleId" },
         "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "candidateTree": { "$ref": "#/$defs/commitSha" },
         "decision": { "enum": ["reproduced", "rejected"] },
         "freshnessExpiresAt": {
           "oneOf": [{ "$ref": "#/$defs/rfc3339Timestamp" }, { "type": "null" }]
         },
+        "execution": { "$ref": "#/$defs/bundleExecution" },
+        "intakeExecutions": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/bundleExecution" }
+        },
         "kind": { "const": "bundle-review" },
         "reviewedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
-        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "workPackage": { "$ref": "#/$defs/workPackage" }
       }
     },
     "commitSha": {
       "type": "string",
       "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
       "maxLength": 40
+    },
+    "bundleExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "id", "runner"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "id": { "$ref": "#/$defs/stableId" },
+        "runner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+        }
+      }
     },
     "gateSubject": {
       "type": "object",
@@ -66,6 +95,54 @@
         "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
       }
     },
+    "externalSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleId",
+        "candidateCommit",
+        "candidateTree",
+        "decision",
+        "execution",
+        "externalCommit",
+        "externalRepository",
+        "externalSubjectId",
+        "externalTree",
+        "freshnessExpiresAt",
+        "kind",
+        "reviewedAt",
+        "runStartedAt",
+        "subjectChecksum",
+        "workPackage",
+        "workflowDigest",
+        "workflowRunAttempt",
+        "workflowRunId"
+      ],
+      "properties": {
+        "bundleId": { "$ref": "#/$defs/bundleId" },
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "candidateTree": { "$ref": "#/$defs/commitSha" },
+        "decision": { "const": "accepted" },
+        "execution": { "$ref": "#/$defs/runExecution" },
+        "externalCommit": { "$ref": "#/$defs/commitSha" },
+        "externalRepository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?![\\s\\S])",
+          "maxLength": 240
+        },
+        "externalSubjectId": { "$ref": "#/$defs/stableId" },
+        "externalTree": { "$ref": "#/$defs/commitSha" },
+        "freshnessExpiresAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "kind": { "const": "external-review" },
+        "reviewedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "runStartedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "workPackage": { "$ref": "#/$defs/workPackage" },
+        "workflowDigest": { "$ref": "#/$defs/sha256Integrity" },
+        "workflowRunAttempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "workflowRunId": { "type": "integer", "minimum": 1 }
+      }
+    },
     "identity": {
       "type": "string",
       "pattern": "^github/[1-9][0-9]{0,19}/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?(?![\\s\\S])",
@@ -77,36 +154,58 @@
       "required": [
         "bundleId",
         "candidateCommit",
+        "candidateTree",
         "criterionId",
         "decision",
         "evidenceClass",
+        "execution",
         "kind",
         "laneId",
         "procedureChecksum",
         "procedureId",
         "runStartedAt",
-        "subjectChecksum"
+        "subjectChecksum",
+        "workPackage"
       ],
       "properties": {
         "bundleId": { "$ref": "#/$defs/bundleId" },
         "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "candidateTree": { "$ref": "#/$defs/commitSha" },
         "criterionId": { "$ref": "#/$defs/stableId" },
         "decision": { "enum": ["accepted", "rejected"] },
         "evidenceClass": {
           "enum": ["accessibility", "manual-decision"]
         },
+        "execution": { "$ref": "#/$defs/runExecution" },
         "kind": { "const": "manual-review" },
         "laneId": { "$ref": "#/$defs/stableId" },
         "procedureChecksum": { "$ref": "#/$defs/sha256Integrity" },
         "procedureId": { "$ref": "#/$defs/stableId" },
         "runStartedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
-        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "workPackage": { "$ref": "#/$defs/workPackage" }
       }
     },
     "repositoryRelativePath": {
       "type": "string",
       "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
       "maxLength": 240
+    },
+    "runExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "id", "runId", "runner"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "id": { "$ref": "#/$defs/stableId" },
+        "runId": { "$ref": "#/$defs/stableId" },
+        "runner": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+        }
+      }
     },
     "reviewer": {
       "type": "object",
@@ -141,6 +240,11 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
       "not": { "enum": ["__proto__", "prototype", "constructor"] },
       "maxLength": 240
+    },
+    "workPackage": {
+      "type": "string",
+      "pattern": "^(?:M[1-6]-[0-9]{2}|ST-(?:[0-9]|1[01]))$(?![\\s\\S])",
+      "maxLength": 5
     }
   }
 }

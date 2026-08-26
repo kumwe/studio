@@ -11,13 +11,17 @@
     "criteria",
     "environment",
     "evidenceSchemaVersion",
+    "execution",
+    "intakeExecutions",
     "inputFixtureChecksums",
     "profiles",
     "redaction",
     "review",
     "runs",
+    "scope",
     "source",
-    "subjects"
+    "subjects",
+    "workPackage"
   ],
   "properties": {
     "artifactChecksums": { "$ref": "#/$defs/checksumMap" },
@@ -45,7 +49,7 @@
     "bundleId": { "$ref": "#/$defs/bundleId" },
     "criteria": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "maxItems": 500,
       "items": {
         "type": "object",
@@ -99,6 +103,13 @@
           }
         }
       }
+    },
+    "execution": { "$ref": "#/$defs/execution" },
+    "intakeExecutions": {
+      "type": "array",
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/execution" }
     },
     "environment": {
       "type": "object",
@@ -188,8 +199,11 @@
           "command",
           "artifactPaths",
           "endedAt",
+          "executionAttempt",
+          "executionId",
           "exitStatus",
           "retryCount",
+          "runId",
           "runner",
           "startedAt",
           "testId"
@@ -208,6 +222,8 @@
             "maxLength": 1000
           },
           "endedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+          "executionAttempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+          "executionId": { "$ref": "#/$defs/stableId" },
           "exitStatus": {
             "type": "integer",
             "minimum": 0,
@@ -218,22 +234,77 @@
             "minimum": 0,
             "maximum": 100
           },
+          "runId": { "$ref": "#/$defs/stableId" },
           "runner": { "$ref": "#/$defs/identity" },
           "startedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
           "testId": { "$ref": "#/$defs/stableId" }
         }
       }
     },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proofs", "requestedCriteria"],
+      "properties": {
+        "proofs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "availableRunIds",
+              "class",
+              "criterionId",
+              "manualProcedureId",
+              "missingRunIds",
+              "requiredRunIds",
+              "requiredSubjectIds",
+              "status"
+            ],
+            "properties": {
+              "availableRunIds": { "$ref": "#/$defs/runIdList" },
+              "class": { "$ref": "#/$defs/evidenceClass" },
+              "criterionId": { "$ref": "#/$defs/stableId" },
+              "manualProcedureId": {
+                "oneOf": [{ "$ref": "#/$defs/stableId" }, { "type": "null" }]
+              },
+              "missingRunIds": { "$ref": "#/$defs/runIdList" },
+              "requiredRunIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/stableId" }
+              },
+              "requiredSubjectIds": { "$ref": "#/$defs/runIdList" },
+              "status": {
+                "enum": ["generated", "manual-input", "external-input", "target"]
+              }
+            }
+          }
+        },
+        "requestedCriteria": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/stableId" }
+        }
+      }
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["commit", "lockfileChecksums", "repository", "workingTreeState"],
+      "required": ["commit", "lockfileChecksums", "repository", "tree", "workingTreeState"],
       "properties": {
         "commit": { "$ref": "#/$defs/commitSha" },
         "lockfileChecksums": { "$ref": "#/$defs/checksumMap" },
         "repository": {
           "const": "https://github.com/kumwe/studio"
         },
+        "tree": { "$ref": "#/$defs/commitSha" },
         "workingTreeState": { "enum": ["clean", "dirty"] }
       }
     },
@@ -243,7 +314,8 @@
       "items": {
         "$ref": "https://schemas.kumwe.org/studio/evidence/external-subject.schema.json"
       }
-    }
+    },
+    "workPackage": { "$ref": "#/$defs/workPackage" }
   },
   "$defs": {
     "authentication": {
@@ -298,6 +370,32 @@
       "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
       "maxLength": 40
     },
+    "evidenceClass": {
+      "enum": [
+        "contract",
+        "unit",
+        "property-fuzz",
+        "integration",
+        "lifecycle",
+        "end-to-end",
+        "accessibility",
+        "security",
+        "performance",
+        "portability",
+        "release",
+        "manual-decision"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempt", "id", "runner"],
+      "properties": {
+        "attempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "id": { "$ref": "#/$defs/stableId" },
+        "runner": { "$ref": "#/$defs/identity" }
+      }
+    },
     "identity": {
       "type": "string",
       "minLength": 1,
@@ -322,6 +420,7 @@
     "repositoryRelativePath": {
       "oneOf": [
         { "const": ".github/actions/setup-studio/action.yml" },
+        { "const": ".github/workflows/evidence-bundle.yml" },
         {
           "type": "string",
           "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
@@ -333,6 +432,12 @@
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
       "maxLength": 40
+    },
+    "runIdList": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/stableId" }
     },
     "reviewer": {
       "type": "object",
@@ -368,6 +473,11 @@
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]*(?![\\s\\S])",
       "maxLength": 100
+    },
+    "workPackage": {
+      "type": "string",
+      "pattern": "^(?:M[1-6]-[0-9]{2}|ST-(?:[0-9]|1[01]))$(?![\\s\\S])",
+      "maxLength": 5
     }
   }
 }
