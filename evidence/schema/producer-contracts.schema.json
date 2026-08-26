@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/producer-contracts.schema.json",
+  "title": "Studio evidence producer contract registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "contracts", "kind"],
+  "properties": {
+    "contractVersion": { "const": "1.0.0" },
+    "kind": { "const": "studio-evidence-producer-contract-registry" },
+    "contracts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["laneId", "mediaType", "outputFile", "role", "schemaId"],
+        "properties": {
+          "laneId": { "$ref": "#/$defs/stableId" },
+          "mediaType": {
+            "enum": ["application/json", "application/vnd.cyclonedx+json"]
+          },
+          "outputFile": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9.-]*\\.json$(?![\\s\\S])",
+            "maxLength": 100
+          },
+          "role": { "$ref": "#/$defs/stableId" },
+          "schemaId": {
+            "type": "string",
+            "pattern": "^https://schemas\\.kumwe\\.org/studio/evidence/[a-z0-9-]+\\.schema\\.json$(?![\\s\\S])",
+            "maxLength": 200
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}

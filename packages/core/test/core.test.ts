@@ -460,7 +460,7 @@ describe('Studio core', () => {
   it('does not include authored command payloads in unsupported-command errors', () => {
     const unsupported = {
       ...insert(textNode()),
-      payload: { secret: 'database-password=/private/path' }, // studio-secret-scan:allow
+      payload: { secret: '<redacted-database-password>' },
       type: 'studio.command/private-operation',
     } as unknown as InsertNodeCommand;
 

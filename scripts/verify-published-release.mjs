@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
@@ -9,7 +10,7 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 
 const execFileAsync = promisify(execFile);
 
-export async function collectRegistryFailures(
+export async function collectRegistryEvidence(
   record,
   {
     approvedArtifacts,
@@ -27,6 +28,7 @@ export async function collectRegistryFailures(
     assertApprovedReleaseArtifacts(approvedArtifacts, record);
   }
   const failures = [];
+  const packages = [];
   for (const { name } of STUDIO_RELEASE_PACKAGES) {
     const version = record.packages[name];
     let manifest;
@@ -55,6 +57,7 @@ export async function collectRegistryFailures(
     ) {
       failures.push(`${name}@${version} has no registry integrity digest`);
     }
+    let attestationDocument;
     if (
       requireProvenance &&
       (typeof manifest.dist?.attestations?.url !== 'string' ||
@@ -66,8 +69,9 @@ export async function collectRegistryFailures(
         failures.push(`${name}@${version} lacks approved provenance verification inputs`);
       } else {
         try {
+          attestationDocument = await fetchAttestations(manifest.dist.attestations.url);
           failures.push(
-            ...collectProvenanceFailures(await fetchAttestations(manifest.dist.attestations.url), {
+            ...collectProvenanceFailures(attestationDocument, {
               approved,
               name,
               provenanceCommit,
@@ -97,8 +101,25 @@ export async function collectRegistryFailures(
         );
       }
     }
+    if (attestationDocument !== undefined) {
+      packages.push({
+        attestationDigest: `sha256-${createHash('sha256')
+          .update(JSON.stringify(attestationDocument))
+          .digest('base64')}`,
+        attestationUrl: manifest.dist.attestations.url,
+        integrity: manifest.dist.integrity,
+        name,
+        shasum: manifest.dist.shasum,
+        version,
+        workflow: provenanceWorkflow,
+      });
+    }
   }
-  return failures;
+  return { failures, packages };
+}
+
+export async function collectRegistryFailures(record, options = {}) {
+  return (await collectRegistryEvidence(record, options)).failures;
 }
 
 export function collectProvenanceFailures(

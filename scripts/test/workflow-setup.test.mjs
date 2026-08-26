@@ -118,3 +118,19 @@ test('Changesets action is version-PR-only and cannot publish tags or GitHub rel
   const publishBlock = source.split('name: Publish missing approved tarballs')[1];
   assert.match(publishBlock, /STUDIO_EXPECTED_MAIN_SHA: \$\{\{ github\.sha \}\}/u);
 });
+
+test('npm credentials stay in their channel-specific GitHub secret boundaries', async () => {
+  const alpha = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
+  assert.doesNotMatch(alpha, /^\s+environment:/mu);
+  assert.match(alpha, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/u);
+  assert.doesNotMatch(alpha, /vars\.NPM_TOKEN/u);
+
+  const promotion = await readFile(`${workflowRoot}release.yml`, 'utf8');
+  const stageJob = promotion.split('\n  stage:')[1].split('\n  publish:')[0];
+  const publishJob = promotion.split('\n  publish:')[1];
+  assert.match(stageJob, /environment: studio-rc/u);
+  assert.match(stageJob, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/u);
+  assert.match(publishJob, /environment: studio-\$\{\{ inputs\.channel \}\}/u);
+  assert.match(publishJob, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/u);
+  assert.doesNotMatch(promotion, /vars\.NPM_TOKEN/u);
+});

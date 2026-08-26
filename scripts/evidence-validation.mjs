@@ -12,6 +12,11 @@ import {
 import { collectExternalSubjectFailures } from './external-evidence.mjs';
 import { collectManualRecordFailures } from './manual-evidence.mjs';
 import { collectSignedReviewFailures } from './review-authentication.mjs';
+import {
+  collectProducerArtifactFailures,
+  collectProducerClosureFailures,
+  structuredArtifactName,
+} from './producer-evidence.mjs';
 
 export {
   commandForEvidenceLane,
@@ -27,18 +32,21 @@ export const CANONICAL_REPOSITORY = 'https://github.com/kumwe/studio';
 
 export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   '.github/actions/setup-studio/action.yml',
+  '.github/workflows/evidence-bundle.yml',
   'evidence/environment-assertions.json',
   'evidence/environment-matrix.json',
   'evidence/external-subject-assertions.json',
   'evidence/gate-criteria.json',
   'evidence/manual-procedures.json',
   'evidence/profile-assertions.json',
+  'evidence/producer-contracts.json',
   'evidence/proof-assertions.json',
   'evidence/reviewer-authorities.json',
   'evidence/reviewer-authorities.sha256',
   'evidence/schema/environment-assertions.schema.json',
   'evidence/schema/environment-matrix.schema.json',
   'evidence/schema/evidence-bundle.schema.json',
+  'evidence/schema/evidence-intake-v1.schema.json',
   'evidence/schema/external-attestation.schema.json',
   'evidence/schema/external-report.schema.json',
   'evidence/schema/external-subject-assertions.schema.json',
@@ -48,14 +56,20 @@ export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   'evidence/schema/manual-procedures.schema.json',
   'evidence/schema/manual-record.schema.json',
   'evidence/schema/proof-assertions.schema.json',
+  'evidence/schema/producer-contracts.schema.json',
+  'evidence/schema/producer-output-v1.schema.json',
+  'evidence/schema/cyclonedx-sbom-v1.schema.json',
   'evidence/schema/review-attestation.schema.json',
   'evidence/schema/reviewer-authorities.schema.json',
   'package.json',
   'package-lock.json',
   'packages/protocol/schemas/manifest.json',
+  'packages/protocol/test/generated-models.test.ts',
   'packages/testkit/corpus-manifest.json',
   'release-profile-claims.json',
   'scripts/check-evidence.mjs',
+  'scripts/check-secrets.mjs',
+  'scripts/assemble-evidence-bundle.mjs',
   'scripts/create-evidence-bundle.mjs',
   'scripts/evidence-lanes.mjs',
   'scripts/evidence-plan.mjs',
@@ -63,6 +77,12 @@ export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   'scripts/evidence-validation.mjs',
   'scripts/external-evidence.mjs',
   'scripts/manual-evidence.mjs',
+  'scripts/producer-evidence.mjs',
+  'scripts/lib/cyclonedx-validation.mjs',
+  'scripts/lib/evidence-filesystem.mjs',
+  'scripts/lib/reproducible-environment.mjs',
+  'scripts/lib/secret-detector.mjs',
+  'scripts/lib/typescript-evidence.mjs',
   'scripts/review-authentication.mjs',
   'scripts/prepare-promotion.mjs',
   'scripts/promotion-plan.mjs',
@@ -83,11 +103,19 @@ export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   'scripts/verify-published-release.mjs',
   'scripts/verify-release-gate.mjs',
   'scripts/verify-staged-release.mjs',
+  'scripts/evidence/create-release-sbom.mjs',
+  'scripts/evidence/run-contribution-lifecycle.mjs',
+  'scripts/evidence/run-media-rich-text.mjs',
+  'scripts/evidence/run-reference-host-http.mjs',
+  'scripts/evidence/run-typescript-portability.mjs',
+  'scripts/evidence/verify-reproducible-family.mjs',
+  'scripts/evidence/verify-staged-registry.mjs',
   'studio-release.json',
 ]);
 
 export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
   '.github/actions/setup-studio/action.yml',
+  '.github/workflows/evidence-bundle.yml',
   'package.json',
   'package-lock.json',
   'evidence/environment-assertions.json',
@@ -96,12 +124,14 @@ export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
   'evidence/gate-criteria.json',
   'evidence/manual-procedures.json',
   'evidence/profile-assertions.json',
+  'evidence/producer-contracts.json',
   'evidence/proof-assertions.json',
   'evidence/reviewer-authorities.json',
   'evidence/reviewer-authorities.sha256',
   'evidence/schema/environment-assertions.schema.json',
   'evidence/schema/environment-matrix.schema.json',
   'evidence/schema/evidence-bundle.schema.json',
+  'evidence/schema/evidence-intake-v1.schema.json',
   'evidence/schema/external-attestation.schema.json',
   'evidence/schema/external-report.schema.json',
   'evidence/schema/external-subject-assertions.schema.json',
@@ -111,6 +141,9 @@ export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
   'evidence/schema/manual-procedures.schema.json',
   'evidence/schema/manual-record.schema.json',
   'evidence/schema/proof-assertions.schema.json',
+  'evidence/schema/producer-contracts.schema.json',
+  'evidence/schema/producer-output-v1.schema.json',
+  'evidence/schema/cyclonedx-sbom-v1.schema.json',
   'evidence/schema/review-attestation.schema.json',
   'evidence/schema/reviewer-authorities.schema.json',
   'scripts/evidence-lanes.mjs',
@@ -119,8 +152,16 @@ export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
   'scripts/evidence-validation.mjs',
   'scripts/external-evidence.mjs',
   'scripts/manual-evidence.mjs',
+  'scripts/producer-evidence.mjs',
+  'scripts/lib/cyclonedx-validation.mjs',
+  'scripts/lib/evidence-filesystem.mjs',
+  'scripts/lib/reproducible-environment.mjs',
+  'scripts/lib/secret-detector.mjs',
+  'scripts/lib/typescript-evidence.mjs',
   'scripts/review-authentication.mjs',
   'scripts/check-evidence.mjs',
+  'scripts/check-secrets.mjs',
+  'scripts/assemble-evidence-bundle.mjs',
   'scripts/create-evidence-bundle.mjs',
   'scripts/verify-kumwe-app-proof.mjs',
   'scripts/verify-manual-evidence.mjs',
@@ -140,6 +181,15 @@ export const EVIDENCE_SEMANTIC_INPUTS = Object.freeze([
   'scripts/generate-release-notes.mjs',
   'scripts/verify-github-release.mjs',
   'scripts/verify-published-release.mjs',
+  'scripts/verify-staged-release.mjs',
+  'scripts/evidence/create-release-sbom.mjs',
+  'scripts/evidence/run-contribution-lifecycle.mjs',
+  'scripts/evidence/run-media-rich-text.mjs',
+  'scripts/evidence/run-reference-host-http.mjs',
+  'scripts/evidence/run-typescript-portability.mjs',
+  'scripts/evidence/verify-reproducible-family.mjs',
+  'scripts/evidence/verify-staged-registry.mjs',
+  'packages/protocol/test/generated-models.test.ts',
 ]);
 
 const REVIEWER_ROLES = Object.freeze([
@@ -640,6 +690,12 @@ export async function inspectBundleEvidence(manifest, context) {
   if (manifest.source.workingTreeState !== 'clean') {
     failures.push('source.workingTreeState must be "clean"');
   }
+  if (context.getCommitTree !== undefined && sourceCommitReachable) {
+    const expectedTree = await context.getCommitTree(manifest.source.commit);
+    if (manifest.source.tree !== expectedTree) {
+      failures.push(`source.tree ${manifest.source.tree} is not the exact candidate tree`);
+    }
+  }
 
   const sourceCommitTime = await context.getCommitTime(manifest.source.commit);
   if (!Number.isFinite(sourceCommitTime)) {
@@ -774,11 +830,34 @@ export async function inspectBundleEvidence(manifest, context) {
       failures.push(`environment.packageVersions must record ${name}@${version}`);
     }
   }
+  let sourceCorpusManifest;
+  try {
+    const corpusBytes =
+      sourceCommitReachable && context.getSourceFileBytes !== undefined
+        ? await context.getSourceFileBytes(
+            manifest.source.commit,
+            'packages/testkit/corpus-manifest.json',
+          )
+        : await readFile(resolve(context.repositoryRoot, 'packages/testkit/corpus-manifest.json'));
+    sourceCorpusManifest = JSON.parse(corpusBytes.toString('utf8'));
+  } catch (error) {
+    failures.push(
+      `candidate-source corpus manifest is unavailable: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
   if (manifest.environment.browser === undefined) {
     failures.push('environment.browser is required because the accessibility lane is mandatory');
   }
 
+  const executions = [manifest.execution, ...(manifest.intakeExecutions ?? [])];
+  const executionsById = new Map(executions.map((execution) => [execution.id, execution]));
+  if (executionsById.size !== executions.length) {
+    failures.push('bundle execution identities must be unique');
+  }
   const runIds = new Set();
+  const executionRunIds = new Set();
   const runsById = new Map();
   let latestRunTime = Number.NEGATIVE_INFINITY;
   for (const run of manifest.runs) {
@@ -786,6 +865,19 @@ export async function inspectBundleEvidence(manifest, context) {
       failures.push(`run testId ${run.testId} is duplicated`);
     }
     runIds.add(run.testId);
+    if (executionRunIds.has(run.runId)) {
+      failures.push(`run identity ${run.runId} is duplicated`);
+    }
+    executionRunIds.add(run.runId);
+    const execution = executionsById.get(run.executionId);
+    if (
+      execution === undefined ||
+      run.executionAttempt !== execution.attempt ||
+      run.runner !== execution.runner ||
+      !run.runId.startsWith(`${run.executionId}/run-`)
+    ) {
+      failures.push(`run ${run.testId} does not bind a retained execution identity`);
+    }
     runsById.set(run.testId, run);
     const startedAt = Date.parse(run.startedAt);
     const endedAt = Date.parse(run.endedAt);
@@ -826,6 +918,11 @@ export async function inspectBundleEvidence(manifest, context) {
       }
     }
   }
+  for (const execution of executions) {
+    if (!manifest.runs.some((run) => run.executionId === execution.id)) {
+      failures.push(`retained execution ${execution.id} has no exact run identity`);
+    }
+  }
   for (const artifact of manifest.artifacts) {
     const producer = runsById.get(artifact.producerTestId);
     if (producer === undefined) {
@@ -835,6 +932,89 @@ export async function inspectBundleEvidence(manifest, context) {
     } else if (!producer.artifactPaths.includes(artifact.path)) {
       failures.push(`artifact ${artifact.path} is not linked by its producer run`);
     }
+  }
+  const structuredDocumentsByRole = new Map();
+  if (context.producerContractIndex !== undefined) {
+    for (const [runIndex, run] of manifest.runs.entries()) {
+      const contracts = context.producerContractIndex.contractsByLane.get(run.testId) ?? [];
+      if (contracts.length === 0) continue;
+      const logPath = `${bundlePrefix}${String(runIndex + 1).padStart(2, '0')}-${run.testId.replaceAll('/', '-')}.log`;
+      const expectedPaths = [
+        logPath,
+        ...contracts.map(
+          ({ outputFile }) =>
+            `${bundlePrefix}${structuredArtifactName(runIndex, run.testId, outputFile)}`,
+        ),
+      ];
+      if (!sameMembers(run.artifactPaths, expectedPaths)) {
+        failures.push(`run ${run.testId} does not retain its exact structured output set`);
+      }
+      for (const contract of contracts) {
+        const path = `${bundlePrefix}${structuredArtifactName(
+          runIndex,
+          run.testId,
+          contract.outputFile,
+        )}`;
+        const artifact = artifactsByPath.get(path);
+        if (
+          artifact === undefined ||
+          artifact.role !== contract.role ||
+          artifact.mediaType !== contract.mediaType ||
+          artifact.producerTestId !== run.testId
+        ) {
+          failures.push(
+            `run ${run.testId} output ${contract.outputFile} substituted its fixed artifact contract`,
+          );
+          continue;
+        }
+        let bytes;
+        let document;
+        try {
+          bytes = await readRetainedArtifactBytes(path, context);
+          document = JSON.parse(bytes.toString('utf8'));
+          if (!bytes.equals(Buffer.from(`${JSON.stringify(document, null, 2)}\n`))) {
+            failures.push(`structured artifact ${path} is not canonical JSON`);
+          }
+        } catch (error) {
+          failures.push(
+            `structured artifact ${path} is unavailable or invalid JSON: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          continue;
+        }
+        if (structuredDocumentsByRole.has(contract.role)) {
+          failures.push(`structured artifact role ${contract.role} is duplicated in the bundle`);
+        } else {
+          structuredDocumentsByRole.set(contract.role, document);
+        }
+        if (context.packageLock === undefined || context.validateProducerSchema === undefined) {
+          failures.push(`structured artifact ${path} has no active semantic validator context`);
+          continue;
+        }
+        failures.push(
+          ...(await collectProducerArtifactFailures(artifact, bytes, {
+            bundleId: manifest.bundleId,
+            candidateCommit: manifest.source.commit,
+            candidateTree: manifest.source.tree,
+            corpusManifest: sourceCorpusManifest,
+            contractIndex: context.producerContractIndex,
+            execution: {
+              attempt: run.executionAttempt,
+              id: run.executionId,
+              runId: run.runId,
+              runner: run.runner,
+            },
+            inputFixtureChecksums: manifest.inputFixtureChecksums,
+            packageLock: context.packageLock,
+            packageVersions: sourcePackageVersions,
+            validateSchema: context.validateProducerSchema,
+            workPackage: manifest.workPackage,
+          })),
+        );
+      }
+    }
+    failures.push(...collectProducerClosureFailures(structuredDocumentsByRole));
   }
   for (const requiredLane of REQUIRED_EVIDENCE_LANES) {
     if (!runIds.has(requiredLane)) {
@@ -895,6 +1075,8 @@ export async function inspectBundleEvidence(manifest, context) {
     }
   }
 
+  collectScopeFailures(failures, manifest, proofContext.proofAssertions, runsById);
+
   const runnerIdentities = new Set(manifest.runs.map((run) => run.runner));
   const retainedArtifactPaths = new Set(artifactPaths);
   const subjectsById = new Map();
@@ -908,8 +1090,10 @@ export async function inspectBundleEvidence(manifest, context) {
     const subjectFailures = [];
     let report;
     let attestation;
+    let subjectBytes;
     try {
-      const retainedSubject = await readRetainedJsonArtifact(subject.recordArtifactPath, context);
+      subjectBytes = await readRetainedArtifactBytes(subject.recordArtifactPath, context);
+      const retainedSubject = JSON.parse(subjectBytes);
       if (!isDeepStrictEqual(retainedSubject, subject)) {
         subjectFailures.push(
           `external subject ${subject.id} does not equal its checksum-bound record artifact`,
@@ -941,18 +1125,40 @@ export async function inspectBundleEvidence(manifest, context) {
       );
     }
     subjectFailures.push(
-      ...collectExternalSubjectFailures(subject, {
+      ...(await collectExternalSubjectFailures(subject, {
         artifactsByPath,
-        authenticatedWorkflowSubjects: context.authenticatedWorkflowSubjects,
         artifactPaths: retainedArtifactPaths,
         assertion: proofContext.externalSubjectAssertions.get(subject.id),
         attestation,
+        bundleId: manifest.bundleId,
         candidateCommit: manifest.source.commit,
+        candidateTree: manifest.source.tree,
+        execution: {
+          attempt: runsById.get(proofContext.externalSubjectAssertions.get(subject.id)?.laneId)
+            ?.executionAttempt,
+          id: runsById.get(proofContext.externalSubjectAssertions.get(subject.id)?.laneId)
+            ?.executionId,
+          runId: runsById.get(proofContext.externalSubjectAssertions.get(subject.id)?.laneId)
+            ?.runId,
+          runner: runsById.get(proofContext.externalSubjectAssertions.get(subject.id)?.laneId)
+            ?.runner,
+        },
+        now: context.now,
         report,
+        reviewerAuthorities: context.reviewerAuthorities,
+        reviewerAuthorityReleaseTrustVerified: context.reviewerAuthorityReleaseTrustVerified,
+        reviewerAuthorityStructuralPinVerified: context.reviewerAuthorityStructuralPinVerified,
+        runnerIdentities,
+        sourceCommitTime,
+        subjectBytes,
         validateAttestationSchema: context.validateExternalAttestationSchema,
         validateReportSchema: context.validateExternalReportSchema,
+        validateReviewAttestationSchema: context.validateReviewAttestationSchema,
         validateSchema: context.validateExternalSubjectSchema,
-      }),
+        runStartedAt: runsById.get(proofContext.externalSubjectAssertions.get(subject.id)?.laneId)
+          ?.startedAt,
+        workPackage: manifest.workPackage,
+      })),
     );
     subjectFailuresById.set(subject.id, subjectFailures);
     failures.push(...subjectFailures);
@@ -1060,6 +1266,13 @@ export async function inspectBundleEvidence(manifest, context) {
                 artifactPaths: retainedArtifactPaths,
                 bundleId: manifest.bundleId,
                 candidateCommit: manifest.source.commit,
+                candidateTree: manifest.source.tree,
+                execution: {
+                  attempt: runsById.get(procedure.laneId)?.executionAttempt,
+                  id: runsById.get(procedure.laneId)?.executionId,
+                  runId: runsById.get(procedure.laneId)?.runId,
+                  runner: runsById.get(procedure.laneId)?.runner,
+                },
                 now: context.now,
                 procedure,
                 runStartedAt: runsById.get(procedure.laneId)?.startedAt,
@@ -1068,6 +1281,7 @@ export async function inspectBundleEvidence(manifest, context) {
                 subjectBytes: manualRecordBytes,
                 validateSchema: context.validateManualRecordSchema,
                 verificationStartedAt: Date.parse(runsById.get(procedure.laneId)?.startedAt ?? ''),
+                workPackage: manifest.workPackage,
               })),
             );
           }
@@ -1127,10 +1341,14 @@ export async function inspectBundleEvidence(manifest, context) {
           expectedSubject: {
             bundleId,
             candidateCommit: manifest.source.commit,
+            candidateTree: manifest.source.tree,
             decision: review.status,
+            execution: manifest.execution,
             freshnessExpiresAt: review.status === 'reproduced' ? review.freshnessExpiresAt : null,
+            intakeExecutions: manifest.intakeExecutions,
             kind: 'bundle-review',
             reviewedAt: review.reviewedAt,
+            workPackage: manifest.workPackage,
           },
           subjectBytes: context.manifestBytes,
         })),
@@ -1159,6 +1377,81 @@ export async function inspectBundleEvidence(manifest, context) {
 
 export async function collectBundleFailures(manifest, context) {
   return (await inspectBundleEvidence(manifest, context)).failures;
+}
+
+export function collectScopeFailures(failures, manifest, proofAssertions, runsById) {
+  const requested = manifest.scope?.requestedCriteria ?? [];
+  const proofs = manifest.scope?.proofs ?? [];
+  const proofKeys = proofs.map(({ criterionId, class: evidenceClass }) =>
+    criterionProofKey(criterionId, evidenceClass),
+  );
+  if (new Set(proofKeys).size !== proofKeys.length) {
+    failures.push('bundle scope contains a duplicate criterion/class proof');
+  }
+  const expectedKeys = [];
+  for (const criterionId of requested) {
+    const criterion = manifest.criteria.map(({ criterionId: id }) => id).includes(criterionId);
+    const registeredClasses = [...proofAssertions.values()]
+      .filter((assertion) => assertion.criterionId === criterionId)
+      .map((assertion) => assertion.class);
+    if (registeredClasses.length === 0) {
+      failures.push(`bundle scope requests unregistered criterion ${criterionId}`);
+    }
+    for (const evidenceClass of registeredClasses) {
+      expectedKeys.push(criterionProofKey(criterionId, evidenceClass));
+    }
+    if (!criterion && !proofs.some((proof) => proof.criterionId === criterionId)) {
+      failures.push(`bundle scope does not retain requested criterion ${criterionId}`);
+    }
+  }
+  if (!sameMembers(proofKeys, expectedKeys)) {
+    failures.push('bundle scope must cover every class of every requested criterion exactly once');
+  }
+  const claimsByKey = new Map(
+    manifest.criteria.map((claim) => [criterionProofKey(claim.criterionId, claim.class), claim]),
+  );
+  for (const proof of proofs) {
+    const key = criterionProofKey(proof.criterionId, proof.class);
+    const assertion = proofAssertions.get(key);
+    if (assertion === undefined) continue;
+    if (
+      !sameMembers(proof.requiredRunIds, assertion.requiredRuns) ||
+      !sameMembers(proof.requiredSubjectIds, assertion.requiredSubjectIds) ||
+      proof.manualProcedureId !== assertion.manualProcedureId
+    ) {
+      failures.push(`bundle scope ${proof.criterionId}/${proof.class} substituted its contract`);
+    }
+    const available = assertion.requiredRuns.filter((testId) => runsById.has(testId));
+    const missing = assertion.requiredRuns.filter((testId) => !runsById.has(testId));
+    if (
+      !sameMembers(proof.availableRunIds, available) ||
+      !sameMembers(proof.missingRunIds, missing)
+    ) {
+      failures.push(
+        `bundle scope ${proof.criterionId}/${proof.class} misstates available or missing runs`,
+      );
+    }
+    const claim = claimsByKey.get(key);
+    if (proof.status === 'generated') {
+      if (claim === undefined || missing.length > 0) {
+        failures.push(`generated scope ${proof.criterionId}/${proof.class} lacks complete proof`);
+      }
+    } else {
+      if (claim !== undefined) {
+        failures.push(`pending scope ${proof.criterionId}/${proof.class} cannot claim evidence`);
+      }
+      if (proof.status !== assertion.availability) {
+        failures.push(
+          `pending scope ${proof.criterionId}/${proof.class} misstates ${assertion.availability}`,
+        );
+      }
+    }
+  }
+  for (const key of claimsByKey.keys()) {
+    if (!proofKeys.includes(key)) {
+      failures.push(`criterion claim ${key.replace('\u0000', '/')} is outside bundle scope`);
+    }
+  }
 }
 
 export async function collectGateRecordFailures(record, fileName, context) {
@@ -1535,7 +1828,9 @@ function sameMembers(left, right) {
 function isRepositoryRelativePath(path) {
   return (
     typeof path === 'string' &&
-    (path === '.github/actions/setup-studio/action.yml' ||
+    (['.github/actions/setup-studio/action.yml', '.github/workflows/evidence-bundle.yml'].includes(
+      path,
+    ) ||
       /^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:\/[A-Za-z0-9@][A-Za-z0-9._@-]*)*$/u.test(path)) &&
     path.length <= 240
   );

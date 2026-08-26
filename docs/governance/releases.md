@@ -32,11 +32,16 @@ accepted, independently reproduced evidence, required human review, and an autho
 `docs/roadmap/STATUS.md`. The `beta` channel has no automated publisher. A local prerelease version is
 scaffolding and MUST NOT be published manually around these controls.
 
-The **Evidence bundle** workflow only creates pending qualification material. It cannot publish, make a gate
-decision, or authenticate to npm. Gate A criterion 13 binds its exact quarantined-registry install lane plus
-the complete family, provenance, SBOM, reproducibility, clean-consumer, and signature artifacts; the lane or a
-generic release label alone cannot satisfy it. Gate A is currently not assessed and Gate B is blocked, so the
-official `rc` and stable channels cannot open today even though a frozen RC may be quarantined for evidence.
+The **Evidence bundle** workflow only creates class-scoped pending qualification material. It runs every
+executable class in the requested criterion even when a sibling class requires manual/external input, records
+the unavailable classes explicitly, and claims only classes whose complete registered contract ran. Signed
+manual/external bytes may enter later only through the closed `evidence:assemble` verifier; neither workflow
+can fabricate human proof, publish, make a gate decision, or authenticate to npm. Gate A criterion 13 binds
+its exact quarantined-registry install lane plus the complete family, provenance, SBOM, reproducibility,
+clean-consumer, and signature artifacts, and still requires its registered manual class. Every class is
+required for acceptance; the lane or a generic release label alone cannot satisfy it. Gate A is currently not
+assessed and Gate B is blocked, so the official `rc` and stable channels cannot open today even though a
+frozen RC may be quarantined for evidence.
 
 The checked-in `studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
 one alpha version. That record is not proof that the packages are available from npm. Every publisher verifies
@@ -130,6 +135,12 @@ verifies again, and only then removes the quarantine tags. Stable publication us
 discipline. Alpha never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
 `latest`.
 
+`NPM_TOKEN` placement is channel-specific. The alpha workflow declares no GitHub environment and can read only
+a repository Actions secret or an organization Actions secret explicitly granted to `kumwe/studio`. RC and
+stable jobs read environment secrets from protected `studio-rc` and `studio-stable` respectively. Actions
+variables do not satisfy `${{ secrets.NPM_TOKEN }}`, and a token configured only on an environment is therefore
+invisible to alpha.
+
 Both protected environments define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the
 candidate's `evidence/reviewer-authorities.json`; it must also equal the candidate's checked-in
 `evidence/reviewer-authorities.sha256`. The checked-in value supports local structural/signature checks, while
@@ -140,6 +151,10 @@ publisher semantic path differs before npm authentication. RC publication requir
 `package-lock.json`; the deterministic stable transform may change workspace release coordinates only, while
 its normalized external dependency closure must remain exact. The live remote `main` SHA is checked again
 before every registry upload, the official dist-tag move, and GitHub release creation.
+
+Governed RC/stable operation also requires an administrator-configured default-branch protection rule or
+ruleset with pull-request review and required CI checks. This is a GitHub repository setting, not something the
+workflow YAML can establish; an absent rule remains a release-governance prerequisite.
 
 ## Publication
 

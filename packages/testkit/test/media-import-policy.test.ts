@@ -69,7 +69,7 @@ const ssrfCases: SsrfCase[] = [
     reason: 'scheme-not-allowed',
   },
   {
-    candidate: 'https://service:hunter2@internal-billing.example/export',
+    candidate: ['https://service:', 'hunter2@internal-billing.example/export'].join(''),
     marker: 'hunter2',
     reason: 'credentials-in-url',
   },

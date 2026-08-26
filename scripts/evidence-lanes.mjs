@@ -99,19 +99,19 @@ const lanes = {
   'lifecycle/contribution-runtime-v1': lane(
     'node',
     ['scripts/evidence/run-contribution-lifecycle.mjs'],
-    'target',
+    'executable',
     [RUN_LOG_ROLE, 'lifecycle/contribution-report-v1'],
   ),
   'integration/reference-host-http-v1': lane(
     'node',
     ['scripts/evidence/run-reference-host-http.mjs'],
-    'target',
+    'executable',
     [RUN_LOG_ROLE, 'integration/reference-host-report-v1'],
   ),
   'integration/media-rich-text-v1': lane(
     'node',
     ['scripts/evidence/run-media-rich-text.mjs'],
-    'target',
+    'executable',
     [RUN_LOG_ROLE, 'integration/media-rich-text-report-v1'],
   ),
   'integration/kumwe-app-v1': lane(
@@ -123,12 +123,14 @@ const lanes = {
       'integration/external-subject-v1',
       'integration/kumwe-app-report-v1',
       'integration/external-attestation-v1',
+      'review/attestation-v1',
+      'review/signature-v1',
     ],
   ),
   'portability/typescript-corpus-v2': lane(
     'node',
     ['scripts/evidence/run-typescript-portability.mjs'],
-    'target',
+    'executable',
     [RUN_LOG_ROLE, 'portability/typescript-generation-v1', 'portability/corpus-replay-v1'],
   ),
   'accessibility/manual-interactions-v1': manualLane(
@@ -145,24 +147,25 @@ const lanes = {
   'release/reproducible-family-v1': lane(
     'node',
     ['scripts/evidence/verify-reproducible-family.mjs'],
-    'target',
-    [
-      RUN_LOG_ROLE,
-      'release/approved-family-v1',
-      'release/clean-consumer-lock-v1',
-      'release/provenance-set-v1',
-      'release/reproducible-family-report-v1',
-      'release/signature-audit-v1',
-    ],
+    'executable',
+    [RUN_LOG_ROLE, 'release/approved-family-v1', 'release/reproducible-family-report-v1'],
   ),
-  'release/sbom-v1': lane('node', ['scripts/evidence/create-release-sbom.mjs'], 'target', [
+  'release/sbom-v1': lane('node', ['scripts/evidence/create-release-sbom.mjs'], 'executable', [
     RUN_LOG_ROLE,
     'release/cyclonedx-sbom-v1',
   ]),
-  'release/staged-registry-install': lane('npm', ['run', 'release:verify-stage'], 'target', [
-    RUN_LOG_ROLE,
-    'release/staged-registry-report-v1',
-  ]),
+  'release/staged-registry-install': lane(
+    'node',
+    ['scripts/evidence/verify-staged-registry.mjs'],
+    'executable',
+    [
+      RUN_LOG_ROLE,
+      'release/clean-consumer-lock-v1',
+      'release/provenance-set-v1',
+      'release/signature-audit-v1',
+      'release/staged-registry-report-v1',
+    ],
+  ),
 };
 
 const gateBTargetPairs = Object.freeze([

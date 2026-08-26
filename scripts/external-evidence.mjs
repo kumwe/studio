@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 
 import { evidenceLane } from './evidence-lanes.mjs';
+import { collectSignedReviewFailures } from './review-authentication.mjs';
 
 export function buildExternalSubjectAssertionIndex(registry) {
   const failures = [];
@@ -57,7 +58,7 @@ export function buildExternalSubjectAssertionIndex(registry) {
   return { failures, subjectsById };
 }
 
-export function collectExternalSubjectFailures(subject, context) {
+export async function collectExternalSubjectFailures(subject, context) {
   const failures = [];
   if (context.validateSchema !== undefined && !context.validateSchema(subject)) {
     failures.push(`external subject ${String(subject?.id)} violates its closed schema`);
@@ -70,12 +71,6 @@ export function collectExternalSubjectFailures(subject, context) {
   if (assertion.status !== 'executable') {
     failures.push(
       `external subject ${subject.id} remains target-only until its real workflow and attestation verifier land`,
-    );
-  } else if (
-    !context.authenticatedWorkflowSubjects?.has(externalSubjectAuthenticationKey(subject))
-  ) {
-    failures.push(
-      `external subject ${subject.id} has no authenticated workflow attestation for its exact run`,
     );
   }
   if (
@@ -118,8 +113,14 @@ export function collectExternalSubjectFailures(subject, context) {
       failures.push(`external subject ${subject.id} attestation does not bind its report digest`);
     }
   }
-  if (subject.studioBinding?.candidateCommit !== context.candidateCommit) {
-    failures.push(`external subject ${subject.id} is bound to another Studio candidate`);
+  if (
+    subject.studioBinding?.candidateCommit !== context.candidateCommit ||
+    subject.studioBinding?.candidateTree !== context.candidateTree ||
+    subject.studioBinding?.bundleId !== context.bundleId ||
+    subject.studioBinding?.workPackage !== context.workPackage ||
+    !isDeepStrictEqual(subject.studioBinding?.execution, context.execution)
+  ) {
+    failures.push(`external subject ${subject.id} is bound to another Studio bundle execution`);
   }
   const sourcePaths = Object.keys(subject.sourceChecksums ?? {});
   if (!sameMembers(sourcePaths, assertion.requiredSourcePaths)) {
@@ -178,6 +179,8 @@ export function collectExternalSubjectFailures(subject, context) {
     [subject.recordArtifactPath, 'integration/external-subject-v1'],
     [subject.reportArtifactPath, 'integration/kumwe-app-report-v1'],
     [subject.attestationArtifactPath, 'integration/external-attestation-v1'],
+    [subject.authentication?.attestationPath, 'review/attestation-v1'],
+    [subject.authentication?.signaturePath, 'review/signature-v1'],
   ];
   for (const [path, role] of expectedArtifacts) {
     const artifact = context.artifactsByPath?.get(path);
@@ -212,6 +215,71 @@ export function collectExternalSubjectFailures(subject, context) {
       `external subject ${subject.id} record, report, and attestation must be distinct artifacts`,
     );
   }
+  const reviewedAt = Date.parse(subject.reviewedAt);
+  const runStartedAt = Date.parse(subject.runStartedAt);
+  const freshnessExpiresAt = Date.parse(subject.freshnessExpiresAt);
+  if (
+    Number.isNaN(reviewedAt) ||
+    Number.isNaN(runStartedAt) ||
+    reviewedAt < context.sourceCommitTime ||
+    reviewedAt > context.now ||
+    reviewedAt > runStartedAt ||
+    subject.runStartedAt !== context.runStartedAt
+  ) {
+    failures.push(`external subject ${subject.id} review time is outside the verifier window`);
+  }
+  if (
+    Number.isNaN(freshnessExpiresAt) ||
+    freshnessExpiresAt <= reviewedAt ||
+    freshnessExpiresAt <= context.now
+  ) {
+    failures.push(`external subject ${subject.id} freshness window has expired or is invalid`);
+  }
+  if (
+    subject.reviewer?.kind !== 'human' ||
+    subject.reviewer?.independent !== true ||
+    !subject.reviewer?.roles?.some((role) => ['compatibility', 'data-integrity'].includes(role))
+  ) {
+    failures.push(`external subject ${subject.id} lacks an independent compatibility reviewer`);
+  }
+  if (context.runnerIdentities?.has(subject.reviewer?.identity)) {
+    failures.push(`external subject ${subject.id} reviewer is not independent of its runner`);
+  }
+  failures.push(
+    ...(await collectSignedReviewFailures({
+      authentication: subject.authentication,
+      context,
+      expectedIssuedAt: subject.reviewedAt,
+      expectedReviewer: {
+        identity: subject.reviewer?.identity,
+        independent: subject.reviewer?.independent,
+        roles: subject.reviewer?.roles,
+      },
+      expectedSubject: {
+        bundleId: subject.studioBinding?.bundleId,
+        candidateCommit: subject.studioBinding?.candidateCommit,
+        candidateTree: subject.studioBinding?.candidateTree,
+        decision: 'accepted',
+        execution: subject.studioBinding?.execution,
+        externalCommit: subject.commit,
+        externalRepository: subject.repository,
+        externalSubjectId: subject.id,
+        externalTree: subject.tree,
+        freshnessExpiresAt: subject.freshnessExpiresAt,
+        kind: 'external-review',
+        reviewedAt: subject.reviewedAt,
+        runStartedAt: subject.runStartedAt,
+        workPackage: subject.studioBinding?.workPackage,
+        workflowDigest: subject.workflow?.digest,
+        workflowRunAttempt: subject.workflow?.runAttempt,
+        workflowRunId: subject.workflow?.runId,
+      },
+      requiredRole: subject.reviewer?.roles?.includes('data-integrity')
+        ? 'data-integrity'
+        : 'compatibility',
+      subjectBytes: context.subjectBytes,
+    })),
+  );
   return failures;
 }
 

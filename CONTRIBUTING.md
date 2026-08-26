@@ -131,12 +131,18 @@ flowchart TD
    versions are immutable, run this only for the reviewed, frozen candidate; exact retries are idempotent.
 8. **Evidence bundle** is supporting machinery, never a publisher. Generate bundles against that merged,
    quarantined RC candidate. Criterion/class coverage comes only from exact proof bindings in
-   `evidence/proof-assertions.json`; the generator refuses partial criteria and currently keeps Gate A
-   criterion 13 target-only until the complete family, provenance, SBOM, reproducibility, clean-consumer,
-   signature, and staged-registry producers exist. Reproduce bundles independently, commit accepted records in
-   a later commit, and update
-   `docs/roadmap/STATUS.md` only through the documented human review process. Retain the quarantine tag until
-   official RC publication completes.
+   `evidence/proof-assertions.json`. The generator creates a class-scoped pending bundle: every executable
+   class runs even if the same criterion also requires a manual, external, or target class, while unavailable
+   classes remain explicit and unclaimed in `scope.proofs`. Its release producer retains the complete family,
+   provenance, SBOM, reproducibility, clean-consumer, signature, and staged-registry documents under closed
+   contracts. Add signed manual or external input only through
+   `npm run evidence:assemble -- --pending <bundle-directory> --intake <intake.json>`; the closed assembler
+   verifies exact identities, checksums, roles, signatures, and the registered lane without receiving
+   credentials. It cannot fabricate human proof and leaves review pending. Gate A criterion 13 still cannot be
+   claimed until its separate registered human reproduction procedure is completed, and acceptance always
+   requires every registered class. Reproduce bundles independently, commit accepted records in a later
+   commit, and update `docs/roadmap/STATUS.md` only through the documented human review process. Retain the
+   quarantine tag until official RC publication completes.
 9. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
    revalidates Gate A, the candidate/evidence ancestry, executable profile assertions, current `main`, all eight
    package pins, exact locally packed tarballs, npm provenance, the `rc` tag, and the GitHub release. Local
@@ -205,14 +211,32 @@ prerelease state. After rotating `NPM_TOKEN`, repeat the failed stage or officia
 exact inputs. If `main` moved, review the new head and dispatch with that exact SHA; a
 superseded candidate or gate record fails closed.
 
+Credential placement follows the workflow boundary. **Alpha release train** has no GitHub environment, so it
+reads `NPM_TOKEN` only as a repository Actions secret or an organization Actions secret whose repository access
+explicitly includes `kumwe/studio`. **Governed RC and stable promotion** reads `NPM_TOKEN` from the protected
+`studio-rc` and `studio-stable` environment secrets respectively. An Actions variable is not a secret, and an
+environment-only token cannot reach the alpha workflow.
+
+| Administrative operation   | Required `NPM_TOKEN` location                                                       | Credential boundary                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Alpha publish or recovery  | Repository Actions secret, or organization Actions secret granted to `kumwe/studio` | Publish job on merged `main`; an Actions variable or environment-only secret fails     |
+| RC quarantine/publication  | Protected `studio-rc` environment secret                                            | Approved RC stage/publication jobs only                                                |
+| Stable publication         | Protected `studio-stable` environment secret                                        | Approved stable publication job only                                                   |
+| Pull request / preparation | None                                                                                | npm credentials must never be exposed to PR, versioning, or promotion-preparation jobs |
+
 Repository administrators must configure `studio-rc` and `studio-stable` as protected GitHub environments with
 required maintainers/reviewers and deployment restricted to `main`. `NPM_TOKEN` must be scoped for publish and
 dist-tag operations on `@kumwe`, and must never be exposed to pull requests or preparation jobs. Both
 environments must also define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the frozen
 `evidence/reviewer-authorities.json`, equal to `evidence/reviewer-authorities.sha256`. The repository checksum
 supports local structural/signature checks only; without the matching external pin it cannot authorize a human
-release decision. Keep branch protection on promotion PRs; the environment approval is an additional
-publication authorization, not a substitute for review, evidence, or Gate A/B.
+release decision. Once configured, branch protection applies to promotion PRs; environment approval is an
+additional publication authorization, not a substitute for review, evidence, or Gate A/B.
+
+Before governed RC/stable operation, administrators must also configure a default-branch protection rule or
+ruleset requiring pull-request review and the repository CI checks. The workflow files do not configure that
+GitHub repository setting; an unprotected default branch is an unmet administrative prerequisite, not an
+implicit approval.
 
 ## Pull-request checklist
 

@@ -72,7 +72,7 @@
     },
     {
       "artifactRoles": ["lifecycle/contribution-report-v1", "run/log"],
-      "availability": "target",
+      "availability": "executable",
       "class": "lifecycle",
       "criterionId": "gate-a/04-extension-theme-lifecycle",
       "manualProcedureId": null,
@@ -94,9 +94,11 @@
         "integration/external-subject-v1",
         "integration/kumwe-app-report-v1",
         "integration/reference-host-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
         "run/log"
       ],
-      "availability": "target",
+      "availability": "external-input",
       "class": "integration",
       "criterionId": "gate-a/05-host-ports-negotiation",
       "manualProcedureId": null,
@@ -118,9 +120,11 @@
         "integration/external-subject-v1",
         "integration/kumwe-app-report-v1",
         "integration/media-rich-text-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
         "run/log"
       ],
-      "availability": "target",
+      "availability": "external-input",
       "class": "integration",
       "criterionId": "gate-a/06-media-rich-text-boundaries",
       "manualProcedureId": null,
@@ -178,7 +182,7 @@
         "portability/typescript-generation-v1",
         "run/log"
       ],
-      "availability": "target",
+      "availability": "executable",
       "class": "portability",
       "criterionId": "gate-a/09-typescript-corpus",
       "manualProcedureId": null,
@@ -191,9 +195,11 @@
         "integration/external-subject-v1",
         "integration/kumwe-app-report-v1",
         "integration/reference-host-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
         "run/log"
       ],
-      "availability": "target",
+      "availability": "external-input",
       "class": "integration",
       "criterionId": "gate-a/10-host-playbooks",
       "manualProcedureId": null,
@@ -271,15 +277,15 @@
         "release/staged-registry-report-v1",
         "run/log"
       ],
-      "availability": "target",
+      "availability": "executable",
       "class": "release",
       "criterionId": "gate-a/13-reproducible-evidence",
       "manualProcedureId": null,
       "requiredRuns": [
         "release/package-tarballs",
         "release/reproducible-family-v1",
-        "release/sbom-v1",
-        "release/staged-registry-install"
+        "release/staged-registry-install",
+        "release/sbom-v1"
       ],
       "requiredSubjectIds": []
     },

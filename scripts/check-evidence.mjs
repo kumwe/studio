@@ -20,6 +20,7 @@ import {
   buildReviewerAuthorityIndex,
 } from './review-authentication.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
+import { buildProducerContractIndex } from './producer-evidence.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const schemaDirectory = new URL('../evidence/schema/', import.meta.url);
@@ -27,6 +28,7 @@ const bundleDirectory = new URL('../evidence/bundles/', import.meta.url);
 const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 
 const schemaFiles = [
+  'cyclonedx-sbom-v1.schema.json',
   'environment-assertions.schema.json',
   'environment-matrix.schema.json',
   'external-attestation.schema.json',
@@ -34,11 +36,14 @@ const schemaFiles = [
   'external-subject-assertions.schema.json',
   'external-subject.schema.json',
   'evidence-bundle.schema.json',
+  'evidence-intake-v1.schema.json',
   'gate-criteria.schema.json',
   'gate-record.schema.json',
   'manual-procedures.schema.json',
   'manual-record.schema.json',
   'proof-assertions.schema.json',
+  'producer-contracts.schema.json',
+  'producer-output-v1.schema.json',
   'review-attestation.schema.json',
   'reviewer-authorities.schema.json',
 ];
@@ -80,6 +85,7 @@ const validateExternalSubject = getValidator('external-subject.schema.json');
 const validateManualProcedures = getValidator('manual-procedures.schema.json');
 const validateManualRecord = getValidator('manual-record.schema.json');
 const validateProofAssertions = getValidator('proof-assertions.schema.json');
+const validateProducerContracts = getValidator('producer-contracts.schema.json');
 const validateReviewAttestation = getValidator('review-attestation.schema.json');
 const validateReviewerAuthorities = getValidator('reviewer-authorities.schema.json');
 
@@ -210,6 +216,28 @@ if (proofAssertionIndex.failures.length > 0) {
     `The proof assertion registry is invalid:\n- ${proofAssertionIndex.failures.join('\n- ')}`,
   );
 }
+const producerContractRegistry = JSON.parse(
+  await readFile(new URL('../evidence/producer-contracts.json', import.meta.url), 'utf8'),
+);
+if (!validateProducerContracts(producerContractRegistry)) {
+  throw new Error(
+    `The producer contract registry violates its schema: ${ajv.errorsText(
+      validateProducerContracts.errors,
+    )}`,
+  );
+}
+const producerSchemaIds = new Set([
+  schemas.find((schema) => schema.$id.endsWith('/cyclonedx-sbom-v1.schema.json')).$id,
+  schemas.find((schema) => schema.$id.endsWith('/producer-output-v1.schema.json')).$id,
+]);
+const producerContractIndex = buildProducerContractIndex(producerContractRegistry, {
+  schemaIds: producerSchemaIds,
+});
+if (producerContractIndex.failures.length > 0) {
+  throw new Error(
+    `The producer contract registry is invalid:\n- ${producerContractIndex.failures.join('\n- ')}`,
+  );
+}
 const reviewerAuthorityRegistryBytes = await readFile(
   new URL('../evidence/reviewer-authorities.json', import.meta.url),
 );
@@ -268,17 +296,21 @@ if (!/^[a-f0-9]{40}$/u.test(checkedOutCommit)) {
 const validationContext = {
   ...criterionIndex,
   externalSubjectAssertions: externalSubjectAssertionIndex.subjectsById,
+  getCommitTree,
   getCommitTime,
   getPackageVersionsForCommit,
   getProfileAssertionsForCommit,
   getProofContextForCommit,
+  getSourceFileBytes,
   getSourceFileChecksum,
   isCommitReachable,
   manualProcedures: manualProcedureIndex.proceduresById,
   now: Date.now(),
   packageVersions: releaseRecord.packages,
+  packageLock: JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8')),
   profileAssertions: profileAssertionIndex.profilesById,
   proofAssertions: proofAssertionIndex.assertionsByKey,
+  producerContractIndex,
   reviewerAuthorities: reviewerAuthorityIndex.authoritiesByIdentity,
   reviewerAuthorityStructuralPinVerified: true,
   reviewerAuthorityReleaseTrustVerified,
@@ -287,6 +319,10 @@ const validationContext = {
   validateExternalAttestationSchema: validateExternalAttestation,
   validateExternalReportSchema: validateExternalReport,
   validateManualRecordSchema: validateManualRecord,
+  validateProducerSchema(schemaId, document) {
+    const validate = producerSchemaIds.has(schemaId) ? ajv.getSchema(schemaId) : undefined;
+    return validate !== undefined && validate(document);
+  },
   validateReviewAttestationSchema: validateReviewAttestation,
 };
 
@@ -389,7 +425,9 @@ for (const gate of ['A', 'B']) {
   }
   const uncovered = registry.gates[gate].map((criterion) => criterion.id);
   console.log(
-    `Gate ${gate} remains unassessed; uncovered criteria (${uncovered.length}): ${uncovered.join(', ')}`,
+    `Gate ${gate} has no accepted gate record; structural coverage is absent ` +
+      `(${uncovered.length} criteria): ${uncovered.join(', ')}. ` +
+      'This validator does not replace the authoritative docs/roadmap/STATUS.md state.',
   );
 }
 
@@ -398,6 +436,7 @@ console.log(
     `${proofAssertionIndex.assertionsByKey.size} Gate A/B proof assertions, ` +
     `${manualProcedureIndex.proceduresById.size} manual procedures, ` +
     `${externalSubjectAssertionIndex.subjectsById.size} external subject assertions, ` +
+    `${producerContractIndex.contractsByRole.size} structured producer contracts, ` +
     `${registry.gates.A.length + registry.gates.B.length} ` +
     `registered gate criteria, ${bundleNames.length} bundle manifests ` +
     `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
@@ -440,6 +479,11 @@ function getCommitTime(commit) {
   } catch {
     return Number.NaN;
   }
+}
+
+function getCommitTree(commit) {
+  if (!isCommitReachable(commit)) return undefined;
+  return git(['rev-parse', `${commit}^{tree}`]);
 }
 
 function getPackageVersionsForCommit(commit) {
@@ -523,6 +567,14 @@ function getSourceFileChecksum(commit, path) {
     ),
     mode: match[1],
   };
+}
+
+function getSourceFileBytes(commit, path) {
+  const entry = git(['ls-tree', commit, '--', path]);
+  if (!/^(100(?:644|755)) blob [a-f0-9]{40}\t/u.test(entry)) {
+    throw new Error('source path is absent or is not a regular tracked file');
+  }
+  return execFileSync('git', ['show', `${commit}:${path}`], { cwd: repositoryRoot });
 }
 
 function getValidator(schemaFile) {

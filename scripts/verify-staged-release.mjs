@@ -1,8 +1,8 @@
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
+import { isDeepStrictEqual, promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
 
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
@@ -14,6 +14,7 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 import { classifyReleaseVersion } from './release-policy.mjs';
 import { stagingTagForVersion } from './staged-publish.mjs';
 import { collectRegistryFailures } from './verify-published-release.mjs';
+import { isCredentialBearingUrl } from './lib/secret-detector.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = new URL('../', import.meta.url);
@@ -68,7 +69,7 @@ export async function assertInstalledReleaseFamily(
 export async function proveCleanRegistryInstall(
   record,
   expectedReleaseRecordSource,
-  { processEnvironment = process.env, runNpm = runNpmCommand } = {},
+  { captureEvidence = false, processEnvironment = process.env, runNpm = runNpmCommand } = {},
 ) {
   assertCoordinatedRelease(record);
   const consumerRoot = await mkdtemp(join(tmpdir(), 'studio-rc-clean-consumer-'));
@@ -83,6 +84,11 @@ export async function proveCleanRegistryInstall(
     const projectConfig = join(consumerRoot, '.npmrc');
     const userConfig = join(consumerRoot, 'user.npmrc');
     const globalConfig = join(consumerRoot, 'global.npmrc');
+    await Promise.all(
+      ['home', 'tmp', 'xdg-cache', 'xdg-config'].map((directory) =>
+        mkdir(join(consumerRoot, directory)),
+      ),
+    );
     await Promise.all([
       writeFile(projectConfig, 'registry=https://registry.npmjs.org/\n'),
       writeFile(userConfig, ''),
@@ -107,6 +113,13 @@ export async function proveCleanRegistryInstall(
       { cwd: consumerRoot, env: environment },
     );
     await assertInstalledReleaseFamily(record, consumerRoot, expectedReleaseRecordSource);
+    let lockEvidence;
+    if (captureEvidence) {
+      lockEvidence = buildCleanConsumerLockEvidence(
+        JSON.parse(await readFile(join(consumerRoot, 'package-lock.json'), 'utf8')),
+        record,
+      );
+    }
     await runNpm(
       [
         'audit',
@@ -121,8 +134,155 @@ export async function proveCleanRegistryInstall(
         env: environment,
       },
     );
+    return lockEvidence;
   } finally {
     await rm(consumerRoot, { force: true, recursive: true });
+  }
+}
+
+export function buildCleanConsumerLockEvidence(lockfile, record) {
+  assertCoordinatedRelease(record);
+  if (
+    lockfile?.lockfileVersion !== 3 ||
+    lockfile?.packages?.['']?.dependencies === undefined ||
+    !isDeepStrictEqual(lockfile.packages[''].dependencies, record.packages)
+  ) {
+    throw new Error('Clean consumer lockfile does not bind the exact candidate family roots.');
+  }
+  const packages = STUDIO_RELEASE_PACKAGES.map(({ name }) => {
+    const entry = lockfile.packages[`node_modules/${name}`];
+    if (
+      entry?.version !== record.packages[name] ||
+      typeof entry?.integrity !== 'string' ||
+      typeof entry?.resolved !== 'string'
+    ) {
+      throw new Error(`Clean consumer lockfile lacks exact registry metadata for ${name}.`);
+    }
+    return {
+      integrity: entry.integrity,
+      name,
+      resolved: entry.resolved,
+      version: entry.version,
+    };
+  }).sort((left, right) => left.name.localeCompare(right.name, 'en'));
+  const lockEntries = new Map(Object.entries(lockfile.packages));
+  const componentsByPurl = new Map();
+  const dependenciesByPurl = new Map();
+  for (const [path, entry] of [...lockEntries].sort(([left], [right]) =>
+    left.localeCompare(right, 'en'),
+  )) {
+    if (path === '' || entry?.dev === true || typeof entry?.version !== 'string') continue;
+    const name = packageNameFromLockPath(path, entry);
+    if (
+      name === undefined ||
+      typeof entry.integrity !== 'string' ||
+      typeof entry.resolved !== 'string'
+    ) {
+      throw new Error(`Clean consumer lock entry ${path} lacks exact registry identity.`);
+    }
+    const purl = npmPackageUrl(name, entry.version);
+    const component = {
+      integrity: entry.integrity,
+      name,
+      optional: entry.optional === true,
+      purl,
+      resolved: entry.resolved,
+      version: entry.version,
+    };
+    const previous = componentsByPurl.get(purl);
+    if (previous !== undefined && !isDeepStrictEqual(previous, component)) {
+      throw new Error(`Clean consumer lock contains inconsistent duplicate ${purl}.`);
+    }
+    componentsByPurl.set(purl, component);
+    const requiredDependencies = Object.keys(entry.dependencies ?? {});
+    const optionalDependencies = Object.keys(entry.optionalDependencies ?? {});
+    const peerDependencies = Object.keys(entry.peerDependencies ?? {});
+    const optionalPeerDependencies = peerDependencies.filter(
+      (name) => entry.peerDependenciesMeta?.[name]?.optional === true,
+    );
+    const requiredPeerDependencies = peerDependencies.filter(
+      (name) => !optionalPeerDependencies.includes(name),
+    );
+    const dependsOn = [];
+    for (const dependencyName of [
+      ...new Set([
+        ...requiredDependencies,
+        ...optionalDependencies,
+        ...requiredPeerDependencies,
+        ...optionalPeerDependencies,
+      ]),
+    ]) {
+      const dependencyPath = resolveLockDependencyPath(path, dependencyName, lockEntries);
+      if (dependencyPath === undefined) {
+        if (
+          optionalDependencies.includes(dependencyName) ||
+          optionalPeerDependencies.includes(dependencyName)
+        ) {
+          continue;
+        }
+        throw new Error(`Clean consumer lock cannot resolve ${dependencyName} from ${path}.`);
+      }
+      const dependency = lockEntries.get(dependencyPath);
+      dependsOn.push(npmPackageUrl(dependencyName, dependency.version));
+    }
+    const normalizedDependencies = [...new Set(dependsOn)].sort((left, right) =>
+      left.localeCompare(right, 'en'),
+    );
+    const priorDependencies = dependenciesByPurl.get(purl);
+    if (
+      priorDependencies !== undefined &&
+      !isDeepStrictEqual(priorDependencies, normalizedDependencies)
+    ) {
+      throw new Error(
+        `Clean consumer lock duplicate ${purl} has location-dependent dependency topology.`,
+      );
+    }
+    dependenciesByPurl.set(purl, normalizedDependencies);
+  }
+  const components = [...componentsByPurl.values()].sort((left, right) =>
+    left.purl.localeCompare(right.purl, 'en'),
+  );
+  const dependencies = [...dependenciesByPurl]
+    .map(([ref, dependsOn]) => ({ dependsOn, ref }))
+    .sort((left, right) => left.ref.localeCompare(right.ref, 'en'));
+  return {
+    components,
+    dependencies,
+    lockfileVersion: 3,
+    packages,
+    rootDependencies: Object.fromEntries(
+      Object.entries(record.packages).sort(([left], [right]) => left.localeCompare(right, 'en')),
+    ),
+  };
+}
+
+function packageNameFromLockPath(path, entry) {
+  if (typeof entry?.name === 'string') return entry.name;
+  const marker = path.lastIndexOf('node_modules/');
+  if (marker < 0) return undefined;
+  return path.slice(marker + 'node_modules/'.length);
+}
+
+function npmPackageUrl(name, version) {
+  const encodedName = name.startsWith('@') ? `%40${name.slice(1)}` : name;
+  return `pkg:npm/${encodedName}@${version}`;
+}
+
+function resolveLockDependencyPath(parentPath, dependencyName, entries) {
+  let cursor = parentPath;
+  while (true) {
+    const candidate = `${cursor.length === 0 ? '' : `${cursor}/`}node_modules/${dependencyName}`;
+    if (entries.has(candidate)) return candidate;
+    const marker = cursor.lastIndexOf('/node_modules/');
+    if (marker >= 0) {
+      cursor = cursor.slice(0, marker);
+      continue;
+    }
+    if (cursor.startsWith('node_modules/')) {
+      cursor = '';
+      continue;
+    }
+    return undefined;
   }
 }
 
@@ -144,9 +304,6 @@ export function buildCleanNpmEnvironment(
     'SSL_CERT_DIR',
     'SSL_CERT_FILE',
     'SYSTEMROOT',
-    'TEMP',
-    'TMP',
-    'TMPDIR',
     'TZ',
     'all_proxy',
     'https_proxy',
@@ -155,15 +312,25 @@ export function buildCleanNpmEnvironment(
   ];
   const environment = Object.fromEntries(
     passthroughKeys
-      .filter((key) => processEnvironment[key] !== undefined)
+      .filter(
+        (key) =>
+          processEnvironment[key] !== undefined && !isCredentialBearingUrl(processEnvironment[key]),
+      )
       .map((key) => [key, processEnvironment[key]]),
   );
   return {
     ...environment,
+    HOME: join(consumerRoot, 'home'),
     NPM_CONFIG_CACHE: join(consumerRoot, 'npm-cache'),
     NPM_CONFIG_GLOBALCONFIG: globalConfig,
     NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org/',
     NPM_CONFIG_USERCONFIG: userConfig,
+    TEMP: join(consumerRoot, 'tmp'),
+    TMP: join(consumerRoot, 'tmp'),
+    TMPDIR: join(consumerRoot, 'tmp'),
+    USERPROFILE: join(consumerRoot, 'home'),
+    XDG_CACHE_HOME: join(consumerRoot, 'xdg-cache'),
+    XDG_CONFIG_HOME: join(consumerRoot, 'xdg-config'),
   };
 }
 

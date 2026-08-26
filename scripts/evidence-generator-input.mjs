@@ -1,6 +1,8 @@
 const FLAGS = new Map([
   ['--candidate', 'candidate'],
   ['--criteria', 'criteria'],
+  ['--execution-attempt', 'executionAttempt'],
+  ['--execution-id', 'executionId'],
   ['--id', 'id'],
   ['--package', 'package'],
   ['--profiles', 'profiles'],
@@ -29,7 +31,8 @@ export function parseEvidenceArguments(argv) {
     throw new Error(
       'Usage: node scripts/create-evidence-bundle.mjs --package <M2-01> ' +
         '--criteria <gate-a/01-id,...> [--profiles <studio.profile/id,...>] ' +
-        '[--candidate <sha>] [--id <bundleId>] [--runner <identity>]',
+        '[--candidate <sha>] [--id <bundleId>] [--runner <identity>] ' +
+        '[--execution-id <identity> --execution-attempt <number>]',
     );
   }
   if (!/^(?:M[1-6]-[0-9]{2}|ST-(?:[0-9]|1[01]))$/u.test(parsed.package)) {
@@ -57,10 +60,25 @@ export function parseEvidenceArguments(argv) {
   ) {
     throw new Error('The runner identity contains a control character or exceeds 200 characters.');
   }
+  if (
+    parsed.executionId !== undefined &&
+    !/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,239}$/u.test(parsed.executionId)
+  ) {
+    throw new Error('The execution identifier must be a bounded stable identifier.');
+  }
+  if (
+    parsed.executionAttempt !== undefined &&
+    !/^(?:[1-9][0-9]{0,2}|1000)$/u.test(parsed.executionAttempt)
+  ) {
+    throw new Error('The execution attempt must be an integer from 1 through 1000.');
+  }
 
   return {
     ...parsed,
     criteria: parseList(parsed.criteria, 'criteria'),
+    ...(parsed.executionAttempt === undefined
+      ? {}
+      : { executionAttempt: Number(parsed.executionAttempt) }),
     profiles: parsed.profiles === undefined ? [] : parseList(parsed.profiles, 'profiles'),
   };
 }

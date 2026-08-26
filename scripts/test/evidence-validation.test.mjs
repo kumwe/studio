@@ -24,14 +24,17 @@ import {
 import {
   buildExternalSubjectAssertionIndex,
   collectExternalSubjectFailures,
-  externalSubjectAuthenticationKey,
 } from '../external-evidence.mjs';
 import {
   buildManualProcedureIndex,
   collectManualRecordFailures,
   manualProcedureChecksum,
 } from '../manual-evidence.mjs';
-import { planCriterionProofs } from '../evidence-plan.mjs';
+import {
+  completablePendingProofsForLane,
+  planCriterionProofs,
+  planCriterionScope,
+} from '../evidence-plan.mjs';
 import {
   assertReviewerAuthorityReleaseTrust,
   assertReviewerAuthorityStructuralPin,
@@ -39,7 +42,7 @@ import {
   REVIEW_SIGNATURE_NAMESPACE,
   reviewerAuthorityRegistryChecksum,
 } from '../review-authentication.mjs';
-import { loadGateRecord } from '../verify-release-gate.mjs';
+import { assertStatusGatePass, loadGateRecord } from '../verify-release-gate.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const registry = JSON.parse(
@@ -109,6 +112,7 @@ const validateExternalAttestation = new Ajv2020({ allErrors: true, strict: true 
   externalAttestationSchema,
 );
 const SOURCE_COMMIT = 'a'.repeat(40);
+const SOURCE_TREE = 'b'.repeat(40);
 const NOW = Date.parse('2026-08-24T12:00:00Z');
 const ALL_GATE_A_PROOF_KEYS = new Set(
   registry.gates.A.flatMap((criterion) =>
@@ -235,7 +239,7 @@ test('a repository-controlled authority checksum is structural, not release auth
   );
 });
 
-test('proof registry is closed, complete, and keeps authoring-web target-bound', () => {
+test('proof registry is closed, advances only landed internal producers, and keeps authoring-web target-bound', () => {
   const missing = structuredClone(proofAssertionRegistry);
   missing.assertions.pop();
   assert.ok(
@@ -247,8 +251,9 @@ test('proof registry is closed, complete, and keeps authoring-web target-bound',
   );
 
   const promotedByLabel = structuredClone(proofAssertionRegistry);
-  promotedByLabel.assertions.find((assertion) => assertion.class === 'lifecycle').availability =
-    'executable';
+  promotedByLabel.assertions.find(
+    (assertion) => assertion.class === 'integration' && assertion.availability === 'external-input',
+  ).availability = 'executable';
   assert.ok(
     buildProofAssertionIndex(promotedByLabel, criterionIndex.criteriaById, {
       externalSubjects: externalSubjectAssertionIndex.subjectsById,
@@ -271,7 +276,7 @@ test('proof registry is closed, complete, and keeps authoring-web target-bound',
   );
 });
 
-test('generator planning is assertion-derived and refuses partial specialized or manual criteria', () => {
+test('generator planning runs class-scoped internal producers and retains manual/external gaps', () => {
   const executable = planCriterionProofs(
     ['gate-a/02-protocol-schemas'],
     criterionIndex.criteriaById,
@@ -281,23 +286,70 @@ test('generator planning is assertion-derived and refuses partial specialized or
     executable.map(({ assertion }) => assertion.class),
     ['contract', 'security'],
   );
-  assert.throws(
-    () =>
-      planCriterionProofs(
-        ['gate-a/04-extension-theme-lifecycle'],
-        criterionIndex.criteriaById,
-        proofAssertionIndex.assertionsByKey,
-      ),
-    /cannot be partially generated.*lifecycle:target/u,
+  assert.deepEqual(
+    planCriterionProofs(
+      ['gate-a/04-extension-theme-lifecycle'],
+      criterionIndex.criteriaById,
+      proofAssertionIndex.assertionsByKey,
+    ).map(({ assertion }) => assertion.class),
+    ['contract', 'lifecycle'],
   );
-  assert.throws(
-    () =>
-      planCriterionProofs(
-        ['gate-a/12-accessible-interactions'],
-        criterionIndex.criteriaById,
-        proofAssertionIndex.assertionsByKey,
-      ),
-    /cannot be partially generated.*accessibility:manual-input/u,
+  const externalScope = planCriterionScope(
+    ['gate-a/05-host-ports-negotiation'],
+    criterionIndex.criteriaById,
+    proofAssertionIndex.assertionsByKey,
+  );
+  assert.deepEqual(
+    externalScope.proofs.map(({ class: evidenceClass, status }) => [evidenceClass, status]),
+    [
+      ['contract', 'generated'],
+      ['integration', 'external-input'],
+    ],
+  );
+  assert.ok(externalScope.executableRunIds.includes('integration/reference-host-http-v1'));
+  assert.ok(!externalScope.executableRunIds.includes('integration/kumwe-app-v1'));
+  const manualScope = planCriterionScope(
+    ['gate-a/12-accessible-interactions'],
+    criterionIndex.criteriaById,
+    proofAssertionIndex.assertionsByKey,
+  );
+  assert.equal(
+    manualScope.proofs.find(({ class: evidenceClass }) => evidenceClass === 'accessibility').status,
+    'manual-input',
+  );
+  assert.ok(manualScope.executableRunIds.includes('accessibility/web'));
+});
+
+test('one authenticated shared App lane completes every matching scoped integration proof', () => {
+  const scope = planCriterionScope(
+    [
+      'gate-a/05-host-ports-negotiation',
+      'gate-a/06-media-rich-text-boundaries',
+      'gate-a/10-host-playbooks',
+    ],
+    criterionIndex.criteriaById,
+    proofAssertionIndex.assertionsByKey,
+  );
+  const runsById = new Map(
+    [...scope.executableRunIds, 'integration/kumwe-app-v1'].map((testId) => [testId, {}]),
+  );
+  const completed = completablePendingProofsForLane(
+    scope.proofs,
+    'integration/kumwe-app-v1',
+    proofAssertionIndex.assertionsByKey,
+    runsById,
+    new Set(['kumwe/app']),
+    new Set(
+      scope.claims.map(({ assertion, criterionId }) => `${criterionId}\u0000${assertion.class}`),
+    ),
+  );
+  assert.deepEqual(
+    completed.map(({ proof }) => `${proof.criterionId}/${proof.class}`),
+    [
+      'gate-a/05-host-ports-negotiation/integration',
+      'gate-a/06-media-rich-text-boundaries/integration',
+      'gate-a/10-host-playbooks/integration',
+    ],
   );
 });
 
@@ -358,7 +410,10 @@ test('criterion labels authenticate only through exact run, producer, role, and 
   assert.deepEqual(inspection.failures, []);
   assert.deepEqual(
     [...inspection.authenticatedProofKeys],
-    [criterionProofKey('gate-a/02-protocol-schemas', 'contract')],
+    [
+      criterionProofKey('gate-a/02-protocol-schemas', 'contract'),
+      criterionProofKey('gate-a/02-protocol-schemas', 'security'),
+    ],
   );
 
   const wrongRuns = structuredClone(fixture.manifest);
@@ -394,33 +449,24 @@ test('criterion labels authenticate only through exact run, producer, role, and 
   );
 });
 
-test('a registered command cannot make a target-only release proof executable', async (t) => {
-  const fixture = await createBundleFixture(t);
-  const manifest = structuredClone(fixture.manifest);
+test('structured release producers remain reachable without bypassing manual reproduction', () => {
   const assertion = proofAssertionIndex.assertionsByKey.get(
     criterionProofKey('gate-a/13-reproducible-evidence', 'release'),
   );
-  manifest.criteria = [
-    {
-      class: 'release',
-      criterionId: 'gate-a/13-reproducible-evidence',
-      outcome: 'positive',
-      proof: {
-        artifactPaths: [],
-        runIds: assertion.requiredRuns,
-        subjectIds: [],
-      },
-    },
-  ];
-  const missingFailures = await collectBundleFailures(manifest, fixture.context);
-  assert.ok(
-    missingFailures.includes(
-      'criterion gate-a/13-reproducible-evidence/release remains target-only',
-    ),
+  assert.equal(assertion.availability, 'executable');
+  const scope = planCriterionScope(
+    ['gate-a/13-reproducible-evidence'],
+    criterionIndex.criteriaById,
+    proofAssertionIndex.assertionsByKey,
+  );
+  assert.equal(scope.claims.length, 1);
+  assert.equal(
+    scope.proofs.find(({ class: evidenceClass }) => evidenceClass === 'manual-decision').status,
+    'manual-input',
   );
   assert.equal(
     commandForEvidenceLane('release/staged-registry-install'),
-    'npm run release:verify-stage',
+    'node scripts/evidence/verify-staged-registry.mjs',
   );
 });
 
@@ -438,9 +484,16 @@ test('manual proof rejects self-asserted review and binds each step to distinct 
     },
     bundleId: 'bundle-one',
     candidateCommit: SOURCE_COMMIT,
+    candidateTree: 'b'.repeat(40),
     contractVersion: '0.1-draft',
     criterionId: procedure.criterionId,
     evidenceClass: procedure.evidenceClass,
+    execution: {
+      attempt: 1,
+      id: 'fixture/execution',
+      runId: 'fixture/execution/run-016',
+      runner: 'ci/runner',
+    },
     kind: 'manual-evidence-record',
     observations: procedure.requiredSteps.map((stepId, index) => ({
       artifactChecksums: { [observationPaths[index]]: checksum },
@@ -460,6 +513,7 @@ test('manual proof rejects self-asserted review and binds each step to distinct 
       kind: 'human',
       roles: ['accessibility'],
     },
+    workPackage: 'M2-01',
   };
   const artifactsByPath = new Map(
     observationPaths.map((path) => [
@@ -489,6 +543,8 @@ test('manual proof rejects self-asserted review and binds each step to distinct 
     artifactPaths: new Set(artifactsByPath.keys()),
     bundleId: 'bundle-one',
     candidateCommit: SOURCE_COMMIT,
+    candidateTree: 'b'.repeat(40),
+    execution: record.execution,
     now: NOW,
     procedure,
     reviewerAuthorityStructuralPinVerified: false,
@@ -498,6 +554,7 @@ test('manual proof rejects self-asserted review and binds each step to distinct 
     subjectBytes: Buffer.from(`${JSON.stringify(record, null, 2)}\n`),
     validateSchema: validateManualRecord,
     verificationStartedAt: Date.parse('2026-08-24T11:00:00Z'),
+    workPackage: 'M2-01',
   };
   assert.ok(
     (await collectManualRecordFailures(record, context)).some((failure) =>
@@ -563,12 +620,14 @@ test('manual proof rejects self-asserted review and binds each step to distinct 
   );
 });
 
-test('Kumwe App evidence remains target-only and rejects repository, commit, and candidate replay', () => {
+test('Kumwe App evidence remains target-only and rejects repository, commit, and candidate replay', async () => {
   const assertion = externalSubjectAssertionIndex.subjectsById.get('kumwe/app');
   const artifactPaths = new Set([
     'evidence/bundles/bundle-one/artifacts/kumwe-app-subject.json',
     'evidence/bundles/bundle-one/artifacts/kumwe-app-report.json',
     'evidence/bundles/bundle-one/artifacts/kumwe-app-attestation.json',
+    'evidence/bundles/bundle-one/artifacts/kumwe-app-review.json',
+    'evidence/bundles/bundle-one/artifacts/kumwe-app-review.json.sig',
   ]);
   const packages = [
     '@kumwe/studio',
@@ -583,6 +642,10 @@ test('Kumwe App evidence remains target-only and rejects repository, commit, and
   const integrity = `sha512-${'A'.repeat(86)}==`;
   const checksum = `sha256-${'A'.repeat(43)}=`;
   const subject = {
+    authentication: {
+      attestationPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-review.json',
+      signaturePath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-review.json.sig',
+    },
     attestationArtifactPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-attestation.json',
     attestationChecksum: checksum,
     commit: 'b'.repeat(40),
@@ -597,14 +660,32 @@ test('Kumwe App evidence remains target-only and rejects repository, commit, and
     reportArtifactPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-report.json',
     reportChecksum: checksum,
     repository: 'https://github.com/kumwe/app',
+    freshnessExpiresAt: '2026-09-24T10:00:00Z',
+    reviewedAt: '2026-08-24T10:00:00Z',
+    runStartedAt: '2026-08-24T11:00:00Z',
+    reviewer: {
+      identity: 'github/1001/compatibility-reviewer',
+      independent: true,
+      kind: 'human',
+      roles: ['compatibility'],
+    },
     sourceChecksums: Object.fromEntries(
       assertion.requiredSourcePaths.map((path) => [path, checksum]),
     ),
     studioBinding: {
+      bundleId: 'bundle-one',
       candidateCommit: SOURCE_COMMIT,
+      candidateTree: 'd'.repeat(40),
       corpusManifestChecksum: checksum,
+      execution: {
+        attempt: 1,
+        id: 'fixture/execution',
+        runId: 'fixture/execution/run-017',
+        runner: 'ci/runner',
+      },
       packageIntegrities: Object.fromEntries(packages.map((name) => [name, integrity])),
       releaseRecordChecksum: checksum,
+      workPackage: 'M2-01',
     },
     tree: 'c'.repeat(40),
     workflow: {
@@ -643,56 +724,77 @@ test('Kumwe App evidence remains target-only and rejects repository, commit, and
     artifactPaths,
     assertion,
     attestation,
+    bundleId: 'bundle-one',
     candidateCommit: SOURCE_COMMIT,
+    candidateTree: 'd'.repeat(40),
+    execution: subject.studioBinding.execution,
+    now: NOW,
     report,
+    runnerIdentities: new Set(['ci/runner']),
+    sourceCommitTime: Date.parse('2026-08-24T08:00:00Z'),
+    subjectBytes: Buffer.from(`${JSON.stringify(subject, null, 2)}\n`),
     validateAttestationSchema: validateExternalAttestation,
     validateReportSchema: validateExternalReport,
     validateSchema: validateExternalSubject,
+    runStartedAt: '2026-08-24T11:00:00Z',
+    workPackage: 'M2-01',
   };
-  const targetFailures = collectExternalSubjectFailures(subject, context);
+  const targetFailures = await collectExternalSubjectFailures(subject, context);
   assert.ok(targetFailures.some((failure) => failure.includes('target-only')));
 
   const executableAssertion = { ...assertion, status: 'executable' };
-  const unauthenticated = collectExternalSubjectFailures(subject, {
+  const unauthenticated = await collectExternalSubjectFailures(subject, {
     ...context,
     assertion: executableAssertion,
   });
-  assert.ok(unauthenticated.some((failure) => failure.includes('no authenticated workflow')));
-  assert.deepEqual(
-    collectExternalSubjectFailures(subject, {
-      ...context,
-      assertion: executableAssertion,
-      authenticatedWorkflowSubjects: new Set([externalSubjectAuthenticationKey(subject)]),
-    }),
-    [],
+  assert.ok(
+    unauthenticated.some((failure) =>
+      failure.includes('checksum-pinned reviewer authority registry'),
+    ),
   );
 
   const replayed = structuredClone(subject);
   replayed.repository = 'https://github.com/example/fork';
   replayed.workflow.commit = 'd'.repeat(40);
   replayed.studioBinding.candidateCommit = 'e'.repeat(40);
-  const replayFailures = collectExternalSubjectFailures(replayed, context);
+  const replayFailures = await collectExternalSubjectFailures(replayed, context);
   assert.ok(replayFailures.some((failure) => failure.includes('registered repository')));
   assert.ok(replayFailures.some((failure) => failure.includes('workflow commit')));
-  assert.ok(replayFailures.some((failure) => failure.includes('another Studio candidate')));
+  assert.ok(replayFailures.some((failure) => failure.includes('another Studio bundle execution')));
 
   const refReplay = structuredClone(subject);
   refReplay.ref = 'refs/pull/999/head';
-  const refFailures = collectExternalSubjectFailures(refReplay, {
+  const refFailures = await collectExternalSubjectFailures(refReplay, {
     ...context,
     assertion: executableAssertion,
-    authenticatedWorkflowSubjects: new Set([externalSubjectAuthenticationKey(subject)]),
   });
-  assert.ok(refFailures.some((failure) => failure.includes('no authenticated workflow')));
   assert.ok(refFailures.some((failure) => failure.includes('report does not bind exact ref')));
 
   const tamperedReport = structuredClone(report);
   tamperedReport.workflow.runAttempt = 2;
   assert.ok(
-    collectExternalSubjectFailures(subject, {
-      ...context,
-      report: tamperedReport,
-    }).some((failure) => failure.includes('exact workflow run')),
+    (
+      await collectExternalSubjectFailures(subject, {
+        ...context,
+        report: tamperedReport,
+      })
+    ).some((failure) => failure.includes('exact workflow run')),
+  );
+
+  const replayedWindow = structuredClone(subject);
+  replayedWindow.runStartedAt = '2026-08-24T11:00:01Z';
+  assert.ok(
+    (await collectExternalSubjectFailures(replayedWindow, context)).some((failure) =>
+      failure.includes('verifier window'),
+    ),
+  );
+
+  const expired = structuredClone(subject);
+  expired.freshnessExpiresAt = '2026-08-24T11:30:00Z';
+  assert.ok(
+    (await collectExternalSubjectFailures(expired, context)).some((failure) =>
+      failure.includes('freshness window'),
+    ),
   );
 });
 
@@ -719,6 +821,34 @@ test('retained RC evidence authenticates source inputs and versions at its own c
   });
   assert.ok(
     nonRegularSource.some((failure) => failure.includes('not a regular tracked source file')),
+  );
+});
+
+test('bundle keeps generator and later intake execution identities distinct and exact', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const manifest = structuredClone(fixture.manifest);
+  const intakeExecution = {
+    attempt: 2,
+    id: 'intake/execution',
+    runner: 'intake/runner',
+  };
+  manifest.intakeExecutions.push(intakeExecution);
+  const intakeRun = manifest.runs.at(-1);
+  intakeRun.executionAttempt = intakeExecution.attempt;
+  intakeRun.executionId = intakeExecution.id;
+  intakeRun.runId = `${intakeExecution.id}/run-001`;
+  intakeRun.runner = intakeExecution.runner;
+  const context = {
+    ...fixture.context,
+    manifestBytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
+  };
+  assert.deepEqual(await collectBundleFailures(manifest, context), []);
+  intakeRun.runner = manifest.execution.runner;
+  context.manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  assert.ok(
+    (await collectBundleFailures(manifest, context)).some((failure) =>
+      failure.includes('does not bind a retained execution identity'),
+    ),
   );
 });
 
@@ -1044,6 +1174,22 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   assert.match(gitignore, /^\.release-controller\/$/mu);
 });
 
+test('structural evidence validation never rewrites authoritative Gate A or Gate B status', async () => {
+  const statusPath = `${repositoryRoot}/docs/roadmap/STATUS.md`;
+  const before = await readFile(statusPath);
+  const output = execFileSync(process.execPath, ['scripts/check-evidence.mjs'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  const after = await readFile(statusPath);
+  assert.deepEqual(after, before);
+  assert.match(output, /has no accepted gate record/u);
+  assert.match(output, /does not replace the authoritative docs\/roadmap\/STATUS\.md state/u);
+  const status = before.toString('utf8');
+  assert.throws(() => assertStatusGatePass(status, 'A'), /not-assessed/u);
+  assert.throws(() => assertStatusGatePass(status, 'B'), /blocked/u);
+});
+
 async function createBundleFixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'studio-evidence-bundle-'));
   t.after(() => rm(root, { force: true, recursive: true }));
@@ -1051,6 +1197,10 @@ async function createBundleFixture(t) {
     await mkdir(join(root, path, '..'), { recursive: true });
     await writeFile(join(root, path), `${path}\n`);
   }
+  await writeFile(
+    join(root, 'packages/testkit/corpus-manifest.json'),
+    await readFile(join(repositoryRoot, 'packages/testkit/corpus-manifest.json')),
+  );
   const inputFixtureChecksums = Object.fromEntries(
     await Promise.all(
       REQUIRED_EVIDENCE_INPUTS.map(async (path) => [path, await checksumFile(join(root, path))]),
@@ -1059,7 +1209,17 @@ async function createBundleFixture(t) {
   const assertion = proofAssertionIndex.assertionsByKey.get(
     criterionProofKey('gate-a/02-protocol-schemas', 'contract'),
   );
-  const laneIds = [...new Set([...REQUIRED_EVIDENCE_LANES, ...assertion.requiredRuns])];
+  const securityAssertion = proofAssertionIndex.assertionsByKey.get(
+    criterionProofKey('gate-a/02-protocol-schemas', 'security'),
+  );
+  const laneIds = [
+    ...new Set([
+      ...REQUIRED_EVIDENCE_LANES,
+      ...assertion.requiredRuns,
+      ...securityAssertion.requiredRuns,
+    ]),
+  ];
+  const execution = { attempt: 1, id: 'fixture/execution', runner: 'ci/runner' };
   const artifacts = [];
   const runs = [];
   for (const [index, testId] of laneIds.entries()) {
@@ -1080,8 +1240,11 @@ async function createBundleFixture(t) {
       artifactPaths: [artifactPath],
       command: commandForEvidenceLane(testId),
       endedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:01Z`,
+      executionAttempt: execution.attempt,
+      executionId: execution.id,
       exitStatus: 0,
       retryCount: 0,
+      runId: `${execution.id}/run-${String(index + 1).padStart(3, '0')}`,
       runner: 'ci/runner',
       startedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:00Z`,
       testId,
@@ -1091,6 +1254,9 @@ async function createBundleFixture(t) {
     artifacts.map((artifact) => [artifact.producerTestId, artifact.path]),
   );
   const proofArtifactPaths = assertion.requiredRuns.map((testId) =>
+    artifactsByProducer.get(testId),
+  );
+  const securityProofArtifactPaths = securityAssertion.requiredRuns.map((testId) =>
     artifactsByProducer.get(testId),
   );
   const artifactChecksum = artifacts[0].checksum;
@@ -1112,7 +1278,18 @@ async function createBundleFixture(t) {
           subjectIds: [],
         },
       },
+      {
+        class: 'security',
+        criterionId: 'gate-a/02-protocol-schemas',
+        outcome: 'positive',
+        proof: {
+          artifactPaths: securityProofArtifactPaths,
+          runIds: securityAssertion.requiredRuns,
+          subjectIds: [],
+        },
+      },
     ],
+    execution,
     environment: {
       browser: 'Chromium-141.0.0.0',
       node: '24.6.0',
@@ -1122,22 +1299,39 @@ async function createBundleFixture(t) {
     },
     evidenceSchemaVersion: '0.1-draft',
     inputFixtureChecksums,
+    intakeExecutions: [],
     profiles: [],
     redaction: { declared: true, statement: 'No secrets.' },
     review: { status: 'pending' },
     runs,
+    scope: {
+      proofs: [assertion, securityAssertion].map((proofAssertion) => ({
+        availableRunIds: [...proofAssertion.requiredRuns],
+        class: proofAssertion.class,
+        criterionId: proofAssertion.criterionId,
+        manualProcedureId: proofAssertion.manualProcedureId,
+        missingRunIds: [],
+        requiredRunIds: [...proofAssertion.requiredRuns],
+        requiredSubjectIds: [...proofAssertion.requiredSubjectIds],
+        status: 'generated',
+      })),
+      requestedCriteria: ['gate-a/02-protocol-schemas'],
+    },
     source: {
       commit: SOURCE_COMMIT,
       lockfileChecksums: { 'package-lock.json': inputFixtureChecksums['package-lock.json'] },
       repository: 'https://github.com/kumwe/studio',
+      tree: SOURCE_TREE,
       workingTreeState: 'clean',
     },
     subjects: [],
+    workPackage: 'M2-01',
   };
   const context = {
     ...criterionIndex,
     externalSubjectAssertions: externalSubjectAssertionIndex.subjectsById,
     getCommitTime: () => Date.parse('2026-08-24T08:00:00Z'),
+    getCommitTree: () => SOURCE_TREE,
     isCommitReachable: (commit) => commit === SOURCE_COMMIT,
     manualProcedures: manualProcedureIndex.proceduresById,
     manifestBytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
@@ -1223,6 +1417,7 @@ async function createReleaseGateFixture(t) {
   gitFixture(candidateRoot, ['add', '.']);
   gitFixture(candidateRoot, ['commit', '--quiet', '-m', 'candidate']);
   const candidateSha = gitFixture(candidateRoot, ['rev-parse', 'HEAD']);
+  const candidateTree = gitFixture(candidateRoot, ['rev-parse', 'HEAD^{tree}']);
   const commitTime = new Date(
     gitFixture(candidateRoot, ['show', '--no-patch', '--format=%cI', candidateSha]),
   ).toISOString();
@@ -1246,6 +1441,11 @@ async function createReleaseGateFixture(t) {
     ]),
   ];
   const bundleId = 'authenticated-bundle';
+  const execution = {
+    attempt: 1,
+    id: 'fixture/authenticated-execution',
+    runner: 'ci/authenticated-runner',
+  };
   const artifacts = [];
   const runs = [];
   for (const [index, testId] of laneIds.entries()) {
@@ -1266,8 +1466,11 @@ async function createReleaseGateFixture(t) {
       artifactPaths: [path],
       command: commandForEvidenceLane(testId),
       endedAt: commitTime,
+      executionAttempt: execution.attempt,
+      executionId: execution.id,
       exitStatus: 0,
       retryCount: 0,
+      runId: `${execution.id}/run-${String(index + 1).padStart(3, '0')}`,
       runner: 'ci/authenticated-runner',
       startedAt: commitTime,
       testId,
@@ -1306,6 +1509,7 @@ async function createReleaseGateFixture(t) {
         subjectIds: [],
       },
     })),
+    execution,
     environment: {
       browser: 'Chromium-141.0.0.0',
       node: '24.6.0',
@@ -1315,6 +1519,7 @@ async function createReleaseGateFixture(t) {
     },
     evidenceSchemaVersion: '0.1-draft',
     inputFixtureChecksums,
+    intakeExecutions: [],
     profiles: [],
     redaction: { declared: true, statement: 'No secrets.' },
     review: {
@@ -1325,13 +1530,28 @@ async function createReleaseGateFixture(t) {
       status: 'reproduced',
     },
     runs,
+    scope: {
+      proofs: assertions.map((assertion) => ({
+        availableRunIds: [...assertion.requiredRuns],
+        class: assertion.class,
+        criterionId: assertion.criterionId,
+        manualProcedureId: assertion.manualProcedureId,
+        missingRunIds: [],
+        requiredRunIds: [...assertion.requiredRuns],
+        requiredSubjectIds: [...assertion.requiredSubjectIds],
+        status: 'generated',
+      })),
+      requestedCriteria: [...new Set(assertions.map(({ criterionId }) => criterionId))],
+    },
     source: {
       commit: candidateSha,
       lockfileChecksums: { 'package-lock.json': inputFixtureChecksums['package-lock.json'] },
       repository: 'https://github.com/kumwe/studio',
+      tree: candidateTree,
       workingTreeState: 'clean',
     },
     subjects: [],
+    workPackage: 'M2-01',
   };
   const manifestPath = `evidence/bundles/${bundleId}/manifest.json`;
   const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
@@ -1345,10 +1565,14 @@ async function createReleaseGateFixture(t) {
     subject: {
       bundleId,
       candidateCommit: candidateSha,
+      candidateTree,
       decision: 'reproduced',
+      execution,
       freshnessExpiresAt: manifest.review.freshnessExpiresAt,
+      intakeExecutions: [],
       kind: 'bundle-review',
       reviewedAt: commitTime,
+      workPackage: 'M2-01',
     },
     subjectBytes: manifestBytes,
   });

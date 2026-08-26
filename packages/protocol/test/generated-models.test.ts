@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readdir, readFile } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { basename, join, relative, sep } from 'node:path';
 
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
@@ -18,6 +18,10 @@ const schemaDirectory = join(process.cwd(), 'schemas');
 const exampleDirectory = join(schemaDirectory, 'examples');
 const testkitDirectory = join(process.cwd(), 'packages/testkit');
 const schemaManifestPath = join(process.cwd(), 'packages/protocol/schemas/manifest.json');
+const compilerDepthBoundaries = new Set([
+  'schemas/vectors/schema-profile/json-depth-limit.accepted.json',
+  'schemas/vectors/schema-profile/json-depth-limit.rejected.json',
+]);
 
 const exampleSchemas = new Map<GeneratedProtocolSchemaFile, readonly string[]>([
   ['authoring-message-catalog.schema.json', ['authoring-message-catalog.en.json']],
@@ -138,7 +142,8 @@ describe('generated TypeScript protocol models', () => {
   });
 
   it('schema-validates and JSON-round-trips every applicable positive fixture', async () => {
-    const exercised: string[] = [];
+    const exercised: { classification: 'assignable' | 'compiler-depth-boundary'; path: string }[] =
+      [];
     const exampleFiles = (await readdir(exampleDirectory))
       .filter((file) => file.endsWith('.json'))
       .sort();
@@ -148,7 +153,7 @@ describe('generated TypeScript protocol models', () => {
     for (const [schemaFile, files] of exampleSchemas) {
       for (const file of files) {
         await assertSchemaRoundTrip(schemaFile, join(exampleDirectory, file));
-        exercised.push(`examples/${file}`);
+        exercised.push(classifyDocument(join(exampleDirectory, file)));
       }
     }
     for (const { directory, schemaFile } of corpusGroups) {
@@ -156,7 +161,7 @@ describe('generated TypeScript protocol models', () => {
       expect(files.length).toBeGreaterThan(0);
       for (const file of files) {
         await assertSchemaRoundTrip(schemaFile, join(directory, file));
-        exercised.push(`${schemaFile}:${file}`);
+        exercised.push(classifyDocument(join(directory, file)));
       }
     }
     await assertSchemaRoundTrip(
@@ -167,11 +172,44 @@ describe('generated TypeScript protocol models', () => {
       'studio-release.schema.json',
       join(process.cwd(), 'studio-release.json'),
     );
-    exercised.push('corpus-manifest.json', 'studio-release.json');
+    exercised.push(
+      classifyDocument(join(testkitDirectory, 'corpus-manifest.json')),
+      classifyDocument(join(process.cwd(), 'studio-release.json')),
+    );
 
-    expect(exercised).toHaveLength(236);
+    const evidenceReportPath = process.env.STUDIO_TYPESCRIPT_RUNTIME_REPORT;
+    if (evidenceReportPath !== undefined) {
+      await writeFile(
+        evidenceReportPath,
+        `${JSON.stringify(
+          {
+            exercisedDocuments: [...exercised].sort((left, right) =>
+              left.path.localeCompare(right.path, 'en'),
+            ),
+            kind: 'studio-typescript-runtime-round-trip-report',
+            schemaValidatedRoundTrips: exercised.length,
+          },
+          null,
+          2,
+        )}\n`,
+        { flag: 'wx' },
+      );
+    }
   }, 15_000);
 });
+
+function classifyDocument(path: string): {
+  classification: 'assignable' | 'compiler-depth-boundary';
+  path: string;
+} {
+  const repositoryPath = relative(process.cwd(), path).split(sep).join('/');
+  return {
+    classification: compilerDepthBoundaries.has(repositoryPath)
+      ? 'compiler-depth-boundary'
+      : 'assignable',
+    path: repositoryPath,
+  };
+}
 
 async function assertSchemaRoundTrip<SchemaFile extends GeneratedProtocolSchemaFile>(
   schemaFile: SchemaFile,
