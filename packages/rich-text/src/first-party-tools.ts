@@ -178,15 +178,21 @@ export class StudioHeaderTool extends InlineToolBase {
   public render(): HTMLElement {
     const group = editorGroup('Heading');
     const level = document.createElement('select');
+    const selectedLevel =
+      this.node.attrs?.level === 3 || this.node.attrs?.level === 4 ? this.node.attrs.level : 2;
     level.setAttribute('aria-label', 'Heading level');
     level.disabled = this.readOnly;
     for (const value of [2, 3, 4]) {
       const option = document.createElement('option');
       option.value = String(value);
       option.textContent = `Heading ${value}`;
-      option.selected = this.node.attrs?.level === value;
+      option.selected = selectedLevel === value;
       level.append(option);
     }
+    // happy-dom does not consistently preserve pre-append option.selected state.
+    // Set the select itself after its options exist so no-op saves retain the
+    // canonical heading level in both browser and headless DOM implementations.
+    level.value = String(selectedLevel);
     this.#level = level;
     group.append(level, this.renderInline('Heading text', this.node.content ?? []));
     return group;

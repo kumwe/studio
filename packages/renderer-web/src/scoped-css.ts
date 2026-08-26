@@ -49,6 +49,9 @@ export function compileStudioScopedStyleSheet(
   const base = `[data-studio-scope="${scope}"]`;
   return sheet.rules
     .map((rule) => {
+      if (!Object.hasOwn(TARGETS, rule.target)) {
+        throw new TypeError(`Scoped CSS target ${rule.target} is not allowed.`);
+      }
       const entries = Object.entries(rule.declarations);
       if (entries.length > 50) throw new RangeError('Scoped style rule exceeds 50 declarations.');
       const declarations = entries

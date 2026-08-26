@@ -279,6 +279,56 @@ describe('semantic web renderer', () => {
     ).toThrow(/scope/u);
   });
 
+  it.each(['body', 'toString', 'constructor', 'hasOwnProperty', '__proto__'])(
+    'rejects non-own scoped CSS target %s at the compiler boundary',
+    (target) => {
+      expect(() =>
+        compileStudioScopedStyleSheet('s1', {
+          rules: [
+            {
+              declarations: { color: '#112233' },
+              target,
+            },
+          ],
+        } as unknown as StudioScopedStyleSheet),
+      ).toThrow(/target .* is not allowed/u);
+    },
+  );
+
+  it('rejects a scoped CSS target inherited through prototype pollution', () => {
+    const target = 'pollutedScopedTarget';
+    Object.defineProperty(Object.prototype, target, {
+      configurable: true,
+      value: ' body',
+    });
+    try {
+      expect(() =>
+        compileStudioScopedStyleSheet('s1', {
+          rules: [{ declarations: { color: '#112233' }, target }],
+        } as unknown as StudioScopedStyleSheet),
+      ).toThrow(/target .* is not allowed/u);
+    } finally {
+      Reflect.deleteProperty(Object.prototype, target);
+    }
+  });
+
+  it('accepts every own scoped CSS target in the compiler allowlist', () => {
+    const output = compileStudioScopedStyleSheet('s1', {
+      rules: (['self', 'heading', 'content', 'media', 'action'] as const).map((target) => ({
+        declarations: { color: '#112233' },
+        target,
+      })),
+    });
+
+    expect(output).toBe(
+      '[data-studio-scope="s1"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="heading"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="content"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="media"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="action"]{color:#112233}',
+    );
+  });
+
   it('uses collision-free scopes to isolate CSS for formerly colliding schema-valid node ids', async () => {
     const firstId = 'nj6puezis73af';
     const secondId = 'n1ksfjywvqcv2';

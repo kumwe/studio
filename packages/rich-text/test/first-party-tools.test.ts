@@ -542,6 +542,22 @@ describe('first-party Editor.js tool boundary', () => {
     expect(listTool.save().node).toEqual(list);
   });
 
+  it.each([false, true])(
+    'preserves every valid heading level in no-op snapshots (readOnly=%s)',
+    (readOnly) => {
+      for (const level of [2, 3, 4] as const) {
+        const heading = { attrs: { level }, type: 'heading' } as const;
+        const tool = new StudioHeaderTool({ data: { node: heading }, readOnly });
+        const root = tool.render();
+
+        expect(root.querySelector<HTMLSelectElement>('[aria-label="Heading level"]')?.value).toBe(
+          String(level),
+        );
+        expect(tool.save().node).toEqual(heading);
+      }
+    },
+  );
+
   it('keeps a defensive synthetic list editor outside the persisted node', () => {
     const atomicOnly: StudioRichTextNode = {
       content: [{ content: [{ type: 'horizontalRule' }], type: 'listItem' }],
