@@ -10,31 +10,52 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 
 const execFileAsync = promisify(execFile);
 
+// The public npm registry is eventually consistent: a freshly published
+// version or a just-moved dist-tag can 404 or read stale on some replicas for
+// minutes after the write succeeds. Verification must therefore poll inside a
+// bounded window before declaring the coordinated release incomplete.
+export const REGISTRY_PROPAGATION_WINDOW_MS = 300_000;
+const REGISTRY_POLL_INTERVAL_MS = 10_000;
+
 export async function collectRegistryEvidence(
   record,
   {
     approvedArtifacts,
     distTag,
     fetchAttestations = readAttestations,
+    now = Date.now,
     npmJson = readNpmJson,
+    propagationWindowMs = 0,
     provenanceCommit,
     provenanceWorkflow = '.github/workflows/release.yml',
     requireProvenance = false,
     skipMissing = false,
+    sleep = defaultSleep,
   } = {},
 ) {
   assertCoordinatedRelease(record);
   if (approvedArtifacts !== undefined) {
     assertApprovedReleaseArtifacts(approvedArtifacts, record);
   }
+  // One deadline for the whole family keeps the total wait bounded: once the
+  // window closes, remaining absent coordinates fail without further polling.
+  const propagationDeadline = now() + propagationWindowMs;
   const failures = [];
   const packages = [];
   for (const { name } of STUDIO_RELEASE_PACKAGES) {
     const version = record.packages[name];
     let manifest;
-    try {
-      manifest = await npmJson(['view', `${name}@${version}`, '--json']);
-    } catch {
+    for (;;) {
+      try {
+        manifest = await npmJson(['view', `${name}@${version}`, '--json']);
+        break;
+      } catch {
+        // Preflight callers expect absence and must not wait for it.
+        if (skipMissing || now() >= propagationDeadline) break;
+        await sleep(REGISTRY_POLL_INTERVAL_MS);
+      }
+    }
+    if (manifest === undefined) {
       if (!skipMissing) failures.push(`${name}@${version} is absent from npm`);
       continue;
     }
@@ -90,10 +111,14 @@ export async function collectRegistryEvidence(
     }
     if (distTag !== undefined && distTag.length > 0) {
       let tags;
-      try {
-        tags = await npmJson(['view', name, 'dist-tags', '--json']);
-      } catch {
-        tags = {};
+      for (;;) {
+        try {
+          tags = await npmJson(['view', name, 'dist-tags', '--json']);
+        } catch {
+          tags = {};
+        }
+        if (tags[distTag] === version || now() >= propagationDeadline) break;
+        await sleep(REGISTRY_POLL_INTERVAL_MS);
       }
       if (tags[distTag] !== version) {
         failures.push(
@@ -182,6 +207,12 @@ export function collectProvenanceFailures(
   return failures;
 }
 
+async function defaultSleep(milliseconds) {
+  await new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
 async function readNpmJson(arguments_) {
   const { stdout } = await execFileAsync('npm', arguments_, { maxBuffer: 2 * 1_024 * 1_024 });
   return JSON.parse(stdout);
@@ -229,6 +260,7 @@ async function main() {
   const failures = await collectRegistryFailures(record, {
     approvedArtifacts,
     distTag: process.env.RELEASE_DIST_TAG,
+    propagationWindowMs: REGISTRY_PROPAGATION_WINDOW_MS,
     provenanceCommit: process.env.RELEASE_PROVENANCE_COMMIT,
     provenanceWorkflow: process.env.RELEASE_PROVENANCE_WORKFLOW,
     requireProvenance: process.env.RELEASE_REQUIRE_PROVENANCE === 'true',

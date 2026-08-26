@@ -95,6 +95,103 @@ describe('post-publication registry verification', () => {
     assert.equal(failures.length, 16);
   });
 
+  it('tolerates registry propagation lag before declaring a package absent', async () => {
+    const clock = fakeClock();
+    const lagging = STUDIO_RELEASE_PACKAGES[0].name;
+    let laggingReads = 0;
+    const failures = await collectRegistryFailures(record, {
+      approvedArtifacts,
+      distTag: 'rc',
+      fetchAttestations: async (url) => {
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        return provenance(name, approvedArtifacts.packages[name], provenanceCommit);
+      },
+      now: clock.now,
+      npmJson: async (arguments_) => {
+        if (arguments_[1] === `${lagging}@${version}` && (laggingReads += 1) <= 3) {
+          throw new Error('E404');
+        }
+        return registryManifest(arguments_);
+      },
+      propagationWindowMs: 300_000,
+      provenanceCommit,
+      requireProvenance: true,
+      sleep: clock.sleep,
+    });
+    assert.deepEqual(failures, []);
+    assert.equal(laggingReads, 4);
+    assert.ok(clock.slept > 0);
+  });
+
+  it('waits for a moved dist-tag to propagate before reporting drift', async () => {
+    const clock = fakeClock();
+    const lagging = STUDIO_RELEASE_PACKAGES[0].name;
+    let staleTagReads = 0;
+    const failures = await collectRegistryFailures(record, {
+      approvedArtifacts,
+      distTag: 'rc',
+      fetchAttestations: async (url) => {
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        return provenance(name, approvedArtifacts.packages[name], provenanceCommit);
+      },
+      now: clock.now,
+      npmJson: async (arguments_) => {
+        if (
+          arguments_[2] === 'dist-tags' &&
+          arguments_[1] === lagging &&
+          (staleTagReads += 1) <= 2
+        ) {
+          return { rc: '0.1.0-rc.0' };
+        }
+        return registryManifest(arguments_);
+      },
+      propagationWindowMs: 300_000,
+      provenanceCommit,
+      requireProvenance: true,
+      sleep: clock.sleep,
+    });
+    assert.deepEqual(failures, []);
+    assert.equal(staleTagReads, 3);
+    assert.ok(clock.slept > 0);
+  });
+
+  it('still reports absence and drift once the propagation window closes', async () => {
+    const clock = fakeClock();
+    const failures = await collectRegistryFailures(record, {
+      distTag: 'rc',
+      now: clock.now,
+      npmJson: async (arguments_) => {
+        if (arguments_[1] === `${STUDIO_RELEASE_PACKAGE_NAMES[0]}@${version}`) {
+          throw new Error('E404');
+        }
+        if (arguments_[2] === 'dist-tags') {
+          return { rc: '0.1.0-rc.0' };
+        }
+        return { dist: { integrity: `sha512-${'A'.repeat(88)}` }, version };
+      },
+      propagationWindowMs: 60_000,
+      sleep: clock.sleep,
+    });
+    assert.equal(failures.filter((failure) => failure.includes('is absent from npm')).length, 1);
+    assert.equal(failures.filter((failure) => failure.includes('dist-tag rc is')).length, 7);
+    assert.ok(clock.slept >= 60_000);
+  });
+
+  it('does not wait for propagation while preflighting expected absences', async () => {
+    const clock = fakeClock();
+    const failures = await collectRegistryFailures(record, {
+      now: clock.now,
+      npmJson: async () => {
+        throw new Error('E404');
+      },
+      propagationWindowMs: 300_000,
+      skipMissing: true,
+      sleep: clock.sleep,
+    });
+    assert.deepEqual(failures, []);
+    assert.equal(clock.slept, 0);
+  });
+
   it('can preflight existing provenance without treating absent coordinates as verified', async () => {
     const present = STUDIO_RELEASE_PACKAGES[0].name;
     const failures = await collectRegistryFailures(record, {
@@ -125,6 +222,17 @@ describe('post-publication registry verification', () => {
     ]);
   });
 });
+
+function fakeClock() {
+  const clock = {
+    now: () => clock.slept,
+    slept: 0,
+    sleep: async (milliseconds) => {
+      clock.slept += milliseconds;
+    },
+  };
+  return clock;
+}
 
 async function registryManifest(arguments_) {
   if (arguments_[2] === 'dist-tags') {
