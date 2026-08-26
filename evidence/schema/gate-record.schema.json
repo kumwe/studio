@@ -111,8 +111,9 @@
     "gateReviewer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["identity", "independent", "kind", "roles"],
+      "required": ["authentication", "identity", "independent", "kind", "roles"],
       "properties": {
+        "authentication": { "$ref": "#/$defs/authentication" },
         "identity": { "$ref": "#/$defs/identity" },
         "independent": { "type": "boolean" },
         "kind": { "const": "human" },
@@ -125,6 +126,15 @@
             "enum": ["general", "accessibility", "compatibility", "data-integrity", "security"]
           }
         }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attestationPath", "signaturePath"],
+      "properties": {
+        "attestationPath": { "$ref": "#/$defs/repositoryRelativePath" },
+        "signaturePath": { "$ref": "#/$defs/repositoryRelativePath" }
       }
     },
     "identity": {

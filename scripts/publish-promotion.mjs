@@ -5,6 +5,7 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { assertPromotionPackageState } from './release-policy.mjs';
+import { assertLiveMain } from './reconcile-release-tag.mjs';
 import { publishMissingApprovedArtifacts } from './staged-publish.mjs';
 import { verifyReleaseGateFromEnvironment } from './verify-release-gate.mjs';
 
@@ -81,6 +82,9 @@ async function main() {
     state.releaseRecord,
     approvedArtifacts,
     preflight.missing,
+    {
+      assertPublicationStillAuthorized: () => assertLiveMain(process.env.STUDIO_EXPECTED_MAIN_SHA),
+    },
   );
   console.log(
     `Staging publication for ${state.releaseRecord.release} on ${channel}: ` +

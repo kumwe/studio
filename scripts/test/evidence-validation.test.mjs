@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,15 +9,37 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
   buildEnvironmentAssertionIndex,
+  buildProofAssertionIndex,
   buildProfileAssertionIndex,
   checksumFile,
   commandForEvidenceLane,
   collectBundleFailures,
   collectChecksumMapFailures,
   collectGateRecordFailures,
+  criterionProofKey,
+  inspectBundleEvidence,
   REQUIRED_EVIDENCE_INPUTS,
   REQUIRED_EVIDENCE_LANES,
 } from '../evidence-validation.mjs';
+import {
+  buildExternalSubjectAssertionIndex,
+  collectExternalSubjectFailures,
+  externalSubjectAuthenticationKey,
+} from '../external-evidence.mjs';
+import {
+  buildManualProcedureIndex,
+  collectManualRecordFailures,
+  manualProcedureChecksum,
+} from '../manual-evidence.mjs';
+import { planCriterionProofs } from '../evidence-plan.mjs';
+import {
+  assertReviewerAuthorityReleaseTrust,
+  assertReviewerAuthorityStructuralPin,
+  buildReviewerAuthorityIndex,
+  REVIEW_SIGNATURE_NAMESPACE,
+  reviewerAuthorityRegistryChecksum,
+} from '../review-authentication.mjs';
+import { loadGateRecord } from '../verify-release-gate.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const registry = JSON.parse(
@@ -36,8 +59,64 @@ const environmentMatrix = JSON.parse(
 const environmentAssertionRegistry = JSON.parse(
   await readFile(`${repositoryRoot}/evidence/environment-assertions.json`, 'utf8'),
 );
+const manualProcedureRegistry = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/manual-procedures.json`, 'utf8'),
+);
+const manualProcedureIndex = buildManualProcedureIndex(
+  manualProcedureRegistry,
+  criterionIndex.criteriaById,
+);
+const externalSubjectAssertionRegistry = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/external-subject-assertions.json`, 'utf8'),
+);
+const externalSubjectAssertionIndex = buildExternalSubjectAssertionIndex(
+  externalSubjectAssertionRegistry,
+);
+const proofAssertionRegistry = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/proof-assertions.json`, 'utf8'),
+);
+const proofAssertionIndex = buildProofAssertionIndex(
+  proofAssertionRegistry,
+  criterionIndex.criteriaById,
+  {
+    externalSubjects: externalSubjectAssertionIndex.subjectsById,
+    manualProcedures: manualProcedureIndex.proceduresById,
+    profileAssertions: profileAssertionIndex.profilesById,
+  },
+);
+const manualRecordSchema = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/schema/manual-record.schema.json`, 'utf8'),
+);
+const externalSubjectSchema = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/schema/external-subject.schema.json`, 'utf8'),
+);
+const externalReportSchema = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/schema/external-report.schema.json`, 'utf8'),
+);
+const externalAttestationSchema = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/schema/external-attestation.schema.json`, 'utf8'),
+);
+const validateManualRecord = new Ajv2020({ allErrors: true, strict: true }).compile(
+  manualRecordSchema,
+);
+const validateExternalSubject = new Ajv2020({ allErrors: true, strict: true }).compile(
+  externalSubjectSchema,
+);
+const validateExternalReport = new Ajv2020({ allErrors: true, strict: true }).compile(
+  externalReportSchema,
+);
+const validateExternalAttestation = new Ajv2020({ allErrors: true, strict: true }).compile(
+  externalAttestationSchema,
+);
 const SOURCE_COMMIT = 'a'.repeat(40);
 const NOW = Date.parse('2026-08-24T12:00:00Z');
+const ALL_GATE_A_PROOF_KEYS = new Set(
+  registry.gates.A.flatMap((criterion) =>
+    criterion.evidenceClasses.map((evidenceClass) =>
+      criterionProofKey(criterion.id, evidenceClass),
+    ),
+  ),
+);
 
 test('criterion registry is schema-valid, stable, unique, and matches roadmap order', async () => {
   const schema = JSON.parse(
@@ -54,6 +133,19 @@ test('criterion registry is schema-valid, stable, unique, and matches roadmap or
   assert.equal(
     profileAssertionIndex.profilesById.get('studio.profile/authoring-web').status,
     'target',
+  );
+  assert.deepEqual(manualProcedureIndex.failures, []);
+  assert.deepEqual(externalSubjectAssertionIndex.failures, []);
+  assert.deepEqual(proofAssertionIndex.failures, []);
+  assert.equal(proofAssertionIndex.assertionsByKey.size, 60);
+  const gateBAssertions = proofAssertionRegistry.assertions.filter(({ criterionId }) =>
+    criterionId.startsWith('gate-b/'),
+  );
+  assert.equal(gateBAssertions.length, 32);
+  assert.ok(gateBAssertions.every(({ availability }) => availability === 'target'));
+  assert.deepEqual(
+    proofAssertionIndex.profileTargetsById.get('studio.profile/authoring-web'),
+    proofAssertionRegistry.profileTargets[0],
   );
 
   const roadmap = await readFile(`${repositoryRoot}/docs/roadmap/README.md`, 'utf8');
@@ -73,6 +165,140 @@ test('profile assertion registry fails closed on malformed assertion arrays', ()
   const index = buildProfileAssertionIndex(malformed, criterionIndex.allowedProfiles);
   assert.ok(index.failures.some((failure) => failure.includes('invalid requiredInputs')));
   assert.ok(index.failures.some((failure) => failure.includes('invalid requiredRuns')));
+});
+
+test('reviewer authority registry cannot alias one signing key to two identities', () => {
+  const sharedKey = `ssh-ed25519 ${'A'.repeat(68)}`;
+  const index = buildReviewerAuthorityIndex({
+    authorities: [
+      {
+        identity: 'github/1001/domain-reviewer',
+        independent: true,
+        publicKeys: [sharedKey],
+        roles: ['security'],
+      },
+      {
+        identity: 'github/1002/general-reviewer',
+        independent: false,
+        publicKeys: [sharedKey],
+        roles: ['general'],
+      },
+    ],
+    contractVersion: '0.1-draft',
+    kind: 'reviewer-authority-registry',
+    status: 'active',
+  });
+  assert.ok(index.failures.some((failure) => failure.includes('shared by authorities')));
+});
+
+test('a repository-controlled authority checksum is structural, not release authorization', () => {
+  const attackerRegistryBytes = Buffer.from(
+    `${JSON.stringify({
+      authorities: [
+        {
+          identity: 'github/9001/repository-attacker',
+          independent: true,
+          publicKeys: [`ssh-ed25519 ${'A'.repeat(68)}`],
+          roles: ['general'],
+        },
+        {
+          identity: 'github/9002/repository-accomplice',
+          independent: true,
+          publicKeys: [`ssh-ed25519 ${'B'.repeat(68)}`],
+          roles: ['security'],
+        },
+      ],
+      contractVersion: '0.1-draft',
+      kind: 'reviewer-authority-registry',
+      status: 'active',
+    })}\n`,
+  );
+  const checkedInChecksumBytes = Buffer.from(
+    `${reviewerAuthorityRegistryChecksum(attackerRegistryBytes)}\n`,
+  );
+  assert.doesNotThrow(() =>
+    assertReviewerAuthorityStructuralPin(attackerRegistryBytes, checkedInChecksumBytes),
+  );
+  assert.throws(
+    () =>
+      assertReviewerAuthorityReleaseTrust(attackerRegistryBytes, checkedInChecksumBytes, undefined),
+    /STUDIO_REVIEWER_AUTHORITY_SHA256/u,
+  );
+  assert.throws(
+    () =>
+      assertReviewerAuthorityReleaseTrust(
+        attackerRegistryBytes,
+        checkedInChecksumBytes,
+        reviewerAuthorityRegistryChecksum(Buffer.from('protected registry\n')),
+      ),
+    /does not equal evidence\/reviewer-authorities\.sha256/u,
+  );
+});
+
+test('proof registry is closed, complete, and keeps authoring-web target-bound', () => {
+  const missing = structuredClone(proofAssertionRegistry);
+  missing.assertions.pop();
+  assert.ok(
+    buildProofAssertionIndex(missing, criterionIndex.criteriaById, {
+      externalSubjects: externalSubjectAssertionIndex.subjectsById,
+      manualProcedures: manualProcedureIndex.proceduresById,
+      profileAssertions: profileAssertionIndex.profilesById,
+    }).failures.some((failure) => failure.includes('every Gate A and Gate B criterion/class')),
+  );
+
+  const promotedByLabel = structuredClone(proofAssertionRegistry);
+  promotedByLabel.assertions.find((assertion) => assertion.class === 'lifecycle').availability =
+    'executable';
+  assert.ok(
+    buildProofAssertionIndex(promotedByLabel, criterionIndex.criteriaById, {
+      externalSubjects: externalSubjectAssertionIndex.subjectsById,
+      manualProcedures: manualProcedureIndex.proceduresById,
+      profileAssertions: profileAssertionIndex.profilesById,
+    }).failures.some((failure) => failure.includes('contains a non-executable lane')),
+  );
+
+  const detachedAuthoring = structuredClone(proofAssertionRegistry);
+  detachedAuthoring.profileTargets[0].requiredSubjectIds = [];
+  detachedAuthoring.profileTargets[0].requiredRuns = ['accessibility/manual-interactions-v1'];
+  assert.ok(
+    buildProofAssertionIndex(detachedAuthoring, criterionIndex.criteriaById, {
+      externalSubjects: externalSubjectAssertionIndex.subjectsById,
+      manualProcedures: manualProcedureIndex.proceduresById,
+      profileAssertions: profileAssertionIndex.profilesById,
+    }).failures.some((failure) =>
+      failure.includes('exact Kumwe App real-shell and manual accessibility proof'),
+    ),
+  );
+});
+
+test('generator planning is assertion-derived and refuses partial specialized or manual criteria', () => {
+  const executable = planCriterionProofs(
+    ['gate-a/02-protocol-schemas'],
+    criterionIndex.criteriaById,
+    proofAssertionIndex.assertionsByKey,
+  );
+  assert.deepEqual(
+    executable.map(({ assertion }) => assertion.class),
+    ['contract', 'security'],
+  );
+  assert.throws(
+    () =>
+      planCriterionProofs(
+        ['gate-a/04-extension-theme-lifecycle'],
+        criterionIndex.criteriaById,
+        proofAssertionIndex.assertionsByKey,
+      ),
+    /cannot be partially generated.*lifecycle:target/u,
+  );
+  assert.throws(
+    () =>
+      planCriterionProofs(
+        ['gate-a/12-accessible-interactions'],
+        criterionIndex.criteriaById,
+        proofAssertionIndex.assertionsByKey,
+      ),
+    /cannot be partially generated.*accessibility:manual-input/u,
+  );
 });
 
 test('environment assertions cover the matrix and keep unsupported variants non-executable', async () => {
@@ -126,36 +352,348 @@ test('mandatory lane labels cannot substitute for their exact registered command
   );
 });
 
-test('Gate A reproducibility requires the exact quarantined-registry install lane', async (t) => {
+test('criterion labels authenticate only through exact run, producer, role, and artifact refs', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const inspection = await inspectBundleEvidence(fixture.manifest, fixture.context);
+  assert.deepEqual(inspection.failures, []);
+  assert.deepEqual(
+    [...inspection.authenticatedProofKeys],
+    [criterionProofKey('gate-a/02-protocol-schemas', 'contract')],
+  );
+
+  const wrongRuns = structuredClone(fixture.manifest);
+  wrongRuns.criteria[0].proof.runIds = ['contract/canonical-corpus'];
+  assert.ok(
+    (await collectBundleFailures(wrongRuns, fixture.context)).some((failure) =>
+      failure.includes('does not bind its exact required runs'),
+    ),
+  );
+
+  const wrongProducer = structuredClone(fixture.manifest);
+  const boundPath = wrongProducer.criteria[0].proof.artifactPaths[0];
+  wrongProducer.artifacts.find((artifact) => artifact.path === boundPath).producerTestId =
+    'quality/lint';
+  assert.ok(
+    (await collectBundleFailures(wrongProducer, fixture.context)).some((failure) =>
+      failure.includes('not linking run'),
+    ),
+  );
+
+  const wrongRole = structuredClone(fixture.manifest);
+  wrongRole.artifacts.find((artifact) => artifact.path === boundPath).role =
+    'integration/kumwe-app-report-v1';
+  const roleFailures = await collectBundleFailures(wrongRole, fixture.context);
+  assert.ok(roleFailures.some((failure) => failure.includes('cannot produce artifact role')));
+
+  const relabelled = structuredClone(fixture.manifest);
+  relabelled.criteria[0].class = 'security';
+  assert.ok(
+    (await collectBundleFailures(relabelled, fixture.context)).some((failure) =>
+      failure.includes('does not bind its exact required runs'),
+    ),
+  );
+});
+
+test('a registered command cannot make a target-only release proof executable', async (t) => {
   const fixture = await createBundleFixture(t);
   const manifest = structuredClone(fixture.manifest);
+  const assertion = proofAssertionIndex.assertionsByKey.get(
+    criterionProofKey('gate-a/13-reproducible-evidence', 'release'),
+  );
   manifest.criteria = [
     {
       class: 'release',
       criterionId: 'gate-a/13-reproducible-evidence',
       outcome: 'positive',
+      proof: {
+        artifactPaths: [],
+        runIds: assertion.requiredRuns,
+        subjectIds: [],
+      },
     },
   ];
   const missingFailures = await collectBundleFailures(manifest, fixture.context);
   assert.ok(
     missingFailures.includes(
-      'runs is missing criterion-specific lane release/staged-registry-install',
+      'criterion gate-a/13-reproducible-evidence/release remains target-only',
+    ),
+  );
+  assert.equal(
+    commandForEvidenceLane('release/staged-registry-install'),
+    'npm run release:verify-stage',
+  );
+});
+
+test('manual proof rejects self-asserted review and binds each step to distinct artifact bytes', async () => {
+  const procedure = manualProcedureIndex.proceduresById.get('accessibility/gate-a-interactions-v1');
+  const checksum = `sha256-${'A'.repeat(43)}=`;
+  const observationPaths = procedure.requiredSteps.map(
+    (_stepId, index) =>
+      `evidence/bundles/bundle-one/artifacts/manual-observation-${String(index + 1).padStart(2, '0')}.txt`,
+  );
+  const record = {
+    authentication: {
+      attestationPath: 'evidence/bundles/bundle-one/artifacts/manual-accessibility.review.json',
+      signaturePath: 'evidence/bundles/bundle-one/artifacts/manual-accessibility.review.json.sig',
+    },
+    bundleId: 'bundle-one',
+    candidateCommit: SOURCE_COMMIT,
+    contractVersion: '0.1-draft',
+    criterionId: procedure.criterionId,
+    evidenceClass: procedure.evidenceClass,
+    kind: 'manual-evidence-record',
+    observations: procedure.requiredSteps.map((stepId, index) => ({
+      artifactChecksums: { [observationPaths[index]]: checksum },
+      artifactPaths: [observationPaths[index]],
+      artifactRole: 'manual/observation-v1',
+      observed: `Observed ${stepId}.`,
+      outcome: 'pass',
+      stepId,
+    })),
+    outcome: 'accepted',
+    performedAt: '2026-08-24T10:00:00Z',
+    procedureChecksum: manualProcedureChecksum(procedure),
+    procedureId: procedure.id,
+    reviewer: {
+      identity: 'github/1001/accessibility-reviewer',
+      independent: true,
+      kind: 'human',
+      roles: ['accessibility'],
+    },
+  };
+  const artifactsByPath = new Map(
+    observationPaths.map((path) => [
+      path,
+      {
+        checksum,
+        path,
+        producerTestId: procedure.laneId,
+        role: 'manual/observation-v1',
+      },
+    ]),
+  );
+  artifactsByPath.set(record.authentication.attestationPath, {
+    checksum,
+    path: record.authentication.attestationPath,
+    producerTestId: procedure.laneId,
+    role: 'review/attestation-v1',
+  });
+  artifactsByPath.set(record.authentication.signaturePath, {
+    checksum,
+    path: record.authentication.signaturePath,
+    producerTestId: procedure.laneId,
+    role: 'review/signature-v1',
+  });
+  const context = {
+    artifactsByPath,
+    artifactPaths: new Set(artifactsByPath.keys()),
+    bundleId: 'bundle-one',
+    candidateCommit: SOURCE_COMMIT,
+    now: NOW,
+    procedure,
+    reviewerAuthorityStructuralPinVerified: false,
+    runStartedAt: '2026-08-24T11:00:00Z',
+    runnerIdentities: new Set(['ci/runner']),
+    sourceCommitTime: Date.parse('2026-08-24T08:00:00Z'),
+    subjectBytes: Buffer.from(`${JSON.stringify(record, null, 2)}\n`),
+    validateSchema: validateManualRecord,
+    verificationStartedAt: Date.parse('2026-08-24T11:00:00Z'),
+  };
+  assert.ok(
+    (await collectManualRecordFailures(record, context)).some((failure) =>
+      failure.includes('checksum-pinned reviewer authority registry'),
     ),
   );
 
-  manifest.runs.push({
-    ...manifest.runs[0],
-    command: 'true',
-    testId: 'release/staged-registry-install',
-  });
-  const fakeFailures = await collectBundleFailures(manifest, fixture.context);
+  const nonIndependent = structuredClone(record);
+  nonIndependent.reviewer.independent = false;
   assert.ok(
-    fakeFailures.includes('run release/staged-registry-install did not run its registered command'),
+    (await collectManualRecordFailures(nonIndependent, context)).some((failure) =>
+      failure.includes('trusted independent authority'),
+    ),
   );
 
-  manifest.runs.at(-1).command = commandForEvidenceLane('release/staged-registry-install');
-  const exactFailures = await collectBundleFailures(manifest, fixture.context);
-  assert.ok(!exactFailures.some((failure) => failure.includes('staged-registry-install')));
+  const missingStep = structuredClone(record);
+  missingStep.observations.pop();
+  assert.ok(
+    (await collectManualRecordFailures(missingStep, context)).some((failure) =>
+      failure.includes('every registered procedure step'),
+    ),
+  );
+  const sharedArtifact = structuredClone(record);
+  sharedArtifact.observations[1].artifactPaths = [observationPaths[0]];
+  sharedArtifact.observations[1].artifactChecksums = { [observationPaths[0]]: checksum };
+  assert.ok(
+    (await collectManualRecordFailures(sharedArtifact, context)).some((failure) =>
+      failure.includes('reused across steps'),
+    ),
+  );
+  const wrongProcedure = structuredClone(record);
+  wrongProcedure.procedureChecksum = `sha256-${'A'.repeat(43)}=`;
+  assert.ok(
+    (await collectManualRecordFailures(wrongProcedure, context)).some((failure) =>
+      failure.includes('exact registered procedure'),
+    ),
+  );
+  const postdated = structuredClone(record);
+  postdated.performedAt = '2026-08-24T11:30:00Z';
+  assert.ok(
+    (await collectManualRecordFailures(postdated, context)).some((failure) =>
+      failure.includes('verifier run window'),
+    ),
+  );
+  const relabelled = structuredClone(record);
+  relabelled.observations[0].artifactRole = 'manual/decision-record-v1';
+  assert.ok(
+    (await collectManualRecordFailures(relabelled, context)).some((failure) =>
+      failure.includes('closed schema'),
+    ),
+  );
+  const substitutedProducer = { ...context };
+  substitutedProducer.artifactsByPath = new Map(artifactsByPath);
+  substitutedProducer.artifactsByPath.set(observationPaths[0], {
+    checksum,
+    producerTestId: 'quality/lint',
+    role: 'manual/observation-v1',
+  });
+  assert.ok(
+    (await collectManualRecordFailures(record, substitutedProducer)).some((failure) =>
+      failure.includes('exact verifier producer and role'),
+    ),
+  );
+});
+
+test('Kumwe App evidence remains target-only and rejects repository, commit, and candidate replay', () => {
+  const assertion = externalSubjectAssertionIndex.subjectsById.get('kumwe/app');
+  const artifactPaths = new Set([
+    'evidence/bundles/bundle-one/artifacts/kumwe-app-subject.json',
+    'evidence/bundles/bundle-one/artifacts/kumwe-app-report.json',
+    'evidence/bundles/bundle-one/artifacts/kumwe-app-attestation.json',
+  ]);
+  const packages = [
+    '@kumwe/studio',
+    '@kumwe/studio-core',
+    '@kumwe/studio-media',
+    '@kumwe/studio-preview',
+    '@kumwe/studio-protocol',
+    '@kumwe/studio-renderer-web',
+    '@kumwe/studio-rich-text',
+    '@kumwe/studio-testkit',
+  ];
+  const integrity = `sha512-${'A'.repeat(86)}==`;
+  const checksum = `sha256-${'A'.repeat(43)}=`;
+  const subject = {
+    attestationArtifactPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-attestation.json',
+    attestationChecksum: checksum,
+    commit: 'b'.repeat(40),
+    id: 'kumwe/app',
+    kind: 'git-workflow-evidence',
+    lockfileChecksums: {
+      'composer.lock': checksum,
+      'package-lock.json': checksum,
+    },
+    ref: 'refs/pull/114/head',
+    recordArtifactPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-subject.json',
+    reportArtifactPath: 'evidence/bundles/bundle-one/artifacts/kumwe-app-report.json',
+    reportChecksum: checksum,
+    repository: 'https://github.com/kumwe/app',
+    sourceChecksums: Object.fromEntries(
+      assertion.requiredSourcePaths.map((path) => [path, checksum]),
+    ),
+    studioBinding: {
+      candidateCommit: SOURCE_COMMIT,
+      corpusManifestChecksum: checksum,
+      packageIntegrities: Object.fromEntries(packages.map((name) => [name, integrity])),
+      releaseRecordChecksum: checksum,
+    },
+    tree: 'c'.repeat(40),
+    workflow: {
+      command: assertion.requiredCommand,
+      commit: 'b'.repeat(40),
+      digest: checksum,
+      path: assertion.workflowPath,
+      repository: assertion.repository,
+      runAttempt: 1,
+      runId: 114,
+    },
+  };
+  const boundDocument = {
+    commit: subject.commit,
+    contractVersion: '0.1-draft',
+    ref: subject.ref,
+    repository: subject.repository,
+    sourceChecksums: subject.sourceChecksums,
+    studioBinding: subject.studioBinding,
+    tree: subject.tree,
+    workflow: subject.workflow,
+  };
+  const report = {
+    ...boundDocument,
+    kind: 'kumwe-app-evidence-report',
+    outcome: 'passed',
+  };
+  const attestation = {
+    ...boundDocument,
+    issuedAt: '2026-08-24T10:00:00Z',
+    issuer: 'https://token.actions.githubusercontent.com',
+    kind: 'kumwe-app-workflow-attestation',
+    reportChecksum: subject.reportChecksum,
+  };
+  const context = {
+    artifactPaths,
+    assertion,
+    attestation,
+    candidateCommit: SOURCE_COMMIT,
+    report,
+    validateAttestationSchema: validateExternalAttestation,
+    validateReportSchema: validateExternalReport,
+    validateSchema: validateExternalSubject,
+  };
+  const targetFailures = collectExternalSubjectFailures(subject, context);
+  assert.ok(targetFailures.some((failure) => failure.includes('target-only')));
+
+  const executableAssertion = { ...assertion, status: 'executable' };
+  const unauthenticated = collectExternalSubjectFailures(subject, {
+    ...context,
+    assertion: executableAssertion,
+  });
+  assert.ok(unauthenticated.some((failure) => failure.includes('no authenticated workflow')));
+  assert.deepEqual(
+    collectExternalSubjectFailures(subject, {
+      ...context,
+      assertion: executableAssertion,
+      authenticatedWorkflowSubjects: new Set([externalSubjectAuthenticationKey(subject)]),
+    }),
+    [],
+  );
+
+  const replayed = structuredClone(subject);
+  replayed.repository = 'https://github.com/example/fork';
+  replayed.workflow.commit = 'd'.repeat(40);
+  replayed.studioBinding.candidateCommit = 'e'.repeat(40);
+  const replayFailures = collectExternalSubjectFailures(replayed, context);
+  assert.ok(replayFailures.some((failure) => failure.includes('registered repository')));
+  assert.ok(replayFailures.some((failure) => failure.includes('workflow commit')));
+  assert.ok(replayFailures.some((failure) => failure.includes('another Studio candidate')));
+
+  const refReplay = structuredClone(subject);
+  refReplay.ref = 'refs/pull/999/head';
+  const refFailures = collectExternalSubjectFailures(refReplay, {
+    ...context,
+    assertion: executableAssertion,
+    authenticatedWorkflowSubjects: new Set([externalSubjectAuthenticationKey(subject)]),
+  });
+  assert.ok(refFailures.some((failure) => failure.includes('no authenticated workflow')));
+  assert.ok(refFailures.some((failure) => failure.includes('report does not bind exact ref')));
+
+  const tamperedReport = structuredClone(report);
+  tamperedReport.workflow.runAttempt = 2;
+  assert.ok(
+    collectExternalSubjectFailures(subject, {
+      ...context,
+      report: tamperedReport,
+    }).some((failure) => failure.includes('exact workflow run')),
+  );
 });
 
 test('retained RC evidence authenticates source inputs and versions at its own commit', async (t) => {
@@ -164,21 +702,35 @@ test('retained RC evidence authenticates source inputs and versions at its own c
     const failures = await collectBundleFailures(fixture.manifest, {
       ...fixture.context,
       getPackageVersionsForCommit: async () => ({ '@kumwe/studio-core': '1.0.0' }),
-      getSourceFileChecksum: async (_commit, path) => fixture.manifest.inputFixtureChecksums[path],
+      getSourceFileChecksum: async (_commit, path) => ({
+        checksum: fixture.manifest.inputFixtureChecksums[path],
+        mode: '100644',
+      }),
       packageVersions: { '@kumwe/studio-core': currentVersion },
     });
     assert.deepEqual(failures, [], `retained evidence failed at current ${currentVersion}`);
   }
+  const nonRegularSource = await collectBundleFailures(fixture.manifest, {
+    ...fixture.context,
+    getSourceFileChecksum: async (_commit, path) => ({
+      checksum: fixture.manifest.inputFixtureChecksums[path],
+      mode: '120000',
+    }),
+  });
+  assert.ok(
+    nonRegularSource.some((failure) => failure.includes('not a regular tracked source file')),
+  );
 });
 
 test('a complete pending bundle is authentic but categorically cannot support a gate', async (t) => {
   const fixture = await createBundleFixture(t);
   assert.deepEqual(await collectBundleFailures(fixture.manifest, fixture.context), []);
 
-  const gate = createPassingGate(fixture.artifactChecksum);
-  const pendingBundle = createGateBundle('pending');
+  const pendingBundle = await createGateBundle(fixture, 'pending');
+  const gate = await createPassingGate(fixture, pendingBundle);
   const failures = await collectGateRecordFailures(gate, 'gate-a.json', {
     ...fixture.context,
+    authenticatedProofsByBundleId: new Map([['bundle-one', new Set(ALL_GATE_A_PROOF_KEYS)]]),
     bundlesById: new Map([['bundle-one', pendingBundle]]),
     registry,
   });
@@ -228,13 +780,16 @@ test('checksum validation rejects repository escape, symlinks, and byte drift', 
 
 test('fabricated and incomplete gate records fail with stable diagnostics', async (t) => {
   const fixture = await createBundleFixture(t);
-  const gate = createPassingGate(fixture.artifactChecksum);
+  const bundle = await createGateBundle(fixture, 'reproduced');
+  const gate = await createPassingGate(fixture, bundle);
   gate.sourceCommit = '0'.repeat(40);
   gate.criteria[0].evidenceBundleIds = ['does-not-exist'];
   gate.evidenceBundleIds = ['does-not-exist'];
   const failures = await collectGateRecordFailures(gate, 'gate-a.json', {
     ...fixture.context,
+    authenticatedProofsByBundleId: new Map(),
     bundlesById: new Map(),
+    recordBytes: gateRecordBytes(gate),
     registry,
   });
   assert.ok(failures.some((failure) => failure.includes('is not reachable')));
@@ -244,8 +799,8 @@ test('fabricated and incomplete gate records fail with stable diagnostics', asyn
 
 test('gate validation rejects samples, source mismatch, stale review, missing classes, and high defects', async (t) => {
   const fixture = await createBundleFixture(t);
-  const gate = createPassingGate(fixture.artifactChecksum);
-  const bundle = createGateBundle('reproduced');
+  const bundle = await createGateBundle(fixture, 'reproduced');
+  const gate = await createPassingGate(fixture, bundle);
   bundle.source.commit = 'b'.repeat(40);
   bundle.review.freshnessExpiresAt = '2026-08-24T11:00:00Z';
   bundle.criteria = bundle.criteria.filter(
@@ -262,9 +817,15 @@ test('gate validation rejects samples, source mismatch, stale review, missing cl
     rationale: 'Unresolved contract contradiction.',
     severity: 'high',
   });
+  const incompleteProofs = new Set(ALL_GATE_A_PROOF_KEYS);
+  incompleteProofs.delete(
+    criterionProofKey(registry.gates.A[0].id, registry.gates.A[0].evidenceClasses[0]),
+  );
   const failures = await collectGateRecordFailures(gate, 'gate-a.json', {
     ...fixture.context,
+    authenticatedProofsByBundleId: new Map([['bundle-one', incompleteProofs]]),
     bundlesById: new Map([['bundle-one', bundle]]),
+    recordBytes: gateRecordBytes(gate),
     registry,
   });
   assert.ok(failures.some((failure) => failure.includes('forbidden sample bundle')));
@@ -274,15 +835,145 @@ test('gate validation rejects samples, source mismatch, stale review, missing cl
   assert.ok(failures.some((failure) => failure.includes('unresolved critical or high defect')));
 });
 
-test('a complete multi-criterion Gate A record passes semantic validation', async (t) => {
+test('a semantically complete Gate A record cannot self-assert reviewer authority', async (t) => {
   const fixture = await createBundleFixture(t);
-  const gate = createPassingGate(fixture.artifactChecksum);
+  const bundle = await createGateBundle(fixture, 'reproduced');
+  const gate = await createPassingGate(fixture, bundle);
   const failures = await collectGateRecordFailures(gate, 'gate-a.json', {
     ...fixture.context,
-    bundlesById: new Map([['bundle-one', createGateBundle('reproduced')]]),
+    authenticatedProofsByBundleId: new Map([['bundle-one', new Set(ALL_GATE_A_PROOF_KEYS)]]),
+    bundlesById: new Map([['bundle-one', bundle]]),
+    recordBytes: gateRecordBytes(gate),
     registry,
   });
-  assert.deepEqual(failures, []);
+  assert.ok(
+    failures.some((failure) =>
+      failure.includes('lacks a checksum-pinned reviewer authority registry'),
+    ),
+  );
+});
+
+test('gate artifact closure rejects omitted, extra, substituted, and mutated bytes', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const bundle = await createGateBundle(fixture, 'reproduced');
+  const gate = await createPassingGate(fixture, bundle);
+  const baseContext = {
+    ...fixture.context,
+    authenticatedProofsByBundleId: new Map([['bundle-one', new Set(ALL_GATE_A_PROOF_KEYS)]]),
+    bundlesById: new Map([['bundle-one', bundle]]),
+    registry,
+  };
+
+  const omitted = structuredClone(gate);
+  Reflect.deleteProperty(omitted.artifactHashes, bundle.artifacts[0].path);
+  assert.ok(
+    (
+      await collectGateRecordFailures(omitted, 'gate-a.json', {
+        ...baseContext,
+        recordBytes: gateRecordBytes(omitted),
+      })
+    ).some((failure) => failure.includes('exactly equal every linked')),
+  );
+
+  const extra = structuredClone(gate);
+  extra.artifactHashes['evidence/bundles/bundle-one/artifacts/extra.log'] =
+    bundle.artifacts[0].checksum;
+  assert.ok(
+    (
+      await collectGateRecordFailures(extra, 'gate-a.json', {
+        ...baseContext,
+        recordBytes: gateRecordBytes(extra),
+      })
+    ).some((failure) => failure.includes('exactly equal every linked')),
+  );
+
+  const substituted = structuredClone(gate);
+  substituted.artifactHashes[bundle.artifacts[0].path] = `sha256-${'A'.repeat(43)}=`;
+  assert.ok(
+    (
+      await collectGateRecordFailures(substituted, 'gate-a.json', {
+        ...baseContext,
+        recordBytes: gateRecordBytes(substituted),
+      })
+    ).some((failure) => failure.includes('declared checksum')),
+  );
+
+  await writeFile(join(fixture.root, bundle.artifacts[0].path), 'mutated bytes\n');
+  assert.ok(
+    (
+      await collectGateRecordFailures(gate, 'gate-a.json', {
+        ...baseContext,
+        recordBytes: gateRecordBytes(gate),
+      })
+    ).some((failure) => failure.includes('has checksum')),
+  );
+});
+
+test('release gate loader accepts a real bundle only through authenticated proof bindings', async (t) => {
+  const fixture = await createReleaseGateFixture(t);
+  const loaded = await loadGateRecord(fixture.options);
+  assert.equal(loaded.record.decision, 'pass');
+  assert.equal(loaded.bundlesById.get('authenticated-bundle').bundleId, 'authenticated-bundle');
+});
+
+test('signed release review rejects an unpinned authority or changed subject bytes', async (t) => {
+  const fixture = await createReleaseGateFixture(t);
+  await assert.rejects(
+    loadGateRecord({
+      ...fixture.options,
+      reviewerAuthorityChecksum: undefined,
+    }),
+    /STUDIO_REVIEWER_AUTHORITY_SHA256/u,
+  );
+  await assert.rejects(
+    loadGateRecord({
+      ...fixture.options,
+      reviewerAuthorityChecksum: `sha256-${'A'.repeat(43)}=`,
+    }),
+    /does not equal evidence\/reviewer-authorities\.sha256/u,
+  );
+
+  const originalGateBytes = await readFile(fixture.gatePath);
+  await writeFile(fixture.gatePath, Buffer.concat([originalGateBytes, Buffer.from('\n')]));
+  await assert.rejects(
+    loadGateRecord(fixture.options),
+    /review attestation does not bind the exact subject bytes and review context/u,
+  );
+  await writeFile(fixture.gatePath, originalGateBytes);
+
+  const elevatedRoleGate = JSON.parse(originalGateBytes.toString('utf8'));
+  elevatedRoleGate.reviewers[1].roles = ['general', 'security'];
+  await writeFile(fixture.gatePath, gateRecordBytes(elevatedRoleGate));
+  await assert.rejects(
+    loadGateRecord(fixture.options),
+    /claims roles or independence outside its authority/u,
+  );
+  await writeFile(fixture.gatePath, originalGateBytes);
+
+  const domainSignaturePath = join(
+    fixture.options.evidenceRoot,
+    'evidence/gates/reviews/gate-a/domain.json.sig',
+  );
+  const [domainSignatureBytes, generalSignatureBytes] = await Promise.all([
+    readFile(domainSignaturePath),
+    readFile(join(fixture.options.evidenceRoot, 'evidence/gates/reviews/gate-a/general.json.sig')),
+  ]);
+  await writeFile(domainSignaturePath, generalSignatureBytes);
+  await assert.rejects(
+    loadGateRecord(fixture.options),
+    /review attestation signature is not valid for github\/1001\/domain-reviewer/u,
+  );
+  await writeFile(domainSignaturePath, domainSignatureBytes);
+
+  const originalManifestBytes = await readFile(fixture.bundleManifestPath);
+  await writeFile(
+    fixture.bundleManifestPath,
+    Buffer.concat([originalManifestBytes, Buffer.from('\n')]),
+  );
+  await assert.rejects(
+    loadGateRecord(fixture.options),
+    /review attestation does not bind the exact subject bytes and review context/u,
+  );
 });
 
 test('workflow evidence boundaries remain immutable and input-safe', async () => {
@@ -290,7 +981,9 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
     const workflow = await readFile(`${repositoryRoot}/.github/workflows/${workflowName}`, 'utf8');
     for (const match of workflow.matchAll(/^\s*uses:\s*([^\s]+)$/gmu)) {
       assert.ok(
-        match[1] === './.github/actions/setup-studio' || /@[a-f0-9]{40}$/u.test(match[1]),
+        match[1] === './.github/actions/setup-studio' ||
+          match[1] === './.release-controller/.github/actions/setup-studio' ||
+          /@[a-f0-9]{40}$/u.test(match[1]),
         `${workflowName}: ${match[1]} is neither local nor pinned`,
       );
     }
@@ -311,6 +1004,19 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   const releaseWorkflow = await readFile(`${repositoryRoot}/.github/workflows/release.yml`, 'utf8');
   assert.match(releaseWorkflow, /ref: \$\{\{ inputs\.gate_record_sha \}\}/u);
   assert.match(releaseWorkflow, /path: \.release-evidence/u);
+  assert.match(releaseWorkflow, /path: \.release-controller/u);
+  assert.match(releaseWorkflow, /working-directory: \.release-controller/u);
+  assert.match(releaseWorkflow, /STUDIO_PUBLISH_ROOT: \.\./u);
+  const publishJob = releaseWorkflow.split('\n  publish:')[1];
+  assert.ok(
+    publishJob.indexOf('name: Revalidate RC with the exact current-main controller') <
+      publishJob.indexOf('name: Verify npm authentication'),
+    'current-main controller must run before registry authentication',
+  );
+  const publication = publishJob.split(
+    'name: Publish missing approved tarballs to a non-channel staging tag',
+  )[1];
+  assert.match(publication, /STUDIO_REVIEWER_AUTHORITY_SHA256:/u);
   assert.doesNotMatch(releaseWorkflow, /sparse-checkout:/u);
   assert.match(releaseWorkflow, /environment: studio-\$\{\{ inputs\.channel \}\}/u);
   assert.match(releaseWorkflow, /NPM_CONFIG_PROVENANCE: 'true'/u);
@@ -332,7 +1038,10 @@ test('workflow evidence boundaries remain immutable and input-safe', async () =>
   assert.match(setupAction, /actions\/setup-node@[a-f0-9]{40}/u);
   assert.match(setupAction, /npm install --global npm@11\.9\.0/u);
   assert.match(setupAction, /npm ci/u);
+  assert.match(setupAction, /working-directory: \$\{\{ inputs\.working-directory \}\}/u);
   assert.match(setupAction, /playwright install --with-deps chromium/u);
+  const gitignore = await readFile(`${repositoryRoot}/.gitignore`, 'utf8');
+  assert.match(gitignore, /^\.release-controller\/$/mu);
 });
 
 async function createBundleFixture(t) {
@@ -342,33 +1051,66 @@ async function createBundleFixture(t) {
     await mkdir(join(root, path, '..'), { recursive: true });
     await writeFile(join(root, path), `${path}\n`);
   }
-  const artifactPath = 'evidence/bundles/bundle-one/artifacts/lane.log';
-  await mkdir(join(root, artifactPath, '..'), { recursive: true });
-  await writeFile(join(root, artifactPath), 'green\n');
-  const artifactChecksum = await checksumFile(join(root, artifactPath));
   const inputFixtureChecksums = Object.fromEntries(
     await Promise.all(
       REQUIRED_EVIDENCE_INPUTS.map(async (path) => [path, await checksumFile(join(root, path))]),
     ),
   );
-  const runs = REQUIRED_EVIDENCE_LANES.map((testId, index) => ({
-    command: commandForEvidenceLane(testId),
-    endedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:01Z`,
-    exitStatus: 0,
-    retryCount: 0,
-    runner: 'ci/runner',
-    startedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:00Z`,
-    testId,
-  }));
+  const assertion = proofAssertionIndex.assertionsByKey.get(
+    criterionProofKey('gate-a/02-protocol-schemas', 'contract'),
+  );
+  const laneIds = [...new Set([...REQUIRED_EVIDENCE_LANES, ...assertion.requiredRuns])];
+  const artifacts = [];
+  const runs = [];
+  for (const [index, testId] of laneIds.entries()) {
+    const artifactPath =
+      `evidence/bundles/bundle-one/artifacts/` +
+      `${String(index + 1).padStart(2, '0')}-${testId.replaceAll('/', '-')}.log`;
+    await mkdir(join(root, artifactPath, '..'), { recursive: true });
+    await writeFile(join(root, artifactPath), `green ${testId}\n`);
+    const checksum = await checksumFile(join(root, artifactPath));
+    artifacts.push({
+      checksum,
+      mediaType: 'text/plain',
+      path: artifactPath,
+      producerTestId: testId,
+      role: 'run/log',
+    });
+    runs.push({
+      artifactPaths: [artifactPath],
+      command: commandForEvidenceLane(testId),
+      endedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:01Z`,
+      exitStatus: 0,
+      retryCount: 0,
+      runner: 'ci/runner',
+      startedAt: `2026-08-24T09:${String(index).padStart(2, '0')}:00Z`,
+      testId,
+    });
+  }
+  const artifactsByProducer = new Map(
+    artifacts.map((artifact) => [artifact.producerTestId, artifact.path]),
+  );
+  const proofArtifactPaths = assertion.requiredRuns.map((testId) =>
+    artifactsByProducer.get(testId),
+  );
+  const artifactChecksum = artifacts[0].checksum;
+  const artifactPath = artifacts[0].path;
   const manifest = {
-    artifactChecksums: { [artifactPath]: artifactChecksum },
-    artifacts: [{ checksum: artifactChecksum, mediaType: 'text/plain', path: artifactPath }],
+    artifactChecksums: Object.fromEntries(
+      artifacts.map((artifact) => [artifact.path, artifact.checksum]),
+    ),
+    artifacts,
     bundleId: 'bundle-one',
     criteria: [
       {
-        class: registry.gates.A[0].evidenceClasses[0],
-        criterionId: registry.gates.A[0].id,
+        class: 'contract',
+        criterionId: 'gate-a/02-protocol-schemas',
         outcome: 'positive',
+        proof: {
+          artifactPaths: proofArtifactPaths,
+          runIds: assertion.requiredRuns,
+          subjectIds: [],
+        },
       },
     ],
     environment: {
@@ -390,47 +1132,425 @@ async function createBundleFixture(t) {
       repository: 'https://github.com/kumwe/studio',
       workingTreeState: 'clean',
     },
+    subjects: [],
   };
   const context = {
     ...criterionIndex,
+    externalSubjectAssertions: externalSubjectAssertionIndex.subjectsById,
     getCommitTime: () => Date.parse('2026-08-24T08:00:00Z'),
     isCommitReachable: (commit) => commit === SOURCE_COMMIT,
+    manualProcedures: manualProcedureIndex.proceduresById,
+    manifestBytes: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
     now: NOW,
     packageVersions: { '@kumwe/studio-core': '1.0.0' },
+    proofAssertions: proofAssertionIndex.assertionsByKey,
     repositoryRoot: root,
+    validateExternalAttestationSchema: validateExternalAttestation,
+    validateExternalReportSchema: validateExternalReport,
+    validateExternalSubjectSchema: validateExternalSubject,
+    validateManualRecordSchema: validateManualRecord,
   };
-  return { artifactChecksum, context, manifest };
+  return { artifactChecksum, artifactPath, context, manifest, root };
 }
 
-function createGateBundle(reviewStatus) {
-  return {
-    bundleId: 'bundle-one',
-    criteria: registry.gates.A.flatMap((criterion) =>
-      criterion.evidenceClasses.map((evidenceClass) => ({
-        class: evidenceClass,
-        criterionId: criterion.id,
-        outcome: 'positive',
-      })),
-    ),
-    profiles: [...registry.profileVocabulary],
-    review:
-      reviewStatus === 'pending'
-        ? { status: 'pending' }
-        : {
-            freshnessExpiresAt: '2026-09-24T10:00:00Z',
-            reviewedAt: '2026-08-24T10:00:00Z',
-            reviewer: { identity: 'human/bundle-reviewer', kind: 'human' },
-            status: 'reproduced',
-          },
-    source: { commit: SOURCE_COMMIT },
+async function createReleaseGateFixture(t) {
+  const candidateRoot = await mkdtemp(join(tmpdir(), 'studio-gate-candidate-'));
+  const evidenceRoot = await mkdtemp(join(tmpdir(), 'studio-gate-record-'));
+  const signingRoot = await mkdtemp(join(tmpdir(), 'studio-gate-signing-'));
+  t.after(() => rm(candidateRoot, { force: true, recursive: true }));
+  t.after(() => rm(evidenceRoot, { force: true, recursive: true }));
+  t.after(() => rm(signingRoot, { force: true, recursive: true }));
+  for (const path of REQUIRED_EVIDENCE_INPUTS) {
+    await mkdir(join(candidateRoot, path, '..'), { recursive: true });
+    await writeFile(join(candidateRoot, path), await readFile(join(repositoryRoot, path)));
+  }
+  const domainAuthority = await createSigningAuthority(signingRoot, {
+    identity: 'github/1001/domain-reviewer',
+    independent: true,
+    roles: ['accessibility', 'compatibility', 'data-integrity', 'security'],
+  });
+  const generalAuthority = await createSigningAuthority(signingRoot, {
+    identity: 'github/1002/general-reviewer',
+    independent: false,
+    roles: ['general'],
+  });
+  const reviewerAuthorityRegistry = {
+    authorities: [domainAuthority.authority, generalAuthority.authority],
+    contractVersion: '0.1-draft',
+    kind: 'reviewer-authority-registry',
+    status: 'active',
   };
-}
-
-function createPassingGate(artifactChecksum) {
-  return {
-    artifactHashes: {
-      'evidence/bundles/bundle-one/artifacts/lane.log': artifactChecksum,
+  const reviewerAuthorityRegistryBytes = Buffer.from(
+    `${JSON.stringify(reviewerAuthorityRegistry, null, 2)}\n`,
+  );
+  const reviewerAuthorityChecksumBytes = Buffer.from(
+    `${reviewerAuthorityRegistryChecksum(reviewerAuthorityRegistryBytes)}\n`,
+  );
+  await writeFile(
+    join(candidateRoot, 'evidence/reviewer-authorities.json'),
+    reviewerAuthorityRegistryBytes,
+  );
+  await writeFile(
+    join(candidateRoot, 'evidence/reviewer-authorities.sha256'),
+    reviewerAuthorityChecksumBytes,
+  );
+  await mkdir(join(evidenceRoot, 'evidence'), { recursive: true });
+  await writeFile(
+    join(evidenceRoot, 'evidence/reviewer-authorities.json'),
+    reviewerAuthorityRegistryBytes,
+  );
+  await writeFile(
+    join(evidenceRoot, 'evidence/reviewer-authorities.sha256'),
+    reviewerAuthorityChecksumBytes,
+  );
+  const fixtureProofAssertionRegistry = structuredClone(proofAssertionRegistry);
+  for (const assertion of fixtureProofAssertionRegistry.assertions) {
+    if (assertion.criterionId.startsWith('gate-a/')) {
+      assertion.artifactRoles = ['run/log'];
+      assertion.availability = 'executable';
+      assertion.manualProcedureId = null;
+      assertion.requiredRuns = ['quality/lint'];
+      assertion.requiredSubjectIds = [];
+    }
+  }
+  await writeFile(
+    join(candidateRoot, 'evidence/proof-assertions.json'),
+    `${JSON.stringify(fixtureProofAssertionRegistry, null, 2)}\n`,
+  );
+  gitFixture(candidateRoot, ['init', '--quiet']);
+  gitFixture(candidateRoot, ['config', 'user.email', 'evidence@example.invalid']);
+  gitFixture(candidateRoot, ['config', 'user.name', 'Evidence Fixture']);
+  gitFixture(candidateRoot, ['add', '.']);
+  gitFixture(candidateRoot, ['commit', '--quiet', '-m', 'candidate']);
+  const candidateSha = gitFixture(candidateRoot, ['rev-parse', 'HEAD']);
+  const commitTime = new Date(
+    gitFixture(candidateRoot, ['show', '--no-patch', '--format=%cI', candidateSha]),
+  ).toISOString();
+  const fixtureProofAssertionIndex = buildProofAssertionIndex(
+    fixtureProofAssertionRegistry,
+    criterionIndex.criteriaById,
+    {
+      externalSubjects: externalSubjectAssertionIndex.subjectsById,
+      manualProcedures: manualProcedureIndex.proceduresById,
+      profileAssertions: profileAssertionIndex.profilesById,
     },
+  );
+  assert.deepEqual(fixtureProofAssertionIndex.failures, []);
+  const assertions = fixtureProofAssertionRegistry.assertions.filter(({ criterionId }) =>
+    criterionId.startsWith('gate-a/'),
+  );
+  const laneIds = [
+    ...new Set([
+      ...REQUIRED_EVIDENCE_LANES,
+      ...assertions.flatMap((assertion) => assertion.requiredRuns),
+    ]),
+  ];
+  const bundleId = 'authenticated-bundle';
+  const artifacts = [];
+  const runs = [];
+  for (const [index, testId] of laneIds.entries()) {
+    const path =
+      `evidence/bundles/${bundleId}/artifacts/` +
+      `${String(index + 1).padStart(2, '0')}-${testId.replaceAll('/', '-')}.log`;
+    await mkdir(join(evidenceRoot, path, '..'), { recursive: true });
+    await writeFile(join(evidenceRoot, path), `authenticated ${testId}\n`);
+    const checksum = await checksumFile(join(evidenceRoot, path));
+    artifacts.push({
+      checksum,
+      mediaType: 'text/plain',
+      path,
+      producerTestId: testId,
+      role: 'run/log',
+    });
+    runs.push({
+      artifactPaths: [path],
+      command: commandForEvidenceLane(testId),
+      endedAt: commitTime,
+      exitStatus: 0,
+      retryCount: 0,
+      runner: 'ci/authenticated-runner',
+      startedAt: commitTime,
+      testId,
+    });
+  }
+  const artifactPathByRun = new Map(
+    artifacts.map((artifact) => [artifact.producerTestId, artifact.path]),
+  );
+  const inputFixtureChecksums = Object.fromEntries(
+    await Promise.all(
+      REQUIRED_EVIDENCE_INPUTS.map(async (path) => [
+        path,
+        await checksumFile(join(candidateRoot, path)),
+      ]),
+    ),
+  );
+  const packageVersions = JSON.parse(
+    await readFile(join(candidateRoot, 'studio-release.json'), 'utf8'),
+  ).packages;
+  const bundleReviewAuthentication = reviewAuthenticationPaths(
+    `evidence/bundles/${bundleId}/review/domain.json`,
+  );
+  const manifest = {
+    artifactChecksums: Object.fromEntries(
+      artifacts.map((artifact) => [artifact.path, artifact.checksum]),
+    ),
+    artifacts,
+    bundleId,
+    criteria: assertions.map((assertion) => ({
+      class: assertion.class,
+      criterionId: assertion.criterionId,
+      outcome: 'positive',
+      proof: {
+        artifactPaths: assertion.requiredRuns.map((testId) => artifactPathByRun.get(testId)),
+        runIds: assertion.requiredRuns,
+        subjectIds: [],
+      },
+    })),
+    environment: {
+      browser: 'Chromium-141.0.0.0',
+      node: '24.6.0',
+      npm: '11.9.0',
+      os: 'linux-x64',
+      packageVersions,
+    },
+    evidenceSchemaVersion: '0.1-draft',
+    inputFixtureChecksums,
+    profiles: [],
+    redaction: { declared: true, statement: 'No secrets.' },
+    review: {
+      authentication: bundleReviewAuthentication,
+      freshnessExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      reviewedAt: commitTime,
+      reviewer: trustedReviewer(domainAuthority.authority),
+      status: 'reproduced',
+    },
+    runs,
+    source: {
+      commit: candidateSha,
+      lockfileChecksums: { 'package-lock.json': inputFixtureChecksums['package-lock.json'] },
+      repository: 'https://github.com/kumwe/studio',
+      workingTreeState: 'clean',
+    },
+    subjects: [],
+  };
+  const manifestPath = `evidence/bundles/${bundleId}/manifest.json`;
+  const manifestBytes = Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  await writeFile(join(evidenceRoot, manifestPath), manifestBytes);
+  await writeSignedReview({
+    authentication: bundleReviewAuthentication,
+    evidenceRoot,
+    issuedAt: commitTime,
+    privateKeyPath: domainAuthority.privateKeyPath,
+    reviewer: domainAuthority.authority,
+    subject: {
+      bundleId,
+      candidateCommit: candidateSha,
+      decision: 'reproduced',
+      freshnessExpiresAt: manifest.review.freshnessExpiresAt,
+      kind: 'bundle-review',
+      reviewedAt: commitTime,
+    },
+    subjectBytes: manifestBytes,
+  });
+  const domainGateAuthentication = reviewAuthenticationPaths(
+    'evidence/gates/reviews/gate-a/domain.json',
+  );
+  const generalGateAuthentication = reviewAuthenticationPaths(
+    'evidence/gates/reviews/gate-a/general.json',
+  );
+  const gate = {
+    artifactHashes: Object.fromEntries([
+      [manifestPath, await checksumFile(join(evidenceRoot, manifestPath))],
+      ...artifacts.map((artifact) => [artifact.path, artifact.checksum]),
+      [
+        bundleReviewAuthentication.attestationPath,
+        await checksumFile(join(evidenceRoot, bundleReviewAuthentication.attestationPath)),
+      ],
+      [
+        bundleReviewAuthentication.signaturePath,
+        await checksumFile(join(evidenceRoot, bundleReviewAuthentication.signaturePath)),
+      ],
+    ]),
+    compatibilityStatement: 'No compatibility claim is waived.',
+    criteria: registry.gates.A.map(({ id }) => ({
+      criterionId: id,
+      evidenceBundleIds: [bundleId],
+      outcome: 'met',
+    })),
+    decidedAt: commitTime,
+    decision: 'pass',
+    evidenceBundleIds: [bundleId],
+    evidenceSchemaVersion: '0.1-draft',
+    excludedProfiles: [...criterionIndex.allowedProfiles],
+    gate: 'A',
+    reviewers: [
+      {
+        authentication: domainGateAuthentication,
+        ...trustedReviewer(domainAuthority.authority),
+      },
+      {
+        authentication: generalGateAuthentication,
+        ...trustedReviewer(generalAuthority.authority),
+      },
+    ],
+    signOff: {
+      accessibility: domainAuthority.authority.identity,
+      compatibility: domainAuthority.authority.identity,
+      dataIntegrity: domainAuthority.authority.identity,
+      security: domainAuthority.authority.identity,
+    },
+    sourceCommit: candidateSha,
+    supportedProfiles: [],
+    unresolvedDefects: [],
+  };
+  const gatePath = join(evidenceRoot, 'evidence/gates/gate-a.json');
+  await mkdir(join(gatePath, '..'), { recursive: true });
+  const gateBytes = Buffer.from(`${JSON.stringify(gate, null, 2)}\n`);
+  await writeFile(gatePath, gateBytes);
+  for (const { authentication, authority, privateKeyPath } of [
+    {
+      authentication: domainGateAuthentication,
+      authority: domainAuthority.authority,
+      privateKeyPath: domainAuthority.privateKeyPath,
+    },
+    {
+      authentication: generalGateAuthentication,
+      authority: generalAuthority.authority,
+      privateKeyPath: generalAuthority.privateKeyPath,
+    },
+  ]) {
+    await writeSignedReview({
+      authentication,
+      evidenceRoot,
+      issuedAt: commitTime,
+      privateKeyPath,
+      reviewer: authority,
+      subject: {
+        candidateCommit: candidateSha,
+        decidedAt: commitTime,
+        decision: 'pass',
+        gate: 'A',
+        kind: 'gate-review',
+      },
+      subjectBytes: gateBytes,
+    });
+  }
+
+  return {
+    options: {
+      candidateRoot,
+      candidateSha,
+      evidenceRoot,
+      executionRoot: candidateRoot,
+      gate: 'A',
+      packageVersions,
+      reviewerAuthorityChecksum: reviewerAuthorityRegistryChecksum(reviewerAuthorityRegistryBytes),
+    },
+    bundleManifestPath: join(evidenceRoot, manifestPath),
+    gatePath,
+  };
+}
+
+function gitFixture(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+function gateRecordBytes(record) {
+  return Buffer.from(`${JSON.stringify(record, null, 2)}\n`);
+}
+
+async function createSigningAuthority(signingRoot, reviewer) {
+  const privateKeyPath = join(signingRoot, reviewer.identity.replaceAll('/', '-'));
+  execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', privateKeyPath]);
+  const [algorithm, key] = (await readFile(`${privateKeyPath}.pub`, 'utf8')).trim().split(/\s+/u);
+  return {
+    authority: {
+      identity: reviewer.identity,
+      independent: reviewer.independent,
+      publicKeys: [`${algorithm} ${key}`],
+      roles: reviewer.roles,
+    },
+    privateKeyPath,
+  };
+}
+
+function reviewAuthenticationPaths(attestationPath) {
+  return { attestationPath, signaturePath: `${attestationPath}.sig` };
+}
+
+function trustedReviewer(authority) {
+  return {
+    identity: authority.identity,
+    independent: authority.independent,
+    kind: 'human',
+    roles: authority.roles,
+  };
+}
+
+async function writeSignedReview({
+  authentication,
+  evidenceRoot,
+  issuedAt,
+  privateKeyPath,
+  reviewer,
+  subject,
+  subjectBytes,
+}) {
+  const attestation = {
+    contractVersion: '0.1-draft',
+    issuedAt,
+    kind: 'signed-review-attestation',
+    reviewer: {
+      identity: reviewer.identity,
+      independent: reviewer.independent,
+      roles: reviewer.roles,
+    },
+    subject: {
+      ...subject,
+      subjectChecksum: reviewerAuthorityRegistryChecksum(subjectBytes),
+    },
+  };
+  const attestationPath = join(evidenceRoot, authentication.attestationPath);
+  await mkdir(join(attestationPath, '..'), { recursive: true });
+  await writeFile(attestationPath, `${JSON.stringify(attestation, null, 2)}\n`, { mode: 0o644 });
+  execFileSync(
+    'ssh-keygen',
+    ['-Y', 'sign', '-f', privateKeyPath, '-n', REVIEW_SIGNATURE_NAMESPACE, attestationPath],
+    { stdio: 'ignore' },
+  );
+}
+
+async function createGateBundle(fixture, reviewStatus) {
+  const supportedProfiles = registry.profileVocabulary.filter(
+    (profile) => profile !== 'studio.profile/authoring-web',
+  );
+  const bundle = structuredClone(fixture.manifest);
+  bundle.profiles = supportedProfiles;
+  bundle.review =
+    reviewStatus === 'pending'
+      ? { status: 'pending' }
+      : {
+          freshnessExpiresAt: '2026-09-24T10:00:00Z',
+          reviewedAt: '2026-08-24T10:00:00Z',
+          reviewer: { identity: 'human/bundle-reviewer', kind: 'human' },
+          status: 'reproduced',
+        };
+  const manifestPath = join(fixture.root, 'evidence/bundles/bundle-one/manifest.json');
+  await mkdir(join(manifestPath, '..'), { recursive: true });
+  await writeFile(manifestPath, `${JSON.stringify(bundle, null, 2)}\n`);
+  return bundle;
+}
+
+async function createPassingGate(fixture, bundle) {
+  const supportedProfiles = registry.profileVocabulary.filter(
+    (profile) => profile !== 'studio.profile/authoring-web',
+  );
+  const manifestPath = 'evidence/bundles/bundle-one/manifest.json';
+  return {
+    artifactHashes: Object.fromEntries([
+      [manifestPath, await checksumFile(join(fixture.root, manifestPath))],
+      ...bundle.artifacts.map((artifact) => [artifact.path, artifact.checksum]),
+    ]),
     compatibilityStatement: 'No compatibility claim is waived.',
     criteria: registry.gates.A.map((criterion) => ({
       criterionId: criterion.id,
@@ -441,7 +1561,7 @@ function createPassingGate(artifactChecksum) {
     decision: 'pass',
     evidenceSchemaVersion: '0.1-draft',
     evidenceBundleIds: ['bundle-one'],
-    excludedProfiles: [],
+    excludedProfiles: ['studio.profile/authoring-web'],
     gate: 'A',
     reviewers: [
       {
@@ -464,7 +1584,7 @@ function createPassingGate(artifactChecksum) {
       security: 'human/domain-reviewer',
     },
     sourceCommit: SOURCE_COMMIT,
-    supportedProfiles: [...registry.profileVocabulary],
+    supportedProfiles,
     unresolvedDefects: [],
   };
 }

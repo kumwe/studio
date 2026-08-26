@@ -8,13 +8,13 @@ import test from 'node:test';
 
 import { checkReleasePins } from '../check-release-pins.mjs';
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_RECORD_TARGETS } from '../release-family.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { preparePromotion } from '../prepare-promotion.mjs';
 import { inspectReleasePlan } from '../release-plan.mjs';
 import { assertStableGeneratedTree } from '../verify-release-gate.mjs';
 import { resetReleaseProfileClaims } from '../version-packages.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
-const profile = 'studio.profile/engine-core';
 
 test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stable', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'studio-prepare-promotion-'));
@@ -48,7 +48,10 @@ test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stab
     `${JSON.stringify(changesetConfig, null, 2)}\n`,
   );
 
-  const rcPlan = await preparePromotion(root, { channel: 'rc', profiles: [profile] });
+  const rcPlan = await preparePromotion(root, {
+    channel: 'rc',
+    profiles: [...VERSION_TWO_RELEASE_PROFILES],
+  });
   assert.equal(rcPlan.targetVersion, '0.1.0-rc.1');
   assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0-rc.1' });
   assert.deepEqual(JSON.parse(await readFile(new URL('.changeset/pre.json', root))), {
@@ -57,7 +60,7 @@ test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stab
   });
   assert.deepEqual(JSON.parse(await readFile(new URL('release-profile-claims.json', root))), {
     kind: 'studio-release-profile-claims',
-    profiles: [profile],
+    profiles: VERSION_TWO_RELEASE_PROFILES,
   });
   await assertRecordCopies(root, '0.1.0-rc.1');
 
@@ -131,5 +134,6 @@ async function assertRecordCopies(root, expectedVersion) {
   assert.equal(new Set(copies).size, 1);
   const record = JSON.parse(copies[0]);
   assert.equal(record.release, expectedVersion);
+  assert.deepEqual(record.claimedProfiles, VERSION_TWO_RELEASE_PROFILES);
   assert.ok(Object.values(record.packages).every((version) => version === expectedVersion));
 }

@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { inspectReleasePlan } from './release-plan.mjs';
+import { assertLiveMain } from './reconcile-release-tag.mjs';
 import { publishMissingApprovedArtifacts } from './staged-publish.mjs';
 
 const alphaVersionPattern =
@@ -54,6 +55,9 @@ async function main() {
     record,
     approvedArtifacts,
     preflight.missing,
+    {
+      assertPublicationStillAuthorized: () => assertLiveMain(process.env.STUDIO_EXPECTED_MAIN_SHA),
+    },
   );
   console.log(
     `Alpha staging publication complete: ${result.published.length} package(s) uploaded to ${result.stagingTag}.`,

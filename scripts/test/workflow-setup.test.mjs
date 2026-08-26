@@ -3,18 +3,38 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
+import { assertLiveMain } from '../reconcile-release-tag.mjs';
+
 const workflows = new Map([
   ['ci.yml', 2],
   ['evidence-bundle.yml', 1],
-  ['release.yml', 4],
+  ['release.yml', 6],
   ['version-packages.yml', 1],
 ]);
 const workflowRoot = fileURLToPath(new URL('../../.github/workflows/', import.meta.url));
 
+test('official channel reconciliation requires the exact live main ref', async () => {
+  const expected = 'a'.repeat(40);
+  await assert.doesNotReject(() =>
+    assertLiveMain(expected, { readRemoteMain: async () => expected }),
+  );
+  await assert.rejects(
+    () => assertLiveMain(expected, { readRemoteMain: async () => 'b'.repeat(40) }),
+    /Live origin\/main moved/u,
+  );
+  await assert.rejects(
+    () => assertLiveMain('main', { readRemoteMain: async () => expected }),
+    /exact lowercase commit SHA/u,
+  );
+});
+
 test('every executable workflow uses the single Studio environment action', async () => {
   for (const [name, expectedSetups] of workflows) {
     const source = await readFile(`${workflowRoot}${name}`, 'utf8');
-    const setups = source.match(/^\s*uses: \.\/\.github\/actions\/setup-studio$/gmu) ?? [];
+    const setups =
+      source.match(
+        /^\s*uses: \.\/(?:\.release-controller\/)?\.github\/actions\/setup-studio$/gmu,
+      ) ?? [];
     assert.equal(setups.length, expectedSetups, `${name} has an unexpected setup path count`);
     assert.doesNotMatch(source, /actions\/setup-node@/u, `${name} bypasses the setup action`);
     assert.doesNotMatch(source, /^\s*run: npm ci$/mu, `${name} duplicates dependency setup`);
@@ -75,6 +95,11 @@ test('publish workflows prove new registry bits before moving distribution tags'
     assert.ok(reconciliation < finalVerification, `${name} does not verify the reconciled tag`);
     assert.ok(finalVerification < cleanup, `${name} cleans staging before the final channel proof`);
     if (name === 'release.yml') {
+      const reconciliationBlock = source.split('name: Reconcile the channel distribution tag')[1];
+      assert.match(reconciliationBlock, /STUDIO_EXPECTED_MAIN_SHA:/u);
+      const githubReleaseBlock = source.split('name: Create or verify the GitHub release')[1];
+      assert.match(githubReleaseBlock, /EXPECTED_MAIN_SHA:/u);
+      assert.match(githubReleaseBlock, /git ls-remote --exit-code origin refs\/heads\/main/u);
       assert.ok(
         source.indexOf('node scripts/verify-github-release.mjs') < cleanup,
         'release.yml cleans staging before exact GitHub release recovery verification',
@@ -90,4 +115,6 @@ test('Changesets action is version-PR-only and cannot publish tags or GitHub rel
   assert.match(source, /push-git-tags: false/u);
   assert.doesNotMatch(source, /publish-script:/u);
   assert.match(source, /run: npm run release:publish-alpha/u);
+  const publishBlock = source.split('name: Publish missing approved tarballs')[1];
+  assert.match(publishBlock, /STUDIO_EXPECTED_MAIN_SHA: \$\{\{ github\.sha \}\}/u);
 });

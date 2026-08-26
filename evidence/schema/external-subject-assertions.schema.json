@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/external-subject-assertions.schema.json",
+  "title": "Studio external evidence subject assertion registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "kind", "subjects"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "kind": { "const": "external-subject-assertion-registry" },
+    "subjects": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "laneId",
+          "repository",
+          "requiredCommand",
+          "requiredPackageNames",
+          "requiredSourcePaths",
+          "status",
+          "workflowPath"
+        ],
+        "properties": {
+          "id": { "$ref": "#/$defs/stableId" },
+          "laneId": { "$ref": "#/$defs/stableId" },
+          "repository": {
+            "type": "string",
+            "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?![\\s\\S])",
+            "maxLength": 240
+          },
+          "requiredCommand": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+          },
+          "requiredPackageNames": {
+            "type": "array",
+            "minItems": 8,
+            "maxItems": 8,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/packageName" }
+          },
+          "requiredSourcePaths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/repositoryRelativePath" }
+          },
+          "status": { "enum": ["executable", "target"] },
+          "workflowPath": { "$ref": "#/$defs/repositoryRelativePath" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "packageName": {
+      "type": "string",
+      "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 214
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@.][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@.][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}

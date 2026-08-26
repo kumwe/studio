@@ -1,0 +1,117 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "manual-procedure-registry",
+  "procedures": [
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "manual/decision-record-v1",
+      "criterionId": "gate-a/01-artifact-vocabulary",
+      "evidenceClass": "manual-decision",
+      "id": "gate-a/01-artifact-vocabulary-v1",
+      "laneId": "manual/gate-a-01-artifact-vocabulary-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "compatibility",
+      "requiredSteps": [
+        "enumerate-public-vocabulary",
+        "reconcile-schemas-types-and-documents",
+        "confirm-owner-for-every-artifact",
+        "record-contract-contradictions",
+        "record-explicit-decision"
+      ],
+      "status": "input-required"
+    },
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "manual/decision-record-v1",
+      "criterionId": "gate-a/10-host-playbooks",
+      "evidenceClass": "manual-decision",
+      "id": "gate-a/10-host-playbooks-v1",
+      "laneId": "manual/gate-a-10-host-playbooks-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "compatibility",
+      "requiredSteps": [
+        "map-generic-host-responsibilities",
+        "map-kumwe-app-responsibilities",
+        "verify-public-port-for-every-responsibility",
+        "review-failure-recovery-and-cleanup",
+        "record-explicit-decision"
+      ],
+      "status": "input-required"
+    },
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "manual/decision-record-v1",
+      "criterionId": "gate-a/11-evolution-release-policy",
+      "evidenceClass": "manual-decision",
+      "id": "gate-a/11-evolution-policy-v1",
+      "laneId": "manual/gate-a-11-evolution-policy-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "compatibility",
+      "requiredSteps": [
+        "review-compatibility-rules",
+        "review-deprecation-rules",
+        "review-migration-rules",
+        "review-release-correction-and-recovery",
+        "record-explicit-decision"
+      ],
+      "status": "input-required"
+    },
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "manual/decision-record-v1",
+      "criterionId": "gate-a/13-reproducible-evidence",
+      "evidenceClass": "manual-decision",
+      "id": "gate-a/13-independent-reproduction-v1",
+      "laneId": "manual/gate-a-13-independent-reproduction-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "data-integrity",
+      "requiredSteps": [
+        "prepare-clean-checkout",
+        "reproduce-proposed-bundles",
+        "compare-source-inputs",
+        "compare-artifact-checksums",
+        "review-every-difference",
+        "record-explicit-decision"
+      ],
+      "status": "input-required"
+    },
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "manual/decision-record-v1",
+      "criterionId": "gate-a/14-no-high-risk-contradiction",
+      "evidenceClass": "manual-decision",
+      "id": "gate-a/14-risk-register-v1",
+      "laneId": "manual/gate-a-14-risk-register-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "security",
+      "requiredSteps": [
+        "enumerate-open-defects",
+        "review-public-contracts",
+        "reconcile-threat-and-requirement-registries",
+        "confirm-zero-unresolved-critical-or-high",
+        "record-explicit-decision"
+      ],
+      "status": "input-required"
+    },
+    {
+      "allowSharedObservationArtifacts": false,
+      "artifactRole": "accessibility/manual-interaction-report-v1",
+      "criterionId": "gate-a/12-accessible-interactions",
+      "evidenceClass": "accessibility",
+      "id": "accessibility/gate-a-interactions-v1",
+      "laneId": "accessibility/manual-interactions-v1",
+      "observationArtifactRoles": ["manual/observation-v1"],
+      "requiredReviewerRole": "accessibility",
+      "requiredSteps": [
+        "keyboard-complete-authoring-journey",
+        "non-drag-structural-equivalence",
+        "screen-reader-complete-authoring-journey",
+        "reflow-at-400-percent",
+        "contrast-and-forced-colors",
+        "reduced-motion",
+        "error-announcement-and-focus-recovery"
+      ],
+      "status": "input-required"
+    }
+  ]
+}

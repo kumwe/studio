@@ -16,8 +16,8 @@ machine-readable manifest records:
 - input fixture checksums and generated artifact checksums;
 - reports, screenshots, videos, traces, logs, coverage, SBOM, provenance, signatures, and performance data;
 - linked acceptance criterion and whether the evidence is positive, negative, migration, recovery, or manual;
-- review lifecycle (`pending`, `reproduced`, or `rejected`), human reviewer identity, review time, and
-  freshness expiry for reproduced evidence; and
+- review lifecycle (`pending`, `reproduced`, or `rejected`), human reviewer identity, review time, freshness
+  expiry for reproduced evidence, and detached signature paths; and
 - redaction declaration proving no credential, personal data, customer content, or privileged preview token
   entered the bundle.
 
@@ -25,8 +25,10 @@ Evidence artifacts are content-addressed. A changed artifact produces a differen
 silently replace prior evidence.
 
 The generator may record a criterion's evidence modality because that is a mechanical description of
-the lane it ran. It always writes `review.status: pending`. Only a human may record reproduction or
-rejection, and only a gate record may assign `met`, `not-met`, or `not-assessed`.
+the lane it ran. It always writes `review.status: pending`. Only a human with authority from the externally
+pinned reviewer registry may sign reproduction or rejection, and only a separately signed gate record may
+assign `met`, `not-met`, or `not-assessed`. Reviewer identity, role, or independence strings in the evidence
+JSON are not authority.
 
 ## Evidence classes
 
@@ -135,6 +137,10 @@ A criterion has exactly one gate outcome:
 - Package acceptance needs one reviewer who did not author the relevant implementation.
 - Gate A and Gate B need two reviewers, at least one independent of the work-package owners.
 - Security, accessibility, compatibility, and data-integrity claims need a reviewer competent in that domain.
+- Every manual, bundle, and gate decision signs a closed attestation over the exact raw subject bytes with an
+  Ed25519 key. The key, reviewer roles, and independence come from `evidence/reviewer-authorities.json`, whose
+  exact repository `.sha256` companion enables structural verification; release authorization additionally
+  requires the protected environment to supply that same SHA-256 SRI independently.
 - A reviewer executes the documented clean-room command or verifies a trusted attestation plus randomly
   selected raw artifacts. Merely reading the CI badge is not reproduction.
 - Flaky evidence is failing evidence. A retry is recorded and must be classified and corrected before a gate.
@@ -144,6 +150,11 @@ post-generation validation command are maintained in `evidence/README.md`. The g
 argument vectors rather than a shell, stages outside the bundle tree, and records all mandatory quality,
 contract, unit, build, and accessibility lanes with zero retries. Its result remains pending until the
 human procedure is complete.
+
+The current-main release controller also compares the candidate's exact verifier/publisher source closure,
+setup action, and byte-identical npm lockfile before RC authorization. Stable preparation may change only the
+workspace release coordinates allowed by its deterministic transform; the normalized external dependency
+closure must remain exact.
 
 ## Freshness
 
@@ -163,7 +174,8 @@ The gate decision record contains:
 4. unresolved defects with severity and non-impact rationale;
 5. compatibility/migration statement;
 6. security, accessibility, compatibility, and data-integrity sign-off tied to reviewers with those roles;
-7. two distinct human reviewer identities, one independent, and decision time; and
+7. two distinct human reviewer identities, one independent, decision time, and per-reviewer detached signed
+   attestations bound to the exact gate-record bytes; and
 8. `pass` or `fail`.
 
 A mandatory security, accessibility, privacy, data-integrity, or compatibility criterion cannot be waived. If
@@ -184,6 +196,15 @@ This model is instantiated in the repository:
   checklist;
 - `evidence/gate-criteria.json` and `evidence/schema/gate-criteria.schema.json` — stable Gate A/Gate B
   identifiers and required evidence-class mappings;
+- `evidence/proof-assertions.json` and its schema — closed Gate A and Gate B criterion/class bindings to exact runs,
+  artifact roles, manual procedures, external subjects, and current executable/target status;
+- `evidence/manual-procedures.json` and its record schema — complete step sets and independent human roles for
+  manual decisions and accessibility;
+- `evidence/external-subject-assertions.json` and its subject schema — exact cross-repository workflow,
+  source, candidate, and package-family binding for Kumwe App evidence;
+- `evidence/reviewer-authorities.json`, its exact `.sha256` companion, and the review-attestation/authority
+  schemas — public reviewer keys/roles and signed-review format; repository pinning proves structure and
+  signatures, while release authority remains inert without the matching protected external digest;
 - `evidence/schema/evidence-bundle.schema.json` — machine-readable manifest schema for one bundle;
 - `evidence/schema/gate-record.schema.json` — machine-readable gate decision record schema;
 - `scripts/check-evidence.mjs` — validator executed by the repository check lane (`npm run check` via
@@ -196,10 +217,22 @@ equality would make a bundle unrecordable — its manifest would have to name th
 contains it. Reachability is the weaker of the two guarantees and the checksum verification is the
 stronger one: every recorded fixture and artifact is rehashed against the working tree, so a bundle whose
 inputs or outputs have moved on fails regardless of how its commit relates to `HEAD`. It also rejects
-path escape, symlinks, artifact-array/checksum-map drift, missing mandatory inputs/lanes, nonzero exits,
+path escape, symlinks, non-regular tracked source modes, artifact-array/checksum-map drift, missing mandatory inputs/lanes, producer/role/run
+substitution, incomplete proof references, unauthenticated manual or external subjects, nonzero exits,
 retries, unknown criterion/class mappings, package-version drift, invalid profiles, future reviews, and
 expired reproduced evidence. Bundle directories prefixed `SAMPLE-` must fail those requirements and are
 categorically unavailable to gate records. Gate validation then requires exact source equality, bundle
-reachability, per-criterion class coverage, exact profile partition/coverage, exact artifact bytes, and
-human role/independence rules. This keeps the acceptance proof executable: missing, fabricated, stale,
+reachability, per-criterion class coverage derived only from authenticated proof bindings, exact profile
+partition/coverage, exact manifest/artifact/review-authentication bytes, and independently authenticated
+human role/independence rules. Candidate registries, schemas, lane definitions, generator inputs, review
+authentication, and imported release-policy helpers must also equal the executing verifier semantics. This
+keeps the acceptance proof executable: missing, fabricated, stale,
 or self-certified evidence cannot pass a gate.
+
+The registry deliberately keeps the specialized lifecycle, host/media integration, TypeScript portability,
+release-family/SBOM, every Gate B binding, and Kumwe App lanes non-executable until each producer has a closed
+semantic schema and validator for every structured artifact role. It also keeps
+`studio.profile/authoring-web` as a target bound to both an exact Kumwe App real-shell subject and the complete
+manual accessibility procedure. Neither a profile label nor the existing automated browser lane can promote
+that target. RC/stable metadata nevertheless freezes the complete fixed nine-profile Version 2 surface, so
+`authoring-web` must be completed rather than omitted before official RC publication.

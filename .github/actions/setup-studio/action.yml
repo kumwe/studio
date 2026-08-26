@@ -6,6 +6,10 @@ inputs:
     description: Install locked Chromium and its Linux system dependencies.
     required: false
     default: 'false'
+  working-directory:
+    description: Repository checkout whose lockfile and dependencies must be installed.
+    required: false
+    default: '.'
 
 runs:
   using: composite
@@ -14,18 +18,22 @@ runs:
       uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
       with:
         cache: npm
+        cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
         node-version: 24
         registry-url: https://registry.npmjs.org
 
     - name: Pin npm declared by the repository
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: npm install --global npm@11.9.0
 
     - name: Install locked dependencies
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: npm ci
 
     - name: Install locked Playwright Chromium
       if: ${{ inputs.install-playwright == 'true' }}
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
       run: ./node_modules/.bin/playwright install --with-deps chromium

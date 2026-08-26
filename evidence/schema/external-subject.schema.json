@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/external-subject.schema.json",
+  "title": "Studio authenticated external evidence subject",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "attestationArtifactPath",
+    "attestationChecksum",
+    "commit",
+    "id",
+    "kind",
+    "lockfileChecksums",
+    "ref",
+    "recordArtifactPath",
+    "reportArtifactPath",
+    "reportChecksum",
+    "repository",
+    "sourceChecksums",
+    "studioBinding",
+    "tree",
+    "workflow"
+  ],
+  "properties": {
+    "attestationArtifactPath": { "$ref": "#/$defs/repositoryRelativePath" },
+    "attestationChecksum": { "$ref": "#/$defs/sha256Integrity" },
+    "commit": { "$ref": "#/$defs/commitSha" },
+    "id": { "$ref": "#/$defs/stableId" },
+    "kind": { "const": "git-workflow-evidence" },
+    "lockfileChecksums": { "$ref": "#/$defs/checksumMap" },
+    "ref": {
+      "type": "string",
+      "pattern": "^refs/(?:heads|pull|tags)/[A-Za-z0-9._/-]+(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "recordArtifactPath": { "$ref": "#/$defs/repositoryRelativePath" },
+    "reportArtifactPath": { "$ref": "#/$defs/repositoryRelativePath" },
+    "reportChecksum": { "$ref": "#/$defs/sha256Integrity" },
+    "repository": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "sourceChecksums": { "$ref": "#/$defs/checksumMap" },
+    "studioBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateCommit",
+        "corpusManifestChecksum",
+        "packageIntegrities",
+        "releaseRecordChecksum"
+      ],
+      "properties": {
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "corpusManifestChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "packageIntegrities": {
+          "type": "object",
+          "minProperties": 8,
+          "maxProperties": 8,
+          "propertyNames": { "$ref": "#/$defs/packageName" },
+          "additionalProperties": { "$ref": "#/$defs/packageIntegrity" }
+        },
+        "releaseRecordChecksum": { "$ref": "#/$defs/sha256Integrity" }
+      }
+    },
+    "tree": { "$ref": "#/$defs/commitSha" },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "commit", "digest", "path", "repository", "runAttempt", "runId"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "commit": { "$ref": "#/$defs/commitSha" },
+        "digest": { "$ref": "#/$defs/sha256Integrity" },
+        "path": { "$ref": "#/$defs/repositoryRelativePath" },
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?![\\s\\S])",
+          "maxLength": 240
+        },
+        "runAttempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "runId": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "checksumMap": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2000,
+      "propertyNames": { "$ref": "#/$defs/repositoryRelativePath" },
+      "additionalProperties": { "$ref": "#/$defs/sha256Integrity" }
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "packageIntegrity": {
+      "type": "string",
+      "pattern": "^sha512-[A-Za-z0-9+/]{86}==(?![\\s\\S])",
+      "maxLength": 95
+    },
+    "packageName": {
+      "type": "string",
+      "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 214
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@.][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@.][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}

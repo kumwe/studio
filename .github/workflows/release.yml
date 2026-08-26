@@ -15,7 +15,7 @@ on:
           - rc
           - stable
       profiles:
-        description: Comma-separated executable profile IDs (RC preparation only)
+        description: Optional exact fixed Version 2 profile set (RC preparation defaults to the complete set)
         required: false
         default: ''
         type: string
@@ -90,6 +90,7 @@ jobs:
     if: needs.plan.outputs.operation == 'prepare' || needs.plan.outputs.operation == 'correct'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    environment: studio-${{ inputs.channel }}
     permissions:
       contents: write
       pull-requests: write
@@ -144,6 +145,7 @@ jobs:
           STUDIO_QUALIFIED_CANDIDATE_ROOT: .qualified-candidate
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           STUDIO_RELEASE_CHANNEL: stable
+          STUDIO_REVIEWER_AUTHORITY_SHA256: ${{ vars.STUDIO_REVIEWER_AUTHORITY_SHA256 }}
 
       - name: Generate coordinated promotion metadata
         run: npm run release:prepare
@@ -280,6 +282,15 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
 
+      - name: Check out exact current-main release controller for RC publication
+        if: inputs.channel == 'rc'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          path: .release-controller
+          persist-credentials: false
+          ref: ${{ inputs.expected_main_sha }}
+
       - name: Check out qualified RC for stable publication
         if: inputs.channel == 'stable'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -307,10 +318,24 @@ jobs:
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
           git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
 
-      - name: Set up Studio
+      - name: Set up stable publication source
+        if: inputs.channel == 'stable'
         uses: ./.github/actions/setup-studio
 
-      - name: Revalidate immutable evidence and package state
+      - name: Set up RC publication source from the current controller
+        if: inputs.channel == 'rc'
+        uses: ./.release-controller/.github/actions/setup-studio
+        with:
+          working-directory: '.'
+
+      - name: Set up current-main release controller
+        if: inputs.channel == 'rc'
+        uses: ./.release-controller/.github/actions/setup-studio
+        with:
+          working-directory: .release-controller
+
+      - name: Revalidate immutable evidence and package state for stable
+        if: inputs.channel == 'stable'
         run: npm run release:readiness
         env:
           STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
@@ -321,6 +346,27 @@ jobs:
           STUDIO_QUALIFIED_CANDIDATE_ROOT: ${{ inputs.channel == 'stable' && '.qualified-candidate' || '.' }}
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
+          STUDIO_REVIEWER_AUTHORITY_SHA256: ${{ vars.STUDIO_REVIEWER_AUTHORITY_SHA256 }}
+
+      - name: Revalidate RC with the exact current-main controller
+        if: inputs.channel == 'rc'
+        working-directory: .release-controller
+        run: node scripts/verify-release-gate.mjs
+        env:
+          STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+          STUDIO_GATE_EVIDENCE_ROOT: ../.release-evidence
+          STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
+          STUDIO_PROMOTION_PHASE: publish
+          STUDIO_PUBLISH_ROOT: ..
+          STUDIO_PUBLISH_SOURCE_SHA: ${{ inputs.candidate_sha }}
+          STUDIO_QUALIFIED_CANDIDATE_ROOT: ..
+          STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+          STUDIO_RELEASE_CHANNEL: rc
+          STUDIO_REVIEWER_AUTHORITY_SHA256: ${{ vars.STUDIO_REVIEWER_AUTHORITY_SHA256 }}
+
+      - name: Re-run the immutable RC quality gate
+        if: inputs.channel == 'rc'
+        run: npm run check
 
       - name: Generate approved local package tarball digests
         run: npm run release:artifacts
@@ -349,6 +395,7 @@ jobs:
           STUDIO_QUALIFIED_CANDIDATE_ROOT: ${{ inputs.channel == 'stable' && '.qualified-candidate' || '.' }}
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
+          STUDIO_REVIEWER_AUTHORITY_SHA256: ${{ vars.STUDIO_REVIEWER_AUTHORITY_SHA256 }}
 
       # Do not move a public channel tag until every newly published package
       # has been compared with the approved local tarball and provenance.
@@ -365,6 +412,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PROMOTION_CHANNEL: ${{ inputs.channel }}
+          STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
           STUDIO_EXPECTED_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
 
       - name: Verify the complete registry release, provenance, and channel tag
@@ -391,10 +439,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_RELEASE_CHANNEL: ${{ inputs.channel }}
           GITHUB_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
           PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
           VERSION: ${{ needs.plan.outputs.target_version }}
         run: |
           set -euo pipefail
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
           tag="studio-v${VERSION}"
           if ! gh release view "$tag" >/dev/null 2>&1; then
             release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md)

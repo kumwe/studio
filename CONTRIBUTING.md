@@ -130,8 +130,11 @@ flowchart TD
    signatures. It does not move `rc` or `latest`, create a Git tag, or create a GitHub release. Because npm
    versions are immutable, run this only for the reviewed, frozen candidate; exact retries are idempotent.
 8. **Evidence bundle** is supporting machinery, never a publisher. Generate bundles against that merged,
-   quarantined RC candidate; Gate A criterion 13 executes the exact staged-registry clean-install proof.
-   Reproduce bundles independently, commit accepted records in a later commit, and update
+   quarantined RC candidate. Criterion/class coverage comes only from exact proof bindings in
+   `evidence/proof-assertions.json`; the generator refuses partial criteria and currently keeps Gate A
+   criterion 13 target-only until the complete family, provenance, SBOM, reproducibility, clean-consumer,
+   signature, and staged-registry producers exist. Reproduce bundles independently, commit accepted records in
+   a later commit, and update
    `docs/roadmap/STATUS.md` only through the documented human review process. Retain the quarantine tag until
    official RC publication completes.
 9. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
@@ -155,24 +158,26 @@ flowchart TD
 
 ### Promotion dispatch contract
 
-| Intent                      | `expected_main_sha`                                        | `channel` | `profiles`                                    | `candidate_sha` / `gate_record_sha`             |
-| --------------------------- | ---------------------------------------------------------- | --------- | --------------------------------------------- | ----------------------------------------------- |
-| Prepare `rc.1`              | Exact current alpha `main`                                 | `rc`      | Non-empty comma-separated executable profiles | Both empty                                      |
-| Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                         | Both empty                                      |
-| Stage RC for Gate A proof   | Exact current frozen RC candidate at `main`                | `rc`      | Empty                                         | Both empty                                      |
-| Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                         | Exact RC candidate, then later evidence commit  |
-| Prepare stable              | Exact current RC `main` containing accepted Gate A and B   | `stable`  | Empty                                         | Gate B-qualified RC, then later evidence commit |
-| Publish stable              | Exact merged stable-promotion commit at `main`             | `stable`  | Empty                                         | Gate B-qualified RC, then its evidence commit   |
+| Intent                      | `expected_main_sha`                                        | `channel` | `profiles`                                         | `candidate_sha` / `gate_record_sha`             |
+| --------------------------- | ---------------------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------------------------- |
+| Prepare `rc.1`              | Exact current alpha `main`                                 | `rc`      | Empty (defaults to fixed nine) or exact fixed nine | Both empty                                      |
+| Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                              | Both empty                                      |
+| Stage RC for Gate A proof   | Exact current frozen RC candidate at `main`                | `rc`      | Empty                                              | Both empty                                      |
+| Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                              | Exact RC candidate, then later evidence commit  |
+| Prepare stable              | Exact current RC `main` containing accepted Gate A and B   | `stable`  | Empty                                              | Gate B-qualified RC, then later evidence commit |
+| Publish stable              | Exact merged stable-promotion commit at `main`             | `stable`  | Empty                                              | Gate B-qualified RC, then its evidence commit   |
 
-`profiles` accepts only these currently declared executable Version 2 IDs:
-`studio.profile/binding-projection-v1`, `studio.profile/engine-core`,
+RC and stable metadata always carry this complete fixed Version 2 surface:
+`studio.profile/authoring-web`, `studio.profile/binding-projection-v1`, `studio.profile/engine-core`,
 `studio.profile/host-baseline`, `studio.profile/host-baseline-v2`,
 `studio.profile/media-policy`, `studio.profile/preview-identity-v1`,
-`studio.profile/renderer-web`, and `studio.profile/schema-property`. A whole-family RC may propose all eight as
-one comma-separated value, but every listed profile must later appear in reproduced evidence and exactly match
-the passing gate record. A profile label is not evidence: `evidence/profile-assertions.json` fixes the source
-inputs and exact test lanes that each claim must reproduce. `studio.profile/authoring-web` is still a target and
-is rejected.
+`studio.profile/renderer-web`, and `studio.profile/schema-property`. Leaving `profiles` empty during initial RC
+preparation selects that complete sorted set; supplying a subset or different set fails. Every profile must
+later appear in reproduced evidence and exactly match the passing Gate A record. A profile label is not
+evidence: `evidence/profile-assertions.json` fixes the source inputs and exact test lanes that each claim must
+reproduce. `studio.profile/authoring-web` is still target-only, so official RC publication remains blocked until
+its exact Kumwe App real-shell and registered manual-accessibility proofs make it executable. The profile may
+not be dropped from the intended page-builder RC to bypass that work.
 
 Stable environment claims follow the same rule. `evidence/environment-assertions.json` covers every
 `evidence/environment-matrix.json` identity and binds each executable variant to exact commands plus required
@@ -202,9 +207,12 @@ superseded candidate or gate record fails closed.
 
 Repository administrators must configure `studio-rc` and `studio-stable` as protected GitHub environments with
 required maintainers/reviewers and deployment restricted to `main`. `NPM_TOKEN` must be scoped for publish and
-dist-tag operations on `@kumwe`, and must never be exposed to pull requests or preparation jobs. Keep branch
-protection on promotion PRs; the environment approval is an additional publication authorization, not a
-substitute for review, evidence, or Gate A/B.
+dist-tag operations on `@kumwe`, and must never be exposed to pull requests or preparation jobs. Both
+environments must also define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the frozen
+`evidence/reviewer-authorities.json`, equal to `evidence/reviewer-authorities.sha256`. The repository checksum
+supports local structural/signature checks only; without the matching external pin it cannot authorize a human
+release decision. Keep branch protection on promotion PRs; the environment approval is an additional
+publication authorization, not a substitute for review, evidence, or Gate A/B.
 
 ## Pull-request checklist
 

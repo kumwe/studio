@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { assertStagedCandidateState } from '../publish-staged-candidate.mjs';
 
 const sha = 'a'.repeat(40);
@@ -54,7 +55,7 @@ describe('RC quarantine publication guard', () => {
 
 function record(version) {
   return {
-    claimedProfiles: ['studio.profile/engine-core'],
+    claimedProfiles: [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };

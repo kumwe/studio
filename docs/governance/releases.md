@@ -33,8 +33,9 @@ accepted, independently reproduced evidence, required human review, and an autho
 scaffolding and MUST NOT be published manually around these controls.
 
 The **Evidence bundle** workflow only creates pending qualification material. It cannot publish, make a gate
-decision, or authenticate to npm. Gate A criterion 13 requires its exact quarantined-registry install lane;
-generic release labels cannot satisfy it. Gate A is currently not assessed and Gate B is blocked, so the
+decision, or authenticate to npm. Gate A criterion 13 binds its exact quarantined-registry install lane plus
+the complete family, provenance, SBOM, reproducibility, clean-consumer, and signature artifacts; the lane or a
+generic release label alone cannot satisfy it. Gate A is currently not assessed and Gate B is blocked, so the
 official `rc` and stable channels cannot open today even though a frozen RC may be quarantined for evidence.
 
 The checked-in `studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
@@ -47,6 +48,11 @@ feature-complete against, claimed with reproduced evidence. It does not add a se
 automated lifecycle advances from `alpha` to the stricter governed `rc` channel. The profiles and their
 assertion sets are in [conformance profiles](../contracts/conformance-profiles.md).
 
+Version 2 RC and stable promotion use one fixed nine-profile surface, including `authoring-web`. Initial RC
+preparation defaults to that complete sorted set and rejects a subset. Preparation freezes the intended product
+surface; it does not prove it. Official RC publication still requires Gate A to support all nine at the exact
+candidate, so the current target-only authoring binding blocks publication and cannot be omitted as a shortcut.
+
 “Release-candidate implementation” may describe a proposed immutable source tree under evaluation. It does
 not mean the npm `rc` channel has opened. An `rc` publication is allowed only after every advertised profile
 is claimed at that exact commit; naming incomplete bits “RC” cannot substitute for that evidence.
@@ -56,8 +62,10 @@ is claimed at that exact commit; naming incomplete bits “RC” cannot substitu
 The eight npm packages are one Changesets fixed group and advance to the same semantic version. The
 repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
 into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
-records the release version, exact package versions, wire protocol version, corpus-manifest digest, and only
-profiles backed by acceptable evidence. The current pre-version alpha baseline claims no profiles.
+records the release version, exact package versions, wire protocol version, corpus-manifest digest, and the
+fixed promotion profile surface. The current pre-version alpha baseline claims no profiles. RC preparation
+records all nine proposed Version 2 claims; they become publishable claims only when the passing exact-candidate
+gate supports the identical set.
 
 The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
 fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The alpha
@@ -100,8 +108,10 @@ builds.
    exact registry integrity and source provenance, and install every exact package in a fresh credential-free
    consumer without workspace links. Add Dart clean consumers for a Version 3 native claim.
 9. Regenerate and verify the canonical release record, then create the content-addressed evidence bundle.
-10. Sign/attest the candidate and enter evidence review. The candidate bits and quarantine tag do not change
-    during review.
+10. Sign/attest the candidate and enter evidence review. Every manual, bundle, and gate decision uses a
+    detached Ed25519 SSH signature over a closed attestation bound to the exact raw subject bytes. Reviewer
+    authority comes only from the frozen public-key registry plus its exact digest in the protected environment.
+    The candidate bits and quarantine tag do not change during review.
 
 If a fix is required, create a new commit, versioned candidate, manifest and affected evidence. A mutable
 “latest RC” is not review evidence.
@@ -119,6 +129,17 @@ after Gate A it verifies the same candidate provenance, moves `rc`, creates the 
 verifies again, and only then removes the quarantine tags. Stable publication uses the same retained-tarball
 discipline. Alpha never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
 `latest`.
+
+Both protected environments define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the
+candidate's `evidence/reviewer-authorities.json`; it must also equal the candidate's checked-in
+`evidence/reviewer-authorities.sha256`. The checked-in value supports local structural/signature checks, while
+the independent protected value is required before any reviewer identity, role, independence flag, or detached
+signature can authorize a release decision. RC publication runs the verifier from a separate checkout of the
+exact current `main` controller against the immutable candidate and evidence, then blocks if any verifier or
+publisher semantic path differs before npm authentication. RC publication requires byte-identical
+`package-lock.json`; the deterministic stable transform may change workspace release coordinates only, while
+its normalized external dependency closure must remain exact. The live remote `main` SHA is checked again
+before every registry upload, the official dist-tag move, and GitHub release creation.
 
 ## Publication
 

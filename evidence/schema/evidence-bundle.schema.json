@@ -16,7 +16,8 @@
     "redaction",
     "review",
     "runs",
-    "source"
+    "source",
+    "subjects"
   ],
   "properties": {
     "artifactChecksums": { "$ref": "#/$defs/checksumMap" },
@@ -27,7 +28,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["checksum", "mediaType", "path"],
+        "required": ["checksum", "mediaType", "path", "producerTestId", "role"],
         "properties": {
           "checksum": { "$ref": "#/$defs/sha256Integrity" },
           "mediaType": {
@@ -35,7 +36,9 @@
             "pattern": "^[a-z]+/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*(?![\\s\\S])",
             "maxLength": 120
           },
-          "path": { "$ref": "#/$defs/repositoryRelativePath" }
+          "path": { "$ref": "#/$defs/repositoryRelativePath" },
+          "producerTestId": { "$ref": "#/$defs/stableId" },
+          "role": { "$ref": "#/$defs/artifactRole" }
         }
       }
     },
@@ -47,7 +50,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["class", "criterionId", "outcome"],
+        "required": ["class", "criterionId", "outcome", "proof"],
         "properties": {
           "class": {
             "enum": [
@@ -66,7 +69,34 @@
             ]
           },
           "criterionId": { "$ref": "#/$defs/stableId" },
-          "outcome": { "enum": ["positive", "negative", "migration", "recovery", "manual"] }
+          "outcome": { "enum": ["positive", "negative", "migration", "recovery", "manual"] },
+          "proof": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["artifactPaths", "runIds", "subjectIds"],
+            "properties": {
+              "artifactPaths": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 2000,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/repositoryRelativePath" }
+              },
+              "runIds": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/stableId" }
+              },
+              "subjectIds": {
+                "type": "array",
+                "maxItems": 20,
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/stableId" }
+              }
+            }
+          }
         }
       }
     },
@@ -120,8 +150,9 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["freshnessExpiresAt", "reviewedAt", "reviewer", "status"],
+          "required": ["authentication", "freshnessExpiresAt", "reviewedAt", "reviewer", "status"],
           "properties": {
+            "authentication": { "$ref": "#/$defs/authentication" },
             "freshnessExpiresAt": { "$ref": "#/$defs/rfc3339Timestamp" },
             "reviewedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
             "reviewer": { "$ref": "#/$defs/reviewer" },
@@ -131,8 +162,9 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["reason", "reviewedAt", "reviewer", "status"],
+          "required": ["authentication", "reason", "reviewedAt", "reviewer", "status"],
           "properties": {
+            "authentication": { "$ref": "#/$defs/authentication" },
             "reason": {
               "type": "string",
               "minLength": 1,
@@ -154,6 +186,7 @@
         "additionalProperties": false,
         "required": [
           "command",
+          "artifactPaths",
           "endedAt",
           "exitStatus",
           "retryCount",
@@ -162,6 +195,13 @@
           "testId"
         ],
         "properties": {
+          "artifactPaths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2000,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/repositoryRelativePath" }
+          },
           "command": {
             "type": "string",
             "minLength": 1,
@@ -196,9 +236,51 @@
         },
         "workingTreeState": { "enum": ["clean", "dirty"] }
       }
+    },
+    "subjects": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "https://schemas.kumwe.org/studio/evidence/external-subject.schema.json"
+      }
     }
   },
   "$defs": {
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attestationPath", "signaturePath"],
+      "properties": {
+        "attestationPath": { "$ref": "#/$defs/repositoryRelativePath" },
+        "signaturePath": { "$ref": "#/$defs/repositoryRelativePath" }
+      }
+    },
+    "artifactRole": {
+      "enum": [
+        "run/log",
+        "accessibility/manual-interaction-report-v1",
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "integration/media-rich-text-report-v1",
+        "integration/reference-host-report-v1",
+        "lifecycle/contribution-report-v1",
+        "manual/decision-record-v1",
+        "manual/observation-v1",
+        "portability/corpus-replay-v1",
+        "portability/typescript-generation-v1",
+        "release/approved-family-v1",
+        "release/clean-consumer-lock-v1",
+        "release/cyclonedx-sbom-v1",
+        "release/provenance-set-v1",
+        "release/reproducible-family-report-v1",
+        "release/signature-audit-v1",
+        "release/staged-registry-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "gate-b/criterion-proof-v1"
+      ]
+    },
     "bundleId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
@@ -238,9 +320,14 @@
       }
     },
     "repositoryRelativePath": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
-      "maxLength": 240
+      "oneOf": [
+        { "const": ".github/actions/setup-studio/action.yml" },
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+          "maxLength": 240
+        }
+      ]
     },
     "rfc3339Timestamp": {
       "type": "string",
@@ -250,10 +337,20 @@
     "reviewer": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["identity", "kind"],
+      "required": ["identity", "independent", "kind", "roles"],
       "properties": {
         "identity": { "$ref": "#/$defs/identity" },
-        "kind": { "const": "human" }
+        "independent": { "type": "boolean" },
+        "kind": { "const": "human" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["general", "accessibility", "compatibility", "data-integrity", "security"]
+          }
+        }
       }
     },
     "sha256Integrity": {

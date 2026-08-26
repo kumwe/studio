@@ -115,6 +115,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
+          STUDIO_EXPECTED_MAIN_SHA: ${{ github.sha }}
 
       # Newly published packages must match the locally approved bytes and
       # provenance before this workflow is allowed to move a public tag.

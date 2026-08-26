@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/external-attestation.schema.json",
+  "title": "Kumwe App workflow attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "commit",
+    "contractVersion",
+    "issuedAt",
+    "issuer",
+    "kind",
+    "ref",
+    "reportChecksum",
+    "repository",
+    "sourceChecksums",
+    "studioBinding",
+    "tree",
+    "workflow"
+  ],
+  "properties": {
+    "commit": { "$ref": "#/$defs/commitSha" },
+    "contractVersion": { "const": "0.1-draft" },
+    "issuedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+    "issuer": { "const": "https://token.actions.githubusercontent.com" },
+    "kind": { "const": "kumwe-app-workflow-attestation" },
+    "ref": { "$ref": "#/$defs/gitRef" },
+    "reportChecksum": { "$ref": "#/$defs/sha256Integrity" },
+    "repository": { "$ref": "#/$defs/repository" },
+    "sourceChecksums": { "$ref": "#/$defs/checksumMap" },
+    "studioBinding": { "$ref": "#/$defs/studioBinding" },
+    "tree": { "$ref": "#/$defs/commitSha" },
+    "workflow": { "$ref": "#/$defs/workflow" }
+  },
+  "$defs": {
+    "checksumMap": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 2000,
+      "propertyNames": { "$ref": "#/$defs/repositoryRelativePath" },
+      "additionalProperties": { "$ref": "#/$defs/sha256Integrity" }
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "gitRef": {
+      "type": "string",
+      "pattern": "^refs/(?:heads|pull|tags)/[A-Za-z0-9._/-]+(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "packageIntegrity": {
+      "type": "string",
+      "pattern": "^sha512-[A-Za-z0-9+/]{86}==(?![\\s\\S])",
+      "maxLength": 95
+    },
+    "packageName": {
+      "type": "string",
+      "pattern": "^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 214
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@.][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@.][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "rfc3339Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "studioBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateCommit",
+        "corpusManifestChecksum",
+        "packageIntegrities",
+        "releaseRecordChecksum"
+      ],
+      "properties": {
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "corpusManifestChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "packageIntegrities": {
+          "type": "object",
+          "minProperties": 8,
+          "maxProperties": 8,
+          "propertyNames": { "$ref": "#/$defs/packageName" },
+          "additionalProperties": { "$ref": "#/$defs/packageIntegrity" }
+        },
+        "releaseRecordChecksum": { "$ref": "#/$defs/sha256Integrity" }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "commit", "digest", "path", "repository", "runAttempt", "runId"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "commit": { "$ref": "#/$defs/commitSha" },
+        "digest": { "$ref": "#/$defs/sha256Integrity" },
+        "path": { "$ref": "#/$defs/repositoryRelativePath" },
+        "repository": { "$ref": "#/$defs/repository" },
+        "runAttempt": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "runId": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

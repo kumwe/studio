@@ -5,11 +5,20 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
   buildEnvironmentAssertionIndex,
+  buildProofAssertionIndex,
   buildProfileAssertionIndex,
   checksumIntegrity,
-  collectBundleFailures,
   collectGateRecordFailures,
+  EVIDENCE_ARTIFACT_ROLES,
+  inspectBundleEvidence,
 } from './evidence-validation.mjs';
+import { buildExternalSubjectAssertionIndex } from './external-evidence.mjs';
+import { buildManualProcedureIndex } from './manual-evidence.mjs';
+import {
+  assertReviewerAuthorityReleaseTrust,
+  assertReviewerAuthorityStructuralPin,
+  buildReviewerAuthorityIndex,
+} from './review-authentication.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -20,9 +29,18 @@ const gateDirectory = new URL('../evidence/gates/', import.meta.url);
 const schemaFiles = [
   'environment-assertions.schema.json',
   'environment-matrix.schema.json',
+  'external-attestation.schema.json',
+  'external-report.schema.json',
+  'external-subject-assertions.schema.json',
+  'external-subject.schema.json',
   'evidence-bundle.schema.json',
   'gate-criteria.schema.json',
   'gate-record.schema.json',
+  'manual-procedures.schema.json',
+  'manual-record.schema.json',
+  'proof-assertions.schema.json',
+  'review-attestation.schema.json',
+  'reviewer-authorities.schema.json',
 ];
 const schemas = await Promise.all(
   schemaFiles.map(async (name) =>
@@ -39,11 +57,31 @@ for (const schema of schemas) {
   }
   ajv.addSchema(schema);
 }
+for (const schemaFile of ['evidence-bundle.schema.json', 'proof-assertions.schema.json']) {
+  const roleVocabulary = schemas.find((schema) => schema.$id.endsWith(`/${schemaFile}`))?.$defs
+    ?.artifactRole?.enum;
+  if (
+    !Array.isArray(roleVocabulary) ||
+    JSON.stringify([...roleVocabulary].sort()) !==
+      JSON.stringify([...EVIDENCE_ARTIFACT_ROLES].sort())
+  ) {
+    throw new Error(`${schemaFile} artifact roles drifted from scripts/evidence-lanes.mjs.`);
+  }
+}
 const validateBundle = getValidator('evidence-bundle.schema.json');
 const validateEnvironmentAssertions = getValidator('environment-assertions.schema.json');
 const validateGateCriteria = getValidator('gate-criteria.schema.json');
 const validateGateRecord = getValidator('gate-record.schema.json');
 const validateEnvironmentMatrix = getValidator('environment-matrix.schema.json');
+const validateExternalAttestation = getValidator('external-attestation.schema.json');
+const validateExternalReport = getValidator('external-report.schema.json');
+const validateExternalSubjectAssertions = getValidator('external-subject-assertions.schema.json');
+const validateExternalSubject = getValidator('external-subject.schema.json');
+const validateManualProcedures = getValidator('manual-procedures.schema.json');
+const validateManualRecord = getValidator('manual-record.schema.json');
+const validateProofAssertions = getValidator('proof-assertions.schema.json');
+const validateReviewAttestation = getValidator('review-attestation.schema.json');
+const validateReviewerAuthorities = getValidator('reviewer-authorities.schema.json');
 
 const environmentMatrix = JSON.parse(
   await readFile(new URL('../evidence/environment-matrix.json', import.meta.url), 'utf8'),
@@ -111,6 +149,100 @@ if (profileAssertionIndex.failures.length > 0) {
     `The profile assertion registry is invalid:\n- ${profileAssertionIndex.failures.join('\n- ')}`,
   );
 }
+const manualProcedureRegistry = JSON.parse(
+  await readFile(new URL('../evidence/manual-procedures.json', import.meta.url), 'utf8'),
+);
+if (!validateManualProcedures(manualProcedureRegistry)) {
+  throw new Error(
+    `The manual procedure registry violates its schema: ${ajv.errorsText(
+      validateManualProcedures.errors,
+    )}`,
+  );
+}
+const manualProcedureIndex = buildManualProcedureIndex(
+  manualProcedureRegistry,
+  criterionIndex.criteriaById,
+);
+if (manualProcedureIndex.failures.length > 0) {
+  throw new Error(
+    `The manual procedure registry is invalid:\n- ${manualProcedureIndex.failures.join('\n- ')}`,
+  );
+}
+const externalSubjectAssertionRegistry = JSON.parse(
+  await readFile(new URL('../evidence/external-subject-assertions.json', import.meta.url), 'utf8'),
+);
+if (!validateExternalSubjectAssertions(externalSubjectAssertionRegistry)) {
+  throw new Error(
+    `The external subject assertion registry violates its schema: ${ajv.errorsText(
+      validateExternalSubjectAssertions.errors,
+    )}`,
+  );
+}
+const externalSubjectAssertionIndex = buildExternalSubjectAssertionIndex(
+  externalSubjectAssertionRegistry,
+);
+if (externalSubjectAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `The external subject assertion registry is invalid:\n- ${externalSubjectAssertionIndex.failures.join('\n- ')}`,
+  );
+}
+const proofAssertionRegistry = JSON.parse(
+  await readFile(new URL('../evidence/proof-assertions.json', import.meta.url), 'utf8'),
+);
+if (!validateProofAssertions(proofAssertionRegistry)) {
+  throw new Error(
+    `The proof assertion registry violates its schema: ${ajv.errorsText(
+      validateProofAssertions.errors,
+    )}`,
+  );
+}
+const proofAssertionIndex = buildProofAssertionIndex(
+  proofAssertionRegistry,
+  criterionIndex.criteriaById,
+  {
+    externalSubjects: externalSubjectAssertionIndex.subjectsById,
+    manualProcedures: manualProcedureIndex.proceduresById,
+    profileAssertions: profileAssertionIndex.profilesById,
+  },
+);
+if (proofAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `The proof assertion registry is invalid:\n- ${proofAssertionIndex.failures.join('\n- ')}`,
+  );
+}
+const reviewerAuthorityRegistryBytes = await readFile(
+  new URL('../evidence/reviewer-authorities.json', import.meta.url),
+);
+const reviewerAuthorityChecksumBytes = await readFile(
+  new URL('../evidence/reviewer-authorities.sha256', import.meta.url),
+);
+const reviewerAuthorityRegistry = JSON.parse(reviewerAuthorityRegistryBytes.toString('utf8'));
+if (!validateReviewerAuthorities(reviewerAuthorityRegistry)) {
+  throw new Error(
+    `The reviewer authority registry violates its schema: ${ajv.errorsText(
+      validateReviewerAuthorities.errors,
+    )}`,
+  );
+}
+const reviewerAuthorityIndex = buildReviewerAuthorityIndex(reviewerAuthorityRegistry);
+if (reviewerAuthorityIndex.failures.length > 0) {
+  throw new Error(
+    `The reviewer authority registry is invalid:\n- ${reviewerAuthorityIndex.failures.join('\n- ')}`,
+  );
+}
+assertReviewerAuthorityStructuralPin(
+  reviewerAuthorityRegistryBytes,
+  reviewerAuthorityChecksumBytes,
+);
+let reviewerAuthorityReleaseTrustVerified = false;
+if (process.env.STUDIO_REVIEWER_AUTHORITY_SHA256 !== undefined) {
+  assertReviewerAuthorityReleaseTrust(
+    reviewerAuthorityRegistryBytes,
+    reviewerAuthorityChecksumBytes,
+    process.env.STUDIO_REVIEWER_AUTHORITY_SHA256,
+  );
+  reviewerAuthorityReleaseTrustVerified = true;
+}
 const roadmap = await readFile(new URL('../docs/roadmap/README.md', import.meta.url), 'utf8');
 const roadmapCriterionIds = [...roadmap.matchAll(/\*\*`(gate-[ab]\/[^`]+)`\*\*/gu)].map(
   (match) => match[1],
@@ -135,15 +267,27 @@ if (!/^[a-f0-9]{40}$/u.test(checkedOutCommit)) {
 
 const validationContext = {
   ...criterionIndex,
+  externalSubjectAssertions: externalSubjectAssertionIndex.subjectsById,
   getCommitTime,
   getPackageVersionsForCommit,
   getProfileAssertionsForCommit,
+  getProofContextForCommit,
   getSourceFileChecksum,
   isCommitReachable,
+  manualProcedures: manualProcedureIndex.proceduresById,
   now: Date.now(),
   packageVersions: releaseRecord.packages,
   profileAssertions: profileAssertionIndex.profilesById,
+  proofAssertions: proofAssertionIndex.assertionsByKey,
+  reviewerAuthorities: reviewerAuthorityIndex.authoritiesByIdentity,
+  reviewerAuthorityStructuralPinVerified: true,
+  reviewerAuthorityReleaseTrustVerified,
   repositoryRoot,
+  validateExternalSubjectSchema: validateExternalSubject,
+  validateExternalAttestationSchema: validateExternalAttestation,
+  validateExternalReportSchema: validateExternalReport,
+  validateManualRecordSchema: validateManualRecord,
+  validateReviewAttestationSchema: validateReviewAttestation,
 };
 
 const bundleNames = (await readdir(bundleDirectory, { withFileTypes: true }))
@@ -153,12 +297,13 @@ const bundleNames = (await readdir(bundleDirectory, { withFileTypes: true }))
 
 let sampleCount = 0;
 const bundlesById = new Map();
+const authenticatedProofsByBundleId = new Map();
 for (const name of bundleNames) {
   let manifest;
+  let manifestBytes;
   try {
-    manifest = JSON.parse(
-      await readFile(new URL(`${name}/manifest.json`, bundleDirectory), 'utf8'),
-    );
+    manifestBytes = await readFile(new URL(`${name}/manifest.json`, bundleDirectory));
+    manifest = JSON.parse(manifestBytes.toString('utf8'));
   } catch (error) {
     throw new Error(`Bundle ${name} has no parseable manifest.json.`, { cause: error });
   }
@@ -172,7 +317,11 @@ for (const name of bundleNames) {
       `Bundle directory ${name} must be named after its bundleId ${manifest.bundleId}.`,
     );
   }
-  const failures = await collectBundleFailures(manifest, validationContext);
+  const inspection = await inspectBundleEvidence(manifest, {
+    ...validationContext,
+    manifestBytes,
+  });
+  const failures = inspection.failures;
   if (name.startsWith('SAMPLE-')) {
     sampleCount += 1;
     if (failures.length === 0) {
@@ -186,6 +335,7 @@ for (const name of bundleNames) {
       throw new Error(`Bundle ${name} failed authenticity checks:\n- ${failures.join('\n- ')}`);
     }
     bundlesById.set(name, manifest);
+    authenticatedProofsByBundleId.set(name, inspection.authenticatedProofKeys);
   }
 }
 if (sampleCount === 0) {
@@ -204,7 +354,8 @@ try {
 }
 const gatesSeen = new Set();
 for (const name of gateFiles) {
-  const record = JSON.parse(await readFile(new URL(name, gateDirectory), 'utf8'));
+  const recordBytes = await readFile(new URL(name, gateDirectory));
+  const record = JSON.parse(recordBytes.toString('utf8'));
   if (!validateGateRecord(record)) {
     throw new Error(
       `Gate record ${name} violates the gate record schema: ${ajv.errorsText(validateGateRecord.errors)}`,
@@ -216,7 +367,9 @@ for (const name of gateFiles) {
   gatesSeen.add(record.gate);
   const failures = await collectGateRecordFailures(record, name, {
     ...validationContext,
+    authenticatedProofsByBundleId,
     bundlesById,
+    recordBytes,
     registry,
   });
   if (failures.length > 0) {
@@ -225,7 +378,13 @@ for (const name of gateFiles) {
 }
 
 for (const gate of ['A', 'B']) {
+  if (gatesSeen.has(gate) && reviewerAuthorityReleaseTrustVerified) {
+    continue;
+  }
   if (gatesSeen.has(gate)) {
+    console.log(
+      `Gate ${gate} has a structurally verified signed record but remains release-unassessed without the protected external reviewer-authority checksum.`,
+    );
     continue;
   }
   const uncovered = registry.gates[gate].map((criterion) => criterion.id);
@@ -236,11 +395,19 @@ for (const gate of ['A', 'B']) {
 
 console.log(
   `${schemaFiles.length} evidence schemas, ${environmentAssertionIndex.assertionsById.size} environment assertions, ` +
+    `${proofAssertionIndex.assertionsByKey.size} Gate A/B proof assertions, ` +
+    `${manualProcedureIndex.proceduresById.size} manual procedures, ` +
+    `${externalSubjectAssertionIndex.subjectsById.size} external subject assertions, ` +
     `${registry.gates.A.length + registry.gates.B.length} ` +
     `registered gate criteria, ${bundleNames.length} bundle manifests ` +
     `(${sampleCount} sample bundles rejected as required), ${gateFiles.length} gate records, and ` +
-    `${environmentMatrix.environments.length} environment-matrix entries verified.`,
+    `${environmentMatrix.environments.length} environment-matrix entries structurally verified.`,
 );
+if (!reviewerAuthorityReleaseTrustVerified) {
+  console.log(
+    'Reviewer signatures were checked against the repository-pinned registry only; release authorization still requires the protected external checksum.',
+  );
+}
 
 function git(args) {
   return execFileSync('git', args, {
@@ -295,14 +462,67 @@ function getProfileAssertionsForCommit(commit) {
   return index.profilesById;
 }
 
+function getProofContextForCommit(commit) {
+  const sourceCriteria = JSON.parse(git(['show', `${commit}:evidence/gate-criteria.json`]));
+  const sourceCriterionIndex = buildCriterionIndex(sourceCriteria);
+  if (sourceCriterionIndex.failures.length > 0) {
+    throw new Error(sourceCriterionIndex.failures.join('; '));
+  }
+  const sourceProfiles = JSON.parse(git(['show', `${commit}:evidence/profile-assertions.json`]));
+  const sourceProfileIndex = buildProfileAssertionIndex(
+    sourceProfiles,
+    sourceCriterionIndex.allowedProfiles,
+  );
+  if (sourceProfileIndex.failures.length > 0) {
+    throw new Error(sourceProfileIndex.failures.join('; '));
+  }
+  const sourceManual = JSON.parse(git(['show', `${commit}:evidence/manual-procedures.json`]));
+  const sourceManualIndex = buildManualProcedureIndex(
+    sourceManual,
+    sourceCriterionIndex.criteriaById,
+  );
+  if (sourceManualIndex.failures.length > 0) {
+    throw new Error(sourceManualIndex.failures.join('; '));
+  }
+  const sourceExternal = JSON.parse(
+    git(['show', `${commit}:evidence/external-subject-assertions.json`]),
+  );
+  const sourceExternalIndex = buildExternalSubjectAssertionIndex(sourceExternal);
+  if (sourceExternalIndex.failures.length > 0) {
+    throw new Error(sourceExternalIndex.failures.join('; '));
+  }
+  const sourceProof = JSON.parse(git(['show', `${commit}:evidence/proof-assertions.json`]));
+  const sourceProofIndex = buildProofAssertionIndex(
+    sourceProof,
+    sourceCriterionIndex.criteriaById,
+    {
+      externalSubjects: sourceExternalIndex.subjectsById,
+      manualProcedures: sourceManualIndex.proceduresById,
+      profileAssertions: sourceProfileIndex.profilesById,
+    },
+  );
+  if (sourceProofIndex.failures.length > 0) {
+    throw new Error(sourceProofIndex.failures.join('; '));
+  }
+  return {
+    externalSubjectAssertions: sourceExternalIndex.subjectsById,
+    manualProcedures: sourceManualIndex.proceduresById,
+    proofAssertions: sourceProofIndex.assertionsByKey,
+  };
+}
+
 function getSourceFileChecksum(commit, path) {
   const entry = git(['ls-tree', commit, '--', path]);
-  if (!/^100(?:644|755) blob [a-f0-9]{40}\t/u.test(entry)) {
+  const match = /^(100(?:644|755)) blob [a-f0-9]{40}\t/u.exec(entry);
+  if (match === null) {
     throw new Error('source path is absent or is not a regular tracked file');
   }
-  return checksumIntegrity(
-    execFileSync('git', ['show', `${commit}:${path}`], { cwd: repositoryRoot }),
-  );
+  return {
+    checksum: checksumIntegrity(
+      execFileSync('git', ['show', `${commit}:${path}`], { cwd: repositoryRoot }),
+    ),
+    mode: match[1],
+  };
 }
 
 function getValidator(schemaFile) {

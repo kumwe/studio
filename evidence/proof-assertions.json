@@ -1,0 +1,634 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "criterion-proof-assertion-registry",
+  "assertions": [
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/01-artifact-vocabulary",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/package-boundaries", "contract/requirement-registry"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "manual/decision-record-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "manual-decision",
+      "criterionId": "gate-a/01-artifact-vocabulary",
+      "manualProcedureId": "gate-a/01-artifact-vocabulary-v1",
+      "requiredRuns": ["manual/gate-a-01-artifact-vocabulary-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/02-protocol-schemas",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus", "profile/schema-property"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "security",
+      "criterionId": "gate-a/02-protocol-schemas",
+      "manualProcedureId": null,
+      "requiredRuns": ["security/threat-registry", "unit/workspace"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/03-deterministic-commands",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "property-fuzz",
+      "criterionId": "gate-a/03-deterministic-commands",
+      "manualProcedureId": null,
+      "requiredRuns": ["profile/engine-core"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/04-extension-theme-lifecycle",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["lifecycle/contribution-report-v1", "run/log"],
+      "availability": "target",
+      "class": "lifecycle",
+      "criterionId": "gate-a/04-extension-theme-lifecycle",
+      "manualProcedureId": null,
+      "requiredRuns": ["lifecycle/contribution-runtime-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/05-host-ports-negotiation",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "integration/reference-host-report-v1",
+        "run/log"
+      ],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-a/05-host-ports-negotiation",
+      "manualProcedureId": null,
+      "requiredRuns": ["integration/kumwe-app-v1", "integration/reference-host-http-v1"],
+      "requiredSubjectIds": ["kumwe/app"]
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/06-media-rich-text-boundaries",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "integration/media-rich-text-report-v1",
+        "run/log"
+      ],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-a/06-media-rich-text-boundaries",
+      "manualProcedureId": null,
+      "requiredRuns": ["integration/kumwe-app-v1", "integration/media-rich-text-v1"],
+      "requiredSubjectIds": ["kumwe/app"]
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "security",
+      "criterionId": "gate-a/07-threat-model",
+      "manualProcedureId": null,
+      "requiredRuns": ["security/secret-scan", "security/threat-registry"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "property-fuzz",
+      "criterionId": "gate-a/07-threat-model",
+      "manualProcedureId": null,
+      "requiredRuns": ["profile/engine-core"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/08-errors-diagnostics",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "security",
+      "criterionId": "gate-a/08-errors-diagnostics",
+      "manualProcedureId": null,
+      "requiredRuns": ["security/threat-registry", "unit/workspace"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/09-typescript-corpus",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "portability/corpus-replay-v1",
+        "portability/typescript-generation-v1",
+        "run/log"
+      ],
+      "availability": "target",
+      "class": "portability",
+      "criterionId": "gate-a/09-typescript-corpus",
+      "manualProcedureId": null,
+      "requiredRuns": ["portability/typescript-corpus-v2"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "integration/reference-host-report-v1",
+        "run/log"
+      ],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-a/10-host-playbooks",
+      "manualProcedureId": null,
+      "requiredRuns": ["integration/kumwe-app-v1", "integration/reference-host-http-v1"],
+      "requiredSubjectIds": ["kumwe/app"]
+    },
+    {
+      "artifactRoles": [
+        "manual/decision-record-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "manual-decision",
+      "criterionId": "gate-a/10-host-playbooks",
+      "manualProcedureId": "gate-a/10-host-playbooks-v1",
+      "requiredRuns": ["manual/gate-a-10-host-playbooks-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/11-evolution-release-policy",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/release-record", "release/changeset"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "manual/decision-record-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "manual-decision",
+      "criterionId": "gate-a/11-evolution-release-policy",
+      "manualProcedureId": "gate-a/11-evolution-policy-v1",
+      "requiredRuns": ["manual/gate-a-11-evolution-policy-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "accessibility/manual-interaction-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "accessibility",
+      "criterionId": "gate-a/12-accessible-interactions",
+      "manualProcedureId": "accessibility/gate-a-interactions-v1",
+      "requiredRuns": ["accessibility/manual-interactions-v1", "accessibility/web"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "contract",
+      "criterionId": "gate-a/12-accessible-interactions",
+      "manualProcedureId": null,
+      "requiredRuns": ["contract/canonical-corpus", "contract/requirement-registry"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "release/approved-family-v1",
+        "release/clean-consumer-lock-v1",
+        "release/cyclonedx-sbom-v1",
+        "release/provenance-set-v1",
+        "release/reproducible-family-report-v1",
+        "release/signature-audit-v1",
+        "release/staged-registry-report-v1",
+        "run/log"
+      ],
+      "availability": "target",
+      "class": "release",
+      "criterionId": "gate-a/13-reproducible-evidence",
+      "manualProcedureId": null,
+      "requiredRuns": [
+        "release/package-tarballs",
+        "release/reproducible-family-v1",
+        "release/sbom-v1",
+        "release/staged-registry-install"
+      ],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "manual/decision-record-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "manual-decision",
+      "criterionId": "gate-a/13-reproducible-evidence",
+      "manualProcedureId": "gate-a/13-independent-reproduction-v1",
+      "requiredRuns": ["manual/gate-a-13-independent-reproduction-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["run/log"],
+      "availability": "executable",
+      "class": "security",
+      "criterionId": "gate-a/14-no-high-risk-contradiction",
+      "manualProcedureId": null,
+      "requiredRuns": ["security/secret-scan", "security/threat-registry"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": [
+        "manual/decision-record-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "availability": "manual-input",
+      "class": "manual-decision",
+      "criterionId": "gate-a/14-no-high-risk-contradiction",
+      "manualProcedureId": "gate-a/14-risk-register-v1",
+      "requiredRuns": ["manual/gate-a-14-risk-register-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "contract",
+      "criterionId": "gate-b/01-contract-implementation",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/01-contract-implementation/contract-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/01-contract-implementation",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/01-contract-implementation/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "release",
+      "criterionId": "gate-b/02-coordinated-npm-release",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/02-coordinated-npm-release/release-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "unit",
+      "criterionId": "gate-b/03-dom-free-core",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/03-dom-free-core/unit-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "property-fuzz",
+      "criterionId": "gate-b/03-dom-free-core",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/03-dom-free-core/property-fuzz-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "portability",
+      "criterionId": "gate-b/03-dom-free-core",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/03-dom-free-core/portability-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "end-to-end",
+      "criterionId": "gate-b/04-web-authoring-operations",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/04-web-authoring-operations/end-to-end-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "accessibility",
+      "criterionId": "gate-b/04-web-authoring-operations",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/04-web-authoring-operations/accessibility-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/05-host-conformance",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/05-host-conformance/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "lifecycle",
+      "criterionId": "gate-b/05-host-conformance",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/05-host-conformance/lifecycle-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/06-public-rendering-boundary",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/06-public-rendering-boundary/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "security",
+      "criterionId": "gate-b/06-public-rendering-boundary",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/06-public-rendering-boundary/security-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "lifecycle",
+      "criterionId": "gate-b/07-extension-theme-examples",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/07-extension-theme-examples/lifecycle-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/07-extension-theme-examples",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/07-extension-theme-examples/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "lifecycle",
+      "criterionId": "gate-b/08-document-compatibility",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/08-document-compatibility/lifecycle-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/08-document-compatibility",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/08-document-compatibility/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "accessibility",
+      "criterionId": "gate-b/09-web-accessibility",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/09-web-accessibility/accessibility-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "end-to-end",
+      "criterionId": "gate-b/09-web-accessibility",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/09-web-accessibility/end-to-end-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "security",
+      "criterionId": "gate-b/10-security-resilience",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/10-security-resilience/security-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "property-fuzz",
+      "criterionId": "gate-b/10-security-resilience",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/10-security-resilience/property-fuzz-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "performance",
+      "criterionId": "gate-b/11-performance-budgets",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/11-performance-budgets/performance-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "release",
+      "criterionId": "gate-b/12-deterministic-builds",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/12-deterministic-builds/release-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "release",
+      "criterionId": "gate-b/13-release-materials",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/13-release-materials/release-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "manual-decision",
+      "criterionId": "gate-b/13-release-materials",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/13-release-materials/manual-decision-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/14-clean-room-host",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/14-clean-room-host/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "end-to-end",
+      "criterionId": "gate-b/14-clean-room-host",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/14-clean-room-host/end-to-end-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/15-kumwe-app-vertical",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/15-kumwe-app-vertical/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "end-to-end",
+      "criterionId": "gate-b/15-kumwe-app-vertical",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/15-kumwe-app-vertical/end-to-end-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "lifecycle",
+      "criterionId": "gate-b/16-upgrade-recovery",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/16-upgrade-recovery/lifecycle-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "integration",
+      "criterionId": "gate-b/16-upgrade-recovery",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/16-upgrade-recovery/integration-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "release",
+      "criterionId": "gate-b/17-candidate-evidence",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/17-candidate-evidence/release-v1"],
+      "requiredSubjectIds": []
+    },
+    {
+      "artifactRoles": ["gate-b/criterion-proof-v1", "run/log"],
+      "availability": "target",
+      "class": "manual-decision",
+      "criterionId": "gate-b/18-independent-approval",
+      "manualProcedureId": null,
+      "requiredRuns": ["gate-b/18-independent-approval/manual-decision-v1"],
+      "requiredSubjectIds": []
+    }
+  ],
+  "profileTargets": [
+    {
+      "artifactRoles": [
+        "accessibility/manual-interaction-report-v1",
+        "integration/external-attestation-v1",
+        "integration/external-subject-v1",
+        "integration/kumwe-app-report-v1",
+        "review/attestation-v1",
+        "review/signature-v1",
+        "run/log"
+      ],
+      "id": "studio.profile/authoring-web",
+      "manualProcedureId": "accessibility/gate-a-interactions-v1",
+      "requiredRuns": [
+        "accessibility/manual-interactions-v1",
+        "accessibility/web",
+        "integration/kumwe-app-v1"
+      ],
+      "requiredSubjectIds": ["kumwe/app"],
+      "status": "target"
+    }
+  ]
+}

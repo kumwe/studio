@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/review-attestation.schema.json",
+  "title": "Studio detached signed review attestation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "issuedAt", "kind", "reviewer", "subject"],
+  "properties": {
+    "contractVersion": { "const": "0.1-draft" },
+    "issuedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+    "kind": { "const": "signed-review-attestation" },
+    "reviewer": { "$ref": "#/$defs/reviewer" },
+    "subject": {
+      "oneOf": [
+        { "$ref": "#/$defs/manualSubject" },
+        { "$ref": "#/$defs/bundleSubject" },
+        { "$ref": "#/$defs/gateSubject" }
+      ]
+    }
+  },
+  "$defs": {
+    "bundleId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 120
+    },
+    "bundleSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleId",
+        "candidateCommit",
+        "decision",
+        "freshnessExpiresAt",
+        "kind",
+        "reviewedAt",
+        "subjectChecksum"
+      ],
+      "properties": {
+        "bundleId": { "$ref": "#/$defs/bundleId" },
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "decision": { "enum": ["reproduced", "rejected"] },
+        "freshnessExpiresAt": {
+          "oneOf": [{ "$ref": "#/$defs/rfc3339Timestamp" }, { "type": "null" }]
+        },
+        "kind": { "const": "bundle-review" },
+        "reviewedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
+      }
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "gateSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateCommit", "decidedAt", "decision", "gate", "kind", "subjectChecksum"],
+      "properties": {
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "decidedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "decision": { "enum": ["pass", "fail"] },
+        "gate": { "enum": ["A", "B"] },
+        "kind": { "const": "gate-review" },
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
+      }
+    },
+    "identity": {
+      "type": "string",
+      "pattern": "^github/[1-9][0-9]{0,19}/[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?(?![\\s\\S])",
+      "maxLength": 80
+    },
+    "manualSubject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleId",
+        "candidateCommit",
+        "criterionId",
+        "decision",
+        "evidenceClass",
+        "kind",
+        "laneId",
+        "procedureChecksum",
+        "procedureId",
+        "runStartedAt",
+        "subjectChecksum"
+      ],
+      "properties": {
+        "bundleId": { "$ref": "#/$defs/bundleId" },
+        "candidateCommit": { "$ref": "#/$defs/commitSha" },
+        "criterionId": { "$ref": "#/$defs/stableId" },
+        "decision": { "enum": ["accepted", "rejected"] },
+        "evidenceClass": {
+          "enum": ["accessibility", "manual-decision"]
+        },
+        "kind": { "const": "manual-review" },
+        "laneId": { "$ref": "#/$defs/stableId" },
+        "procedureChecksum": { "$ref": "#/$defs/sha256Integrity" },
+        "procedureId": { "$ref": "#/$defs/stableId" },
+        "runStartedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+        "subjectChecksum": { "$ref": "#/$defs/sha256Integrity" }
+      }
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "independent", "roles"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "independent": { "type": "boolean" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["general", "accessibility", "compatibility", "data-integrity", "security"]
+          }
+        }
+      }
+    },
+    "rfc3339Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    }
+  }
+}

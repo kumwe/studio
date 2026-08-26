@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/evidence/manual-record.schema.json",
+  "title": "Studio retained manual evidence record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "authentication",
+    "bundleId",
+    "candidateCommit",
+    "contractVersion",
+    "criterionId",
+    "evidenceClass",
+    "kind",
+    "observations",
+    "outcome",
+    "performedAt",
+    "procedureChecksum",
+    "procedureId",
+    "reviewer"
+  ],
+  "properties": {
+    "authentication": { "$ref": "#/$defs/authentication" },
+    "bundleId": { "$ref": "#/$defs/bundleId" },
+    "candidateCommit": { "$ref": "#/$defs/commitSha" },
+    "contractVersion": { "const": "0.1-draft" },
+    "criterionId": { "$ref": "#/$defs/criterionId" },
+    "evidenceClass": { "enum": ["accessibility", "manual-decision"] },
+    "kind": { "const": "manual-evidence-record" },
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactChecksums",
+          "artifactPaths",
+          "artifactRole",
+          "observed",
+          "outcome",
+          "stepId"
+        ],
+        "properties": {
+          "artifactChecksums": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 20,
+            "propertyNames": { "$ref": "#/$defs/repositoryRelativePath" },
+            "additionalProperties": { "$ref": "#/$defs/sha256Integrity" }
+          },
+          "artifactPaths": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": { "$ref": "#/$defs/repositoryRelativePath" }
+          },
+          "artifactRole": { "const": "manual/observation-v1" },
+          "observed": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "outcome": { "enum": ["pass", "fail"] },
+          "stepId": { "$ref": "#/$defs/stepId" }
+        }
+      }
+    },
+    "outcome": { "enum": ["accepted", "rejected"] },
+    "performedAt": { "$ref": "#/$defs/rfc3339Timestamp" },
+    "procedureChecksum": { "$ref": "#/$defs/sha256Integrity" },
+    "procedureId": { "$ref": "#/$defs/stableId" },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "independent", "kind", "roles"],
+      "properties": {
+        "identity": { "$ref": "#/$defs/identity" },
+        "independent": { "type": "boolean" },
+        "kind": { "const": "human" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["general", "accessibility", "compatibility", "data-integrity", "security"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "authentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attestationPath", "signaturePath"],
+      "properties": {
+        "attestationPath": { "$ref": "#/$defs/repositoryRelativePath" },
+        "signaturePath": { "$ref": "#/$defs/repositoryRelativePath" }
+      }
+    },
+    "bundleId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+      "maxLength": 120
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "criterionId": {
+      "type": "string",
+      "pattern": "^gate-a/[0-9]{2}-[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "identity": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+    },
+    "repositoryRelativePath": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:/[A-Za-z0-9@][A-Za-z0-9._@-]*)*(?![\\s\\S])",
+      "maxLength": 240
+    },
+    "rfc3339Timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?(?:Z|[+-][0-9]{2}:[0-9]{2})(?![\\s\\S])",
+      "maxLength": 40
+    },
+    "sha256Integrity": {
+      "type": "string",
+      "pattern": "^sha256-[A-Za-z0-9+/]{42}[AEIMQUYcgkosw048]=(?![\\s\\S])",
+      "maxLength": 60
+    },
+    "stableId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*(?![\\s\\S])",
+      "not": { "enum": ["__proto__", "prototype", "constructor"] },
+      "maxLength": 240
+    },
+    "stepId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?![\\s\\S])",
+      "maxLength": 120
+    }
+  }
+}

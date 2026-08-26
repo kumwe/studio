@@ -19,6 +19,19 @@ export function tagForChannel(channel) {
   throw new Error(`Release tag channel must be rc or stable; received ${String(channel)}.`);
 }
 
+export async function assertLiveMain(
+  expectedMainSha,
+  { readRemoteMain = readLiveRemoteMain } = {},
+) {
+  if (!/^[a-f0-9]{40}$/u.test(expectedMainSha ?? '')) {
+    throw new Error('STUDIO_EXPECTED_MAIN_SHA must be an exact lowercase commit SHA.');
+  }
+  const remoteMain = await readRemoteMain();
+  if (remoteMain !== expectedMainSha) {
+    throw new Error('Live origin/main moved before the official release channel mutation.');
+  }
+}
+
 async function main() {
   if (process.argv.length !== 2) {
     throw new Error('Usage: node scripts/reconcile-release-tag.mjs');
@@ -26,9 +39,11 @@ async function main() {
   const channel = process.env.PROMOTION_CHANNEL;
   const tag = tagForChannel(channel);
   const expectedVersion = process.env.STUDIO_EXPECTED_RELEASE_VERSION;
+  const expectedMainSha = process.env.STUDIO_EXPECTED_MAIN_SHA;
   if (expectedVersion === undefined || expectedVersion.length === 0) {
     throw new Error('STUDIO_EXPECTED_RELEASE_VERSION is required.');
   }
+  await assertLiveMain(expectedMainSha);
   const failures = [];
   const moved = [];
   const unchanged = [];
@@ -82,6 +97,19 @@ async function npmValue(arguments_) {
   } catch {
     return undefined;
   }
+}
+
+async function readLiveRemoteMain() {
+  const { stdout } = await execFileAsync(
+    'git',
+    ['ls-remote', '--exit-code', 'origin', 'refs/heads/main'],
+    { cwd: repositoryRoot, maxBuffer: 64 * 1024 },
+  );
+  const match = /^([a-f0-9]{40})\trefs\/heads\/main\n?$/u.exec(stdout);
+  if (match === null) {
+    throw new Error('The live origin main ref could not be resolved exactly.');
+  }
+  return match[1];
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

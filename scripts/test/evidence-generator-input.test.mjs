@@ -76,6 +76,9 @@ test('the checked-in pending sample remains schema-valid without asserting repro
   const schema = JSON.parse(
     await readFile(`${repositoryRoot}/evidence/schema/evidence-bundle.schema.json`, 'utf8'),
   );
+  const externalSubjectSchema = JSON.parse(
+    await readFile(`${repositoryRoot}/evidence/schema/external-subject.schema.json`, 'utf8'),
+  );
   const sample = JSON.parse(
     await readFile(
       `${repositoryRoot}/evidence/bundles/SAMPLE-failing-stale-commit/manifest.json`,
@@ -83,6 +86,7 @@ test('the checked-in pending sample remains schema-valid without asserting repro
     ),
   );
   const ajv = new Ajv2020({ allErrors: true, strict: true });
+  ajv.addSchema(externalSubjectSchema);
   const validate = ajv.compile(schema);
   assert.equal(validate(sample), true, ajv.errorsText(validate.errors));
   assert.deepEqual(sample.review, { status: 'pending' });

@@ -1,0 +1,32 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "external-subject-assertion-registry",
+  "subjects": [
+    {
+      "id": "kumwe/app",
+      "laneId": "integration/kumwe-app-v1",
+      "repository": "https://github.com/kumwe/app",
+      "requiredCommand": "composer studio:evidence:gate-a",
+      "requiredPackageNames": [
+        "@kumwe/studio",
+        "@kumwe/studio-core",
+        "@kumwe/studio-media",
+        "@kumwe/studio-preview",
+        "@kumwe/studio-protocol",
+        "@kumwe/studio-renderer-web",
+        "@kumwe/studio-rich-text",
+        "@kumwe/studio-testkit"
+      ],
+      "requiredSourcePaths": [
+        "composer.lock",
+        "package-lock.json",
+        "resources/studio-contract/PIN.json",
+        "resources/studio-contract/protocol/studio-release.json",
+        "resources/studio-contract/studio-release.json",
+        "tests/Fixtures/Studio/testkit/corpus-manifest.json"
+      ],
+      "status": "target",
+      "workflowPath": ".github/workflows/studio-evidence.yml"
+    }
+  ]
+}

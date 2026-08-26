@@ -10,6 +10,7 @@ import {
   parseProfileInput,
   promotionTargetVersion,
   requiredGateForChannel,
+  VERSION_TWO_RELEASE_PROFILES,
 } from './release-policy.mjs';
 
 const repositoryRoot = new URL('../', import.meta.url);
@@ -69,8 +70,14 @@ export async function inspectPromotionPlan(
       throw new Error('Stable preparation must start from an immutable RC coordinate.');
     }
     const requestedProfiles = preparingRc
-      ? parseProfileInput(profiles, { requireNonEmpty: true })
-      : parseProfileInput(record.claimedProfiles.join(','), { requireNonEmpty: true });
+      ? parseProfileInput(
+          profiles.length === 0 ? VERSION_TWO_RELEASE_PROFILES.join(',') : profiles,
+          { requireComplete: true, requireNonEmpty: true },
+        )
+      : parseProfileInput(record.claimedProfiles.join(','), {
+          requireComplete: true,
+          requireNonEmpty: true,
+        });
     if (preparingStable && profiles.length > 0) {
       throw new Error(
         'Stable preparation preserves the RC profile claims; profiles must be empty.',
@@ -105,6 +112,7 @@ export async function inspectPromotionPlan(
         gate: requiredGateForChannel(channel),
         operation: 'stage',
         profiles: parseProfileInput(record.claimedProfiles.join(','), {
+          requireComplete: true,
           requireNonEmpty: true,
         }),
         sourceVersion: record.release,
@@ -119,7 +127,10 @@ export async function inspectPromotionPlan(
       channel,
       gate: requiredGateForChannel(channel),
       operation: 'correct',
-      profiles: parseProfileInput(record.claimedProfiles.join(','), { requireNonEmpty: true }),
+      profiles: parseProfileInput(record.claimedProfiles.join(','), {
+        requireComplete: true,
+        requireNonEmpty: true,
+      }),
       sourceVersion: record.release,
       targetVersion: nextRcVersion(record.release),
     };

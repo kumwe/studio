@@ -6,9 +6,10 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { inspectPromotionPlan } from '../promotion-plan.mjs';
 
-const profile = 'studio.profile/engine-core';
+const subsetProfile = 'studio.profile/engine-core';
 const temporaryDirectories = [];
 
 afterEach(async () => {
@@ -20,12 +21,20 @@ afterEach(async () => {
 });
 
 describe('promotion plan', () => {
-  it('prepares the first RC from alpha with explicit claims', async () => {
+  it('prepares the first RC from alpha with the complete default claims', async () => {
     const root = await fixture('0.1.0-alpha.9', { mode: 'pre', tag: 'alpha' });
-    const plan = await inspectPromotionPlan(root, { channel: 'rc', profiles: profile });
+    const plan = await inspectPromotionPlan(root, { channel: 'rc' });
     assert.equal(plan.operation, 'prepare');
     assert.equal(plan.targetVersion, '0.1.0-rc.1');
-    assert.deepEqual(plan.profiles, [profile]);
+    assert.deepEqual(plan.profiles, VERSION_TWO_RELEASE_PROFILES);
+  });
+
+  it('rejects a subset override while preparing the first RC', async () => {
+    const root = await fixture('0.1.0-alpha.9', { mode: 'pre', tag: 'alpha' });
+    await assert.rejects(
+      inspectPromotionPlan(root, { channel: 'rc', profiles: subsetProfile }),
+      /complete fixed Version 2 set/u,
+    );
   });
 
   it('prepares an RC correction through pending Changesets', async () => {
@@ -33,7 +42,7 @@ describe('promotion plan', () => {
     const plan = await inspectPromotionPlan(root, { channel: 'rc' });
     assert.equal(plan.operation, 'correct');
     assert.equal(plan.targetVersion, '0.1.0-rc.2');
-    assert.deepEqual(plan.profiles, [profile]);
+    assert.deepEqual(plan.profiles, VERSION_TWO_RELEASE_PROFILES);
   });
 
   it('stages an immutable RC for Gate A evidence without accepting gate inputs', async () => {
@@ -42,13 +51,13 @@ describe('promotion plan', () => {
     assert.equal(plan.operation, 'stage');
     assert.equal(plan.sourceVersion, '0.1.0-rc.1');
     assert.equal(plan.targetVersion, '0.1.0-rc.1');
-    assert.deepEqual(plan.profiles, [profile]);
+    assert.deepEqual(plan.profiles, VERSION_TWO_RELEASE_PROFILES);
   });
 
   it('rejects profile overrides while staging an immutable RC', async () => {
     const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
     await assert.rejects(
-      inspectPromotionPlan(root, { channel: 'rc', profiles: profile }),
+      inspectPromotionPlan(root, { channel: 'rc', profiles: subsetProfile }),
       /staging and corrections preserve/u,
     );
   });
@@ -83,7 +92,7 @@ describe('promotion plan', () => {
     });
     assert.equal(plan.operation, 'prepare');
     assert.equal(plan.targetVersion, '0.1.0');
-    assert.deepEqual(plan.profiles, [profile]);
+    assert.deepEqual(plan.profiles, VERSION_TWO_RELEASE_PROFILES);
   });
 
   it('rejects publication of an RC superseded by current main', async () => {
@@ -124,7 +133,7 @@ async function fixture(version, preState, changesets = []) {
 
 function release(version) {
   return {
-    claimedProfiles: version.includes('-alpha.') ? [] : [profile],
+    claimedProfiles: version.includes('-alpha.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
+import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import {
   assertStagedVerificationSource,
   buildFreshApprovedArtifacts,
@@ -130,7 +131,7 @@ describe('staged RC release evidence', () => {
 
 function record(version) {
   return {
-    claimedProfiles: version.includes('-alpha.') ? [] : ['studio.profile/engine-core'],
+    claimedProfiles: version.includes('-alpha.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };

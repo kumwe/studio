@@ -16,6 +16,8 @@ import {
   stagingTagForVersion,
 } from '../staged-publish.mjs';
 
+const authorizePublication = async () => undefined;
+
 describe('non-channel staged publication', () => {
   it('derives a bounded tag that is never an official release channel', () => {
     for (const version of ['0.1.0-alpha.9', '0.1.0-rc.1', '0.1.0']) {
@@ -24,6 +26,19 @@ describe('non-channel staged publication', () => {
       assert.ok(!['alpha', 'rc', 'latest'].includes(tag));
     }
     assert.throws(() => stagingTagForVersion('0.1.0-beta.1'), /Cannot derive/u);
+  });
+
+  it('requires a live release-authorization callback before any upload', async (t) => {
+    const fixture = await createArtifacts(t);
+    const calls = [];
+    await assert.rejects(
+      publishMissingApprovedArtifacts(fixture.record, fixture.approved, fixture.coordinates, {
+        publishTarball: async (input) => calls.push(input),
+        root: fixture.root,
+      }),
+      /requires a live release-authorization callback/u,
+    );
+    assert.deepEqual(calls, []);
   });
 
   it('rejects changed retained bytes before making any registry call', async (t) => {
@@ -35,6 +50,7 @@ describe('non-channel staged publication', () => {
     const calls = [];
     await assert.rejects(
       publishMissingApprovedArtifacts(fixture.record, fixture.approved, fixture.coordinates, {
+        assertPublicationStillAuthorized: authorizePublication,
         publishTarball: async (input) => calls.push(input),
         root: fixture.root,
       }),
@@ -48,6 +64,7 @@ describe('non-channel staged publication', () => {
     const firstAttempt = [];
     await assert.rejects(
       publishMissingApprovedArtifacts(fixture.record, fixture.approved, fixture.coordinates, {
+        assertPublicationStillAuthorized: authorizePublication,
         publishTarball: async (input) => {
           firstAttempt.push(input);
           if (firstAttempt.length === 3) {
@@ -67,6 +84,7 @@ describe('non-channel staged publication', () => {
       fixture.approved,
       fixture.coordinates.slice(2),
       {
+        assertPublicationStillAuthorized: authorizePublication,
         publishTarball: async (input) => retry.push(input),
         root: fixture.root,
       },
@@ -81,6 +99,7 @@ describe('non-channel staged publication', () => {
     const calls = [];
     await assert.rejects(
       publishMissingApprovedArtifacts(fixture.record, fixture.approved, fixture.coordinates, {
+        assertPublicationStillAuthorized: authorizePublication,
         publishTarball: async (input) => {
           calls.push(input);
           if (calls.length === 1) {
@@ -92,6 +111,43 @@ describe('non-channel staged publication', () => {
       /changed after local approval/u,
     );
     assert.equal(calls.length, 1);
+  });
+
+  it('rechecks live release authorization immediately before every registry upload', async (t) => {
+    const fixture = await createArtifacts(t);
+    const events = [];
+    await assert.rejects(
+      publishMissingApprovedArtifacts(
+        fixture.record,
+        fixture.approved,
+        fixture.coordinates.slice(0, 3),
+        {
+          assertPublicationStillAuthorized: async () => {
+            events.push('authorize');
+            if (events.filter((event) => event === 'authorize').length === 3) {
+              throw new Error('live main moved');
+            }
+          },
+          publishTarball: async () => events.push('publish'),
+          root: fixture.root,
+        },
+      ),
+      /live main moved/u,
+    );
+    assert.deepEqual(events, ['authorize', 'publish', 'authorize', 'publish', 'authorize']);
+
+    const retryEvents = [];
+    await publishMissingApprovedArtifacts(
+      fixture.record,
+      fixture.approved,
+      fixture.coordinates.slice(2, 3),
+      {
+        assertPublicationStillAuthorized: async () => retryEvents.push('authorize'),
+        publishTarball: async () => retryEvents.push('publish'),
+        root: fixture.root,
+      },
+    );
+    assert.deepEqual(retryEvents, ['authorize', 'publish']);
   });
 
   it('recovers missing coordinate-scoped staging tags without overwriting conflicts', async () => {
