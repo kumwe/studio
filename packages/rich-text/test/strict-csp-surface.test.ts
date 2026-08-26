@@ -42,6 +42,79 @@ const MINIMAL = parseRichTextDocument({
   type: 'doc',
 });
 
+const EXPLICIT_EMPTY_MARKS = parseRichTextDocument({
+  content: [
+    {
+      content: [{ marks: [], text: 'Paragraph', type: 'text' }],
+      type: 'paragraph',
+    },
+    {
+      attrs: { level: 2 },
+      content: [{ marks: [], text: 'Heading', type: 'text' }],
+      type: 'heading',
+    },
+    {
+      content: [
+        {
+          content: [{ marks: [], text: 'Quote', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'blockquote',
+    },
+    {
+      content: [
+        {
+          content: [
+            {
+              content: [{ marks: [], text: 'List', type: 'text' }],
+              type: 'paragraph',
+            },
+          ],
+          type: 'listItem',
+        },
+      ],
+      type: 'orderedList',
+    },
+    {
+      content: [
+        {
+          attrs: { checked: true, level: 0 },
+          content: [{ marks: [], text: 'Checklist', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    },
+    {
+      attrs: { header: false },
+      content: [
+        {
+          content: [
+            {
+              content: [{ marks: [], text: 'Table', type: 'text' }],
+              type: 'tableCell',
+            },
+          ],
+          type: 'tableRow',
+        },
+      ],
+      type: 'table',
+    },
+    {
+      attrs: { tone: 'warning' },
+      content: [
+        {
+          content: [{ marks: [], text: 'Callout', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'callout',
+    },
+  ],
+  type: 'doc',
+});
+
 describe('Studio strict-CSP rich-text surface', () => {
   it('snapshots the advanced first-party corpus without semantic loss', async () => {
     const holder = document.createElement('div');
@@ -70,6 +143,22 @@ describe('Studio strict-CSP rich-text surface', () => {
     editor.destroy();
     holder.remove();
   });
+
+  it.each([false, true])(
+    'preserves explicit-empty inline fields in strict-CSP snapshots (readOnly=%s)',
+    async (readOnly) => {
+      const holder = document.createElement('div');
+      document.body.append(holder);
+      const editor = await new StudioRichTextEditorFactory(
+        new StudioStrictCspRichTextSurfaceAdapter(),
+      ).create({ holder, readOnly, value: EXPLICIT_EMPTY_MARKS });
+
+      expect(await editor.save()).toEqual(EXPLICIT_EMPTY_MARKS);
+
+      editor.destroy();
+      holder.remove();
+    },
+  );
 
   it('authors every first-party block without creating style or HTML-string sinks', async () => {
     const holder = document.createElement('div');

@@ -182,6 +182,79 @@ const MINIMAL_RICH_TEXT = parseRichTextDocument({
   type: 'doc',
 });
 
+const EXPLICIT_EMPTY_MARKS = parseRichTextDocument({
+  content: [
+    {
+      content: [{ marks: [], text: 'Paragraph', type: 'text' }],
+      type: 'paragraph',
+    },
+    {
+      attrs: { level: 2 },
+      content: [{ marks: [], text: 'Heading', type: 'text' }],
+      type: 'heading',
+    },
+    {
+      content: [
+        {
+          content: [{ marks: [], text: 'Quote', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'blockquote',
+    },
+    {
+      content: [
+        {
+          content: [
+            {
+              content: [{ marks: [], text: 'List', type: 'text' }],
+              type: 'paragraph',
+            },
+          ],
+          type: 'listItem',
+        },
+      ],
+      type: 'bulletList',
+    },
+    {
+      content: [
+        {
+          attrs: { checked: false, level: 0 },
+          content: [{ marks: [], text: 'Checklist', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    },
+    {
+      attrs: { header: false },
+      content: [
+        {
+          content: [
+            {
+              content: [{ marks: [], text: 'Table', type: 'text' }],
+              type: 'tableCell',
+            },
+          ],
+          type: 'tableRow',
+        },
+      ],
+      type: 'table',
+    },
+    {
+      attrs: { tone: 'info' },
+      content: [
+        {
+          content: [{ marks: [], text: 'Callout', type: 'text' }],
+          type: 'paragraph',
+        },
+      ],
+      type: 'callout',
+    },
+  ],
+  type: 'doc',
+});
+
 const MIXED_NESTED_LIST = parseRichTextDocument({
   content: [
     {
@@ -277,6 +350,95 @@ describe('first-party Editor.js tool boundary', () => {
         );
       }
     }
+  });
+
+  it.each([false, true])(
+    'preserves exact explicit-empty marks across every inline-capable tool (readOnly=%s)',
+    (readOnly) => {
+      const tools = studioEditorJsTools();
+      for (const block of toStudioEditorJsBlocks(EXPLICIT_EMPTY_MARKS)) {
+        const Tool = tools[block.type];
+        const tool = new Tool({ data: block.data, readOnly });
+        tool.render();
+        expect(tool.save().node, `${block.type} must preserve marks: []`).toEqual(block.data.node);
+      }
+    },
+  );
+
+  it('preserves representation only while the inline projection is unchanged', () => {
+    const original: StudioRichTextNode = {
+      content: [
+        {
+          marks: [{ attrs: { tone: 'warning' }, type: 'highlight' }],
+          text: 'Original',
+          type: 'text',
+        },
+      ],
+      type: 'paragraph',
+    };
+    const tool = new StudioParagraphTool({ data: { node: original } });
+    const field = tool.render();
+    const mark = field.querySelector<HTMLElement>('mark');
+    if (mark === null) throw new Error('Missing rendered semantic highlight.');
+    mark.dataset.studioTone = 'success';
+
+    expect(tool.save().node).toEqual({
+      content: [
+        {
+          marks: [{ attrs: { tone: 'success' }, type: 'highlight' }],
+          text: 'Original',
+          type: 'text',
+        },
+      ],
+      type: 'paragraph',
+    });
+
+    field.replaceChildren(document.createTextNode('Edited'));
+    expect(tool.save().node).toEqual({
+      content: [{ text: 'Edited', type: 'text' }],
+      type: 'paragraph',
+    });
+  });
+
+  it('keeps real text edits from every inline-capable tool', () => {
+    const tools = studioEditorJsTools();
+    for (const [index, block] of toStudioEditorJsBlocks(EXPLICIT_EMPTY_MARKS).entries()) {
+      const Tool = tools[block.type];
+      const tool = new Tool({ data: block.data });
+      const root = tool.render();
+      const field = root.matches('[contenteditable="true"]')
+        ? root
+        : root.querySelector<HTMLElement>('[contenteditable="true"]');
+      if (field === null) throw new Error(`${block.type} is missing its inline editor.`);
+      const edited = `Edited ${String(index)}`;
+      field.replaceChildren(document.createTextNode(edited));
+
+      expect(
+        projectRichText({ content: [tool.save().node], type: 'doc' }).some(
+          (projection) => projection.text === edited,
+        ),
+        `${block.type} must retain a real text edit`,
+      ).toBe(true);
+    }
+  });
+
+  it('retains a real hard-break edit in the semantic inline projection', () => {
+    const tool = new StudioParagraphTool({
+      data: {
+        node: {
+          content: [{ marks: [], text: 'Line one', type: 'text' }],
+          type: 'paragraph',
+        },
+      },
+    });
+    const field = tool.render();
+    field.append(document.createElement('br'), document.createTextNode('Line two'));
+
+    expect(tool.save().node.content).toEqual([
+      { text: 'Line one', type: 'text' },
+      { type: 'hardBreak' },
+      { text: 'Line two', type: 'text' },
+    ]);
   });
 
   it('keeps every nested list boundary intact when adding an unrelated root item', () => {

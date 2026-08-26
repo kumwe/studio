@@ -109,7 +109,11 @@ export async function renderStudioWeb(
 
 async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
   const scope = scopeFor(node.id);
-  const scopedSheet = state.context.scopedStyles?.[node.id];
+  const scopedStyles = state.context.scopedStyles;
+  const scopedSheet =
+    scopedStyles !== undefined && Object.hasOwn(scopedStyles, node.id)
+      ? scopedStyles[node.id]
+      : undefined;
   if (scopedSheet !== undefined) state.css.push(compileStudioScopedStyleSheet(scope, scopedSheet));
   const presentation = presentationAttributes(node, scope, state);
   const content = await renderType(node, scope, state);

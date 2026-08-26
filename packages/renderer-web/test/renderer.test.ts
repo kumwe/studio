@@ -11,6 +11,7 @@ import {
   compileStudioScopedStyleSheet,
   renderSafeMarkupFragment,
   renderStudioWeb,
+  type StudioScopedStyleSheet,
 } from '../src/index.js';
 
 const richText: JsonObject = {
@@ -309,6 +310,39 @@ describe('semantic web renderer', () => {
     expect(firstScope).not.toBe(secondScope);
     expect(output.css).toContain(`[data-studio-scope="${firstScope}"]{color:#112233}`);
     expect(output.css).toContain(`[data-studio-scope="${secondScope}"]{color:#445566}`);
+  });
+
+  it.each(['toString', 'hasOwnProperty', 'valueOf'])(
+    'ignores inherited scoped-style members for schema-valid node id %s',
+    async (id) => {
+      const output = await renderStudioWeb(
+        { roots: [node(id, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Visible' })] },
+        { scopedStyles: {} },
+      );
+
+      expect(output.html).toContain(`data-studio-node="${id}"`);
+      expect(output.css).not.toContain('#123456');
+    },
+  );
+
+  it('applies an explicit own scoped-style entry whose id names an Object prototype member', async () => {
+    const scopedStyles = {} as Record<string, StudioScopedStyleSheet>;
+    Object.defineProperty(scopedStyles, 'toString', {
+      enumerable: true,
+      value: { rules: [{ declarations: { color: '#123456' }, target: 'self' }] },
+    });
+    const output = await renderStudioWeb(
+      { roots: [node('toString', CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Visible' })] },
+      { scopedStyles },
+    );
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const scope = host
+      .querySelector('[data-studio-node="toString"]')
+      ?.getAttribute('data-studio-scope');
+
+    expect(scope).toBeTruthy();
+    expect(output.css).toContain(`[data-studio-scope="${scope}"]{color:#123456}`);
   });
 
   it('keeps enhancement order equal to document order across delayed host resolution', async () => {

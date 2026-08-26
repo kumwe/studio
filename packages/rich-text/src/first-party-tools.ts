@@ -136,8 +136,10 @@ abstract class InlineToolBase {
     return field;
   }
 
-  protected saveInline(): StudioRichTextNode[] {
-    return this.field === undefined ? [] : readInline(this.field);
+  protected saveInline(original: readonly StudioRichTextNode[]): StudioRichTextNode[] {
+    return this.field === undefined
+      ? structuredClone([...original])
+      : preserveInlineRepresentation(original, readInline(this.field));
   }
 
   public abstract render(): HTMLElement;
@@ -158,7 +160,7 @@ export class StudioParagraphTool extends InlineToolBase {
 
   public save(): { node: StudioRichTextNode } {
     const node = structuredClone(this.node);
-    const content = this.saveInline();
+    const content = this.saveInline(node.content ?? []);
     if (!sameCanonical(node.content ?? [], content)) node.content = content;
     return { node };
   }
@@ -194,7 +196,7 @@ export class StudioHeaderTool extends InlineToolBase {
     const node = structuredClone(this.node);
     const level = Number(this.#level?.value ?? this.node.attrs?.level ?? 2);
     if (level !== Number(this.node.attrs?.level ?? 2)) node.attrs = { level };
-    const content = this.saveInline();
+    const content = this.saveInline(node.content ?? []);
     if (!sameCanonical(node.content ?? [], content)) node.content = content;
     return { node };
   }
@@ -214,7 +216,8 @@ export class StudioQuoteTool extends InlineToolBase {
 
   public save(): { node: StudioRichTextNode } {
     const node = structuredClone(this.node);
-    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline());
+    const content = editableBlockContent(node.content ?? []);
+    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline(content));
     return { node };
   }
 }
@@ -265,7 +268,8 @@ export class StudioCalloutTool extends InlineToolBase {
   public save(): { node: StudioRichTextNode } {
     const node = structuredClone(this.node);
     node.attrs = { tone: this.#tone?.value ?? 'info' };
-    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline());
+    const content = editableBlockContent(node.content ?? []);
+    node.content = mergeEditableBlockContent(node.content ?? [], this.saveInline(content));
     return { node };
   }
 }
@@ -430,7 +434,10 @@ export class StudioListTool {
       const index = Number(field.dataset.listText);
       const row = this.#rows[index];
       if (row === undefined) continue;
-      const content = readInline(field);
+      const content = preserveInlineRepresentation(
+        row.editableBlock.content ?? [],
+        readInline(field),
+      );
       if (row.syntheticEditable) {
         if (content.length > 0) {
           row.editableBlock.content = content;
@@ -644,7 +651,9 @@ export class StudioChecklistTool {
   #syncRows(): void {
     for (const field of this.#root?.querySelectorAll<HTMLElement>('[data-check-text]') ?? []) {
       const row = this.#rows[Number(field.dataset.checkText)];
-      if (row !== undefined) row.content = readInline(field);
+      if (row !== undefined) {
+        row.content = preserveInlineRepresentation(row.content, readInline(field));
+      }
     }
     for (const input of this.#root?.querySelectorAll<HTMLInputElement>('[data-check-state]') ??
       []) {
@@ -828,7 +837,7 @@ export class StudioTableTool {
       const targetRow = row === undefined ? undefined : this.#cells[row];
       const targetCell = column === undefined ? undefined : targetRow?.[column];
       if (targetCell !== undefined) {
-        targetCell.content = readInline(field);
+        targetCell.content = preserveInlineRepresentation(targetCell.content, readInline(field));
       }
     }
   }
@@ -943,6 +952,52 @@ function readInline(parent: Node): StudioRichTextNode[] {
   };
   for (const child of parent.childNodes) visit(child, []);
   return result;
+}
+
+interface InlineProjectionBreak {
+  kind: 'hard-break';
+}
+
+interface InlineProjectionText {
+  kind: 'text';
+  marks: string[];
+  text: string;
+}
+
+type InlineProjection = InlineProjectionBreak | InlineProjectionText;
+
+function preserveInlineRepresentation(
+  original: readonly StudioRichTextNode[],
+  rendered: StudioRichTextNode[],
+): StudioRichTextNode[] {
+  return sameCanonical(projectInline(original), projectInline(rendered))
+    ? structuredClone([...original])
+    : rendered;
+}
+
+function projectInline(content: readonly StudioRichTextNode[]): InlineProjection[] {
+  const projection: InlineProjection[] = [];
+  for (const node of content) {
+    if (node.type === 'hardBreak') {
+      projection.push({ kind: 'hard-break' });
+      continue;
+    }
+    if (node.type !== 'text') continue;
+    const marks = (node.marks ?? [])
+      .map((mark) => {
+        if (mark.type !== 'highlight') return mark.type;
+        const tone = mark.attrs?.tone;
+        return `${mark.type}:${typeof tone === 'string' ? tone : ''}`;
+      })
+      .sort();
+    const previous = projection.at(-1);
+    if (previous?.kind === 'text' && sameCanonical(previous.marks, marks)) {
+      previous.text += node.text ?? '';
+    } else {
+      projection.push({ kind: 'text', marks, text: node.text ?? '' });
+    }
+  }
+  return projection;
 }
 
 function canonicalMark(element: Element): StudioRichTextMark | undefined {
