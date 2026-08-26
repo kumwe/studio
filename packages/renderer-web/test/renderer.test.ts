@@ -11,11 +11,97 @@ import {
   compileStudioScopedStyleSheet,
   renderSafeMarkupFragment,
   renderStudioWeb,
+  type StudioScopedStyleSheet,
 } from '../src/index.js';
 
 const richText: JsonObject = {
   content: [
     { content: [{ marks: [{ type: 'bold' }], text: '<safe>', type: 'text' }], type: 'paragraph' },
+  ],
+  type: 'doc',
+};
+
+const completeRichText: JsonObject = {
+  content: [
+    {
+      attrs: { level: 3 },
+      content: [{ marks: [{ type: 'italic' }], text: 'Heading', type: 'text' }],
+      type: 'heading',
+    },
+    {
+      content: [
+        {
+          content: [
+            { marks: [{ type: 'strike' }], text: 'Quoted', type: 'text' },
+            { type: 'hardBreak' },
+            { marks: [{ type: 'code' }], text: 'line', type: 'text' },
+          ],
+          type: 'paragraph',
+        },
+      ],
+      type: 'blockquote',
+    },
+    {
+      content: [
+        {
+          content: [{ content: [{ text: 'Bullet', type: 'text' }], type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ],
+      type: 'bulletList',
+    },
+    {
+      attrs: { start: 2 },
+      content: [
+        {
+          content: [{ content: [{ text: 'Ordered', type: 'text' }], type: 'paragraph' }],
+          type: 'listItem',
+        },
+      ],
+      type: 'orderedList',
+    },
+    { type: 'horizontalRule' },
+    {
+      attrs: { tone: 'warning' },
+      content: [
+        {
+          content: [
+            {
+              marks: [{ attrs: { tone: 'danger' }, type: 'highlight' }],
+              text: 'Callout',
+              type: 'text',
+            },
+          ],
+          type: 'paragraph',
+        },
+      ],
+      type: 'callout',
+    },
+    {
+      content: [
+        {
+          attrs: { checked: true, level: 2 },
+          content: [{ text: 'Checked', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    },
+    {
+      attrs: { header: true },
+      content: [
+        {
+          content: [{ content: [{ text: 'Column', type: 'text' }], type: 'tableCell' }],
+          type: 'tableRow',
+        },
+        {
+          content: [{ content: [{ text: 'Value', type: 'text' }], type: 'tableCell' }],
+          type: 'tableRow',
+        },
+      ],
+      type: 'table',
+    },
+    { attrs: { language: 'html' }, text: '<script>', type: 'codeBlock' },
   ],
   type: 'doc',
 };
@@ -124,6 +210,36 @@ describe('semantic web renderer', () => {
     expect(output.enhancements.map((item) => item.kind)).toEqual(['chart', 'math', 'diagram']);
   });
 
+  it('renders every portable rich-text node and semantic highlight tone', async () => {
+    const output = await renderStudioWeb({
+      roots: [
+        node('portable-rich-text', CORE_PRODUCTION_BLOCK_TYPES.richText, {
+          content: completeRichText,
+        }),
+      ],
+    });
+
+    expect(output.html).toContain('<h3><em>Heading</em></h3>');
+    expect(output.html).toContain(
+      '<blockquote><p><del>Quoted</del><br><code>line</code></p></blockquote>',
+    );
+    expect(output.html).toContain('<ul><li><p>Bullet</p></li></ul>');
+    expect(output.html).toContain('<ol start="2"><li><p>Ordered</p></li></ol>');
+    expect(output.html).toContain('<hr>');
+    expect(output.html).toContain(
+      '<aside data-studio-rich-text-callout data-studio-tone="warning"><p><mark data-studio-tone="danger">Callout</mark></p></aside>',
+    );
+    expect(output.html).toContain('<ul data-studio-rich-text-checklist>');
+    expect(output.html).toContain(
+      'data-studio-rich-text-checklist-item data-studio-checked="true" data-studio-level="2" aria-level="3"',
+    );
+    expect(output.html).toContain(
+      '<table data-studio-rich-text-table><thead><tr><th scope="col">Column</th></tr></thead>',
+    );
+    expect(output.html).toContain('<tbody><tr><td>Value</td></tr></tbody></table>');
+    expect(output.html).toContain('<pre><code data-language="html">&lt;script&gt;</code></pre>');
+  });
+
   it('renders only structural allowlisted HTML and policy-scoped CSS', () => {
     expect(
       renderSafeMarkupFragment({
@@ -156,6 +272,251 @@ describe('semantic web renderer', () => {
         rules: [{ declarations: { background: 'url(javascript:1)' }, target: 'self' }],
       }),
     ).toThrow();
+    expect(() =>
+      compileStudioScopedStyleSheet('x"]{}body{color:red}/*', {
+        rules: [{ declarations: { color: '#112233' }, target: 'self' }],
+      }),
+    ).toThrow(/scope/u);
+  });
+
+  it.each(['body', 'toString', 'constructor', 'hasOwnProperty', '__proto__'])(
+    'rejects non-own scoped CSS target %s at the compiler boundary',
+    (target) => {
+      expect(() =>
+        compileStudioScopedStyleSheet('s1', {
+          rules: [
+            {
+              declarations: { color: '#112233' },
+              target,
+            },
+          ],
+        } as unknown as StudioScopedStyleSheet),
+      ).toThrow(/target .* is not allowed/u);
+    },
+  );
+
+  it('rejects a scoped CSS target inherited through prototype pollution', () => {
+    const target = 'pollutedScopedTarget';
+    Object.defineProperty(Object.prototype, target, {
+      configurable: true,
+      value: ' body',
+    });
+    try {
+      expect(() =>
+        compileStudioScopedStyleSheet('s1', {
+          rules: [{ declarations: { color: '#112233' }, target }],
+        } as unknown as StudioScopedStyleSheet),
+      ).toThrow(/target .* is not allowed/u);
+    } finally {
+      Reflect.deleteProperty(Object.prototype, target);
+    }
+  });
+
+  it('accepts every own scoped CSS target in the compiler allowlist', () => {
+    const output = compileStudioScopedStyleSheet('s1', {
+      rules: (['self', 'heading', 'content', 'media', 'action'] as const).map((target) => ({
+        declarations: { color: '#112233' },
+        target,
+      })),
+    });
+
+    expect(output).toBe(
+      '[data-studio-scope="s1"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="heading"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="content"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="media"]{color:#112233}' +
+        '[data-studio-scope="s1"][data-studio-part="action"]{color:#112233}',
+    );
+  });
+
+  it('uses collision-free scopes to isolate CSS for formerly colliding schema-valid node ids', async () => {
+    const firstId = 'nj6puezis73af';
+    const secondId = 'n1ksfjywvqcv2';
+    const output = await renderStudioWeb(
+      {
+        roots: [
+          node(firstId, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'First' }),
+          node(secondId, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Second' }),
+        ],
+      },
+      {
+        scopedStyles: {
+          [firstId]: { rules: [{ declarations: { color: '#112233' }, target: 'self' }] },
+          [secondId]: { rules: [{ declarations: { color: '#445566' }, target: 'self' }] },
+        },
+      },
+    );
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const firstScope = host
+      .querySelector(`[data-studio-node="${firstId}"]`)
+      ?.getAttribute('data-studio-scope');
+    const secondScope = host
+      .querySelector(`[data-studio-node="${secondId}"]`)
+      ?.getAttribute('data-studio-scope');
+
+    expect(firstScope).toBeTruthy();
+    expect(secondScope).toBeTruthy();
+    expect(firstScope).not.toBe(secondScope);
+    expect(output.css).toContain(`[data-studio-scope="${firstScope}"]{color:#112233}`);
+    expect(output.css).toContain(`[data-studio-scope="${secondScope}"]{color:#445566}`);
+  });
+
+  it.each(['toString', 'hasOwnProperty', 'valueOf'])(
+    'ignores inherited scoped-style members for schema-valid node id %s',
+    async (id) => {
+      const output = await renderStudioWeb(
+        { roots: [node(id, CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Visible' })] },
+        { scopedStyles: {} },
+      );
+
+      expect(output.html).toContain(`data-studio-node="${id}"`);
+      expect(output.css).not.toContain('#123456');
+    },
+  );
+
+  it('applies an explicit own scoped-style entry whose id names an Object prototype member', async () => {
+    const scopedStyles = {} as Record<string, StudioScopedStyleSheet>;
+    Object.defineProperty(scopedStyles, 'toString', {
+      enumerable: true,
+      value: { rules: [{ declarations: { color: '#123456' }, target: 'self' }] },
+    });
+    const output = await renderStudioWeb(
+      { roots: [node('toString', CORE_PRODUCTION_BLOCK_TYPES.heading, { text: 'Visible' })] },
+      { scopedStyles },
+    );
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const scope = host
+      .querySelector('[data-studio-node="toString"]')
+      ?.getAttribute('data-studio-scope');
+
+    expect(scope).toBeTruthy();
+    expect(output.css).toContain(`[data-studio-scope="${scope}"]{color:#123456}`);
+  });
+
+  it('keeps enhancement order equal to document order across delayed host resolution', async () => {
+    const chartValue: JsonObject = {
+      datasets: [{ label: 'Series', values: [1] }],
+      labels: ['A'],
+      type: 'bar',
+    };
+    const roots = [
+      node('first', CORE_PRODUCTION_BLOCK_TYPES.chart),
+      node('second', CORE_PRODUCTION_BLOCK_TYPES.chart),
+    ];
+    let inFlight = 0;
+    let maximumInFlight = 0;
+    const output = await renderStudioWeb(
+      { roots },
+      {
+        resolveBinding: async (candidate, port) => {
+          if (port !== 'chart') return undefined;
+          inFlight += 1;
+          maximumInFlight = Math.max(maximumInFlight, inFlight);
+          if (candidate.id === 'first') {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+          } else {
+            await Promise.resolve();
+          }
+          inFlight -= 1;
+          return chartValue;
+        },
+      },
+    );
+
+    expect(output.enhancements.map((item) => item.nodeId)).toEqual(['first', 'second']);
+    expect(output.html.indexOf('data-studio-node="first"')).toBeLessThan(
+      output.html.indexOf('data-studio-node="second"'),
+    );
+    expect(maximumInFlight).toBe(2);
+  });
+
+  it('collects parent and child enhancement jobs in Blueprint pre-order', async () => {
+    const parent = node(
+      'parent',
+      CORE_PRODUCTION_BLOCK_TYPES.stack,
+      {},
+      { items: [node('child', CORE_PRODUCTION_BLOCK_TYPES.chart)] },
+    );
+    parent.properties.design = { animation: 'fade' };
+    const output = await renderStudioWeb(
+      {
+        roots: [parent],
+      },
+      {
+        resolveBinding: (_candidate, port) =>
+          Promise.resolve(
+            port === 'chart'
+              ? {
+                  datasets: [{ label: 'Series', values: [1] }],
+                  labels: ['A'],
+                  type: 'bar',
+                }
+              : undefined,
+          ),
+      },
+    );
+
+    expect(output.enhancements.map((item) => item.nodeId)).toEqual(['parent', 'child']);
+    expect(output.enhancements.map((item) => item.kind)).toEqual(['motion', 'chart']);
+  });
+
+  it('renders checklist depth as nested semantic lists with accessible item levels', async () => {
+    const checklist: JsonObject = {
+      content: [
+        {
+          attrs: { checked: false, level: 0 },
+          content: [{ text: 'Parent', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: true, level: 1 },
+          content: [{ text: 'Child', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 2 },
+          content: [{ text: 'Grandchild', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 1 },
+          content: [{ text: 'Sibling child', type: 'text' }],
+          type: 'checklistItem',
+        },
+        {
+          attrs: { checked: false, level: 0 },
+          content: [{ text: 'Root sibling', type: 'text' }],
+          type: 'checklistItem',
+        },
+      ],
+      type: 'checklist',
+    };
+    const output = await renderStudioWeb({
+      roots: [
+        node('nested-checklist', CORE_PRODUCTION_BLOCK_TYPES.richText, {
+          content: { content: [checklist], type: 'doc' },
+        }),
+      ],
+    });
+    const host = document.createElement('div');
+    host.innerHTML = output.html;
+    const items = [...host.querySelectorAll<HTMLElement>('[data-studio-rich-text-checklist-item]')];
+
+    expect(items.map((item) => item.getAttribute('aria-level'))).toEqual(['1', '2', '3', '2', '1']);
+    expect(items[1]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[0],
+    );
+    expect(items[2]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[1],
+    );
+    expect(items[3]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBe(
+      items[0],
+    );
+    expect(items[4]?.parentElement?.closest('[data-studio-rich-text-checklist-item]')).toBeNull();
+    expect(items[1]?.querySelector('label')?.textContent).toBe('Child');
+    expect(items[1]?.querySelector<HTMLInputElement>('input')?.checked).toBe(true);
   });
 
   it('keeps a slideshow usable before enhancement and describes trusted behavior separately', async () => {

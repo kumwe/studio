@@ -503,6 +503,57 @@
     },
     { "nodeId": "money", "port": "amount", "value": { "amount": "10.00", "currency": "NAD" } },
     { "nodeId": "progress", "port": "value", "value": 50 },
+    {
+      "nodeId": "rich-text",
+      "port": "content",
+      "value": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "callout",
+            "attrs": { "tone": "warning" },
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Mind the gap",
+                    "marks": [{ "type": "highlight", "attrs": { "tone": "accent" } }]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "checklist",
+            "content": [
+              {
+                "type": "checklistItem",
+                "attrs": { "checked": true, "level": 1 },
+                "content": [{ "type": "text", "text": "Done" }]
+              }
+            ]
+          },
+          {
+            "type": "table",
+            "attrs": { "header": true },
+            "content": [
+              {
+                "type": "tableRow",
+                "content": [
+                  {
+                    "type": "tableCell",
+                    "content": [{ "type": "text", "text": "Name" }]
+                  }
+                ]
+              }
+            ]
+          },
+          { "type": "codeBlock", "attrs": { "language": "typescript" }, "text": "const n = 42;" }
+        ]
+      }
+    },
     { "nodeId": "table", "port": "table", "value": { "columns": ["Column"], "rows": [["Cell"]] } }
   ],
   "media": [],
@@ -561,7 +612,15 @@
       "<progress",
       "<form role=\"search\"",
       "data-studio-spinner",
-      "<table data-studio-table>"
+      "<table data-studio-table>",
+      "data-studio-rich-text-callout data-studio-tone=\"warning\"",
+      "<mark data-studio-tone=\"accent\">Mind the gap</mark>",
+      "data-studio-rich-text-checklist-item data-studio-checked=\"true\" data-studio-level=\"1\"",
+      "data-studio-level=\"1\" aria-level=\"2\"",
+      "data-studio-rich-text-checklist-level=\"1\"",
+      "<label><input type=\"checkbox\" disabled checked><span data-studio-rich-text-checklist-content>Done</span></label>",
+      "<table data-studio-rich-text-table><thead>",
+      "<pre><code data-language=\"typescript\">const n = 42;</code></pre>"
     ],
     "htmlExcludes": ["Unsupported Studio block", "<script", "onerror=", "javascript:"],
     "cssContains": [
@@ -570,6 +629,6 @@
       "data-studio-spinner",
       "prefers-reduced-motion"
     ],
-    "enhancements": ["tabs", "chart", "diagram", "math", "countdown", "dialog", "popover"]
+    "enhancements": ["chart", "countdown", "diagram", "dialog", "math", "popover", "tabs"]
   }
 }

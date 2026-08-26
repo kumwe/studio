@@ -18,6 +18,7 @@ import type {
 import {
   parseRichTextDocument,
   type StudioRichTextDocument,
+  type StudioRichTextMark,
   type StudioRichTextNode,
 } from '@kumwe/studio-rich-text';
 import { assertCspNonce, compileStudioScopedStyleSheet } from './scoped-css.js';
@@ -91,7 +92,7 @@ export async function renderStudioWeb(
   context: Readonly<StudioWebRenderContext> = {},
 ): Promise<StudioWebRenderResult> {
   const state: RenderState = { context, css: [], enhancements: [] };
-  const html = (await Promise.all(document.roots.map((node) => renderNode(node, state)))).join('');
+  const html = (await renderNodes(document.roots, state)).join('');
   const css = [BASE_CSS, ...state.css].filter((value) => value.length > 0).join('\n');
   let nonce = '';
   if (context.cspNonce !== undefined) {
@@ -108,10 +109,14 @@ export async function renderStudioWeb(
 
 async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
   const scope = scopeFor(node.id);
-  const scopedSheet = state.context.scopedStyles?.[node.id];
+  const scopedStyles = state.context.scopedStyles;
+  const scopedSheet =
+    scopedStyles !== undefined && Object.hasOwn(scopedStyles, node.id)
+      ? scopedStyles[node.id]
+      : undefined;
   if (scopedSheet !== undefined) state.css.push(compileStudioScopedStyleSheet(scope, scopedSheet));
-  const content = await renderType(node, scope, state);
   const presentation = presentationAttributes(node, scope, state);
+  const content = await renderType(node, scope, state);
   const attributes = `data-studio-block="${escapeAttribute(blockName(node.type))}" data-studio-node="${escapeAttribute(node.id)}" data-studio-scope="${scope}"${presentation}`;
   if (node.type === CORE_PRODUCTION_BLOCK_TYPES.descriptionItem) {
     return `<div data-studio-description-item ${attributes}>${content}</div>`;
@@ -120,6 +125,24 @@ async function renderNode(node: Readonly<BlueprintNode>, state: RenderState): Pr
     return `<li data-studio-navigation-item ${attributes}>${content}</li>`;
   }
   return `<div ${attributes}>${content}</div>`;
+}
+
+async function renderNodes(
+  nodes: readonly Readonly<BlueprintNode>[],
+  state: RenderState,
+): Promise<string[]> {
+  const rendered = await Promise.all(
+    nodes.map(async (node) => {
+      const local: RenderState = { context: state.context, css: [], enhancements: [] };
+      const html = await renderNode(node, local);
+      return { css: local.css, enhancements: local.enhancements, html };
+    }),
+  );
+  for (const result of rendered) {
+    state.css.push(...result.css);
+    state.enhancements.push(...result.enhancements);
+  }
+  return rendered.map((result) => result.html);
 }
 
 async function renderType(
@@ -468,7 +491,7 @@ async function tabs(
         `<button type="button" data-studio-tab="${index}">${escapeHtml(stringValue(await bindingValue(tabNode, 'title', state)))}</button>`,
     ),
   );
-  return `<div data-studio-tabs><div data-studio-tab-list hidden>${buttons.join('')}</div><div data-studio-part="content">${(await Promise.all(tabNodes.map((tabNode) => renderNode(tabNode, state)))).join('')}</div></div>`;
+  return `<div data-studio-tabs><div data-studio-tab-list hidden>${buttons.join('')}</div><div data-studio-part="content">${(await renderNodes(tabNodes, state)).join('')}</div></div>`;
 }
 
 async function tab(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -656,7 +679,7 @@ async function descriptionItem(node: Readonly<BlueprintNode>, state: RenderState
 
 async function descriptionList(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
   const title = stringValue(await bindingValue(node, 'title', state));
-  const items = await Promise.all((node.slots.items ?? []).map((item) => renderNode(item, state)));
+  const items = await renderNodes(node.slots.items ?? [], state);
   return `${title.length === 0 ? '' : `<h3 data-studio-part="heading">${escapeHtml(title)}</h3>`}<dl>${items.join('')}</dl>`;
 }
 
@@ -701,10 +724,10 @@ async function navigation(
     ? candidate
     : 'nav';
   const accessibleLabel = stringValue(await bindingValue(node, 'label', state)) || 'Navigation';
-  const items = await Promise.all((node.slots.items ?? []).map((item) => renderNode(item, state)));
   if ((node.slots.items ?? []).some((item) => (item.slots.children ?? []).length > 0)) {
     state.enhancements.push({ kind: 'navigation', nodeId: node.id, scope });
   }
+  const items = await renderNodes(node.slots.items ?? [], state);
   return `<nav data-studio-navigation="${presentation}" aria-label="${escapeAttribute(accessibleLabel)}"><ul>${items.join('')}</ul></nav>`;
 }
 
@@ -715,9 +738,7 @@ async function navigationItem(node: Readonly<BlueprintNode>, state: RenderState)
     href === undefined
       ? `<span>${escapeHtml(labelValue)}</span>`
       : `<a href="${escapeAttribute(href)}"${node.properties.current === true ? ' aria-current="page"' : ''}>${escapeHtml(labelValue)}</a>`;
-  const childItems = await Promise.all(
-    (node.slots.children ?? []).map((item) => renderNode(item, state)),
-  );
+  const childItems = await renderNodes(node.slots.children ?? [], state);
   return `${labelMarkup}${childItems.length === 0 ? '' : `<button type="button" data-studio-navigation-toggle aria-label="Toggle ${escapeAttribute(labelValue)} navigation">Expand</button><ul data-studio-navigation-children>${childItems.join('')}</ul>`}`;
 }
 
@@ -771,9 +792,7 @@ async function children(
   slot: string,
   state: RenderState,
 ): Promise<string> {
-  return (
-    await Promise.all((node.slots[slot] ?? []).map((child) => renderNode(child, state)))
-  ).join('');
+  return (await renderNodes(node.slots[slot] ?? [], state)).join('');
 }
 
 function bindingValue(node: Readonly<BlueprintNode>, port: string, state: RenderState): unknown {
@@ -850,32 +869,155 @@ function renderRichTextNode(node: Readonly<StudioRichTextNode>): string {
       return `<h${headingLevel(node.attrs?.level)}>${childrenValue}</h${headingLevel(node.attrs?.level)}>`;
     case 'blockquote':
       return `<blockquote>${childrenValue}</blockquote>`;
+    case 'callout':
+      return `<aside data-studio-rich-text-callout data-studio-tone="${richTextCalloutTone(node.attrs?.tone)}">${childrenValue}</aside>`;
     case 'bulletList':
       return `<ul>${childrenValue}</ul>`;
     case 'orderedList':
       return `<ol${typeof node.attrs?.start === 'number' ? ` start="${node.attrs.start}"` : ''}>${childrenValue}</ol>`;
     case 'listItem':
       return `<li>${childrenValue}</li>`;
+    case 'checklist':
+      return renderRichTextChecklist(node);
+    case 'checklistItem':
+      return renderRichTextChecklistItem(node, richTextChecklistLevel(node.attrs?.level), []);
+    case 'table':
+      return renderRichTextTable(node);
+    case 'tableRow':
+      return `<tr>${childrenValue}</tr>`;
+    case 'tableCell':
+      return `<td>${childrenValue}</td>`;
+    case 'codeBlock':
+      return `<pre><code data-language="${escapeAttribute(stringRichTextAttribute(node.attrs?.language, 'text'))}">${escapeHtml(node.text ?? '')}</code></pre>`;
     case 'horizontalRule':
       return '<hr>';
     case 'hardBreak':
       return '<br>';
     case 'text':
-      return applyMarks(escapeHtml(node.text ?? ''), node.marks?.map((mark) => mark.type) ?? []);
+      return applyMarks(escapeHtml(node.text ?? ''), node.marks ?? []);
     default:
       return '';
   }
 }
 
-function applyMarks(value: string, marks: readonly string[]): string {
-  const order = ['bold', 'italic', 'strike', 'code'];
-  return order.reduce(
-    (current, mark) =>
-      marks.includes(mark)
-        ? `<${mark === 'bold' ? 'strong' : mark === 'italic' ? 'em' : mark === 'strike' ? 'del' : 'code'}>${current}</${mark === 'bold' ? 'strong' : mark === 'italic' ? 'em' : mark === 'strike' ? 'del' : 'code'}>`
-        : current,
-    value,
+function applyMarks(value: string, marks: readonly StudioRichTextMark[]): string {
+  let current = value;
+  for (const type of ['bold', 'italic', 'strike', 'code', 'highlight'] as const) {
+    const mark = marks.find((candidate) => candidate.type === type);
+    if (mark === undefined) continue;
+    if (type === 'highlight') {
+      current = `<mark data-studio-tone="${richTextHighlightTone(mark.attrs?.tone)}">${current}</mark>`;
+      continue;
+    }
+    const element =
+      type === 'bold' ? 'strong' : type === 'italic' ? 'em' : type === 'strike' ? 'del' : 'code';
+    current = `<${element}>${current}</${element}>`;
+  }
+  return current;
+}
+
+function renderRichTextTable(node: Readonly<StudioRichTextNode>): string {
+  const rows = node.content ?? [];
+  const renderRow = (row: Readonly<StudioRichTextNode>, header: boolean): string =>
+    `<tr>${(row.content ?? [])
+      .map((cell) => {
+        const content = (cell.content ?? []).map(renderRichTextNode).join('');
+        return header ? `<th scope="col">${content}</th>` : `<td>${content}</td>`;
+      })
+      .join('')}</tr>`;
+  if (node.attrs?.header === true) {
+    const [heading, ...body] = rows;
+    return `<table data-studio-rich-text-table>${heading === undefined ? '' : `<thead>${renderRow(heading, true)}</thead>`}${body.length === 0 ? '' : `<tbody>${body.map((row) => renderRow(row, false)).join('')}</tbody>`}</table>`;
+  }
+  return `<table data-studio-rich-text-table><tbody>${rows.map((row) => renderRow(row, false)).join('')}</tbody></table>`;
+}
+
+interface RichTextChecklistTreeItem {
+  children: RichTextChecklistTreeItem[];
+  level: 0 | 1 | 2 | 3 | 4;
+  node?: Readonly<StudioRichTextNode>;
+}
+
+function renderRichTextChecklist(node: Readonly<StudioRichTextNode>): string {
+  const root: RichTextChecklistTreeItem[] = [];
+  const levels: RichTextChecklistTreeItem[][] = [root];
+  for (const item of node.content ?? []) {
+    const level = richTextChecklistLevel(item.attrs?.level);
+    levels.length = Math.min(level + 1, levels.length);
+    while (levels.length <= level) {
+      const parentItems = levels.at(-1);
+      if (parentItems === undefined) break;
+      let parent = parentItems.at(-1);
+      if (parent === undefined) {
+        parent = {
+          children: [],
+          level: Math.min(4, levels.length - 1) as 0 | 1 | 2 | 3 | 4,
+        };
+        parentItems.push(parent);
+      }
+      levels.push(parent.children);
+    }
+    levels[level]?.push({ children: [], level, node: item });
+  }
+  return `<ul data-studio-rich-text-checklist>${renderRichTextChecklistItems(root)}</ul>`;
+}
+
+function renderRichTextChecklistItems(items: readonly RichTextChecklistTreeItem[]): string {
+  return items
+    .map((item) => {
+      const children =
+        item.children.length === 0
+          ? ''
+          : `<ul data-studio-rich-text-checklist-level="${item.level + 1}">${renderRichTextChecklistItems(item.children)}</ul>`;
+      return item.node === undefined
+        ? `<li role="none" data-studio-rich-text-checklist-bridge>${children}</li>`
+        : renderRichTextChecklistItem(item.node, item.level, item.children);
+    })
+    .join('');
+}
+
+function renderRichTextChecklistItem(
+  node: Readonly<StudioRichTextNode>,
+  level: 0 | 1 | 2 | 3 | 4,
+  children: readonly RichTextChecklistTreeItem[],
+): string {
+  const checked = node.attrs?.checked === true;
+  const content = (node.content ?? []).map(renderRichTextNode).join('');
+  const fallbackLabel = richTextNodeHasText(node) ? '' : ' aria-label="Checklist item"';
+  const nested =
+    children.length === 0
+      ? ''
+      : `<ul data-studio-rich-text-checklist-level="${level + 1}">${renderRichTextChecklistItems(children)}</ul>`;
+  return `<li data-studio-rich-text-checklist-item data-studio-checked="${String(checked)}" data-studio-level="${level}" aria-level="${level + 1}"><label><input type="checkbox" disabled${fallbackLabel}${checked ? ' checked' : ''}><span data-studio-rich-text-checklist-content>${content}</span></label>${nested}</li>`;
+}
+
+function richTextNodeHasText(node: Readonly<StudioRichTextNode>): boolean {
+  return (node.content ?? []).some(
+    (child) =>
+      (child.type === 'text' && (child.text?.length ?? 0) > 0) || richTextNodeHasText(child),
   );
+}
+
+function richTextCalloutTone(
+  value: JsonValue | undefined,
+): 'danger' | 'info' | 'success' | 'warning' {
+  return value === 'danger' || value === 'success' || value === 'warning' ? value : 'info';
+}
+
+function richTextHighlightTone(
+  value: JsonValue | undefined,
+): 'accent' | 'danger' | 'info' | 'success' | 'warning' {
+  return value === 'danger' || value === 'info' || value === 'success' || value === 'warning'
+    ? value
+    : 'accent';
+}
+
+function richTextChecklistLevel(value: JsonValue | undefined): 0 | 1 | 2 | 3 | 4 {
+  return value === 1 || value === 2 || value === 3 || value === 4 ? value : 0;
+}
+
+function stringRichTextAttribute(value: JsonValue | undefined, fallback: string): string {
+  return typeof value === 'string' ? value : fallback;
 }
 
 function headingLevel(value: JsonValue | undefined): 2 | 3 | 4 {
@@ -938,12 +1080,14 @@ function blockName(type: string): string {
 }
 
 function scopeFor(nodeId: string): string {
-  let hash = 2_166_136_261;
-  for (const character of nodeId) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16_777_619);
+  if (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,239}$/u.test(nodeId)) {
+    throw new TypeError('Studio node id must be a schema-valid stable identifier.');
   }
-  return `s${(hash >>> 0).toString(36)}`;
+  let encoded = 's';
+  for (let index = 0; index < nodeId.length; index += 1) {
+    encoded += nodeId.charCodeAt(index).toString(16).padStart(2, '0');
+  }
+  return encoded;
 }
 
 function presentationAttributes(

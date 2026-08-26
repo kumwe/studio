@@ -37,6 +37,47 @@ function node(
 }
 
 describe('trusted progressive interaction controller', () => {
+  it('targets each enhancement independently for formerly colliding schema-valid node ids', async () => {
+    const firstId = 'nj6puezis73af';
+    const secondId = 'n1ksfjywvqcv2';
+    const content: JsonObject = {
+      content: [{ content: [{ text: 'Notice', type: 'text' }], type: 'paragraph' }],
+      type: 'doc',
+    };
+    const result = await renderStudioWeb({
+      roots: [
+        node(
+          firstId,
+          CORE_PRODUCTION_BLOCK_TYPES.notice,
+          { content, title: 'First' },
+          {},
+          { dismissible: true, tone: 'warning' },
+        ),
+        node(
+          secondId,
+          CORE_PRODUCTION_BLOCK_TYPES.notice,
+          { content, title: 'Second' },
+          {},
+          { dismissible: true, tone: 'warning' },
+        ),
+      ],
+    });
+    const host = document.createElement('div');
+    document.body.append(host);
+    host.innerHTML = result.html;
+    const handle = await enhanceStudioWeb(host, result);
+    const notices = host.querySelectorAll<HTMLElement>('[data-studio-notice]');
+    const dismiss = host.querySelectorAll<HTMLButtonElement>('[data-studio-notice-dismiss]');
+
+    dismiss[1]?.click();
+    expect(notices[0]?.hidden).toBe(false);
+    expect(notices[1]?.hidden).toBe(true);
+
+    handle.dispose();
+    expect(notices[1]?.hidden).toBe(false);
+    host.remove();
+  });
+
   it('manages dialog focus and Escape without persisted scripts', async () => {
     const result = await renderStudioWeb({
       roots: [
