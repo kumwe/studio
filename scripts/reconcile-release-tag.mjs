@@ -25,6 +25,10 @@ async function main() {
   }
   const channel = process.env.PROMOTION_CHANNEL;
   const tag = tagForChannel(channel);
+  const expectedVersion = process.env.STUDIO_EXPECTED_RELEASE_VERSION;
+  if (expectedVersion === undefined || expectedVersion.length === 0) {
+    throw new Error('STUDIO_EXPECTED_RELEASE_VERSION is required.');
+  }
   const failures = [];
   const moved = [];
   const unchanged = [];
@@ -33,6 +37,11 @@ async function main() {
     const manifest = JSON.parse(
       await readFile(new URL(`packages/${directory}/package.json`, repositoryRoot), 'utf8'),
     );
+    if (manifest.version !== expectedVersion) {
+      throw new Error(
+        `${name}@${String(manifest.version)} does not match planned coordinate ${expectedVersion}.`,
+      );
+    }
     if (classifyReleaseVersion(manifest.version) !== channel) {
       throw new Error(`${name}@${String(manifest.version)} does not belong to ${channel}.`);
     }

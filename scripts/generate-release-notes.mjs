@@ -7,11 +7,15 @@ import { classifyReleaseVersion } from './release-policy.mjs';
 const repositoryRoot = new URL('../', import.meta.url);
 const shaPattern = /^[a-f0-9]{40}$/u;
 
-export function buildReleaseNotes(record, { candidateSha, channel, gateRecordSha }) {
+export function buildReleaseNotes(
+  record,
+  { candidateSha, channel, expectedVersion = record.release, gateRecordSha },
+) {
   if (
     !shaPattern.test(candidateSha) ||
     !shaPattern.test(gateRecordSha) ||
-    classifyReleaseVersion(record.release) !== channel
+    classifyReleaseVersion(record.release) !== channel ||
+    record.release !== expectedVersion
   ) {
     throw new Error(
       'Release-note inputs do not identify the published channel and immutable commits.',
@@ -46,6 +50,7 @@ async function main() {
     buildReleaseNotes(record, {
       candidateSha: process.env.PROMOTION_PUBLISH_SOURCE_SHA,
       channel: process.env.PROMOTION_CHANNEL,
+      expectedVersion: process.env.PROMOTION_EXPECTED_VERSION,
       gateRecordSha: process.env.PROMOTION_GATE_RECORD_SHA,
     }),
   );

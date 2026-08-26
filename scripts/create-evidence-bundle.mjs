@@ -16,8 +16,10 @@ import Ajv2020 from 'ajv/dist/2020.js';
 import { chromium } from '@playwright/test';
 import { parseEvidenceArguments } from './evidence-generator-input.mjs';
 import {
+  buildProfileAssertionIndex,
   checksumFile,
   GENERIC_LANE_EVIDENCE_CLASSES,
+  PROFILE_EVIDENCE_LANES,
   REQUIRED_EVIDENCE_INPUTS,
 } from './evidence-validation.mjs';
 
@@ -107,11 +109,43 @@ const criterionById = new Map(
   [...registry.gates.A, ...registry.gates.B].map((criterion) => [criterion.id, criterion]),
 );
 const allowedProfiles = new Set(registry.profileVocabulary);
+const profileAssertionRegistry = JSON.parse(
+  await readFile(join(repositoryRoot, 'evidence/profile-assertions.json'), 'utf8'),
+);
+const profileAssertionIndex = buildProfileAssertionIndex(profileAssertionRegistry, allowedProfiles);
+if (profileAssertionIndex.failures.length > 0) {
+  throw new Error(
+    `Profile assertion registry is invalid:\n- ${profileAssertionIndex.failures.join('\n- ')}`,
+  );
+}
 for (const profile of options.profiles) {
   if (!allowedProfiles.has(profile)) {
     throw new Error(`Profile ${profile} is not in evidence/gate-criteria.json.`);
   }
+  if (profileAssertionIndex.profilesById.get(profile)?.status !== 'executable') {
+    throw new Error(`Profile ${profile} has no executable evidence assertion mapping.`);
+  }
 }
+const selectedAssertions = options.profiles.map((profile) =>
+  profileAssertionIndex.profilesById.get(profile),
+);
+const profileLaneIds = [
+  ...new Set(
+    selectedAssertions.flatMap((assertion) =>
+      assertion.requiredRuns.filter((testId) => PROFILE_EVIDENCE_LANES[testId] !== undefined),
+    ),
+  ),
+].sort();
+const lanes = [
+  ...LANES,
+  ...profileLaneIds.map((testId) => ({ ...PROFILE_EVIDENCE_LANES[testId], testId })),
+];
+const evidenceInputPaths = [
+  ...new Set([
+    ...REQUIRED_EVIDENCE_INPUTS,
+    ...selectedAssertions.flatMap((assertion) => assertion.requiredInputs),
+  ]),
+].sort();
 
 const criteria = [];
 for (const criterionId of options.criteria) {
@@ -151,7 +185,7 @@ try {
   const runs = [];
   const artifacts = [];
   let totalArtifactBytes = 0;
-  for (const [index, step] of LANES.entries()) {
+  for (const [index, step] of lanes.entries()) {
     const startedAt = new Date().toISOString();
     const result = spawnSync(step.command, step.args, {
       cwd: repositoryRoot,
@@ -223,7 +257,7 @@ try {
     evidenceSchemaVersion: '0.1-draft',
     inputFixtureChecksums: Object.fromEntries(
       await Promise.all(
-        REQUIRED_EVIDENCE_INPUTS.map(async (path) => [
+        evidenceInputPaths.map(async (path) => [
           path,
           await checksumFile(join(repositoryRoot, path)),
         ]),

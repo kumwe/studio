@@ -1,9 +1,11 @@
+import { execFileSync } from 'node:child_process';
 import { appendFile, readFile, readdir } from 'node:fs/promises';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
 import {
   assertPromotionPackageState,
+  assertSameReleaseCoordinate,
   nextRcVersion,
   parseProfileInput,
   promotionTargetVersion,
@@ -16,7 +18,7 @@ const ignoredChangesetFiles = new Set(['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'R
 
 export async function inspectPromotionPlan(
   root = repositoryRoot,
-  { candidateSha = '', channel, evidenceSha = '', profiles = '' } = {},
+  { candidateRecord, candidateSha = '', channel, evidenceSha = '', profiles = '' } = {},
 ) {
   const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
   assertCoordinatedRelease(record);
@@ -38,6 +40,12 @@ export async function inspectPromotionPlan(
     throw new Error(
       'candidate_sha and gate_record_sha must be distinct lowercase 40-character SHAs.',
     );
+  }
+  if (hasCandidate) {
+    if (candidateRecord === undefined) {
+      throw new Error('The immutable candidate release record is required for promotion planning.');
+    }
+    assertCoordinatedRelease(candidateRecord);
   }
 
   const preparingRc = channel === 'rc' && record.release.includes('-alpha.');
@@ -67,6 +75,9 @@ export async function inspectPromotionPlan(
       throw new Error(
         'Stable preparation preserves the RC profile claims; profiles must be empty.',
       );
+    }
+    if (preparingStable) {
+      assertSameReleaseCoordinate(record, candidateRecord);
     }
     return {
       channel,
@@ -114,6 +125,9 @@ export async function inspectPromotionPlan(
     throw new Error(
       'profiles is preparation-only; publication reads claims from the candidate record.',
     );
+  }
+  if (channel === 'rc') {
+    assertSameReleaseCoordinate(record, candidateRecord);
   }
   assertPromotionPackageState({ channel, pendingChangesets, preState, releaseRecord: record });
   return {
@@ -175,8 +189,19 @@ async function main() {
   if (process.argv.length !== 2) {
     throw new Error('Usage: node scripts/promotion-plan.mjs');
   }
+  const candidateSha = process.env.PROMOTION_CANDIDATE_SHA ?? '';
+  let candidateRecord;
+  if (shaPattern.test(candidateSha)) {
+    candidateRecord = JSON.parse(
+      execFileSync('git', ['show', `${candidateSha}:studio-release.json`], {
+        cwd: fileURLToPath(repositoryRoot),
+        encoding: 'utf8',
+      }),
+    );
+  }
   const plan = await inspectPromotionPlan(repositoryRoot, {
-    candidateSha: process.env.PROMOTION_CANDIDATE_SHA ?? '',
+    candidateRecord,
+    candidateSha,
     channel: process.env.PROMOTION_CHANNEL,
     evidenceSha: process.env.PROMOTION_GATE_RECORD_SHA ?? '',
     profiles: process.env.PROMOTION_PROFILES ?? '',

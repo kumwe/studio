@@ -100,7 +100,9 @@ If a fix is required, create a new commit, versioned candidate, manifest and aff
 The exact operator inputs, preparation/publication split, and retry procedure are normative operational
 instructions in [`CONTRIBUTING.md`](../../CONTRIBUTING.md). Preparation creates a reviewed PR and never receives
 npm credentials. Publication occurs only after merge in the protected `studio-rc` or `studio-stable`
-environment, revalidates current `main`, and is idempotent after a partial registry publish or token rotation.
+environment. It deterministically packs the eight approved candidates before authentication, requires any
+already-present registry artifact to match those exact bytes, revalidates the latest gate state on current
+`main`, and is idempotent after a partial registry publish or token rotation.
 
 ## Publication
 
@@ -136,6 +138,11 @@ when released as a patch.
 ## Failure and rollback
 
 - Stop publication if any registry artifact differs from the approved checksum or lacks provenance.
+- The npm attestation endpoint is checked for the exact package/version/tarball subject and expected GitHub
+  workflow repository, path, ref, and commit. This structural source binding does not replace independent
+  cryptographic verification: the registry verifies attestations at publication, and npm's supported
+  `npm audit signatures` path verifies installed registry signatures and provenance attestations. The recovery
+  checker does not reimplement Sigstore verification.
 - Do not overwrite or silently rebuild a published version.
 - If a package is corrupt or malicious, deprecate/yank according to registry capability, publish an advisory
   and release a corrected version; retain forensic evidence.

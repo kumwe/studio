@@ -31,6 +31,7 @@
     "preview": "npm run preview --workspace @kumwe/studio-reference-host",
     "release:check": "node scripts/check-release-record.mjs",
     "release:check-pins": "node scripts/check-release-pins.mjs",
+    "release:artifacts": "node scripts/release-artifacts.mjs",
     "release:notes": "node scripts/generate-release-notes.mjs",
     "release:plan": "node scripts/release-plan.mjs",
     "release:promotion-plan": "node scripts/promotion-plan.mjs",

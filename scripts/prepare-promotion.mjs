@@ -20,10 +20,11 @@ const dependencyFields = [
 
 export async function preparePromotion(
   root = repositoryRoot,
-  { candidateSha = '', channel, evidenceSha = '', profiles },
+  { candidateRecord, candidateSha = '', channel, evidenceSha = '', profiles },
 ) {
   const profileInput = Array.isArray(profiles) ? profiles.join(',') : profiles;
   const plan = await inspectPromotionPlan(root, {
+    candidateRecord,
     candidateSha,
     channel,
     evidenceSha,
@@ -209,8 +210,19 @@ async function main() {
   if (process.argv.length !== 2) {
     throw new Error('Usage: node scripts/prepare-promotion.mjs');
   }
+  const candidateSha = process.env.PROMOTION_CANDIDATE_SHA ?? '';
+  let candidateRecord;
+  if (candidateSha.length > 0) {
+    candidateRecord = JSON.parse(
+      execFileSync('git', ['show', `${candidateSha}:studio-release.json`], {
+        cwd: fileURLToPath(repositoryRoot),
+        encoding: 'utf8',
+      }),
+    );
+  }
   const plan = await preparePromotion(repositoryRoot, {
-    candidateSha: process.env.PROMOTION_CANDIDATE_SHA ?? '',
+    candidateRecord,
+    candidateSha,
     channel: process.env.PROMOTION_CHANNEL,
     evidenceSha: process.env.PROMOTION_GATE_RECORD_SHA ?? '',
     profiles: process.env.PROMOTION_PROFILES ?? '',

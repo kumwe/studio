@@ -12,15 +12,18 @@ The machinery is implemented, but no real bundle has been reproduced and no gate
 | Path                                 | Content                                                              |
 | ------------------------------------ | -------------------------------------------------------------------- |
 | `gate-criteria.json`                 | Stable criterion IDs, required evidence classes, profile vocabulary  |
+| `profile-assertions.json`            | Exact source inputs and executable test lanes for every profile      |
 | `schema/gate-criteria.schema.json`   | Closed schema for the criterion registry                             |
 | `schema/evidence-bundle.schema.json` | Closed schema for one immutable bundle manifest                      |
 | `schema/gate-record.schema.json`     | Closed schema for a multi-bundle, per-criterion gate decision        |
 | `bundles/<bundleId>/manifest.json`   | One manifest; regular files below `artifacts/` are its exact outputs |
 | `gates/gate-<a\|b>.json`             | Gate records; none exist, so both gates remain unassessed            |
 
-The eight entries in `gate-criteria.json#profileVocabulary` are allowable Version 2 identifiers, not
-support claims. Only `supportedProfiles` in a valid, reviewed gate record can participate in a claim,
-and `STATUS.md` still controls programme status.
+The entries in `gate-criteria.json#profileVocabulary` are allowable Version 2 identifiers, not support claims.
+`profile-assertions.json` is a closed executable registry: a claimed profile must record every named source
+input and pass every exact registered lane. A profile label on a generic bundle cannot authorize a claim, and
+the target-only authoring profile has no executable mapping. Only `supportedProfiles` in a valid, reviewed gate
+record can participate in a claim, and `STATUS.md` still controls programme status.
 
 Directories prefixed `SAMPLE-` are deliberately failing specimens. They stay schema-valid, must fail
 authenticity, and may never be referenced by a gate. A sample that starts passing causes the lane to
@@ -30,7 +33,9 @@ fail.
 
 - The bundle directory name equals `bundleId`. `SAMPLE-` is reserved and rejected by the generator.
 - The canonical repository URL, exact source commit, clean source state, lockfile, release record,
-  criterion registry, protocol manifest, and testkit corpus manifest are recorded.
+  criterion/profile registries, protocol manifest, testkit corpus manifest, and profile-specific test inputs
+  are recorded. Retained bundles authenticate these inputs and package versions against their own source
+  commit, not whatever RC correction or stable metadata happens to be at current `HEAD`.
 - Every checksum is `sha256-` SRI over the exact bytes. Artifact array entries and
   `artifactChecksums` have identical path/checksum membership.
 - Recorded paths are bounded repository-relative paths. Validators resolve them, refuse traversal and
@@ -60,6 +65,8 @@ For a gate it additionally requires:
 - a `met` criterion to carry every required evidence class across its linked bundles;
 - supported and excluded profiles to be disjoint and partition the Version 2 vocabulary, with evidence
   for each supported profile;
+- every stable environment `coveredBy` value to use `<bundleId>#<testId>` and resolve to a linked,
+  independently reproduced bundle containing the governed passing lane for that environment;
 - exact reachable artifact hashes, two distinct human reviewers, one independent reviewer, and named
   accessibility, security, compatibility, and data-integrity reviewers with matching roles; and
 - a passing decision to have every criterion met and no unresolved critical/high defect.

@@ -74,8 +74,10 @@ test('promotion generation transforms all eight packages alpha.9 -> rc.1 -> stab
   const evidenceDirectory = await mkdtemp(join(tmpdir(), 'studio-prepare-evidence-'));
   t.after(() => rm(evidenceDirectory, { force: true, recursive: true }));
   await cp(directory, evidenceDirectory, { recursive: true });
+  const qualifiedRecord = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
 
   const stablePlan = await preparePromotion(root, {
+    candidateRecord: qualifiedRecord,
     candidateSha: 'a'.repeat(40),
     channel: 'stable',
     evidenceSha: 'b'.repeat(40),

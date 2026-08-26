@@ -263,6 +263,9 @@ jobs:
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
 
+      - name: Generate approved local package tarball digests
+        run: npm run release:artifacts
+
       # Registry credentials are intentionally unavailable to plan and prepare.
       - name: Verify npm authentication
         run: |
@@ -278,6 +281,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
           PROMOTION_CHANNEL: ${{ inputs.channel }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
           STUDIO_EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
           STUDIO_GATE_EVIDENCE_ROOT: .release-evidence
           STUDIO_GATE_RECORD_COMMIT: ${{ inputs.gate_record_sha }}
@@ -287,16 +291,30 @@ jobs:
           STUDIO_RELEASE_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
           STUDIO_RELEASE_CHANNEL: ${{ inputs.channel }}
 
+      # Do not move a public channel tag until every newly published package
+      # has been compared with the approved local tarball and provenance.
+      - name: Verify immutable package bits before moving the channel tag
+        run: npm run release:verify-published
+        env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.expected_main_sha }}
+          RELEASE_REQUIRE_PROVENANCE: 'true'
+
       - name: Reconcile the channel distribution tag
         run: npm run release:reconcile-tag
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PROMOTION_CHANNEL: ${{ inputs.channel }}
+          STUDIO_EXPECTED_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
 
-      - name: Verify the complete registry release and provenance
+      - name: Verify the complete registry release, provenance, and channel tag
         run: npm run release:verify-published
         env:
+          RELEASE_APPROVED_ARTIFACTS: 'true'
           RELEASE_DIST_TAG: ${{ inputs.channel == 'stable' && 'latest' || 'rc' }}
+          RELEASE_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
+          RELEASE_PROVENANCE_COMMIT: ${{ inputs.expected_main_sha }}
           RELEASE_REQUIRE_PROVENANCE: 'true'
 
       - name: Generate immutable GitHub release notes
@@ -304,6 +322,7 @@ jobs:
         env:
           PROMOTION_CHANNEL: ${{ inputs.channel }}
           PROMOTION_GATE_RECORD_SHA: ${{ inputs.gate_record_sha }}
+          PROMOTION_EXPECTED_VERSION: ${{ needs.plan.outputs.target_version }}
           PROMOTION_PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
 
       - name: Create or verify the GitHub release
@@ -311,16 +330,15 @@ jobs:
         env:
           CHANNEL: ${{ inputs.channel }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RELEASE_CHANNEL: ${{ inputs.channel }}
+          GITHUB_RELEASE_VERSION: ${{ needs.plan.outputs.target_version }}
           PUBLISH_SOURCE_SHA: ${{ inputs.channel == 'rc' && inputs.candidate_sha || inputs.expected_main_sha }}
           VERSION: ${{ needs.plan.outputs.target_version }}
         run: |
           set -euo pipefail
           tag="studio-v${VERSION}"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
-            [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
-          else
-            release_args=("$tag" --notes-file release-notes.md)
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md)
             if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
               git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
               [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
@@ -333,3 +351,8 @@ jobs:
             fi
             gh release create "${release_args[@]}"
           fi
+          gh release view "$tag" --json body,isDraft,isPrerelease,name,tagName \
+            > .release-artifacts/github-release.json
+          node scripts/verify-github-release.mjs
+          git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+          [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]

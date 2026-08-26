@@ -185,3 +185,17 @@ export function assertPromotionPackageState({
   }
   parseProfileInput(releaseRecord.claimedProfiles?.join(',') ?? '', { requireNonEmpty: true });
 }
+
+export function assertSameReleaseCoordinate(currentRecord, candidateRecord) {
+  if (
+    currentRecord?.release !== candidateRecord?.release ||
+    JSON.stringify(currentRecord?.packages) !== JSON.stringify(candidateRecord?.packages) ||
+    JSON.stringify(currentRecord?.claimedProfiles) !==
+      JSON.stringify(candidateRecord?.claimedProfiles)
+  ) {
+    throw new Error(
+      `Current main coordinate ${String(currentRecord?.release)} supersedes or differs from ` +
+        `qualified candidate ${String(candidateRecord?.release)}.`,
+    );
+  }
+}

@@ -120,8 +120,9 @@ flowchart TD
    immutable RC candidate; reproduce them independently; commit the accepted records in a later commit; and
    update `docs/roadmap/STATUS.md` only through the documented human review process.
 8. Dispatch the promotion workflow again to publish the exact RC. The protected `studio-rc` environment
-   revalidates Gate A, the candidate/evidence ancestry, profile claims, current `main`, all eight package pins,
-   npm provenance, the `rc` tag, and the GitHub release before using `NPM_TOKEN`.
+   revalidates Gate A, the candidate/evidence ancestry, executable profile assertions, current `main`, all eight
+   package pins, exact locally packed tarballs, npm provenance, the `rc` tag, and the GitHub release. Local
+   artifacts and the registry preflight are prepared before `NPM_TOKEN` is made available.
 9. A release-blocking RC correction carries non-empty, patch-only Changesets. Dispatching the same workflow
    with `channel` `rc` and no evidence SHAs creates the next generated coordinate (`rc.1` to `rc.2`). Feature,
    minor, and major work returns to the next alpha train. The corrected candidate needs fresh evidence; an RC
@@ -150,17 +151,21 @@ flowchart TD
 `studio.profile/media-policy`, `studio.profile/preview-identity-v1`,
 `studio.profile/renderer-web`, and `studio.profile/schema-property`. A whole-family RC may propose all eight as
 one comma-separated value, but every listed profile must later appear in reproduced evidence and exactly match
-the passing gate record. `studio.profile/authoring-web` is still a target and is rejected.
+the passing gate record. A profile label is not evidence: `evidence/profile-assertions.json` fixes the source
+inputs and exact test lanes that each claim must reproduce. `studio.profile/authoring-web` is still a target and
+is rejected.
 
 The repository currently records Gate A as **Not assessed** and Gate B as **Blocked**. Therefore the promotion
 workflow is implemented but correctly refuses RC or stable publication today. Do not add placeholder claims,
 sample bundles, or invented gate records to make it pass.
 
-Preparation never receives npm credentials. Publication is retry-safe: already-published packages are left in
-place, all eight coordinates are rechecked, distribution tags are reconciled, and an existing GitHub release
-must resolve to the same source commit. After rotating `NPM_TOKEN`, repeat the publish dispatch with the same
-candidate/evidence pair and the exact current `main` SHA. If `main` moved, review the new head and dispatch with
-that exact SHA; stale or cross-branch recovery fails closed.
+Preparation never receives npm credentials. Publication is retry-safe: all eight packages are packed before
+authentication, and an already-published package is accepted only when its registry integrity and shasum equal
+the approved local tarball and its npm attestation names the expected package bytes and workflow source. Tags
+are reconciled only after the complete family verifies. An existing GitHub release must have the exact tag,
+title, notes, source commit, draft state, and prerelease state. After rotating `NPM_TOKEN`, repeat the publish
+dispatch with the same candidate/evidence pair and exact current `main` SHA. If `main` moved, review the new
+head and dispatch with that exact SHA; a superseded candidate or gate record fails closed.
 
 Repository administrators must configure `studio-rc` and `studio-stable` as protected GitHub environments with
 required maintainers/reviewers and deployment restricted to `main`. `NPM_TOKEN` must be scoped for publish and

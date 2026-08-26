@@ -6,6 +6,7 @@ export const CANONICAL_REPOSITORY = 'https://github.com/kumwe/studio';
 
 export const REQUIRED_EVIDENCE_INPUTS = Object.freeze([
   'evidence/gate-criteria.json',
+  'evidence/profile-assertions.json',
   'package-lock.json',
   'packages/protocol/schemas/manifest.json',
   'packages/testkit/corpus-manifest.json',
@@ -34,6 +35,88 @@ export const REQUIRED_EVIDENCE_LANES = Object.freeze([
 export const GENERIC_LANE_EVIDENCE_CLASSES = Object.freeze(
   new Set(['accessibility', 'contract', 'property-fuzz', 'release', 'security', 'unit']),
 );
+
+export const PROFILE_EVIDENCE_LANES = Object.freeze({
+  'profile/binding-projection-v1': Object.freeze({
+    args: [
+      'run',
+      'packages/core/test/binding-projection.test.ts',
+      'packages/testkit/test/binding-projection-vectors.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/engine-core': Object.freeze({
+    args: [
+      'run',
+      'packages/core/test/canonical-vectors.test.ts',
+      'packages/core/test/command-vectors.test.ts',
+      'packages/core/test/fuzz-canonical.test.ts',
+      'packages/core/test/fuzz-commands.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/host-baseline': Object.freeze({
+    args: [
+      'run',
+      'packages/testkit/test/host-testbed.test.ts',
+      'packages/testkit/test/host-vectors.test.ts',
+      'packages/testkit/test/http-transport.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/host-baseline-v2': Object.freeze({
+    args: [
+      'run',
+      'packages/testkit/test/host-testbed.test.ts',
+      'packages/testkit/test/host-vectors.test.ts',
+      'packages/testkit/test/host-sequence-vectors.test.ts',
+      'packages/testkit/test/http-transport.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/media-policy': Object.freeze({
+    args: [
+      'run',
+      'packages/media/test/media-vectors.test.ts',
+      'packages/media/test/upload-controller.test.ts',
+      'packages/testkit/test/media-import-policy.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/preview-identity-v1': Object.freeze({
+    args: [
+      'run',
+      'packages/preview/test/preview-identity.test.ts',
+      'packages/testkit/test/preview-vectors.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/renderer-web': Object.freeze({
+    args: [
+      'run',
+      'packages/renderer-web/test/conformance.test.ts',
+      'packages/renderer-web/test/interactions.test.ts',
+      'packages/renderer-web/test/renderer.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+  'profile/schema-property': Object.freeze({
+    args: [
+      'run',
+      'packages/core/test/profile-validator.test.ts',
+      'packages/testkit/test/schema-profile-vectors.test.ts',
+      '--coverage.enabled=false',
+    ],
+    command: './node_modules/.bin/vitest',
+  }),
+});
 
 const REVIEWER_ROLES = Object.freeze([
   'general',
@@ -90,6 +173,80 @@ export function buildCriterionIndex(registry) {
   };
 }
 
+export function buildProfileAssertionIndex(registry, allowedProfiles) {
+  const failures = [];
+  const profilesById = new Map();
+  if (
+    registry?.contractVersion !== '0.1-draft' ||
+    registry?.kind !== 'profile-assertion-registry' ||
+    !Array.isArray(registry?.profiles) ||
+    Object.keys(registry ?? {})
+      .sort()
+      .join('\n') !== 'contractVersion\nkind\nprofiles'
+  ) {
+    return { failures: ['profile assertion registry has an invalid closed shape'], profilesById };
+  }
+  for (const profile of registry.profiles) {
+    if (
+      profile === null ||
+      typeof profile !== 'object' ||
+      Array.isArray(profile) ||
+      Object.keys(profile).sort().join('\n') !== 'id\nrequiredInputs\nrequiredRuns\nstatus'
+    ) {
+      failures.push('profile assertion entry has an invalid closed shape');
+      continue;
+    }
+    if (profilesById.has(profile.id)) {
+      failures.push(`profile assertion ${String(profile.id)} is duplicated`);
+      continue;
+    }
+    if (!allowedProfiles.has(profile.id)) {
+      failures.push(`profile assertion ${String(profile.id)} is outside the profile vocabulary`);
+    }
+    if (!['executable', 'target'].includes(profile.status)) {
+      failures.push(
+        `profile assertion ${String(profile.id)} has invalid status ${String(profile.status)}`,
+      );
+    }
+    const requiredInputs = Array.isArray(profile.requiredInputs) ? profile.requiredInputs : [];
+    const requiredRuns = Array.isArray(profile.requiredRuns) ? profile.requiredRuns : [];
+    const hasValidInputs =
+      Array.isArray(profile.requiredInputs) &&
+      new Set(requiredInputs).size === requiredInputs.length &&
+      requiredInputs.every((path) => isRepositoryRelativePath(path));
+    const hasValidRuns =
+      Array.isArray(profile.requiredRuns) &&
+      new Set(requiredRuns).size === requiredRuns.length &&
+      requiredRuns.every(
+        (testId) => testId === 'accessibility/web' || PROFILE_EVIDENCE_LANES[testId] !== undefined,
+      );
+    if (!hasValidInputs) {
+      failures.push(`profile assertion ${String(profile.id)} has invalid requiredInputs`);
+    }
+    if (!hasValidRuns) {
+      failures.push(`profile assertion ${String(profile.id)} has invalid requiredRuns`);
+    }
+    if (profile.status === 'target' && (requiredInputs.length > 0 || requiredRuns.length > 0)) {
+      failures.push(
+        `target profile ${String(profile.id)} must not advertise executable assertions`,
+      );
+    }
+    if (
+      profile.status === 'executable' &&
+      (requiredInputs.length === 0 || requiredRuns.length === 0)
+    ) {
+      failures.push(`executable profile ${String(profile.id)} requires inputs and runs`);
+    }
+    if (typeof profile.id === 'string') {
+      profilesById.set(profile.id, profile);
+    }
+  }
+  if ([...allowedProfiles].sort().join('\n') !== [...profilesById.keys()].sort().join('\n')) {
+    failures.push('profile assertion registry must cover the complete profile vocabulary');
+  }
+  return { failures, profilesById };
+}
+
 export async function collectBundleFailures(manifest, context) {
   const failures = [];
   const bundleId = manifest.bundleId;
@@ -116,11 +273,12 @@ export async function collectBundleFailures(manifest, context) {
   if (!sameMembers(lockfilePaths, ['package-lock.json'])) {
     failures.push('source.lockfileChecksums must contain exactly package-lock.json');
   }
-  await collectChecksumMapFailures(
+  await collectSourceChecksumMapFailures(
     failures,
     'source.lockfileChecksums',
     manifest.source.lockfileChecksums,
-    context.repositoryRoot,
+    context,
+    manifest.source.commit,
   );
 
   for (const path of REQUIRED_EVIDENCE_INPUTS) {
@@ -128,11 +286,12 @@ export async function collectBundleFailures(manifest, context) {
       failures.push(`inputFixtureChecksums is missing required source input ${path}`);
     }
   }
-  await collectChecksumMapFailures(
+  await collectSourceChecksumMapFailures(
     failures,
     'inputFixtureChecksums',
     manifest.inputFixtureChecksums,
-    context.repositoryRoot,
+    context,
+    manifest.source.commit,
   );
   if (
     manifest.source.lockfileChecksums['package-lock.json'] !==
@@ -193,7 +352,20 @@ export async function collectBundleFailures(manifest, context) {
       failures.push(`profile ${profile} is not in the Version 2 profile registry`);
     }
   }
-  for (const [name, version] of Object.entries(context.packageVersions)) {
+  let sourcePackageVersions = context.packageVersions;
+  if (context.getPackageVersionsForCommit !== undefined) {
+    try {
+      sourcePackageVersions = await context.getPackageVersionsForCommit(manifest.source.commit);
+    } catch (error) {
+      failures.push(
+        `source package versions at ${manifest.source.commit} are unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      sourcePackageVersions = {};
+    }
+  }
+  for (const [name, version] of Object.entries(sourcePackageVersions)) {
     if (manifest.environment.packageVersions?.[name] !== version) {
       failures.push(`environment.packageVersions must record ${name}@${version}`);
     }
@@ -226,6 +398,45 @@ export async function collectBundleFailures(manifest, context) {
   for (const requiredLane of REQUIRED_EVIDENCE_LANES) {
     if (!runIds.has(requiredLane)) {
       failures.push(`runs is missing mandatory lane ${requiredLane}`);
+    }
+  }
+  let profileAssertions = context.profileAssertions;
+  if (context.getProfileAssertionsForCommit !== undefined) {
+    try {
+      profileAssertions = await context.getProfileAssertionsForCommit(manifest.source.commit);
+    } catch (error) {
+      failures.push(
+        `profile assertions at ${manifest.source.commit} are unavailable: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      profileAssertions = new Map();
+    }
+  }
+  for (const profileId of manifest.profiles) {
+    const assertion = profileAssertions?.get(profileId);
+    if (assertion === undefined || assertion.status !== 'executable') {
+      failures.push(`profile ${profileId} has no executable assertion mapping`);
+      continue;
+    }
+    for (const path of assertion.requiredInputs) {
+      if (manifest.inputFixtureChecksums[path] === undefined) {
+        failures.push(`profile ${profileId} is missing required source input ${path}`);
+      }
+    }
+    for (const testId of assertion.requiredRuns) {
+      const run = manifest.runs.find((candidate) => candidate.testId === testId);
+      if (run === undefined) {
+        failures.push(`profile ${profileId} is missing required assertion lane ${testId}`);
+        continue;
+      }
+      const expected = PROFILE_EVIDENCE_LANES[testId];
+      if (
+        expected !== undefined &&
+        run.command !== renderCommand(expected.command, expected.args)
+      ) {
+        failures.push(`profile ${profileId} lane ${testId} did not run its registered command`);
+      }
     }
   }
 
@@ -492,6 +703,33 @@ export async function collectChecksumMapFailures(
   }
 }
 
+async function collectSourceChecksumMapFailures(failures, member, checksums, context, commit) {
+  if (context.getSourceFileChecksum === undefined) {
+    await collectChecksumMapFailures(failures, member, checksums, context.repositoryRoot);
+    return;
+  }
+  for (const [path, expected] of Object.entries(checksums)) {
+    if (!isRepositoryRelativePath(path)) {
+      failures.push(`${member} path ${path} is not a bounded repository-relative path`);
+      continue;
+    }
+    let actual;
+    try {
+      actual = await context.getSourceFileChecksum(commit, path);
+    } catch (error) {
+      failures.push(
+        `${member} path ${path} is unavailable at ${commit}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      continue;
+    }
+    if (actual !== expected) {
+      failures.push(`${member} path ${path} has checksum ${String(actual)}, not ${expected}`);
+    }
+  }
+}
+
 function isContained(root, candidate) {
   const relativePath = relative(root, candidate);
   return (
@@ -506,4 +744,18 @@ function sameMembers(left, right) {
   }
   const rightMembers = new Set(right);
   return rightMembers.size === right.length && left.every((member) => rightMembers.has(member));
+}
+
+function isRepositoryRelativePath(path) {
+  return (
+    typeof path === 'string' &&
+    /^[A-Za-z0-9@][A-Za-z0-9._@-]*(?:\/[A-Za-z0-9@][A-Za-z0-9._@-]*)*$/u.test(path) &&
+    path.length <= 240
+  );
+}
+
+function renderCommand(command, args) {
+  return [command, ...args]
+    .map((part) => (/^[A-Za-z0-9_./:@+-]+$/u.test(part) ? part : JSON.stringify(part)))
+    .join(' ');
 }

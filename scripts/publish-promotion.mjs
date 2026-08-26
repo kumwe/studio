@@ -3,6 +3,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
+import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
+import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { assertPromotionPackageState } from './release-policy.mjs';
 import { verifyReleaseGateFromEnvironment } from './verify-release-gate.mjs';
 
@@ -12,6 +14,18 @@ const ignoredChangesetFiles = new Set(['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'R
 export function assertPromotionPublication(input) {
   assertCoordinatedRelease(input.releaseRecord);
   assertPromotionPackageState(input);
+}
+
+export function changesetsPublishArguments(channel) {
+  if (channel === 'rc') {
+    // Changesets v3 reads the rc tag from .changeset/pre.json and rejects any
+    // explicit --tag while pre mode is active.
+    return [];
+  }
+  if (channel === 'stable') {
+    return ['--tag', 'latest'];
+  }
+  throw new Error(`Promotion channel must be rc or stable; received ${String(channel)}.`);
 }
 
 async function inspectPublicationState(root, channel) {
@@ -44,6 +58,28 @@ async function main() {
   await verifyReleaseGateFromEnvironment();
   const channel = process.env.PROMOTION_CHANNEL;
   const state = await inspectPublicationState(repositoryRoot, channel);
+  if (
+    process.env.PROMOTION_EXPECTED_VERSION === undefined ||
+    state.releaseRecord.release !== process.env.PROMOTION_EXPECTED_VERSION
+  ) {
+    throw new Error(
+      `Publication source ${state.releaseRecord.release} does not match the planned exact coordinate ` +
+        `${String(process.env.PROMOTION_EXPECTED_VERSION)}.`,
+    );
+  }
+  const approvedArtifacts = JSON.parse(
+    await readFile(new URL(APPROVED_ARTIFACT_PATH, repositoryRoot), 'utf8'),
+  );
+  const preflight = await inspectExistingRegistryArtifacts(state.releaseRecord, approvedArtifacts);
+  if (preflight.failures.length > 0) {
+    throw new Error(
+      `Existing registry packages differ from the approved immutable candidate:\n- ${preflight.failures.join('\n- ')}`,
+    );
+  }
+  console.log(
+    `Registry preflight: ${preflight.missing.length} package(s) remain unpublished; ` +
+      `${STUDIO_RELEASE_PACKAGES.length - preflight.missing.length} existing package(s) match exactly.`,
+  );
   const repositoryPath = fileURLToPath(repositoryRoot);
   const releaseCheck = fileURLToPath(new URL('./check-release-record.mjs', import.meta.url));
   const changesetsCli = fileURLToPath(
@@ -56,7 +92,7 @@ async function main() {
   });
   execFileSync(
     process.execPath,
-    [changesetsCli, 'publish', '--tag', channel === 'stable' ? 'latest' : 'rc'],
+    [changesetsCli, 'publish', ...changesetsPublishArguments(channel)],
     { cwd: repositoryPath, stdio: 'inherit' },
   );
   console.log(`Publication attempted for ${state.releaseRecord.release} on ${channel}.`);

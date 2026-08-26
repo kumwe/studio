@@ -48,6 +48,7 @@ describe('promotion plan', () => {
   it('publishes an immutable RC only with later evidence', async () => {
     const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
     const plan = await inspectPromotionPlan(root, {
+      candidateRecord: release('0.1.0-rc.1'),
       candidateSha: 'a'.repeat(40),
       channel: 'rc',
       evidenceSha: 'b'.repeat(40),
@@ -58,6 +59,7 @@ describe('promotion plan', () => {
   it('prepares stable only from a qualified RC and preserves claims', async () => {
     const root = await fixture('0.1.0-rc.2', { mode: 'pre', tag: 'rc' });
     const plan = await inspectPromotionPlan(root, {
+      candidateRecord: release('0.1.0-rc.2'),
       candidateSha: 'a'.repeat(40),
       channel: 'stable',
       evidenceSha: 'b'.repeat(40),
@@ -65,6 +67,19 @@ describe('promotion plan', () => {
     assert.equal(plan.operation, 'prepare');
     assert.equal(plan.targetVersion, '0.1.0');
     assert.deepEqual(plan.profiles, [profile]);
+  });
+
+  it('rejects publication of an RC superseded by current main', async () => {
+    const root = await fixture('0.1.0-rc.2', { mode: 'pre', tag: 'rc' });
+    await assert.rejects(
+      inspectPromotionPlan(root, {
+        candidateRecord: release('0.1.0-rc.1'),
+        candidateSha: 'a'.repeat(40),
+        channel: 'rc',
+        evidenceSha: 'b'.repeat(40),
+      }),
+      /supersedes or differs/u,
+    );
   });
 });
 
@@ -85,14 +100,15 @@ async function fixture(version, preState, changesets = []) {
       ),
     ),
   );
-  const claimedProfiles = version.includes('-alpha.') ? [] : [profile];
-  await writeFile(
-    new URL('studio-release.json', root),
-    `${JSON.stringify({
-      claimedProfiles,
-      packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
-      release: version,
-    })}\n`,
-  );
+  const document = release(version);
+  await writeFile(new URL('studio-release.json', root), `${JSON.stringify(document)}\n`);
   return root;
+}
+
+function release(version) {
+  return {
+    claimedProfiles: version.includes('-alpha.') ? [] : [profile],
+    packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
+    release: version,
+  };
 }

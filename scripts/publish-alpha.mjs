@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
+import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
 import { inspectReleasePlan } from './release-plan.mjs';
 
 const alphaVersionPattern =
@@ -35,6 +36,19 @@ async function main() {
   const record = JSON.parse(await readFile(new URL('studio-release.json', repositoryRoot), 'utf8'));
   const plan = await inspectReleasePlan(repositoryRoot);
   assertAlphaPublication(record, plan);
+  const approvedArtifacts = JSON.parse(
+    await readFile(new URL(APPROVED_ARTIFACT_PATH, repositoryRoot), 'utf8'),
+  );
+  const preflight = await inspectExistingRegistryArtifacts(record, approvedArtifacts);
+  if (preflight.failures.length > 0) {
+    throw new Error(
+      `Existing registry packages differ from the approved immutable alpha candidate:\n- ${preflight.failures.join('\n- ')}`,
+    );
+  }
+  console.log(
+    `Alpha registry preflight: ${preflight.missing.length} package(s) remain unpublished; ` +
+      `${Object.keys(record.packages).length - preflight.missing.length} existing package(s) match exactly.`,
+  );
 
   const repositoryPath = fileURLToPath(repositoryRoot);
   const releaseCheck = fileURLToPath(new URL('./check-release-record.mjs', import.meta.url));

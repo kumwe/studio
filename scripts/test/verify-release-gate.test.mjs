@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  assertCurrentCandidateCoordinate,
   assertEvidenceChangedPaths,
+  assertLatestGateDecision,
   assertStableChangedPaths,
   assertStableEnvironmentQualification,
   assertStablePromotion,
@@ -26,6 +28,14 @@ describe('promotion gate guards', () => {
     assert.throws(
       () => assertStatusGatePass('| Gate A | Not assessed | none |', 'A'),
       /publication is blocked/u,
+    );
+    assert.throws(
+      () =>
+        assertStatusGatePass(
+          '| Gate A | Pass | accepted |\n| Gate A | 14 criteria | Revoked | superseded |',
+          'A',
+        ),
+      /unambiguously/u,
     );
   });
 
@@ -67,7 +77,7 @@ describe('promotion gate guards', () => {
         {
           environments: [
             {
-              coveredBy: ['bundle'],
+              coveredBy: ['bundle-one#accessibility/web'],
               id: 'chromium-desktop',
               kind: 'browser',
               requirement: 'Current Chromium',
@@ -83,6 +93,15 @@ describe('promotion gate guards', () => {
           ],
         },
         candidate,
+        new Map([
+          [
+            'bundle-one',
+            {
+              environment: { browser: 'Chromium-141.0.0.0' },
+              runs: [{ exitStatus: 0, retryCount: 0, testId: 'accessibility/web' }],
+            },
+          ],
+        ]),
       ),
     );
     assert.throws(
@@ -112,6 +131,26 @@ describe('promotion gate guards', () => {
         ),
       /preserve every/u,
     );
+    assert.throws(
+      () =>
+        assertStableEnvironmentQualification(
+          {
+            environments: [
+              {
+                coveredBy: ['arbitrary-label'],
+                id: 'chromium-desktop',
+                kind: 'browser',
+                requirement: 'Current Chromium',
+                status: 'qualified',
+              },
+              candidate.environments[1],
+            ],
+          },
+          candidate,
+          new Map(),
+        ),
+      /does not resolve/u,
+    );
   });
 
   it('permits only a deterministic RC-to-stable metadata transform', () => {
@@ -127,6 +166,25 @@ describe('promotion gate guards', () => {
       ]),
     );
     assert.throws(() => assertStableChangedPaths(['packages/core/src/index.ts']), /outside/u);
+  });
+
+  it('rejects a superseded RC coordinate even when both records are coordinated', () => {
+    assert.doesNotThrow(() =>
+      assertCurrentCandidateCoordinate(release('0.1.0-rc.2'), release('0.1.0-rc.2')),
+    );
+    assert.throws(
+      () => assertCurrentCandidateCoordinate(release('0.1.0-rc.2'), release('0.1.0-rc.1')),
+      /supersedes or differs/u,
+    );
+  });
+
+  it('rejects a later Gate A revocation or replacement on current main', () => {
+    const accepted = Buffer.from('{"decision":"pass"}\n');
+    assert.doesNotThrow(() => assertLatestGateDecision(accepted, Buffer.from(accepted), 'A'));
+    assert.throws(
+      () => assertLatestGateDecision(accepted, Buffer.from('{"decision":"fail"}\n'), 'A'),
+      /superseded or revoked/u,
+    );
   });
 });
 

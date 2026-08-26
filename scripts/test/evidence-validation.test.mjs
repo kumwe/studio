@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import {
   buildCriterionIndex,
+  buildProfileAssertionIndex,
   checksumFile,
   collectBundleFailures,
   collectChecksumMapFailures,
@@ -20,6 +21,13 @@ const registry = JSON.parse(
   await readFile(`${repositoryRoot}/evidence/gate-criteria.json`, 'utf8'),
 );
 const criterionIndex = buildCriterionIndex(registry);
+const profileAssertionRegistry = JSON.parse(
+  await readFile(`${repositoryRoot}/evidence/profile-assertions.json`, 'utf8'),
+);
+const profileAssertionIndex = buildProfileAssertionIndex(
+  profileAssertionRegistry,
+  criterionIndex.allowedProfiles,
+);
 const SOURCE_COMMIT = 'a'.repeat(40);
 const NOW = Date.parse('2026-08-24T12:00:00Z');
 
@@ -33,6 +41,12 @@ test('criterion registry is schema-valid, stable, unique, and matches roadmap or
   assert.equal(registry.gates.A.length, 14);
   assert.equal(registry.gates.B.length, 18);
   assert.equal(criterionIndex.criteriaById.size, 32);
+  assert.deepEqual(profileAssertionIndex.failures, []);
+  assert.equal(profileAssertionIndex.profilesById.size, 9);
+  assert.equal(
+    profileAssertionIndex.profilesById.get('studio.profile/authoring-web').status,
+    'target',
+  );
 
   const roadmap = await readFile(`${repositoryRoot}/docs/roadmap/README.md`, 'utf8');
   const roadmapIds = [...roadmap.matchAll(/\*\*`(gate-[ab]\/[^`]+)`\*\*/gu)].map(
@@ -42,6 +56,39 @@ test('criterion registry is schema-valid, stable, unique, and matches roadmap or
     roadmapIds,
     [...registry.gates.A, ...registry.gates.B].map((criterion) => criterion.id),
   );
+});
+
+test('profile assertion registry fails closed on malformed assertion arrays', () => {
+  const malformed = structuredClone(profileAssertionRegistry);
+  malformed.profiles[0].requiredInputs = null;
+  malformed.profiles[0].requiredRuns = 'profile/engine-core';
+  const index = buildProfileAssertionIndex(malformed, criterionIndex.allowedProfiles);
+  assert.ok(index.failures.some((failure) => failure.includes('invalid requiredInputs')));
+  assert.ok(index.failures.some((failure) => failure.includes('invalid requiredRuns')));
+});
+
+test('a profile label cannot substitute for its registered executable assertions', async (t) => {
+  const fixture = await createBundleFixture(t);
+  const manifest = structuredClone(fixture.manifest);
+  manifest.profiles = ['studio.profile/renderer-web'];
+  const failures = await collectBundleFailures(manifest, {
+    ...fixture.context,
+    profileAssertions: profileAssertionIndex.profilesById,
+  });
+  assert.ok(failures.some((failure) => failure.includes('renderer-web is missing required')));
+});
+
+test('retained RC evidence authenticates source inputs and versions at its own commit', async (t) => {
+  const fixture = await createBundleFixture(t);
+  for (const currentVersion of ['0.1.0-rc.2', '0.1.0']) {
+    const failures = await collectBundleFailures(fixture.manifest, {
+      ...fixture.context,
+      getPackageVersionsForCommit: async () => ({ '@kumwe/studio-core': '1.0.0' }),
+      getSourceFileChecksum: async (_commit, path) => fixture.manifest.inputFixtureChecksums[path],
+      packageVersions: { '@kumwe/studio-core': currentVersion },
+    });
+    assert.deepEqual(failures, [], `retained evidence failed at current ${currentVersion}`);
+  }
 });
 
 test('a complete pending bundle is authentic but categorically cannot support a gate', async (t) => {

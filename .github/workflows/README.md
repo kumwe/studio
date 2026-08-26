@@ -36,11 +36,15 @@ Actions-screen synopsis.
    workflow reports `inactive` and succeeds. A patch after `0.1.0` opens `0.1.1-alpha.0`; subsequent version
    PRs increment the numeric alpha counter while Changeset intent controls the next semantic base.
 
-Only the publish job can read `NPM_TOKEN`. Every publish rechecks the exact current `main`, immutable ancestry,
-release claims, eight manifests/internal pins/lockfile, gate records and bundle authenticity; then it verifies
-npm integrity/provenance, repairs the channel tag, and creates or verifies the source-bound GitHub release.
+Only the publish job can read `NPM_TOKEN`. Before authentication it packs all eight packages locally and records
+the exact tarball integrity and shasum. Every publish rechecks the exact current `main`, immutable ancestry,
+release claims, eight manifests/internal pins/lockfile, latest gate records and STATUS, and bundle authenticity.
+An already-present registry version is skipped only when its bits equal that approved local tarball and it has
+source-bound provenance; arbitrary integrity metadata is a hard failure. The job then repairs the channel tag
+and creates or verifies an exact-name, exact-notes, non-draft GitHub release with the correct prerelease state.
 Partial publication and token-rotation retries are idempotent. Re-dispatch with the same immutable candidate and
-evidence and the exact current `main` SHA; stale inputs fail closed.
+evidence and the exact current `main` SHA; a superseded candidate, revoked gate, stale input, or malformed
+existing release fails closed.
 
 Administrators must protect the `studio-rc` and `studio-stable` environments with required reviewers and a
 `main`-only deployment policy. The workflow declaration names those boundaries; repository settings enforce
