@@ -1,5 +1,8 @@
 # Host adapter contract
 
+This contract is subordinate to the [Studio product contract](../product-contract.md), especially
+`STUDIO-PROD-006`, `STUDIO-PROD-008` through `STUDIO-PROD-012`, and `STUDIO-PROD-014`.
+
 ## Purpose
 
 The host adapter is the only route from Studio to host-owned authority. It exposes typed asynchronous ports and a negotiated capability inventory. Studio core performs no network, authentication, storage, media, or template operations itself.
@@ -31,6 +34,9 @@ profile requires `mode: blueprint`, `composite: single`, and a configured Bluepr
 refuses other modes, hybrid composition, or a loaded model or entry rather than fabricating a
 different artifact kind ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
 
+That restriction describes current shipped behavior. The product target requires a coordinated contextual
+profile, but no current adapter operation or composed handle implements it (`STUDIO-PROD-014`).
+
 ## Standard ports
 
 | Port           | Responsibility                                                             |
@@ -46,6 +52,34 @@ different artifact kind ([ADR 0020](../decisions/0020-blueprint-host-session-com
 | `telemetry`    | Emit allowlisted, redacted operational events when policy permits          |
 
 Hosts MAY omit optional ports. A plugin cannot add host authority by declaring a required port.
+
+## Target contextual host responsibilities
+
+For the planned contextual profile, the host MUST resolve Studio availability from an authorized core or
+extension-declared target, authenticate the actor, authorize the exact resource, and return its exact reusable
+type version, Model, Blueprint, Entry, policy, and contribution generation (`STUDIO-PROD-005`,
+`STUDIO-PROD-008`, `STUDIO-PROD-009`, `STUDIO-PROD-010`). An extension declaration can make a target or
+contribution discoverable; it cannot create a session, widen a permission, choose a database record, or bypass
+the host application service.
+
+The target host boundary MUST support three distinct author intentions (`STUDIO-PROD-006`):
+
+- **save item**, affecting Entry values and only explicitly authorized item-local composition;
+- **save new type version**, coordinating new immutable Model and Blueprint revisions plus dependency and
+  migration validation; and
+- **save as new type**, creating a new reusable type from Model and Blueprint drafts while excluding Entry
+  values.
+
+Each is one declared host-authoritative transactional outcome with its own authorization, expected revisions,
+idempotency, audit, rollback behavior, and normalized response. The existing generic artifact operations do not
+define a multi-artifact transaction, and the current model port is read-only. New operation vocabulary,
+schemas, adapter interfaces, conformance vectors, and capability negotiation are therefore required before
+these target outcomes are implemented. A host MUST NOT approximate them with undocumented sequential saves or
+claim them through the current Blueprint handle (`STUDIO-PROD-014`).
+
+Presentation changes between inline, minimized, maximized, and fullscreen do not grant authority and MUST NOT
+change the resource context or artifact revisions (`STUDIO-PROD-007`). The host retains the deterministic
+return context and blocks navigation that would silently discard or misattribute dirty state.
 
 ## Request envelope
 
@@ -181,4 +215,9 @@ or production-policy coverage.
 
 ## Reference implementation requirements
 
-The Kumwe App adapter must call application services rather than querying Doctrine, resolving the DI container dynamically, or putting business rules in TypeScript. Twig renderers remain server-side. Flutter and other hosts can implement the same behavior through HTTP or a native bridge.
+The Kumwe App adapter must call PHP application services rather than querying Doctrine, resolving the DI
+container dynamically, or putting business rules in browser TypeScript. Twig renderers remain server-side.
+Studio is delivered to Kumwe App as compiled browser assets; a production server MUST NOT install or run Node,
+npm, a JavaScript application server, or a package-registry client (`STUDIO-PROD-010`, `STUDIO-PROD-011`).
+Node/npm may remain build, test, and release tools outside the production runtime. Flutter and other hosts can
+implement the same behavior through HTTP or a native bridge.

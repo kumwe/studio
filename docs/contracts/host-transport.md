@@ -1,5 +1,9 @@
 # Host transport binding
 
+This binding is subordinate to the [Studio product contract](../product-contract.md). It implements part of
+the host-authoritative boundary in `STUDIO-PROD-010`; it does not by itself implement the coordinated
+contextual product journey.
+
 ## Purpose
 
 The [host adapter contract](host-adapter.md) defines the ports, the request envelope, and the error
@@ -28,6 +32,23 @@ operation the registry does not define, so a host cannot advertise an operation 
 wire. The registry also records, per operation, whether it mutates host state, whether it is
 concurrency-protected through `expectedRevision`, and whether its port is required for an editable
 session.
+
+## Current binding versus target operations
+
+The current closed registry transports the existing operations, and each artifact mutation addresses one
+artifact at a time. It does **not** define a generic Studio target declaration, contextual session launch,
+presentation handoff, model-definition write, coordinated Model/Blueprint/Entry transaction, **save new type
+version**, or **save as new type** operation.
+Those are required product outcomes, but they are not shipped transport capabilities (`STUDIO-PROD-006`
+through `STUDIO-PROD-008`, `STUDIO-PROD-014`).
+
+Before the target profile can claim HTTP support, reviewed additive contract work MUST define every new typed
+method, route segment, capability identifier, argument, revision behavior, idempotency scope, response,
+failure, and conformance vector. Until then, a client and host MUST NOT invent private Studio-port routes,
+overload `artifact.save`, or treat a sequence of independent artifact requests as an atomic reusable-type save.
+Normal host application navigation may launch the browser workspace, but it does not become a Studio port or
+authority shortcut merely because a core surface or extension declares a Studio target
+(`STUDIO-PROD-008`, `STUDIO-PROD-010`).
 
 ## Route and method
 
@@ -127,9 +148,16 @@ A browser transport applies CSRF or equivalent same-origin protection, and the p
 the separate origin-pinned rules in the [preview contract](preview.md). The transport never places the
 resource-context key, an idempotency key, or a revision in a URL.
 
+For Kumwe App, these routes terminate in PHP application services. The Studio client is compiled browser code;
+serving it and accepting these HTTP calls requires no production Node/npm process or package installation
+(`STUDIO-PROD-010`, `STUDIO-PROD-011`).
+
 ## Proving the binding
 
 A host proves this binding by claiming
 [`studio.profile/host-baseline`](conformance-profiles.md): the corpus fixes the envelope guards, the
 revision behaviour, and the error categories the table above transports. The binding itself adds route
 and status obligations that the reference HTTP client in `@kumwe/studio-testkit` exercises.
+
+That proof does not cover the planned contextual save operations or the complete product journey. Those
+outcomes require additive vectors and the executable end-to-end evidence required by `STUDIO-PROD-015`.

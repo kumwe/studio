@@ -1,8 +1,20 @@
 # Blueprint contract
 
+This artifact contract is subordinate to the [Studio product contract](../product-contract.md), especially
+`STUDIO-PROD-002` through `STUDIO-PROD-006`, `STUDIO-PROD-009`, and `STUDIO-PROD-014`.
+
+> **Current implementation:** Studio can compose and persist a supplied Blueprint through its bounded
+> Blueprint profile. The coordinated reusable-content-type and Entry authoring behavior described below is a
+> required target and is not implemented by the current headless session or experimental shell.
+
 ## Purpose
 
 A Blueprint describes reusable composition: layout, typed blocks, field bindings, semantic appearance, slots, responsive intent, and authoring policy. It does not contain template source, executable code, host-specific CSS classes, or the authoritative entry data.
+
+In the product vocabulary, a **reusable content type** is a host-owned authoring definition coordinating one
+exact Content Model revision with one exact Blueprint revision (`STUDIO-PROD-004`). The Model owns fields and
+the Blueprint owns reusable presentation; Entry values remain separate. Studio coordinates all three in one
+contextual session but MUST NOT serialize them into one undifferentiated document.
 
 Blueprint documents conform to [`blueprint.schema.json`](../../schemas/blueprint.schema.json).
 
@@ -11,6 +23,11 @@ Blueprint documents conform to [`blueprint.schema.json`](../../schemas/blueprint
 A Blueprint MUST contain a stable `id`, semantic `version`, immutable host-assigned `revision`, `contractVersion`, ownership reference, model reference, root nodes, dependency inventory, and publication state. The separate owner reference supplies namespace ownership.
 
 Draft revisions MAY contain diagnostics, unresolved optional references, or an empty `roots` array while a new Blueprint is being composed. Published revisions MUST contain at least one root and be fully valid for their declared host, model, block, and theme compatibility range.
+
+For the target new-item flow, the host MAY create an empty draft Blueprint and empty draft Model or resolve an
+existing reusable type before Studio opens (`STUDIO-PROD-002`). Studio then keeps those exact coordinates for
+the session. The current `openStudioSession` profile requires an existing locked Blueprint reference and MUST
+NOT fabricate this bootstrap behavior.
 
 ## Tree invariants
 
@@ -27,6 +44,11 @@ Draft revisions MAY contain diagnostics, unresolved optional references, or an e
 A node pins a block type and compatible block version. A published Blueprint MUST include a dependency lock recording the exact definition revision and, when applicable, the package integrity reference used for validation. The host MAY resolve a compatible newer renderer only according to the compatibility contract.
 
 An unresolved node remains preserved in draft or recovery state. It MUST NOT be interpreted by a different block sharing a label, alias, or unowned identifier.
+
+Core and authorized extension block definitions and patterns participate through the same owner-aware
+contribution lifecycle (`STUDIO-PROD-009`). Disable, removal, upgrade, or trust loss MUST leave persisted nodes
+inspectable and migratable without executing an unavailable contribution. A contributed block or pattern does
+not grant model, entry, save, or publication authority.
 
 ## Bindings
 
@@ -64,6 +86,18 @@ For a grid, a Blueprint stores bounded column count, span, order, alignment, gap
 Blueprint policy determines whether an entry author may edit content, choose variants, reorder children, insert allowed blocks, or not change the node. Studio MUST make locked state visible and MUST reject forbidden commands even when issued programmatically.
 
 Beyond the node-level mode, an authoring policy may carry per-slot composition markers ([ADR 0013](../decisions/0013-per-slot-composition-markers.md)): `authoring.slots` names individual slots as hybrid-composable regions without making the whole node structural. A marker only grants composability — it never revokes what the node-level policy permits — and its optional `allowedBlocks` bounds that slot ahead of the node-level list.
+
+In the required contextual profile, Blueprint controls share one visible canvas with permitted Model-field and
+Entry-value controls (`STUDIO-PROD-003`). Their visual proximity does not change ownership: a layout action
+mutates the Blueprint draft, a field-definition action mutates the Model draft, and value entry mutates the
+Entry draft. Keyboard and explicit-control paths MUST remain equivalent to pointer interaction
+(`STUDIO-PROD-013`).
+
+Studio MUST expose the save outcome explicitly. **Save item** excludes reusable Blueprint changes unless the
+host's declared item-local composition policy permits them. **Save new type version** versions the coordinated
+Model and Blueprint. **Save as new type** creates a new authoring definition from those two artifacts and strips
+Entry values (`STUDIO-PROD-004`, `STUDIO-PROD-006`). No Blueprint edit silently updates every item using the
+current reusable type.
 
 ## Publication
 
