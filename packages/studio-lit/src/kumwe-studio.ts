@@ -939,6 +939,23 @@ export class KumweStudioElement extends LitElement {
     return this.#session?.stateVersion ?? 0;
   }
 
+  /** Detached dirty projection for composed shells; host authority is unchanged. */
+  public get dirty(): boolean {
+    return this.#session?.dirty ?? false;
+  }
+
+  /** Detached validation projection for composed shells and host status chrome. */
+  public get diagnostics(): readonly StudioDiagnostic[] {
+    return [...this.#diagnostics, ...this.#authoringDiagnostics.values()].map((entry) =>
+      structuredClone(entry),
+    );
+  }
+
+  /** Detached selection projection retained by the existing Blueprint session. */
+  public get selection(): readonly NodeId[] {
+    return this.#session?.selection ?? [];
+  }
+
   /** Resolves after the latest imperative custom-field lifecycle pass settles. */
   public get authoringReady(): Promise<void> {
     return this.#authoringControlsReady;
