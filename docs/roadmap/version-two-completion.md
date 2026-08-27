@@ -21,38 +21,38 @@ the product target.
 
 ## Current baseline
 
-| Item | Exact current truth |
-| --- | --- |
-| Source | Current merged `main` is `829694efb25374d3b498f2d46856d2c39650728a` |
-| Candidate | All eight checked-in packages and `studio-release.json` coordinate at `0.1.0-rc.1` |
-| Proposed profiles | The release record names the fixed nine-profile Version 2 surface; eight mappings are executable and `authoring-web` remains target-only |
-| Composed core host profile | `openStudioSession` currently loads and saves one Blueprint |
-| Lit shell | Separate alpha Blueprint shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence |
-| Reference host | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
-| Gates | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim |
+| Item                       | Exact current truth                                                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source                     | Current merged `main` is `829694efb25374d3b498f2d46856d2c39650728a`                                                                                         |
+| Candidate                  | All eight checked-in packages and `studio-release.json` coordinate at `0.1.0-rc.1`                                                                          |
+| Proposed profiles          | The release record names the fixed nine-profile Version 2 surface; eight mappings are executable and `authoring-web` remains target-only                    |
+| Composed core host profile | `openStudioSession` currently loads and saves one Blueprint                                                                                                 |
+| Lit shell                  | Separate alpha Blueprint shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence       |
+| Reference host             | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
+| Gates                      | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim                                                            |
 
 The release record's nine names freeze the candidate's intended profile surface. They are not reproduced
 evidence and do not by themselves open the official npm `rc` channel.
 
 ## Completion ledger
 
-| Product requirement | Repository-verified primitive | Work still required for completion |
-| --- | --- | --- |
-| `STUDIO-PROD-001` | Host session configuration and browser element can receive host context | Extension-declared target resolves an exact existing/new resource and launches Studio directly from host create/edit |
-| `STUDIO-PROD-002` | Empty Blueprint roots and reusable patterns can be supplied by a harness | Authorized blank and reusable-type starts through the real host, without pre-creating a Blueprint elsewhere |
-| `STUDIO-PROD-003` | Blueprint composition plus separate headless Model/Entry command primitives | One session/canvas for layout, field definition or binding, and Entry values |
-| `STUDIO-PROD-004` | Separate Model, Blueprint, and Entry protocol artifacts | A host reusable type coordinates exact Model and Blueprint revisions while excluding Entry values |
-| `STUDIO-PROD-005` | Exact references and read-only model projection | Hydrate the selected reusable type and an empty/new or exact existing Entry without leaking prior values |
-| `STUDIO-PROD-006` | Blueprint optimistic-concurrency save | Separate save-item, save-as-new-type, and update-type-version transactions with visible scope/migration impact |
-| `STUDIO-PROD-007` | One standalone responsive shell layout | Preserve resource, selection, authority, locale, unsaved state, and return path across in-context and expanded states |
-| `STUDIO-PROD-008` | Host-neutral configuration and canonical contribution runtime | Canonical extension-declared authoring target with permitted resource/surface/mode and launch binding |
-| `STUDIO-PROD-009` | Canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration generations | Prove target-scoped visibility plus install/activate/disable/reactivate/upgrade/recovery for blocks and field adapters in a real host |
-| `STUDIO-PROD-010` | Host ports, transport binding, renderer callbacks, and authorization boundaries | Kumwe App PHP application services and PHP HTTP endpoints implement every authoritative load/save/type/preview/media/workflow/publication effect |
-| `STUDIO-PROD-011` | Build emits browser packages and renderer output | Production package/install/serve/preview/save/render path with zero Node.js/npm runtime or development server |
-| `STUDIO-PROD-012` | Standalone harness proves primitives can compose | Remove pre-creation, catalogue-screen, copy/paste, and manual reconciliation from the supported author journey |
-| `STUDIO-PROD-013` | Keyboard/outline parity, automated accessibility, responsive and reduced-motion lanes | Complete contextual keyboard/touch/screen-reader/zoom/RTL/manual matrix, including fields, values, saves, and presentation changes |
-| `STUDIO-PROD-014` | Status/evidence machinery distinguishes implementation from acceptance | Keep Blueprint harness, RC metadata, profile claims, gates, and production support explicitly separate in every release surface |
-| `STUDIO-PROD-015` | Existing E2E suites prove canvas, preview, renderer, media, and accessibility slices | One exact real-host journey proves existing/new/blank/type flows, all saves, extension block+field adapter, PHP/Twig delivery, reopen, and zero production Node |
+| Product requirement | Repository-verified primitive                                                                    | Work still required for completion                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `STUDIO-PROD-001`   | Host session configuration and browser element can receive host context                          | Extension-declared target resolves an exact existing/new resource and launches Studio directly from host create/edit                                            |
+| `STUDIO-PROD-002`   | Empty Blueprint roots and reusable patterns can be supplied by a harness                         | Authorized blank and reusable-type starts through the real host, without pre-creating a Blueprint elsewhere                                                     |
+| `STUDIO-PROD-003`   | Blueprint composition plus separate headless Model/Entry command primitives                      | One session/canvas for layout, field definition or binding, and Entry values                                                                                    |
+| `STUDIO-PROD-004`   | Separate Model, Blueprint, and Entry protocol artifacts                                          | A host reusable type coordinates exact Model and Blueprint revisions while excluding Entry values                                                               |
+| `STUDIO-PROD-005`   | Exact references and read-only model projection                                                  | Hydrate the selected reusable type and an empty/new or exact existing Entry without leaking prior values                                                        |
+| `STUDIO-PROD-006`   | Blueprint optimistic-concurrency save                                                            | Separate save-item, save-as-new-type, and update-type-version transactions with visible scope/migration impact                                                  |
+| `STUDIO-PROD-007`   | One standalone responsive shell layout                                                           | Preserve resource, selection, authority, locale, unsaved state, and return path across in-context and expanded states                                           |
+| `STUDIO-PROD-008`   | Host-neutral configuration and canonical contribution runtime                                    | Canonical extension-declared authoring target with permitted resource/surface/mode and launch binding                                                           |
+| `STUDIO-PROD-009`   | Canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration generations | Prove target-scoped visibility plus install/activate/disable/reactivate/upgrade/recovery for blocks and field adapters in a real host                           |
+| `STUDIO-PROD-010`   | Host ports, transport binding, renderer callbacks, and authorization boundaries                  | Kumwe App PHP application services and PHP HTTP endpoints implement every authoritative load/save/type/preview/media/workflow/publication effect                |
+| `STUDIO-PROD-011`   | Build emits browser packages and renderer output                                                 | Production package/install/serve/preview/save/render path with zero Node.js/npm runtime or development server                                                   |
+| `STUDIO-PROD-012`   | Standalone harness proves primitives can compose                                                 | Remove pre-creation, catalogue-screen, copy/paste, and manual reconciliation from the supported author journey                                                  |
+| `STUDIO-PROD-013`   | Keyboard/outline parity, automated accessibility, responsive and reduced-motion lanes            | Complete contextual keyboard/touch/screen-reader/zoom/RTL/manual matrix, including fields, values, saves, and presentation changes                              |
+| `STUDIO-PROD-014`   | Status/evidence machinery distinguishes implementation from acceptance                           | Keep Blueprint harness, RC metadata, profile claims, gates, and production support explicitly separate in every release surface                                 |
+| `STUDIO-PROD-015`   | Existing E2E suites prove canvas, preview, renderer, media, and accessibility slices             | One exact real-host journey proves existing/new/blank/type flows, all saves, extension block+field adapter, PHP/Twig delivery, reopen, and zero production Node |
 
 ## Dependency-ordered work
 
