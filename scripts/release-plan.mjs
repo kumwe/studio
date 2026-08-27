@@ -1,6 +1,11 @@
 import { appendFile, readFile, readdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
+import {
+  parseProductImplementationStatus,
+  STUDIO_PRODUCT_REQUIREMENTS,
+} from './release-policy.mjs';
+
 const repositoryRoot = new URL('../', import.meta.url);
 const ignoredChangesetFiles = new Set(['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'README.md']);
 
@@ -35,7 +40,32 @@ export async function inspectReleasePlan(root = repositoryRoot) {
     }
   }
 
-  if (preState !== undefined && (preState.mode !== 'pre' || preState.tag !== 'alpha')) {
+  if (preState?.tag === 'rc') {
+    const productStatus = parseProductImplementationStatus(
+      await readFile(new URL('docs/roadmap/STATUS.md', root), 'utf8'),
+    );
+    const productComplete = STUDIO_PRODUCT_REQUIREMENTS.every(
+      (id) => productStatus[id].state === 'repository-verified',
+    );
+    if (preState.mode === 'pre' && pendingChangesets.length > 0 && !productComplete) {
+      return {
+        channel: 'beta',
+        hasPendingChangesets: true,
+        operation: 'version',
+        pendingChangesets,
+        preMode: 'reset',
+      };
+    }
+    return {
+      channel: preState.tag,
+      hasPendingChangesets: pendingChangesets.length > 0,
+      operation: 'inactive',
+      pendingChangesets,
+      preMode: preState.mode,
+    };
+  }
+
+  if (preState !== undefined && (preState.mode !== 'pre' || preState.tag !== 'beta')) {
     return {
       channel: preState.tag,
       hasPendingChangesets: pendingChangesets.length > 0,
@@ -47,7 +77,7 @@ export async function inspectReleasePlan(root = repositoryRoot) {
 
   if (preState === undefined) {
     return {
-      channel: 'alpha',
+      channel: 'beta',
       hasPendingChangesets: pendingChangesets.length > 0,
       operation: pendingChangesets.length > 0 ? 'version' : 'inactive',
       pendingChangesets,
@@ -56,7 +86,7 @@ export async function inspectReleasePlan(root = repositoryRoot) {
   }
 
   return {
-    channel: preState.tag,
+    channel: 'beta',
     hasPendingChangesets: pendingChangesets.length > 0,
     operation: pendingChangesets.length > 0 ? 'version' : 'publish',
     pendingChangesets,

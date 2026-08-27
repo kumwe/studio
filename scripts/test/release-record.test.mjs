@@ -10,7 +10,7 @@ import {
   sha256Integrity,
 } from '../release-record.mjs';
 
-function inputs(version = '0.1.0-alpha.9') {
+function inputs(version = '0.1.0-beta.9') {
   return {
     claimedProfiles: [],
     contractVersion: '0.1-draft',
@@ -25,7 +25,7 @@ describe('Studio release records', () => {
     const record = buildStudioReleaseRecord(inputs());
 
     assert.equal(record.kind, 'studio-release');
-    assert.equal(record.release, '0.1.0-alpha.9');
+    assert.equal(record.release, '0.1.0-beta.9');
     assert.deepEqual(Object.keys(record.packages), STUDIO_RELEASE_PACKAGE_NAMES);
     assert.match(serializeStudioReleaseRecord(record), /\n$/u);
     assert.doesNotThrow(() => assertCoordinatedRelease(record));
@@ -37,13 +37,13 @@ describe('Studio release records', () => {
     assert.throws(() => buildStudioReleaseRecord(missing), /fixed eight-package family/u);
 
     const unexpected = inputs();
-    unexpected.packages['@kumwe/studio-extra'] = '0.1.0-alpha.9';
+    unexpected.packages['@kumwe/studio-extra'] = '0.1.0-beta.9';
     assert.throws(() => buildStudioReleaseRecord(unexpected), /fixed eight-package family/u);
   });
 
   it('fails the publication guard on a staggered package version', () => {
     const record = buildStudioReleaseRecord(inputs());
-    record.packages['@kumwe/studio-protocol'] = '0.1.0-alpha.8';
+    record.packages['@kumwe/studio-protocol'] = '0.1.0-beta.8';
 
     assert.throws(() => assertCoordinatedRelease(record), /version drift/u);
   });

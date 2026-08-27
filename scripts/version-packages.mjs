@@ -18,16 +18,33 @@ export async function resetReleaseProfileClaims(root = new URL('../', import.met
   );
 }
 
-async function main() {
-  const plan = await inspectReleasePlan(new URL('../', import.meta.url));
-  if (plan.operation !== 'version' || plan.channel !== 'alpha') {
-    throw new Error('version-packages may run only for an active or newly opening alpha train.');
+export function prereleaseCommandsForPlan(plan) {
+  if (plan.operation !== 'version' || plan.channel !== 'beta') {
+    throw new Error('version-packages may run only for the governed beta development train.');
+  }
+  if (plan.preMode === 'reset') {
+    return [
+      ['pre', 'exit'],
+      ['pre', 'enter', 'beta'],
+    ];
   }
   if (plan.preMode === 'enter') {
-    run(process.execPath, [changesetsCli, 'pre', 'enter', 'alpha']);
+    return [['pre', 'enter', 'beta']];
+  }
+  if (plan.preMode === 'pre') {
+    return [];
+  }
+  throw new Error(`Unsupported beta prerelease mode ${plan.preMode}.`);
+}
+
+async function main() {
+  const plan = await inspectReleasePlan(new URL('../', import.meta.url));
+  const prereleaseCommands = prereleaseCommandsForPlan(plan);
+  for (const arguments_ of prereleaseCommands) {
+    run(process.execPath, [changesetsCli, ...arguments_]);
+  }
+  if (prereleaseCommands.length > 0) {
     await resetReleaseProfileClaims();
-  } else if (plan.preMode !== 'pre') {
-    throw new Error(`Unsupported alpha prerelease mode ${plan.preMode}.`);
   }
   run(process.execPath, [changesetsCli, 'version']);
   run('npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund']);

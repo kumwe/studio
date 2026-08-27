@@ -12,12 +12,12 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = new URL('../', import.meta.url);
-const officialTags = new Set(['alpha', 'rc', 'latest']);
+const officialTags = new Set(['beta', 'rc', 'latest']);
 
 export function stagingTagForVersion(version) {
   if (
     typeof version !== 'string' ||
-    !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:alpha|rc)\.(?:0|[1-9][0-9]*))?$/u.test(
+    !/^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:-(?:beta|rc)\.(?:0|[1-9][0-9]*))?$/u.test(
       version,
     )
   ) {

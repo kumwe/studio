@@ -6,7 +6,7 @@ import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 
 import { cleanupStagingTags } from '../cleanup-staging-tags.mjs';
-import { reconcileAlphaTags } from '../reconcile-alpha-tag.mjs';
+import { reconcileBetaTags } from '../reconcile-beta-tag.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
 import { STUDIO_RELEASE_PACKAGES } from '../release-family.mjs';
 import {
@@ -20,12 +20,12 @@ const authorizePublication = async () => undefined;
 
 describe('non-channel staged publication', () => {
   it('derives a bounded tag that is never an official release channel', () => {
-    for (const version of ['0.1.0-alpha.9', '0.1.0-rc.1', '0.1.0']) {
+    for (const version of ['0.1.0-beta.1', '0.1.0-rc.1', '0.1.0']) {
       const tag = stagingTagForVersion(version);
       assert.match(tag, /^studio-stage-/u);
-      assert.ok(!['alpha', 'rc', 'latest'].includes(tag));
+      assert.ok(!['beta', 'rc', 'latest'].includes(tag));
     }
-    assert.throws(() => stagingTagForVersion('0.1.0-beta.1'), /Cannot derive/u);
+    assert.throws(() => stagingTagForVersion('0.1.0-preview.1'), /Cannot derive/u);
   });
 
   it('requires a live release-authorization callback before any upload', async (t) => {
@@ -90,7 +90,7 @@ describe('non-channel staged publication', () => {
       },
     );
     assert.equal(retry.length, 6);
-    assert.ok(retry.every((call) => !['alpha', 'rc', 'latest'].includes(call.stagingTag)));
+    assert.ok(retry.every((call) => !['beta', 'rc', 'latest'].includes(call.stagingTag)));
   });
 
   it('rechecks each retained tarball immediately before its upload', async (t) => {
@@ -186,7 +186,7 @@ describe('non-channel staged publication', () => {
   });
 
   it('cleans only this coordinate staging tag after success', async () => {
-    const version = '0.1.0-alpha.9';
+    const version = '0.1.0-beta.9';
     const record = releaseRecord(version);
     const removed = [];
     const result = await cleanupStagingTags(record, {
@@ -206,20 +206,20 @@ describe('non-channel staged publication', () => {
   });
 });
 
-describe('alpha channel recovery', () => {
+describe('beta channel recovery', () => {
   it('removes prerelease latest drift but preserves a stable latest', async () => {
-    const version = '0.1.0-alpha.9';
+    const version = '0.1.0-beta.9';
     const packages = STUDIO_RELEASE_PACKAGES.slice(0, 2).map(({ name }) => ({ name, version }));
     const removed = [];
     const added = [];
     const removedLatest = new Set();
-    const result = await reconcileAlphaTags(packages, {
+    const result = await reconcileBetaTags(packages, {
       addTag: async (...args) => added.push(args),
       npmValue: async (arguments_) => {
         if (arguments_[2] === 'version') return version;
-        if (arguments_[2] === 'dist-tags.alpha') return '0.1.0-alpha.8';
+        if (arguments_[2] === 'dist-tags.beta') return '0.1.0-beta.8';
         if (arguments_[1] === packages[0].name) {
-          return removedLatest.has(packages[0].name) ? undefined : '0.1.0-alpha-feature.8+legacy.1';
+          return removedLatest.has(packages[0].name) ? undefined : '0.1.0-beta-feature.8+legacy.1';
         }
         return '0.0.9';
       },
@@ -238,7 +238,7 @@ async function createArtifacts(t) {
   const rootPath = await mkdtemp(join(tmpdir(), 'studio-staged-publish-'));
   t.after(() => rm(rootPath, { force: true, recursive: true }));
   const root = pathToFileURL(`${rootPath}/`);
-  const version = '0.1.0-alpha.9';
+  const version = '0.1.0-beta.9';
   const record = releaseRecord(version);
   const packages = {};
   for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {

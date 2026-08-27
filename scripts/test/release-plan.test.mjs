@@ -5,7 +5,9 @@ import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 
+import { STUDIO_PRODUCT_REQUIREMENTS } from '../release-policy.mjs';
 import { formatGitHubOutput, inspectReleasePlan } from '../release-plan.mjs';
+import { prereleaseCommandsForPlan } from '../version-packages.mjs';
 
 const temporaryDirectories = [];
 
@@ -18,15 +20,15 @@ afterEach(async () => {
 describe('release plan inspection', () => {
   it('selects versioning when top-level changesets remain', async () => {
     const root = await fixture({
-      changesets: ['zulu.md', 'alpha.md', 'README.md'],
-      preState: { mode: 'pre', tag: 'alpha' },
+      changesets: ['zulu.md', 'beta.md', 'README.md'],
+      preState: { mode: 'pre', tag: 'beta' },
     });
 
     assert.deepEqual(await inspectReleasePlan(root), {
-      channel: 'alpha',
+      channel: 'beta',
       hasPendingChangesets: true,
       operation: 'version',
-      pendingChangesets: ['alpha', 'zulu'],
+      pendingChangesets: ['beta', 'zulu'],
       preMode: 'pre',
     });
   });
@@ -34,7 +36,7 @@ describe('release plan inspection', () => {
   it('selects publication after changesets have moved into pre history', async () => {
     const root = await fixture({
       changesets: ['README.md'],
-      preState: { mode: 'pre', tag: 'alpha' },
+      preState: { mode: 'pre', tag: 'beta' },
     });
     await mkdir(new URL('.changeset/pre/', root), { recursive: true });
     await writeFile(new URL('.changeset/pre/consumed.md', root), 'already consumed\n');
@@ -44,12 +46,12 @@ describe('release plan inspection', () => {
     assert.equal(plan.hasPendingChangesets, false);
     assert.equal(
       formatGitHubOutput(plan),
-      'channel=alpha\nhas_pending_changesets=false\noperation=publish\npre_mode=pre',
+      'channel=beta\nhas_pending_changesets=false\noperation=publish\npre_mode=pre',
     );
   });
 
   it('rejects a malformed prerelease state', async () => {
-    const root = await fixture({ changesets: [], preState: { mode: 'unknown', tag: 'alpha' } });
+    const root = await fixture({ changesets: [], preState: { mode: 'unknown', tag: 'beta' } });
 
     await assert.rejects(inspectReleasePlan(root), /mode must be "pre" or "exit"/u);
   });
@@ -58,16 +60,36 @@ describe('release plan inspection', () => {
     const root = await fixture({
       changesets: ['fix.md'],
       preState: { mode: 'pre', tag: 'rc' },
+      productState: 'repository-verified',
     });
     const plan = await inspectReleasePlan(root);
     assert.equal(plan.operation, 'inactive');
     assert.equal(plan.channel, 'rc');
   });
 
-  it('opens the next alpha train when a post-stable Changeset arrives', async () => {
+  it('moves an incomplete abandoned RC into beta through generated versioning', async () => {
+    const root = await fixture({
+      changesets: ['runtime.md'],
+      preState: { mode: 'pre', tag: 'rc' },
+    });
+    const plan = await inspectReleasePlan(root);
+    assert.deepEqual(plan, {
+      channel: 'beta',
+      hasPendingChangesets: true,
+      operation: 'version',
+      pendingChangesets: ['runtime'],
+      preMode: 'reset',
+    });
+    assert.deepEqual(prereleaseCommandsForPlan(plan), [
+      ['pre', 'exit'],
+      ['pre', 'enter', 'beta'],
+    ]);
+  });
+
+  it('opens the next beta train when a post-stable Changeset arrives', async () => {
     const root = await fixture({ changesets: ['next.md'], preState: undefined });
     assert.deepEqual(await inspectReleasePlan(root), {
-      channel: 'alpha',
+      channel: 'beta',
       hasPendingChangesets: true,
       operation: 'version',
       pendingChangesets: ['next'],
@@ -83,7 +105,7 @@ describe('release plan inspection', () => {
   });
 });
 
-async function fixture({ changesets, preState }) {
+async function fixture({ changesets, preState, productState = 'active' }) {
   const directory = await mkdtemp(join(tmpdir(), 'studio-release-plan-'));
   temporaryDirectories.push(directory);
   const root = pathToFileURL(`${directory}/`);
@@ -91,8 +113,20 @@ async function fixture({ changesets, preState }) {
   if (preState !== undefined) {
     await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
   }
+  if (preState?.tag === 'rc') {
+    await mkdir(new URL('docs/roadmap/', root), { recursive: true });
+    await writeFile(new URL('docs/roadmap/STATUS.md', root), productStatus(productState));
+  }
   await Promise.all(
     changesets.map((name) => writeFile(new URL(`.changeset/${name}`, root), 'fixture\n')),
   );
   return root;
+}
+
+function productStatus(state) {
+  return [
+    '<!-- studio-product-implementation:start -->',
+    ...STUDIO_PRODUCT_REQUIREMENTS.map((id) => `| \`${id}\` | \`${state}\` | fixture proof |`),
+    '<!-- studio-product-implementation:end -->',
+  ].join('\n');
 }

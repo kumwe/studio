@@ -14,17 +14,17 @@ release history.
 | Programme phase                   | The standalone Blueprint/page-builder primitives are merged and repository-verified. Contextual authoring is now the explicit product target, but coordinated Model/Blueprint/Entry authoring, extension-declared target launch, explicit type-save transactions, and workspace presentation continuity remain implementation work                                                                                                                   |
 | Gate A                            | Not assessed; the implemented draft contract corpus has no accepted Gate A evidence bundle                                                                                                                                                                                                                                                                                                                                                           |
 | Gate B                            | Blocked on formal Gate A plus the remaining host, accessibility, performance, recovery, release-material, evidence, and independent-review qualification                                                                                                                                                                                                                                                                                             |
-| Published Studio packages         | No coordinated official `rc` or stable availability is claimed here. The checked-in `0.1.0-rc.1` family is candidate metadata; registry availability, exact bytes, provenance, and channel state still require the protected quarantine/publication verification                                                                                                                                                                                     |
-| Declared conformance profiles     | The `0.1.0-rc.1` release record names all nine proposed Version 2 profile claims. Eight have executable repository mappings; `authoring-web` remains target-only. A recorded name freezes intended candidate scope but is not accepted claim evidence                                                                                                                                                                                                |
+| Published Studio packages         | No coordinated `beta`, official `rc`, or stable availability is claimed here. The checked-in `0.1.0-rc.1` family remains immutable abandoned-candidate metadata and MUST NOT be published or presented as the current maturity. The first runtime Changeset on the governed beta lane generates a new coordinated beta family and release record                                                                                                     |
+| Declared conformance profiles     | The abandoned `0.1.0-rc.1` release record named all nine proposed Version 2 profile claims. That historical intent is not an accepted or current claim. Beta development resets proposed release claims; the complete fixed set is restored only when all product requirements are repository-verified and a new RC is prepared                                                                                                                      |
 | Version 2 qualification target    | One fixed nine-profile RC/stable surface plus the integrated contextual journey in `STUDIO-PROD-015`. Official RC publication remains blocked until the target authoring profile is executable and all required evidence is reproduced and accepted                                                                                                                                                                                                  |
 | Version 3 targets                 | `engine-dart`, `renderer-flutter`, and `authoring-flutter`; their Dart/Flutter work does not block Version 2                                                                                                                                                                                                                                                                                                                                         |
-| Release channel                   | Checked-in source is an `0.1.0-rc.1` candidate. The official `rc` channel is not claimed open: protected quarantine, reproduced Gate A evidence, independent review, and authorization remain required before it may move; stable remains Gate B-blocked                                                                                                                                                                                             |
+| Release channel                   | Product maturity is beta development. Checked-in manifests still preserve the abandoned `0.1.0-rc.1` coordinate until a publishable runtime Changeset causes the generated version PR to reset Changesets into beta. Only generated versioning may change manifests, lockfile, changelogs, prerelease state, or release records. The `rc` and stable channels are blocked                                                                            |
 | Supported production hosts        | None                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Supported protocol version        | None; runtime uses draft wire `0.1.0-draft.2`, while the first supported contract release candidate is produced by `M2-08`                                                                                                                                                                                                                                                                                                                           |
 | Earliest durable host integration | After Gate A                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Current authoritative activity    | Implement `STUDIO-PROD-001`–`013` against the existing primitives: contextual host-target launch, coordinated Model/Blueprint/Entry state, blank/type hydration, fields plus values, explicit save outcomes, presentation continuity, extension block/field-adapter lifecycle, PHP-authoritative Kumwe App adapters, and zero production Node.js/npm; then complete `authoring-web`, external/manual evidence, reviewer authority, and qualification |
-| Repository verification baseline  | `829694efb25374d3b498f2d46856d2c39650728a`: exact current merged `main` contains the coordinated `0.1.0-rc.1` eight-package candidate and release controls. It also contains substantial Blueprint, canvas, catalog, preview, renderer, media, rich-text, model-command, and entry-command primitives, but not their completed contextual composition. Gate A remains **Not assessed** and Gate B remains **Blocked**                                |
-| Candidate package coordinate      | `0.1.0-rc.1` is coordinated across all eight checked-in manifests and `studio-release.json`, which records the fixed nine proposed profile claims. Treat it as candidate source until the protected workflow proves exact registry bytes/provenance and accepted evidence authorizes the official `rc` channel; do not publish a subset or describe the record as stable support                                                                     |
+| Repository verification baseline  | `829694efb25374d3b498f2d46856d2c39650728a` produced the coordinated `0.1.0-rc.1` metadata before the contextual product gap was accepted. That commit and coordinate remain immutable provenance, but the RC maturity decision is withdrawn. The current branch builds on its substantial primitives in the beta development lane; Gate A remains **Not assessed** and Gate B remains **Blocked**                                                    |
+| Candidate package coordinate      | `0.1.0-rc.1` remains byte-coordinated historical source metadata only. It is abandoned, is not an active release candidate, and MUST NOT be staged or published. The next publishable runtime Changeset generates the beta coordinate across the full eight-package family; never hand-edit or overwrite the historical coordinate                                                                                                                   |
 
 Delivered, repository-verified increments are recorded in [`CHANGELOG.md`](../../CHANGELOG.md) and in the
 implementation board below. A changelog entry means the behaviour exists and passes the check lane on a
@@ -41,6 +41,37 @@ bundle and an independent reviewer per the [evidence model](evidence.md).
 Gate counts change only after evidence review. A documentation claim does not move these numbers. The zeroes
 in this table are evidence decisions, not an assertion that the runtime is absent; the implementation board
 below records what the exact repository baseline already exercises.
+
+## Product-contract implementation gate
+
+This closed inventory is the machine-checked RC maturity guard. `active` means implementation or its required
+repository proof is incomplete. `repository-verified` may be recorded only when the exact product requirement
+has an executable repository lane and the implementation board names its commit and remaining evidence work.
+All 15 rows must be `repository-verified` before the governed workflow will prepare, correct, stage, or publish
+an RC. That implementation guard is additional to Gate A and does not turn repository tests into accepted
+conformance evidence.
+
+<!-- studio-product-implementation:start -->
+
+| Requirement       | Runtime state | Current proof or blocker                                                     |
+| ----------------- | ------------- | ---------------------------------------------------------------------------- |
+| `STUDIO-PROD-001` | `active`      | Contextual target launch is not yet repository-verified                      |
+| `STUDIO-PROD-002` | `active`      | Blank and reusable-type creation is not yet repository-verified              |
+| `STUDIO-PROD-003` | `active`      | One layout fields and values session is not yet repository-verified          |
+| `STUDIO-PROD-004` | `active`      | Coordinated reusable type artifacts are not yet repository-verified          |
+| `STUDIO-PROD-005` | `active`      | Exact revision hydration is not yet repository-verified                      |
+| `STUDIO-PROD-006` | `active`      | Explicit save outcomes are not yet repository-verified                       |
+| `STUDIO-PROD-007` | `active`      | Presentation continuity is not yet repository-verified                       |
+| `STUDIO-PROD-008` | `active`      | Generic host and extension target declaration is not yet repository-verified |
+| `STUDIO-PROD-009` | `active`      | Contextual contribution lifecycle is not yet repository-verified             |
+| `STUDIO-PROD-010` | `active`      | Authoritative host operation replay is not yet repository-verified           |
+| `STUDIO-PROD-011` | `active`      | Deployed zero-Node host proof is not yet repository-verified                 |
+| `STUDIO-PROD-012` | `active`      | Integrated no-handoff journey is not yet repository-verified                 |
+| `STUDIO-PROD-013` | `active`      | Integrated keyboard and non-drag parity is not yet repository-verified       |
+| `STUDIO-PROD-014` | `active`      | Runtime capability labels remain to be verified with the completed surface   |
+| `STUDIO-PROD-015` | `active`      | The complete executable acceptance journey has not landed                    |
+
+<!-- studio-product-implementation:end -->
 
 ## Six-month board
 
@@ -66,7 +97,7 @@ acceptance list and awaits an evidence bundle plus an independent reviewer.
 | Package | State           | Delivered (see changelog)                                                                                                                                                                                                                                                                                                   | Still blocking acceptance                                                                                                                                                                                                                  |
 | ------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `M1-04` | evidence-review | Stable criterion registry; exact 60-class Gate A/B proof registry; versioned per-role schemas and deterministic internal lifecycle, reference-host, media/rich-text, TypeScript, reproducible-family, SBOM, and staged-registry producers; strict retained-output/candidate binding; protected current-main RC controller   | Activate reviewer keys plus repository/protected digests; authenticate App and other external inputs; perform registered manual/accessibility work; implement Gate B producers; independently reproduce, sign, retain, and accept evidence |
-| `M1-05` | evidence-review | Secret scan, audit, SBOM, governed alpha/RC/stable release road, retry-safe staging, and coordinated `0.1.0-rc.1` candidate metadata with nine proposed claims at current `main` `829694efb25374d3b498f2d46856d2c39650728a`                                                                                                 | Protected quarantine/registry verification, reviewer reproduction, accepted evidence, then authorized official-channel publication for all eight packages                                                                                  |
+| `M1-05` | active          | Secret scan, audit, SBOM, retry-safe staged publication, immutable `0.1.0-rc.1` history, and fail-closed RC/stable controls                                                                                                                                                                                                 | Exercise the governed beta reset/version/publish lane; complete all 15 product requirements; then prepare a new RC and qualify it through protected evidence and review                                                                    |
 | `M1-06` | evidence-review | Registry with 30 obligations, zero open; automated WCAG lane                                                                                                                                                                                                                                                                | Reviewer reproduction                                                                                                                                                                                                                      |
 | `M2-01` | evidence-review | Full schema list, declaration payloads, property-profile meta-schema and vectors                                                                                                                                                                                                                                            | Reviewer reproduction; independent cross-runtime profile replay                                                                                                                                                                            |
 | `M2-02` | evidence-review | Sixteen-command subset; the Gate A vocabulary is complete                                                                                                                                                                                                                                                                   | Reviewer reproduction                                                                                                                                                                                                                      |
@@ -132,9 +163,9 @@ prove that implementation snapshot; they do not publish it or accept a profile. 
 3. Complete selector-neutral `authoring-web` assertions and the exact `STUDIO-PROD-015` integrated journey,
    including keyboard/pointer/explicit-control equivalence, conflict/recovery, media/resource failure, touch,
    RTL, 400% zoom/reflow, reduced motion, manual assistive-technology evidence, and all save outcomes.
-4. Quarantine and verify the exact `0.1.0-rc.1` eight-package candidate from current `main`
-   `829694efb25374d3b498f2d46856d2c39650728a`; if any candidate bytes change, regenerate a successor coordinate
-   and affected evidence rather than mixing packages or reusing the record.
+4. Merge publishable runtime Changesets through the generated beta version PR. That operation exits the
+   abandoned RC prerelease state, enters beta, resets unearned profile claims, regenerates the coordinated
+   family, lockfile, changelogs, and release records, and publishes only after exact tarball/provenance checks.
 5. Atomically pin the exact verified record/corpus in Kumwe App, replay host, preview, media, target,
    contribution, binding, property-schema, and renderer assertions through the real PHP/Twig integration, and
    replay applicable profiles in an independent host/renderer. Resolve the recorded Editor.js distribution-
@@ -144,14 +175,12 @@ prove that implementation snapshot; they do not publish it or accept a profile. 
    remain blocked until the full production matrix and integrated journey are qualified. There is no separate
    beta workflow.
 
-## Profile qualification and the conceptual beta tier
+## Beta development and profile qualification
 
-The [release policy](../governance/releases.md) retains `beta` as a compatibility concept for a
-feature-complete candidate against a declared profile. It is not an active publication channel: operators use
-the one governed `alpha` → `rc` → stable lifecycle, and the RC guard enforces the same or stricter evidence
-discipline. The candidate record contains nine proposed claims; eight have executable mappings and
-`authoring-web` remains target-only. None of the three qualification conditions is complete:
-the three conditions is complete for the fixed product surface:
+`beta` is now the active development-maturity channel for completing the integrated product. It is explicitly
+incomplete, carries no compatibility, conformance, production, or support claim, and cannot authorize an RC.
+The historical `0.1.0-rc.1` label is preserved but abandoned because its product maturity was overstated.
+Three independent conditions still block a new RC:
 
 1. **A declared, executable profile.** Done for eight of nine Version 2 boundaries:
    [`studio.profile/host-baseline-v2`](../contracts/conformance-profiles.md) adds the stateful sequence
@@ -169,10 +198,10 @@ the three conditions is complete for the fixed product surface:
    it was replayed at, reproduced by an independent reviewer under the [evidence model](evidence.md).
    No evidence bundle has been reproduced yet, so no claim can currently be made.
 
-The conceptual beta tier is therefore not a separate shortcut or button. The active route is to verify the
-coherent `0.1.0-rc.1` candidate, complete all nine fixed Version 2 profiles, independently replay them,
-reproduce acceptable signed evidence, and promote the exact family only when Gate A supports that complete
-surface. An `rc` label is stricter, not a shortcut around that sequence.
+The governed beta lane is the sole package-development route. A new RC can be generated only after the
+machine-checked implementation inventory records every `STUDIO-PROD-001`–`015` row as
+`repository-verified`. Official RC publication remains separately blocked until Gate A supports the exact
+candidate and complete fixed profile surface.
 
 ## Programme risks under active control
 

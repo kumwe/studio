@@ -8,7 +8,7 @@ import test from 'node:test';
 
 import { checkReleasePins } from '../check-release-pins.mjs';
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_RECORD_TARGETS } from '../release-family.mjs';
-import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
+import { STUDIO_PRODUCT_REQUIREMENTS, VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { preparePromotion } from '../prepare-promotion.mjs';
 import { inspectReleasePlan } from '../release-plan.mjs';
 import { assertStableGeneratedTree } from '../verify-release-gate.mjs';
@@ -16,13 +16,14 @@ import { resetReleaseProfileClaims } from '../version-packages.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 
-test('promotion generation transforms all eight packages alpha -> rc.1 -> stable', async (t) => {
+test('promotion generation transforms all eight packages beta -> rc.1 -> stable', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'studio-prepare-promotion-'));
   t.after(() => rm(directory, { force: true, recursive: true }));
   const root = pathToFileURL(`${directory}/`);
   const paths = [
     '.changeset/config.json',
     '.changeset/pre.json',
+    'docs/roadmap/STATUS.md',
     'examples/reference-host/package.json',
     'package-lock.json',
     'package.json',
@@ -47,7 +48,8 @@ test('promotion generation transforms all eight packages alpha -> rc.1 -> stable
     new URL('.changeset/config.json', root),
     `${JSON.stringify(changesetConfig, null, 2)}\n`,
   );
-  await normalizeFixtureToAlphaPhase(root);
+  await writeFile(new URL('docs/roadmap/STATUS.md', root), productStatus());
+  await normalizeFixtureToBetaPhase(root);
 
   const rcPlan = await preparePromotion(root, {
     channel: 'rc',
@@ -96,18 +98,18 @@ test('promotion generation transforms all eight packages alpha -> rc.1 -> stable
   await assertStableGeneratedTree(evidenceDirectory, directory);
 
   await writeFile(
-    new URL('.changeset/next-alpha.md', root),
+    new URL('.changeset/next-beta.md', root),
     '---\n"@kumwe/studio-core": patch\n---\n\nOpen the next development train.\n',
   );
   assert.deepEqual(await inspectReleasePlan(root), {
-    channel: 'alpha',
+    channel: 'beta',
     hasPendingChangesets: true,
     operation: 'version',
-    pendingChangesets: ['next-alpha'],
+    pendingChangesets: ['next-beta'],
     preMode: 'enter',
   });
   const changesetsCli = join(repositoryRoot, 'node_modules/@changesets/cli/bin.js');
-  execFileSync(process.execPath, [changesetsCli, 'pre', 'enter', 'alpha'], {
+  execFileSync(process.execPath, [changesetsCli, 'pre', 'enter', 'beta'], {
     cwd: directory,
     stdio: 'pipe',
   });
@@ -120,7 +122,7 @@ test('promotion generation transforms all eight packages alpha -> rc.1 -> stable
     const manifest = JSON.parse(
       await readFile(new URL(`packages/${packageDirectory}/package.json`, root), 'utf8'),
     );
-    assert.equal(manifest.version, '0.1.1-alpha.0');
+    assert.equal(manifest.version, '0.1.1-beta.0');
   }
   assert.deepEqual(JSON.parse(await readFile(new URL('release-profile-claims.json', root))), {
     kind: 'studio-release-profile-claims',
@@ -129,15 +131,15 @@ test('promotion generation transforms all eight packages alpha -> rc.1 -> stable
 });
 
 // The fixture is seeded from the live repository, whose files move through
-// alpha, rc, and stable phases as promotions merge. The transform under test
-// starts from an alpha family, so the seeded copies are rewritten to one
-// canonical alpha coordinate — otherwise this test would only pass while the
-// repository itself happens to sit in the alpha phase (and the promotion
+// beta, rc, and stable phases as promotions merge. The transform under test
+// starts from a beta family, so the seeded copies are rewritten to one
+// canonical beta coordinate — otherwise this test would only pass while the
+// repository itself happens to sit in the beta phase (and the promotion
 // workflow re-runs it against the freshly generated rc tree).
-async function normalizeFixtureToAlphaPhase(root) {
+async function normalizeFixtureToBetaPhase(root) {
   const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
   const current = record.release;
-  const synthetic = `${current.split('-')[0]}-alpha.0`;
+  const synthetic = `${current.split('-')[0]}-beta.0`;
   const familyNames = new Set(STUDIO_RELEASE_PACKAGES.map(({ name }) => name));
   const dependencyFields = [
     'dependencies',
@@ -190,7 +192,7 @@ async function normalizeFixtureToAlphaPhase(root) {
 
   await writeFile(
     new URL('.changeset/pre.json', root),
-    `${JSON.stringify({ mode: 'pre', tag: 'alpha' }, null, 2)}\n`,
+    `${JSON.stringify({ mode: 'pre', tag: 'beta' }, null, 2)}\n`,
   );
   await writeFile(
     new URL('release-profile-claims.json', root),
@@ -199,6 +201,16 @@ async function normalizeFixtureToAlphaPhase(root) {
   for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {
     await writeFile(new URL(`packages/${directory}/CHANGELOG.md`, root), `# ${name}\n\n`);
   }
+}
+
+function productStatus() {
+  return [
+    '<!-- studio-product-implementation:start -->',
+    ...STUDIO_PRODUCT_REQUIREMENTS.map(
+      (id) => `| \`${id}\` | \`repository-verified\` | fixture proof |`,
+    ),
+    '<!-- studio-product-implementation:end -->',
+  ].join('\n');
 }
 
 async function assertRecordCopies(root, expectedVersion) {

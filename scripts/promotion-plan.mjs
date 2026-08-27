@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { assertCoordinatedRelease } from './release-record.mjs';
 import {
+  assertProductImplementationReady,
   assertPromotionPackageState,
   assertSameReleaseCoordinate,
   nextRcVersion,
@@ -23,6 +24,11 @@ export async function inspectPromotionPlan(
 ) {
   const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
   assertCoordinatedRelease(record);
+  if (channel === 'rc' || channel === 'stable') {
+    assertProductImplementationReady(
+      await readFile(new URL('docs/roadmap/STATUS.md', root), 'utf8'),
+    );
+  }
   const pendingChangesets = await listPendingChangesets(root);
   const preState = await readPreState(root);
   const hasCandidate = candidateSha.length > 0;
@@ -49,7 +55,7 @@ export async function inspectPromotionPlan(
     assertCoordinatedRelease(candidateRecord);
   }
 
-  const preparingRc = channel === 'rc' && record.release.includes('-alpha.');
+  const preparingRc = channel === 'rc' && record.release.includes('-beta.');
   const preparingStable = channel === 'stable' && record.release.includes('-rc.');
   if (preparingRc || preparingStable) {
     if (preparingStable && (!hasCandidate || !hasEvidence)) {
@@ -61,10 +67,10 @@ export async function inspectPromotionPlan(
       throw new Error('RC preparation does not accept candidate or gate-record SHAs.');
     }
     if (pendingChangesets.length > 0) {
-      throw new Error('Publish the pending alpha Changesets before preparing a promotion.');
+      throw new Error('Publish the pending beta Changesets before preparing a promotion.');
     }
-    if (channel === 'rc' && (preState?.mode !== 'pre' || preState.tag !== 'alpha')) {
-      throw new Error('RC preparation must start from the active alpha prerelease train.');
+    if (channel === 'rc' && (preState?.mode !== 'pre' || preState.tag !== 'beta')) {
+      throw new Error('RC preparation must start from the active beta prerelease train.');
     }
     if (channel === 'stable' && (preState?.mode !== 'pre' || preState.tag !== 'rc')) {
       throw new Error('Stable preparation must start from an immutable RC coordinate.');

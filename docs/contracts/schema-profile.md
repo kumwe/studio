@@ -6,7 +6,7 @@ Studio uses JSON Schema Draft 2020-12 for portable shape validation, but plugin-
 
 ## Allowed model
 
-`studio.profile/schema-property` is the executable alpha profile for contributed block property
+`studio.profile/schema-property` is the executable prerelease profile for contributed block property
 schemas. Its root is always `{ "type": "object", "additionalProperties": false }`; a contribution
 cannot make its property bag open or replace it with a scalar root. Inside that root, the profile
 supports bounded combinations of:
@@ -38,12 +38,12 @@ and `0.1` respectively.
 
 ## References
 
-The alpha property profile accepts `#` and `#/...` references only. Each reference is a valid JSON
+The property profile accepts `#` and `#/...` references only. Each reference is a valid JSON
 Pointer into the same schema document, every target exists at admission time, and `~0`/`~1` are the
 only pointer escapes. To avoid URI-library decoding differences, each raw token uses the ASCII subset
 `A-Z a-z 0-9 . _ ! $ & ' ( ) * + , ; = : @ -` plus those two tilde escapes. Percent encoding,
 raw `#` or `?`, whitespace, and non-ASCII token text are rejected; a definition requiring another
-character cannot be referenced in this alpha profile. A target must be a position the profile grammar
+character cannot be referenced in this profile. A target must be a position the profile grammar
 identifies as a schema; an existing container or annotation object such as `#/properties` is not a
 schema target. Remote, absolute, relative-package, registry, anchor, and network references are
 rejected. The reference graph must be acyclic; all direct and indirect recursion is rejected before a
@@ -56,7 +56,7 @@ Plugin-supplied `pattern`, `patternProperties`, `contentSchema`, custom code-gen
 
 Domain validation uses a namespaced registered validator/operator with declared version, input/output type, deterministic behavior, limits, localization behavior and host implementation. A schema cannot embed JavaScript, SQL, template syntax or arbitrary expressions.
 
-The alpha property profile publishes no `format` keyword registry. Every `format`, including familiar
+The property profile publishes no `format` keyword registry. Every `format`, including familiar
 names such as `date` and `email`, is an unsupported keyword rather than an annotation whose behaviour
 could differ by runtime.
 
@@ -131,7 +131,7 @@ and produce a compatibility diagnostic.
 
 ## Compatibility, migration, and authoring impact
 
-This is a prerelease correction to the alpha property surface. A contribution whose root omitted
+This is a prerelease correction to the property surface. A contribution whose root omitted
 `additionalProperties: false`, used a scalar root, carried a cross-document or recursive reference, or
 used `format` must migrate before activation; Studio does not rewrite that schema or discard existing
 property data. Hosts pin the exact profile/corpus version, replay the corpus before freezing a

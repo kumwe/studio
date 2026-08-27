@@ -1,4 +1,4 @@
-name: Alpha release train
+name: Beta development train
 
 on:
   push:
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   version:
-    name: Maintain alpha, publish it, or pause outside the alpha train
+    name: Maintain beta, publish it, or pause during governed promotion
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -54,14 +54,14 @@ jobs:
       - name: Run quality gate
         run: npm run check
 
-      # Pending changesets mean this run only maintains the version PR and has
+      # Pending changesets mean this run only maintains the generated beta version PR and has
       # no reason to read a registry credential. Once that PR is merged there
       # are no top-level changesets, and the same workflow enters publication.
-      - name: Inspect alpha release plan
+      - name: Inspect beta release plan
         id: plan
         run: node scripts/release-plan.mjs --github-output
 
-      - name: Confirm this workflow owns only the alpha channel
+      - name: Confirm this workflow owns only the beta channel
         shell: bash
         env:
           RELEASE_CHANNEL: ${{ steps.plan.outputs.channel }}
@@ -70,15 +70,15 @@ jobs:
         run: |
           set -euo pipefail
           if [[ "$RELEASE_OPERATION" == "inactive" ]]; then
-            echo "Alpha train is paused while RC is active, or idle until the next post-stable Changeset."
+            echo "Beta train is paused while a product-complete RC is active, or idle without release intent."
           else
-            [[ "$RELEASE_CHANNEL" == "alpha" ]]
-            [[ "$RELEASE_PRE_MODE" == "pre" || "$RELEASE_PRE_MODE" == "enter" ]]
+            [[ "$RELEASE_CHANNEL" == "beta" ]]
+            [[ "$RELEASE_PRE_MODE" == "pre" || "$RELEASE_PRE_MODE" == "enter" || "$RELEASE_PRE_MODE" == "reset" ]]
           fi
 
       # Authenticate only on the actual publish path. This lets a missing or
       # rotated token fail publication clearly without blocking creation of the
-      # recoverable alpha version PR.
+      # recoverable beta version PR.
       - name: Generate approved local package tarball digests
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:artifacts
@@ -96,7 +96,7 @@ jobs:
 
       # Changesets owns version calculation and the generated version PR only.
       # Registry publication uses the retained, locally approved tarballs below
-      # so Changesets cannot move alpha/latest or create releases before proof.
+      # so Changesets cannot move beta/latest or create releases before proof.
       - name: Create or update the version pull request
         id: release
         if: steps.plan.outputs.operation == 'version'
@@ -111,7 +111,7 @@ jobs:
 
       - name: Publish missing approved tarballs to a non-channel staging tag
         if: steps.plan.outputs.operation == 'publish'
-        run: npm run release:publish-alpha
+        run: npm run release:publish-prerelease
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
@@ -122,7 +122,7 @@ jobs:
       # A later main commit re-verifies bits published from an earlier one;
       # immutable coordinates can never re-bind the newer dispatch commit, so
       # ancestry of the checked-out head is accepted alongside the exact SHA.
-      - name: Verify immutable package bits before moving the alpha tag
+      - name: Verify immutable package bits before moving the beta tag
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
         env:
@@ -132,18 +132,18 @@ jobs:
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
 
-      - name: Reconcile the alpha dist-tag
+      - name: Reconcile the beta dist-tag
         if: steps.plan.outputs.operation == 'publish'
-        run: node scripts/reconcile-alpha-tag.mjs
+        run: node scripts/reconcile-beta-tag.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Verify the complete published release set, provenance, and alpha tag
+      - name: Verify the complete published release set, provenance, and beta tag
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
         env:
           RELEASE_APPROVED_ARTIFACTS: 'true'
-          RELEASE_DIST_TAG: alpha
+          RELEASE_DIST_TAG: beta
           RELEASE_PROVENANCE_ANCESTOR_OK: 'true'
           RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml

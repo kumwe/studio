@@ -98,7 +98,7 @@ content type hydrates the exact Model and Blueprint revisions with empty values 
 inspector under the resolved permissions (`STUDIO-PROD-003`).
 
 The current implementation is narrower: `openStudioSession` composes one Blueprint, while the Lit shell is a
-separate alpha surface with read-only model projection and no coordinated Entry persistence. Its external
+separate Blueprint-oriented surface with read-only model projection and no coordinated Entry persistence. Its external
 block-authoring controls and blank-Blueprint harness are primitives, not the target contextual journey
 (`STUDIO-PROD-014`).
 

@@ -7,13 +7,12 @@ readiness for the whole product.
 
 ## Channels
 
-| Channel              | Purpose                                                                                   | Compatibility/support claim                                              |
-| -------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Development snapshot | Internal branch integration and CI                                                        | None; not published as stable                                            |
-| `alpha`              | Contract/interaction discovery with early adopters                                        | May break with changeset and fixtures; no durable host commitment        |
-| `beta`               | Feature-complete candidate for a [declared profile](../contracts/conformance-profiles.md) | Contract changes treated as release blockers and reviewed explicitly     |
-| `rc`                 | Immutable candidate for gate/release evidence                                             | Only release-blocking corrections; every rebuild creates a new candidate |
-| Stable               | Gate B-qualified supported release set                                                    | Semantic version, compatibility and support policies apply               |
+| Channel              | Purpose                                               | Compatibility/support claim                                                   |
+| -------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Development snapshot | Internal branch integration and CI                    | None; not published as stable                                                 |
+| `beta`               | Integrated product implementation and host validation | Incomplete development maturity; no conformance, production, or support claim |
+| `rc`                 | Immutable candidate for gate/release evidence         | Only release-blocking corrections; every rebuild creates a new candidate      |
+| Stable               | Gate B-qualified supported release set                | Semantic version, compatibility and support policies apply                    |
 
 The coordinate-scoped `studio-stage-<version>` tag is a quarantine mechanism, not a channel or support claim.
 It makes one frozen `rc.N` family installable for Gate A evidence without moving `rc` or `latest` and without
@@ -22,15 +21,16 @@ creating a Git tag or GitHub release.
 Gate A normally publishes a contract release candidate, not a stable production package. The first stable
 release is impossible before Gate B.
 
-The `alpha` channel is live: the release train versions merged Changesets and publishes the coordinated
-workspace packages to the `alpha` distribution tag with provenance. No `alpha` carries a support or
-compatibility claim. The single manual **Governed RC and stable promotion** workflow implements preparation
-and protected publication. After a reviewed RC metadata PR merges, its protected quarantine operation may
-publish the exact candidate only under its nonofficial staging tag so release evidence can inspect real npm
-bits and provenance. Opening the official `rc` channel still fails closed until that exact candidate has
-accepted, independently reproduced evidence, required human review, and an authoritative passing gate in
-`docs/roadmap/STATUS.md`. The `beta` channel has no automated publisher. A local prerelease version is
-scaffolding and MUST NOT be published manually around these controls.
+The `beta` development train versions merged Changesets and publishes the coordinated workspace packages to
+the `beta` distribution tag with provenance. Beta is where the integrated product becomes complete; its label
+does not claim feature completeness, conformance, production readiness, compatibility support, or Gate A/B.
+The single manual **Governed RC and stable promotion** workflow implements preparation and protected
+publication. It refuses RC work unless the closed implementation inventory in `docs/roadmap/STATUS.md` contains
+exactly `STUDIO-PROD-001`–`015` and every row is `repository-verified`. After a reviewed RC metadata PR merges,
+its protected quarantine operation may publish the exact candidate only under its nonofficial staging tag so
+release evidence can inspect real npm bits and provenance. Opening the official `rc` channel still fails closed
+until that exact candidate has accepted, independently reproduced evidence, required human review, and an
+authoritative passing gate. A local prerelease version MUST NOT be published manually around these controls.
 
 The **Evidence bundle** workflow only creates class-scoped pending qualification material. It runs every
 executable class in the requested criterion even when a sibling class requires manual/external input, records
@@ -39,22 +39,22 @@ manual/external bytes may enter later only through the closed `evidence:assemble
 can fabricate human proof, publish, make a gate decision, or authenticate to npm. Gate A criterion 13 binds
 its exact quarantined-registry install lane plus the complete family, provenance, SBOM, reproducibility,
 clean-consumer, and signature artifacts, and still requires its registered manual class. Every class is
-required for acceptance; the lane or a generic release label alone cannot satisfy it. Gate A is currently not
-assessed and Gate B is blocked, so the official `rc` and stable channels cannot open today even though a
-frozen RC may be quarantined for evidence.
+required for acceptance; the lane or a generic release label alone cannot satisfy it. Every product requirement
+is currently active, Gate A is not assessed, and Gate B is blocked, so no new RC may be prepared or quarantined
+today and the official `rc` and stable channels cannot open.
 
-At exact current source `829694efb25374d3b498f2d46856d2c39650728a`, the checked-in
-`studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
-`0.1.0-rc.1` and records all nine proposed Version 2 profile names. That record is not proof that the packages
-are available from npm, that any profile is accepted, or that the official `rc` channel is open. Every
-publisher verifies all eight exact registry versions; RC/stable additionally verify registry integrity,
-provenance, the channel tag, and a source-bound GitHub release before Kumwe App or another deployable host
-updates its pin.
+At source `829694efb25374d3b498f2d46856d2c39650728a`, `studio-release.json` coordinated all eight packages at
+`0.1.0-rc.1` and recorded nine proposed Version 2 profile names. Product review withdrew that maturity decision
+after confirming the contextual authoring gap. The coordinate and commit remain immutable provenance, but the
+candidate is abandoned and MUST NOT be staged, published, overwritten, or treated as current maturity. The
+first publishable runtime Changeset causes generated versioning to exit the stale RC prerelease state, enter
+beta, reset proposed profile claims, and regenerate the complete family. Every publisher still verifies all
+eight exact registry versions and provenance before a channel tag moves.
 
-Conceptual `beta` qualification requires a declared, executable conformance profile the candidate is
-feature-complete against, claimed with reproduced evidence. It does not add a second release route: the
-automated lifecycle advances from `alpha` to the stricter governed `rc` channel. The profiles and their
-assertion sets are in [conformance profiles](../contracts/conformance-profiles.md).
+Beta publication and conformance qualification are deliberately separate. A beta build may be incomplete and
+claims no profile. RC preparation requires repository-verified completion of the product contract; official RC
+publication additionally requires reproduced evidence for the complete fixed profile set. Profile definitions
+and assertion sets remain in [conformance profiles](../contracts/conformance-profiles.md).
 
 Version 2 RC and stable promotion use one fixed nine-profile surface, including `authoring-web`. Initial RC
 preparation defaults to that complete sorted set and rejects a subset. Preparation freezes the intended product
@@ -71,17 +71,18 @@ The eight npm packages are one Changesets fixed group and advance to the same se
 repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
 into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
 records the release version, exact package versions, wire protocol version, corpus-manifest digest, and the
-fixed promotion profile surface. The current `0.1.0-rc.1` candidate records all nine proposed Version 2 claims;
-they become publishable claims only when the passing exact-candidate gate supports the identical set. Candidate
-metadata freezes intended scope and is not itself conformance evidence.
+fixed promotion profile surface. The abandoned `0.1.0-rc.1` metadata records nine withdrawn proposed Version 2
+claims. Beta versioning clears them. A future generated RC restores the fixed intended set only after the
+implementation guard passes, and they become publishable claims only when the passing exact-candidate gate
+supports the identical set. Candidate metadata is never itself conformance evidence.
 
 The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
-fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The alpha
+fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The beta
 version command runs Changesets first and regenerates the record. Explicit promotion generation transforms all
 manifests, internal dependency pins, the lockfile, changelogs, prerelease state, profile claims, and all three
-record copies together. The first transition resets `alpha.N` to `rc.1`; a correction Changeset creates
+record copies together. The first transition resets `beta.N` to `rc.1`; a correction Changeset creates
 `rc.N+1`; Gate B promotion removes the suffix without changing runtime code. Post-stable Changesets
-automatically enter a new alpha train. Therefore a partial or staggered set cannot be treated as a release.
+automatically enter a new beta train. Therefore a partial or staggered set cannot be treated as a release.
 
 Qualification evidence associated with the release record additionally records:
 
@@ -135,14 +136,14 @@ then retains the quarantine tags for evidence without moving `rc` or creating a 
 version calculation and version PRs only. Official RC publication requires every coordinate to exist already;
 after Gate A it verifies the same candidate provenance, moves `rc`, creates the source-bound GitHub prerelease,
 verifies again, and only then removes the quarantine tags. Stable publication uses the same retained-tarball
-discipline. Alpha never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
+discipline. Beta never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
 `latest`.
 
-`NPM_TOKEN` placement is channel-specific. The alpha workflow declares no GitHub environment and can read only
+`NPM_TOKEN` placement is channel-specific. The beta workflow declares no GitHub environment and can read only
 a repository Actions secret or an organization Actions secret explicitly granted to `kumwe/studio`. RC and
 stable jobs read environment secrets from protected `studio-rc` and `studio-stable` respectively. Actions
 variables do not satisfy `${{ secrets.NPM_TOKEN }}`, and a token configured only on an environment is therefore
-invisible to alpha.
+invisible to beta.
 
 Both protected environments define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the
 candidate's `evidence/reviewer-authorities.json`; it must also equal the candidate's checked-in

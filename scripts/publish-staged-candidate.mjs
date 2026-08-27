@@ -9,7 +9,10 @@ import {
 import { assertCoordinatedRelease } from './release-record.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { APPROVED_ARTIFACT_PATH, inspectExistingRegistryArtifacts } from './release-artifacts.mjs';
-import { assertPromotionPackageState } from './release-policy.mjs';
+import {
+  assertProductImplementationReady,
+  assertPromotionPackageState,
+} from './release-policy.mjs';
 import { assertLiveMain } from './reconcile-release-tag.mjs';
 import {
   inspectStagingTags,
@@ -28,10 +31,12 @@ export function assertStagedCandidateState({
   expectedVersion,
   pendingChangesets,
   preState,
+  productStatusSource,
   releaseRecord,
   workingTreeState,
 }) {
   assertCoordinatedRelease(releaseRecord);
+  assertProductImplementationReady(productStatusSource);
   if (channel !== 'rc') {
     throw new Error('Candidate staging is available only for the governed RC channel.');
   }
@@ -55,7 +60,11 @@ export function assertStagedCandidateState({
 }
 
 async function inspectCandidateState(root = repositoryRoot) {
-  const releaseRecord = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
+  const [releaseRecordSource, productStatusSource] = await Promise.all([
+    readFile(new URL('studio-release.json', root), 'utf8'),
+    readFile(new URL('docs/roadmap/STATUS.md', root), 'utf8'),
+  ]);
+  const releaseRecord = JSON.parse(releaseRecordSource);
   const entries = await readdir(new URL('.changeset/', root), { withFileTypes: true });
   const pendingChangesets = entries
     .filter(
@@ -65,7 +74,7 @@ async function inspectCandidateState(root = repositoryRoot) {
     .map((entry) => entry.name)
     .sort();
   const preState = JSON.parse(await readFile(new URL('.changeset/pre.json', root), 'utf8'));
-  return { pendingChangesets, preState, releaseRecord };
+  return { pendingChangesets, preState, productStatusSource, releaseRecord };
 }
 
 async function main() {
