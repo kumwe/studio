@@ -4,7 +4,22 @@ Kumwe Studio is a portable, schema-aware visual composition platform for buildin
 
 Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe App](https://github.com/kumwe/app) is the first reference host, not a hard-coded dependency.
 
-> **Project status:** integration-candidate implementation with the eight-package web family, 45-block/ten-pattern standalone catalog, private Editor.js rich-text adapter, semantic web renderer, and authoring shell present in the repository. Contracts remain intentionally unstable until Gate A, the current release record claims no profile, and no package is production-ready until Gate B passes. The [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are recorded in the [changelog](CHANGELOG.md).
+The normative product target is the [Studio product contract](docs/product-contract.md): creating or editing
+managed content opens Studio for that exact resource, where an authorized author can start from a blank canvas
+or reusable content type and work with layout, fields, bindings, and values in one continuous journey. Model,
+Blueprint, and entry artifacts remain separately versioned and host-authoritative even when the interface
+presents them together.
+
+> **Project status:** the coordinated source candidate is `0.1.0-rc.1`, with the eight-package web family,
+> 45-block/ten-pattern standalone catalog, private Editor.js adapter, semantic renderer, and Blueprint shell
+> present. Its release record lists nine proposed profile claims, but none is accepted gate evidence: Gate A
+> remains not assessed, Gate B remains blocked, and no package or host is production-supported. The
+> [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are
+> recorded in the [changelog](CHANGELOG.md).
+
+The complete contextual create/edit/save-as-type journey in the product contract is a target, not a claim about
+the current integration. A standalone Blueprint canvas, read-only model projection, or compiled shell does not
+by itself satisfy that journey.
 
 Version 2 qualifies the web integration only. Dart and native Flutter profiles remain Version 3 targets;
 their deferral neither removes them from the architecture nor turns them into Version 2 gate blockers.
@@ -68,7 +83,8 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 
 ## Start here
 
-1. Read the [project charter](docs/project-charter.md) and [glossary](docs/glossary.md).
+1. Read the sole [Studio product contract](docs/product-contract.md), then the
+   [project charter](docs/project-charter.md) and [glossary](docs/glossary.md).
 2. Read the [architecture](docs/architecture/README.md) and [normative contracts](docs/contracts/README.md).
 3. Walk through the [authoring experience](docs/experience/README.md) and its implementable workspace specification.
 4. Check the [programme status](docs/roadmap/STATUS.md) and [dependency roadmap](docs/roadmap/README.md).
@@ -76,6 +92,14 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 6. Follow [contribution requirements](CONTRIBUTING.md) and the repository instructions in [AGENTS.md](AGENTS.md).
 
 ## Local development
+
+### Production runtime boundary
+
+Node.js and npm are contributor, build, test, and release tools only. Official browser assets are compiled
+before deployment. A production host serves those assets and implements authoritative operations through its
+own server application; Kumwe App does so through PHP application services and PHP HTTP endpoints. Production
+operators and content authors do not install or run Node.js, npm, Vite, or another JavaScript server to use
+Studio.
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) is the authoritative bootstrap and qualification path. Use the pinned
 Node.js 24 baseline and npm 11.9.0, install the locked dependencies and Playwright Chromium, then run the
