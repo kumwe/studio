@@ -1,5 +1,19 @@
 # @kumwe/studio-testkit
 
+## 0.1.0-beta.2
+
+### Minor Changes
+
+- [#48](https://github.com/kumwe/studio/pull/48) [`f78b000`](https://github.com/kumwe/studio/commit/f78b00006a58222f2b28621fc5c5d963e2f865f4) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the fixture-driven contextual authoring host port and HTTP mapping, plus a selector-neutral first-stride
+  runner for exact launches, coordinated Model/Blueprint/Entry commands, and host-authoritative save boundaries.
+  The runner explicitly remains partial and does not make a complete authoring-web conformance claim.
+
+### Patch Changes
+
+- Updated dependencies [[`e82d4fa`](https://github.com/kumwe/studio/commit/e82d4fa28160205db6a0b34a6955a0f7d71ccca9), [`d20928d`](https://github.com/kumwe/studio/commit/d20928d00ec4e2126122e09345b28c3861583d25)]:
+  - @kumwe/studio-protocol@0.1.0-beta.2
+  - @kumwe/studio-core@0.1.0-beta.2
+
 ## 0.1.0-rc.1
 
 ### Release Candidate

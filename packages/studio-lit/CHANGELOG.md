@@ -1,5 +1,23 @@
 # @kumwe/studio
 
+## 0.1.0-beta.2
+
+### Minor Changes
+
+- [#48](https://github.com/kumwe/studio/pull/48) [`bda0fdc`](https://github.com/kumwe/studio/commit/bda0fdcd1a5989c9602be8062cc640ee481ce8ba) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the canonical resource-bound contextual authoring shell with blank, reusable-type, and existing-item
+  starts; continuous Model, Blueprint, and Content modes; typed field and Entry-value commands; presentation
+  continuity; keyboard mode navigation; and a host-authoritative save-intent event.
+
+### Patch Changes
+
+- Updated dependencies [[`e82d4fa`](https://github.com/kumwe/studio/commit/e82d4fa28160205db6a0b34a6955a0f7d71ccca9), [`d20928d`](https://github.com/kumwe/studio/commit/d20928d00ec4e2126122e09345b28c3861583d25)]:
+  - @kumwe/studio-protocol@0.1.0-beta.2
+  - @kumwe/studio-core@0.1.0-beta.2
+  - @kumwe/studio-media@0.1.0-beta.2
+  - @kumwe/studio-preview@0.1.0-beta.2
+  - @kumwe/studio-renderer-web@0.1.0-beta.2
+  - @kumwe/studio-rich-text@0.1.0-beta.2
+
 ## 0.1.0-rc.1
 
 ### Release Candidate
