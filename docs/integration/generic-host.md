@@ -3,6 +3,17 @@
 This guide describes how an unrelated application embeds Studio without importing Kumwe App-specific code. It is
 both an implementation sequence and the basis of the generic-host conformance profile.
 
+The default integration target is an exact host resource opened for contextual authoring, not a catalogue-level
+Blueprint tool. The [Studio product contract](../product-contract.md) is the sole authority for that target:
+`STUDIO-PROD-001`–`006` cover launch, hydration, coordinated artifacts, and save outcomes;
+`STUDIO-PROD-007`–`009` cover workspace, targets, and contribution behavior; and `STUDIO-PROD-010`–`011`
+preserve host and runtime authority. This guide describes the required host mapping without claiming that every necessary
+port, declaration, command, or shell surface is implemented today.
+
+The current composed `openStudioSession` profile opens and saves one Blueprint. The current Lit shell is a
+separate alpha surface with read-only model projection and no coordinated Entry persistence. Those primitives
+are useful integration scaffolding, but they are not completed contextual authoring (`STUDIO-PROD-014`).
+
 The adapter's obligations are executable: replay the canonical host conformance corpus published as
 `vectors/host/` in `@kumwe/studio-testkit` to claim
 [`studio.profile/host-baseline`](../contracts/conformance-profiles.md). The corpus is language-neutral
@@ -27,13 +38,30 @@ Before wiring UI, record where the host authoritatively stores and enforces:
 An ownership gap is an integration blocker. Studio must not become an accidental database, identity system,
 workflow engine, media store, renderer registry, or policy authority.
 
-## 2. Select and publish a profile
+## 2. Resolve a contextual authoring target
 
-The host declares protocol and capability versions plus finite limits. At minimum the resolved session
-configuration identifies:
+An installed, trusted extension declares the host-owned authoring target on which Studio is available. When an
+authorized create or edit action selects that target, the host resolves the exact resource and launches Studio
+without asking the author to pre-create or transfer a Blueprint (`STUDIO-PROD-001`, `008`, `012`). The target binds,
+under host policy:
+
+- the host resource kind and identity for create or edit;
+- the exact reusable type, Model revision, Blueprint revision, Entry revision when editing, and compatible
+  theme/design intent;
+- active extension-owned blocks, patterns, field adapters, inspectors, design vocabulary, and migrations;
+- permitted authoring and presentation states, save outcomes, and return destination; and
+- the PHP or other authoritative host operations that load, validate, transact, preview, and render it.
+
+This target declaration is a product requirement, not a shipped `0.1.0-rc.1` public schema or API. Until its
+contract lands, integrations MUST NOT invent a host-specific shape and present it as canonical Studio
+conformance. They may exercise the existing Blueprint-only profile as explicitly temporary scaffolding.
+
+The host also declares protocol and capability versions plus finite limits. At minimum the eventual resolved
+contextual session identifies:
 
 - session, actor and resource context using opaque identifiers;
-- editing mode: `model`, `blueprint`, or `content`; composition: `single` or `hybrid`; and session state: `editable` or `read-only`;
+- internal Model, Blueprint, and Content authority boundaries and session state; these are permissions inside
+  one journey, not disconnected author-facing products;
 - exact model, Blueprint, entry and theme revisions where applicable;
 - allowed operation identifiers and field visibility;
 - block, plugin and renderer inventory generations;
@@ -49,12 +77,13 @@ grants a capability.
 
 Consume the exact eight versions in the published `studio-release.json`; verify its corpus digest before
 replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
-first-party definitions are not a deployable integration. The current candidate tree must first pass the
-protected coordinated publish workflow; its checked-in coordinated `0.1.0-alpha.9` record is not a substitute
-for verified npm availability.
+first-party definitions are not a deployable integration. Exact current source
+`829694efb25374d3b498f2d46856d2c39650728a` records coordinated `0.1.0-rc.1` metadata and the fixed nine
+proposed profile claims. That checked-in candidate is not proof of npm availability, accepted conformance, an
+open official `rc` channel, or production support.
 
-The browser host then starts from Studio's supported additive bootstrap rather than recreating the page-builder
-catalog:
+For the current Blueprint-only alpha shell, the browser harness starts from Studio's additive bootstrap rather
+than recreating the page-builder catalog:
 
 ```ts
 import {
@@ -76,7 +105,8 @@ studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
 });
 ```
 
-The first-party 45 blocks and ten patterns lead deterministically; host contributions append only after their
+This snippet is not the future contextual-launch API. The first-party 45 blocks and ten patterns lead
+deterministically; host contributions append only after their
 owner, namespace, capability, and schema checks pass. Duplicate identities fail closed. Editor.js remains a
 private Studio implementation selected by the registry: the host supplies canonical values and neutral
 services, never editor tools, plugin configuration, or editor-native JSON.
@@ -88,6 +118,7 @@ be used if it preserves the same semantics.
 
 | Port area    | Required behaviour                                                                                                                                  |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target launch | Resolve an extension-declared target to one authorized create/edit context, exact artifact revisions, permitted presentation states, save outcomes, and deterministic return path |
 | Session      | Negotiate protocol/profile/capability versions; create a generation; reject stale or incompatible sessions; cancel and close cleanly                |
 | Resources    | Load exact revisions of models, Blueprints, entries, themes and contribution inventories; return structured not-found/denied/incompatible results   |
 | Policy       | Supply only visible fields/resources and authorized operation IDs; reauthorize every host effect independently                                      |
@@ -105,6 +136,11 @@ Each request carries a request ID, session generation, actor/resource context, c
 transport permits it, and an idempotency key for retryable mutation. Sensitive credentials remain in the host
 transport; they are never serialized into Studio configuration, documents, command history, diagnostics,
 recovery envelopes, preview messages, or telemetry.
+
+The target-launch and coordinated Model/Blueprint/Entry mutations above are required product behavior, but
+they are not all operations in the current public adapter. The current `openStudioSession` load/save path is
+single-Blueprint, while model projection is read-only. A generic host must preserve that distinction until the
+contract, schemas, commands, and conformance vectors add the missing operations.
 
 ### Bind resource discovery
 
@@ -135,6 +171,11 @@ The host persists separate identities and revisions for:
 A single transaction may update related drafts when the domain allows it, but the artifacts do not collapse
 into one opaque JSON blob. A Blueprint field binding names a stable model field; it does not duplicate that
 field's value. An entry contains values and explicitly permitted overrides; it does not contain renderer code.
+
+Starting from a reusable type hydrates its exact Model and Blueprint revisions plus an empty or existing Entry,
+as appropriate; it never copies values from another entry (`STUDIO-PROD-002`, `004`, `005`). Studio may display fields,
+layout, bindings, and values on one canvas, but every proposed change retains its artifact target, base revision,
+permission, validation, and migration consequences (`STUDIO-PROD-003`).
 
 For a business aggregate, the host may expose a Studio entry projection while retaining relational domain
 storage and transactional invariants. Studio commands must call application use cases; generic JSON is not an
@@ -213,6 +254,12 @@ The host compiles one immutable contribution generation from trusted declaration
 owner, namespace, contract version, semantic version, required capabilities, ordering, compatibility, fallback
 and migration metadata.
 
+The contextual target selects that generation; it does not copy contributions into a private palette. A
+trusted extension may declare where its target is launched and contribute canonical blocks, patterns, and field
+adapters for that target. Blocks and field adapters remain separate canonical contribution kinds with their own
+schemas and lifecycle. The missing target-declaration schema/API remains planned; the existing contribution
+runtime does not imply it already exists (`STUDIO-PROD-008`, `009`).
+
 - Collision, namespace, schema, dependency, or trust failure rejects the contribution before session use.
 - A required missing contribution prevents write mode; a safe read-only recovery view remains possible.
 - Disabling or revoking a provider removes executable registrations but preserves artifacts.
@@ -221,6 +268,17 @@ and migration metadata.
 - Themes expose semantic tokens, viewport roles and recipes, not raw CSS/classes/template source.
 
 ## 7. Handle save, conflict and recovery
+
+The contextual surface distinguishes three user outcomes before confirmation (`STUDIO-PROD-006`):
+
+1. save this Entry/content item without changing the reusable type;
+2. save the current Model and Blueprint design as a new reusable type, excluding current Entry values; or
+3. create a new version of the current reusable type with migration/dependent-entry impact made visible.
+
+These are separate host-authorized transactions, even when one user action coordinates multiple artifact
+writes. The host may commit related draft changes atomically, but no generic “save JSON” call may silently turn
+an Entry save into a Model or Blueprint publication. The current Blueprint save operation implements only a
+subset of this target.
 
 Save sends the complete proposed state or a protocol-defined command batch with:
 
@@ -247,7 +305,15 @@ The integration must preserve semantic landmarks, labels, focus order, keyboard 
 contrast and reduced-motion preferences. Host chrome cannot make dragging the sole path or intercept Studio
 shortcuts without an accessible alternative.
 
-## 9. Lifecycle and compatibility
+## 9. Production runtime boundary
+
+Browser packages are compiled during build and release. A production host installs and serves those static
+assets through its normal deployment path; content authors and operators do not run Vite, Node.js, npm, or a
+server-side JavaScript process. All authoritative effects stay in the host application's services and HTTP/API
+boundary (`STUDIO-PROD-010`, `011`), and public delivery remains operable without Studio. Kumwe App's stricter
+PHP mapping is described in its playbook.
+
+## 10. Lifecycle and compatibility
 
 The host records Studio protocol/package versions with stored artifacts and follows the published
 [compatibility policy](../governance/compatibility.md). Upgrade procedure:
@@ -262,18 +328,22 @@ The host records Studio protocol/package versions with stored artifacts and foll
 
 A host must reject an unsupported downgrade rather than attempt to interpret newer artifacts.
 
-## 10. Generic-host acceptance
+## 11. Generic-host acceptance
 
 Gate B generic-host evidence proves:
 
 - installation from published packages with no private repository paths;
 - all required capabilities and explicit degradation when optional ones are absent;
-- model/Blueprint/entry/theme separation and exact revision loading;
-- create, edit, preview, save, conflict, publish and recover workflows;
+- contextual launch from an extension-declared target with no pre-creation or manual handoff;
+- Model/Blueprint/Entry/theme separation, exact reusable-type hydration, and empty values for a new Entry;
+- fields, values, bindings, and layout in one session, with explicit Entry/new-type/new-type-version saves;
+- create, edit, preview, conflict, publish, recover, and in-context/expanded presentation continuity;
 - server and client rendering examples without reverse-parsing DOM;
-- media completion/failure, extension/theme lifecycle and unresolved-node behaviour;
+- media completion/failure, extension target/block/field-adapter/theme lifecycle and unresolved-node behaviour;
 - authorization reduction with no hidden-field or hidden-count leakage;
 - accessibility, localization, RTL, mobile/touch and keyboard completion;
 - migration, interrupted upgrade, rollback and old-document fixtures;
 - security, performance and resource-limit matrices; and
-- clean-room integration by a developer using only public documentation and packages.
+- clean-room integration by a developer using only public documentation and packages;
+- compiled-browser deployment with zero production Node.js/npm requirement; and
+- the integrated acceptance journey in `STUDIO-PROD-015`, not a collection of disconnected harness demos.

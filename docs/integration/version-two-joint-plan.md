@@ -1,173 +1,124 @@
 # Version 2 joint plan: Studio and Kumwe App
 
-**Purpose.** One sequence across two repositories, so neither side builds against something the other
-has not shipped. This document is the coordination contract; each repository's own plan holds its
-detail.
+**Purpose.** Coordinate two repositories against one product contract without copying either repository's
+internal roadmap into the other. The normative product outcome and stable requirement identifiers live only in
+the [Studio product contract](../product-contract.md). Studio's current implementation and gate state live only
+in [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md). Kumwe App owns its implementation sequence in its own
+repository.
 
-|                    |                                                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Studio steps       | [`docs/roadmap/version-two-completion.md`](../roadmap/version-two-completion.md)                                                                  |
-| Kumwe App steps    | [`kumwe/app` → `docs/roadmap/studio-completion.md`](https://github.com/kumwe/app/blob/master/docs/roadmap/studio-completion.md)                   |
-| Division of labour | Kumwe App [ADR 0007](https://github.com/kumwe/app/blob/master/docs/roadmap/decisions/0007-studio-visual-composition-integration.md), decision D16 |
+| Boundary | Authority |
+| --- | --- |
+| Product outcome | [`STUDIO-PROD-001`–`STUDIO-PROD-015`](../product-contract.md) |
+| Studio implementation and gates | [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md) |
+| Generic host mapping | [`generic-host.md`](generic-host.md) |
+| Kumwe App mapping | [`kumwe-app.md`](kumwe-app.md) |
+| Kumwe App implementation detail | [`kumwe/app` Studio completion plan](https://github.com/kumwe/app/blob/master/docs/roadmap/studio-completion.md) |
 
-**The objective in one sentence.** An authorized Kumwe App administrator composes a page by direct
-manipulation from typed, theme-bounded blocks bound to this platform's own content types, previews it
-authenticated, and publishes it — with the composition stored as canonical JSON carrying no executable code
-or unrestricted markup/style, while safe markup and scoped styling cross only their governed boundaries.
+This plan references those requirements; it does not restate or renumber them.
 
----
+## Joint product outcome
 
-## The scope decision this plan is built on
+Kumwe App launches Studio directly from an authorized managed-content create/edit target. The author can start
+blank or from a reusable type, arrange layout, define or bind fields, enter values, preview, and choose an
+explicit save outcome without a disconnected screen. Model, Blueprint, and Entry remain distinct artifacts and
+revisions even though the interface coordinates them as one journey. Extension-declared targets admit trusted
+blocks, patterns, field adapters, inspectors, design vocabulary, and migrations through the same immutable
+owner-aware generation.
 
-**Version 2 is the web interface.** Studio integrates into the Kumwe App administrator and is qualified
-there. **Dart and Flutter parity is Version 3 scope**, needed when the App runs in a client and pages
-must be composed there.
-
-Studio's earlier Gate A criterion 9 and Gate B criteria 2, 3, 4 and 9 required Dart and therefore
-blocked a Version 2 deliberately scoped without it. Studio's `ST-0` amends those criteria and records
-the deferred native profiles as Version 3 targets. The amendment does not itself accept a gate or
-claim a profile.
-
----
-
-## Why the order matters
-
-Studio now has the public headless host-session seam from `ST-2`, the host-staged preview binding from
-`ST-4`, core layout blocks from `ST-6`, the measured visual canvas from `ST-7`, and the read-only model binding
-projection from `ST-8`. The remaining cross-repository fact is release coordination: the App cannot consume
-an unpublished Studio workspace, and Studio cannot claim the App integration until AP-2 and the real adapter
-replay the exact published corpus.
-
-AP-2 currently projects authorized Content definitions and entries with reversible coordinates, while
-BusinessRecord projection remains explicitly deferred to a separate bounded-context adapter. Studio's
-binding corpus uses the AP-2 coordinate/cardinality/control rules, but repository tests are not a real App
-host-session replay or an accepted profile claim.
-
-`ST-7` is now present as a repository-verified implementation increment: direct manipulation resolves through
-preview geometry, pointer and keyboard paths share the same semantic command dispatcher, and the Blueprint
-command surface is complete. It therefore no longer blocks implementation of the App's embedded builder.
-What remains is the coordinated App adapter/session replay at one release coordinate and the independent and
-manual qualification named by the evidence model; those obligations still gate acceptance of the final
-embedded-builder journey.
-
-The subsequent production wave is also present in Studio: 45 first-party blocks, ten patterns, guided
-rich-text/source/chart/drawing/table/money/presentation/media controls, policy-filtered resource discovery,
-Editor.js behind a private canonical adapter, and `@kumwe/studio-renderer-web` with an exhaustive portable
-corpus. This closes the earlier question about how much page-builder surface Version 2 receives. It does not
-close release coordination, Kumwe App's adapter/Twig replay, the complete `authoring-web` profile, independent
-evidence, or the recorded Editor.js distribution-license decision.
+Kumwe App remains authoritative through PHP application services and PHP HTTP endpoints. Studio is deployed as
+compiled browser assets; production installation, operation, preview, save, publication, and rendering require
+no Node.js, npm, Vite, or server-side JavaScript process. These outcomes are governed by
+`STUDIO-PROD-001`–`013`; truthful status and the executable acceptance journey are
+`STUDIO-PROD-014`–`015`.
 
 ## Current coordinated checkpoint
 
-| Area            | Current truth                                                                                                             | Next irreversible dependency                                                                        |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Studio source   | Repository-verified eight-package candidate with the standalone page-builder runtime and green check lane                 | Merge, Changesets versioning, protected publish, and registry verification of one exact family      |
-| Studio profiles | Eight declared executable profiles including `renderer-web`; `authoring-web` remains a target; release record claims none | Complete the real-shell authoring corpus and reproduce claim evidence                               |
-| Kumwe App       | Additive integration branch may implement host-owned adapters, Twig rendering, persistence, policy, media, and lifecycle  | Replace provisional pins atomically with the official Studio coordinate and replay the exact corpus |
-| Release status  | `alpha`; candidate bits are not an npm `rc`, Gate A is unassessed, and Gate B is blocked                                  | Independent human review and gate/channel decision after integrated qualification                   |
+| Area | Current truth | Required next state |
+| --- | --- | --- |
+| Studio source | Exact `main` `829694efb25374d3b498f2d46856d2c39650728a`; coordinated eight-package `0.1.0-rc.1` candidate | Keep all qualification and host work pinned to this exact family or a deliberately regenerated successor |
+| Release record | Records the fixed nine proposed profile claims | Reproduce the exact assertion sets; a recorded claim is not accepted evidence or an official channel |
+| Composed host session | Loads and saves one Blueprint | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions |
+| Lit authoring shell | Separate alpha surface with measured Blueprint canvas, broad catalog, preview, media/resource controls, and read-only model projection | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity |
+| Contributions | Six canonical contribution kinds compile into an immutable owner-aware generation | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target |
+| Kumwe App | Host mapping and additive integration work remain candidates | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
+| Gates | Gate A **Not assessed**; Gate B **Blocked** | Accept independently reproduced evidence before official `rc`, stable, or production-support claims |
 
----
+The checked-in `0.1.0-rc.1` metadata is not proof that npm has the family, that the official `rc` tag moved, or
+that any host is supported.
 
-## Dependency matrix
+## Ownership split
 
-| App package                      | Needs from Studio                                                             | Can start when          |
-| -------------------------------- | ----------------------------------------------------------------------------- | ----------------------- |
-| `S-B` pin and replay corpus      | `ST-1` release coordinate                                                     | `ST-1` published        |
-| content-type projection (`AP-2`) | binding schema/profile are implemented; consume a published Studio coordinate | Studio release required |
-| `S-C` identity and policy        | `ST-2` host-session binding                                                   | `ST-2` published        |
-| `S-D` persistence                | `ST-2`                                                                        | `ST-2` published        |
-| `S-E` media                      | `ST-2`                                                                        | `ST-2` published        |
-| `S-F` preview endpoint           | `ST-4` preview surface                                                        | `ST-4` published        |
-| `S-G` embedded surface           | `ST-4`, `ST-5` modes, `ST-6` layout blocks, `ST-7` canvas                     | `ST-7` published        |
-| qualification (phase 7)          | `ST-9` message catalogue, `ST-11` ratified contract                           | all of the above        |
+| Studio owns | Kumwe App owns |
+| --- | --- |
+| Contextual authoring interaction, canvas, outline, inspector, fields/value presentation, accessibility, and deterministic local commands | Resource launch, identity, authorization, policy, exact artifact references, persistence, workflow, audit, publication, and recovery |
+| Portable Model, Blueprint, Entry, binding, block, pattern, field-adapter, and target contracts as they are added | PHP application services and PHP HTTP adapters implementing every authoritative operation |
+| Capability negotiation, host-port semantics, canonical vectors, compiled browser package, and conformance assertions | Extension trust/install lifecycle, immutable generation admission, media custody, Twig/KIS rendering, database transactions, and operational rollback |
+| No-JavaScript delivery semantics and public renderer corpus | Production asset serving and public/portal/admin rendering with no Node.js/npm runtime |
 
-| Studio step                   | Needs from Kumwe App                       | Can start when                                                                 |
-| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
-| `ST-3` all contribution kinds | nothing — the App already declares them    | **now**                                                                        |
-| `ST-8` content-type binding   | `AP-2` projection through the `model` port | Implemented in coordinated branches; joint replay still requires both releases |
-| `ST-11` ratification          | a second reviewer (see below)              | a second human exists                                                          |
+Neither repository may fill a missing public contract with a private shape and then call that shape conformant.
+Until Studio publishes the contextual target and coordinated transaction surfaces, Kumwe App may build an
+explicitly provisional adapter but must keep it isolated and replaceable.
 
----
+## Dependency-ordered landing sequence
 
-## Milestones
+### 1. Freeze the product boundary
 
-### Milestone 1 — Wired
+- Treat `STUDIO-PROD-001`–`015` as the sole product requirement set.
+- Keep canonical schemas authoritative for serialized shape and `docs/contracts/` authoritative for observable
+  semantics.
+- Add or change public APIs only through the contract/schema/ADR workflow; documentation does not invent shipped
+  operations.
 
-_Studio_ `ST-0` scope amendment, `ST-1` release coordinate, `ST-2` host-session binding, `ST-3` all
-contribution kinds. _App_ `AP-1` full pin and corpus replay, `AP-2` content-type projection, then `S-C`,
-`S-D`, `S-E`.
+### 2. Complete the Studio contextual surface
 
-**Done when** a Kumwe App session opens through the real adapter, loads an artifact, edits it, saves
-with an expected revision, survives a conflict by returning the safe revision, and invalidates on a
-permission change — proved by the host conformance profiles rather than by hand-written expectations.
+- Add extension-declared authoring-target resolution and exact resource launch.
+- Compose separate Model, Blueprint, and Entry state in one session with exact reusable-type hydration.
+- Put layout, field definition/binding, and entry values on the same canvas/inspector surface.
+- Add explicit item-save, save-as-new-type, and update-type-version transactions.
+- Preserve resource identity, selection, authority, unsaved state, locale, and return path across in-context and
+  expanded presentation.
+- Keep every operation available through pointer, keyboard, and explicit controls.
 
-**Current state:** Studio's host/session side and corpora are implemented; completion still depends on an
-official package coordinate and the real Kumwe App replay.
+This work closes the gaps tracked by `STUDIO-PROD-001`–`009`, `012`, and `013`; the current Blueprint shell does
+not satisfy them by composition alone.
 
-### Milestone 2 — Visible
+### 3. Bind Kumwe App authority
 
-_Studio_ `ST-4` preview surface, `ST-5` session modes, `ST-6` layout blocks and responsive vocabulary,
-`ST-7` visual canvas and direct manipulation, `ST-8` binding to host content types. _App_ `S-F`
-authenticated preview endpoint.
+- Resolve the extension-declared target through Kumwe App identity, site/organization, content type, resource,
+  permissions, and immutable runtime generation.
+- Implement load, validation, save/type-version, preview, media, workflow, publication, recovery, and audit in
+  PHP application services exposed through PHP HTTP endpoints.
+- Admit canonical target, block, pattern, and field-adapter declarations atomically with the owner-aware
+  generation; disable/revoke without deleting stored artifacts.
+- Render preview and public output through authenticated PHP/Twig/KIS paths and trusted focused enhancements.
+- Install and serve the compiled Studio browser assets without production Node.js/npm.
 
-**Done when** an author composes a nested, responsive page by dragging, sees it render live through the
-App's own template and theme path, and binds a block to a real content-type field — with every one of
-those operations also achievable by keyboard.
+This is the host proof for `STUDIO-PROD-008`–`011`; TypeScript testbed behavior cannot substitute for it.
 
-**Current state:** the standalone Studio canvas, catalog, renderer, controls, media/resource seams, and binding
-projection are implemented. The App's authenticated Twig path and exact-package browser journey remain the
-cross-repository proof.
+### 4. Pin and replay one candidate
 
-### Milestone 3 — Shippable
+1. Quarantine and verify the exact eight-package candidate through the governed release path.
+2. Pin the complete release record and corpus digest atomically in Kumwe App.
+3. Replay applicable host, preview, media, schema, binding, contribution, renderer, security, and environment
+   assertions through the real PHP/Twig integration.
+4. Run the complete `STUDIO-PROD-015` journey, including blank and reusable-type starts, empty-value hydration,
+   all save outcomes, presentation continuity, an extension block, and a field adapter.
+5. Reproduce accessibility, browser, database, migration, rollback, restart, backup/restore, and zero-production-
+   Node conditions independently.
 
-_Studio_ `ST-9` message catalogue, `ST-10` evidence-lane repair, `ST-11` ratification and the `beta`
-channel. _App_ `S-G` embedded surface, then phase 7 qualification: `P7-E` composition journey, `P7-C`
-preview and media security, `P7-F` a contributed composition block in the proof portfolio, `P7-G` the
-pinned release in the signed manifest.
+A fix changes the candidate coordinate and requires a deliberate re-pin and affected evidence replay. Workspace
+links, copied packages, mixed prerelease versions, or an unverified release record are not substitutes.
 
-**Done when** Gate B criterion 12 closes and `V2-STU-002`–`V2-STU-007` leave the App's ledger.
+## Claim boundary
 
----
+Repository tests may prove primitives. A host browser journey may prove integration behavior. Release metadata
+may freeze intended profiles. None alone opens an official channel or changes a gate.
 
-## The version pin protocol
+The coordinated product remains unqualified until `STUDIO-PROD-015` passes against the exact candidate and real
+host, the profile assertions are independently reproduced, Gate A is accepted, and Gate B qualification later
+supports stable/production claims. Until then:
 
-1. Studio publishes a **release coordinate** naming all eight package versions, the wire version, the
-   corpus digest and the claimed profiles (`ST-1`).
-2. Kumwe App vendors that record with the corpus, pins every package exactly, and digest-verifies before
-   any conformance run. A non-exact specifier fails its build.
-3. A Studio fix reaches the App **only** as a deliberate re-pin: new versions, new digests, one changed
-   pin record, in one change with its own evidence.
-4. The App's signed release manifest records the exact coordinate the release qualified.
-
-**A contract change while the App is mid-integration** is raised as a finding in both repositories
-before it publishes. Studio does not weaken a portable contract to accommodate a host shape, and the App
-does not paraphrase a canonical document to avoid a re-pin — that was the failure mode manifest 6 / SPI 4
-was created to correct.
-
----
-
-## What only a person can decide or do
-
-1. **Gate acceptance needs a second human.** Studio's evidence model requires two reviewers, one
-   independent of the work-package owners, and states an automated contributor is never a reviewer. The
-   repository has one human author. No implementation removes this: without a second reviewer, Studio's
-   Gate A cannot be accepted, and the App's Gate B criterion 12 rests on an unratified contract.
-2. **Whether Version 2 ships against a ratified or a draft contract.** If Studio's Gate A cannot be
-   accepted in time, the choice is to ship qualified against a pinned draft — honestly recorded — or to
-   hold the release. Pinning exact versions makes the first option viable; it is still a decision.
-3. **The Editor.js distribution decision.** Studio isolates the Apache-2.0 dependency behind its private
-   rich-text boundary, but Kumwe App currently declares `GPL-2.0-only`. A qualified rights/licensing decision
-   or approved distribution boundary is still required before the affected integrated release can be
-   promoted; documentation and automation cannot make that decision.
-
----
-
-## Standing rules for both sides
-
-- Studio owns the authoring experience and the protocol; Kumwe App owns the host adapter and every
-  authoritative service behind it. An integration need that cannot be met through a public port is a
-  finding against the boundary, raised in both repositories — never an inline workaround.
-- Composition documents are artifacts the platform stores and versions; the platform never interprets or
-  mutates their interior on a write path.
-- No Kumwe App type, name or assumption enters a generic Studio package.
-- Neither side claims a conformance profile without replaying the corpus at the pinned release.
+- call the source an `0.1.0-rc.1` candidate, not an official or stable release;
+- call the current UI a Blueprint composition shell, not completed contextual content authoring;
+- call the reference host a harness, not a production host; and
+- retain existing Kumwe App editors as explicit transitional fallback rather than redefining the target default.
