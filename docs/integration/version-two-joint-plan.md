@@ -6,12 +6,12 @@ the [Studio product contract](../product-contract.md). Studio's current implemen
 in [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md). Kumwe App owns its implementation sequence in its own
 repository.
 
-| Boundary | Authority |
-| --- | --- |
-| Product outcome | [`STUDIO-PROD-001`–`STUDIO-PROD-015`](../product-contract.md) |
-| Studio implementation and gates | [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md) |
-| Generic host mapping | [`generic-host.md`](generic-host.md) |
-| Kumwe App mapping | [`kumwe-app.md`](kumwe-app.md) |
+| Boundary                        | Authority                                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Product outcome                 | [`STUDIO-PROD-001`–`STUDIO-PROD-015`](../product-contract.md)                                                    |
+| Studio implementation and gates | [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md)                                                                 |
+| Generic host mapping            | [`generic-host.md`](generic-host.md)                                                                             |
+| Kumwe App mapping               | [`kumwe-app.md`](kumwe-app.md)                                                                                   |
 | Kumwe App implementation detail | [`kumwe/app` Studio completion plan](https://github.com/kumwe/app/blob/master/docs/roadmap/studio-completion.md) |
 
 This plan references those requirements; it does not restate or renumber them.
@@ -33,27 +33,27 @@ no Node.js, npm, Vite, or server-side JavaScript process. These outcomes are gov
 
 ## Current coordinated checkpoint
 
-| Area | Current truth | Required next state |
-| --- | --- | --- |
-| Studio source | Exact `main` `829694efb25374d3b498f2d46856d2c39650728a`; coordinated eight-package `0.1.0-rc.1` candidate | Keep all qualification and host work pinned to this exact family or a deliberately regenerated successor |
-| Release record | Records the fixed nine proposed profile claims | Reproduce the exact assertion sets; a recorded claim is not accepted evidence or an official channel |
-| Composed host session | Loads and saves one Blueprint | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions |
-| Lit authoring shell | Separate alpha surface with measured Blueprint canvas, broad catalog, preview, media/resource controls, and read-only model projection | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity |
-| Contributions | Six canonical contribution kinds compile into an immutable owner-aware generation | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target |
-| Kumwe App | Host mapping and additive integration work remain candidates | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
-| Gates | Gate A **Not assessed**; Gate B **Blocked** | Accept independently reproduced evidence before official `rc`, stable, or production-support claims |
+| Area                  | Current truth                                                                                                                          | Required next state                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Studio source         | Exact `main` `829694efb25374d3b498f2d46856d2c39650728a`; coordinated eight-package `0.1.0-rc.1` candidate                              | Keep all qualification and host work pinned to this exact family or a deliberately regenerated successor      |
+| Release record        | Records the fixed nine proposed profile claims                                                                                         | Reproduce the exact assertion sets; a recorded claim is not accepted evidence or an official channel          |
+| Composed host session | Loads and saves one Blueprint                                                                                                          | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions                      |
+| Lit authoring shell   | Separate alpha surface with measured Blueprint canvas, broad catalog, preview, media/resource controls, and read-only model projection | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity  |
+| Contributions         | Six canonical contribution kinds compile into an immutable owner-aware generation                                                      | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target       |
+| Kumwe App             | Host mapping and additive integration work remain candidates                                                                           | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
+| Gates                 | Gate A **Not assessed**; Gate B **Blocked**                                                                                            | Accept independently reproduced evidence before official `rc`, stable, or production-support claims           |
 
 The checked-in `0.1.0-rc.1` metadata is not proof that npm has the family, that the official `rc` tag moved, or
 that any host is supported.
 
 ## Ownership split
 
-| Studio owns | Kumwe App owns |
-| --- | --- |
-| Contextual authoring interaction, canvas, outline, inspector, fields/value presentation, accessibility, and deterministic local commands | Resource launch, identity, authorization, policy, exact artifact references, persistence, workflow, audit, publication, and recovery |
-| Portable Model, Blueprint, Entry, binding, block, pattern, field-adapter, and target contracts as they are added | PHP application services and PHP HTTP adapters implementing every authoritative operation |
-| Capability negotiation, host-port semantics, canonical vectors, compiled browser package, and conformance assertions | Extension trust/install lifecycle, immutable generation admission, media custody, Twig/KIS rendering, database transactions, and operational rollback |
-| No-JavaScript delivery semantics and public renderer corpus | Production asset serving and public/portal/admin rendering with no Node.js/npm runtime |
+| Studio owns                                                                                                                              | Kumwe App owns                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contextual authoring interaction, canvas, outline, inspector, fields/value presentation, accessibility, and deterministic local commands | Resource launch, identity, authorization, policy, exact artifact references, persistence, workflow, audit, publication, and recovery                  |
+| Portable Model, Blueprint, Entry, binding, block, pattern, field-adapter, and target contracts as they are added                         | PHP application services and PHP HTTP adapters implementing every authoritative operation                                                             |
+| Capability negotiation, host-port semantics, canonical vectors, compiled browser package, and conformance assertions                     | Extension trust/install lifecycle, immutable generation admission, media custody, Twig/KIS rendering, database transactions, and operational rollback |
+| No-JavaScript delivery semantics and public renderer corpus                                                                              | Production asset serving and public/portal/admin rendering with no Node.js/npm runtime                                                                |
 
 Neither repository may fill a missing public contract with a private shape and then call that shape conformant.
 Until Studio publishes the contextual target and coordinated transaction surfaces, Kumwe App may build an

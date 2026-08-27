@@ -116,21 +116,21 @@ services, never editor tools, plugin configuration, or editor-native JSON.
 Transport is adapter-owned. HTTP, an in-process API, `postMessage`, a desktop bridge, or a native channel may
 be used if it preserves the same semantics.
 
-| Port area    | Required behaviour                                                                                                                                  |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Port area     | Required behaviour                                                                                                                                                                |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Target launch | Resolve an extension-declared target to one authorized create/edit context, exact artifact revisions, permitted presentation states, save outcomes, and deterministic return path |
-| Session      | Negotiate protocol/profile/capability versions; create a generation; reject stale or incompatible sessions; cancel and close cleanly                |
-| Resources    | Load exact revisions of models, Blueprints, entries, themes and contribution inventories; return structured not-found/denied/incompatible results   |
-| Policy       | Supply only visible fields/resources and authorized operation IDs; reauthorize every host effect independently                                      |
-| Validation   | Validate the complete proposed artifact against protocol, host domain, permissions, dependencies and limits; return stable field/node diagnostics   |
-| Persistence  | Accept expected revision and idempotency key; transact validation, write, audit and revision creation; return normalized accepted state or conflict |
-| Publication  | Authorize and validate publication separately from save; pin dependency revisions; return immutable publication identity                            |
-| Preview      | Render authenticated draft data through trusted renderers; attach opaque node markers; pin origin/session/revision; report stale/failed state       |
-| Media        | Search, browse, upload, process, select, describe and resolve stable media references under policy                                                  |
-| References   | Resolve allowed resource types and bounded queries without exposing hidden counts/fields or arbitrary host query syntax                             |
-| Localization | Resolve translation keys and formatting using the session locale; report missing keys deterministically                                             |
-| Recovery     | Store/load/delete bounded recovery envelopes under actor/resource policy, encryption and expiry                                                     |
-| Telemetry    | Accept only declared redacted events with consent and retention policy; authoring does not depend on telemetry success                              |
+| Session       | Negotiate protocol/profile/capability versions; create a generation; reject stale or incompatible sessions; cancel and close cleanly                                              |
+| Resources     | Load exact revisions of models, Blueprints, entries, themes and contribution inventories; return structured not-found/denied/incompatible results                                 |
+| Policy        | Supply only visible fields/resources and authorized operation IDs; reauthorize every host effect independently                                                                    |
+| Validation    | Validate the complete proposed artifact against protocol, host domain, permissions, dependencies and limits; return stable field/node diagnostics                                 |
+| Persistence   | Accept expected revision and idempotency key; transact validation, write, audit and revision creation; return normalized accepted state or conflict                               |
+| Publication   | Authorize and validate publication separately from save; pin dependency revisions; return immutable publication identity                                                          |
+| Preview       | Render authenticated draft data through trusted renderers; attach opaque node markers; pin origin/session/revision; report stale/failed state                                     |
+| Media         | Search, browse, upload, process, select, describe and resolve stable media references under policy                                                                                |
+| References    | Resolve allowed resource types and bounded queries without exposing hidden counts/fields or arbitrary host query syntax                                                           |
+| Localization  | Resolve translation keys and formatting using the session locale; report missing keys deterministically                                                                           |
+| Recovery      | Store/load/delete bounded recovery envelopes under actor/resource policy, encryption and expiry                                                                                   |
+| Telemetry     | Accept only declared redacted events with consent and retention policy; authoring does not depend on telemetry success                                                            |
 
 Each request carries a request ID, session generation, actor/resource context, cancellation signal where the
 transport permits it, and an idempotency key for retryable mutation. Sensitive credentials remain in the host

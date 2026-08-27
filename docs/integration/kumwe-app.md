@@ -173,22 +173,22 @@ binding stores a stable field reference; save commands invoke Kumwe App use case
 
 ## Studio-to-Kumwe App port mapping
 
-| Studio host area   | Kumwe App implementation responsibility                                                                                                                 |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation          |
-| Models             | AP-2 projects existing immutable Content types now; a later separate BusinessRecord adapter applies its own definition and BusinessSecurity rules       |
-| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                     |
-| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                     |
-| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                            |
-| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                               |
-| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                   |
-| Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                      |
+| Studio host area   | Kumwe App implementation responsibility                                                                                                                                                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation                                                                                                                   |
+| Models             | AP-2 projects existing immutable Content types now; a later separate BusinessRecord adapter applies its own definition and BusinessSecurity rules                                                                                                                |
+| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                                                                                                                              |
+| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                                                                                                                              |
+| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                                                                                                                                     |
+| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                                                                                                                                        |
+| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                                                                                                                            |
+| Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                                                                                                                               |
 | Contributions      | Manifest 6 / SPI 4 admits the declared authoring target plus canonical blocks, patterns, field adapters, inspectors, design vocabulary, and migrations into the existing owner-aware immutable generation; the target shape remains planned Studio contract work |
-| Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client |
-| Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                    |
-| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                      |
-| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                 |
-| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                       |
+| Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client                                                                                                          |
+| Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                                                                                                                             |
+| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                                                                                                                               |
+| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                                                                                                                          |
+| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                                                                                                                                |
 
 When the App owns identifier allocation for a `studio-insert-request`, it executes the resulting canonical
 command and calls the shell's public `selectNode()` seam with the accepted node identifier. That keeps the
@@ -348,12 +348,12 @@ Production activation starts after Studio Gate A. Additive adapter work may proc
 integration branches, but it remains a discovery/integration candidate and cannot become a supported runtime
 dependency until the contract and exact release coordinate are accepted.
 
-| Studio package  | Kumwe App integration result                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
+| Studio package  | Kumwe App integration result                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `M3-05`         | Additive host-port, persistence, preview, policy and API seams; existing editors remain an explicitly transitional fallback while contextual coverage is incomplete |
-| `M5-06`         | Landing and product/service vertical slices using real extensions, themes, media, workflow and Twig     |
-| `M6-01`–`M6-05` | Migration, security, accessibility, performance, release, restart, backup/restore and rollback evidence |
-| Gate B          | Studio packages and the Kumwe App profile are eligible for release/integration merge                    |
+| `M5-06`         | Landing and product/service vertical slices using real extensions, themes, media, workflow and Twig                                                                 |
+| `M6-01`–`M6-05` | Migration, security, accessibility, performance, release, restart, backup/restore and rollback evidence                                                             |
+| Gate B          | Studio packages and the Kumwe App profile are eligible for release/integration merge                                                                                |
 
 ## Kumwe App Gate B proof
 
