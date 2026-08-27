@@ -1,0 +1,24 @@
+{
+  "schema": "authoring-target.schema.json",
+  "description": "A target cannot be resolved without a bounded host resource type inventory.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-target",
+    "id": "org.example.catalog/product-content",
+    "owner": {
+      "id": "org.example/catalog",
+      "version": "1.0.0"
+    },
+    "label": {
+      "key": "org.example.catalog/product-content"
+    },
+    "surface": "org.example.catalog/product-editor",
+    "eligibility": ["create", "edit"],
+    "modes": ["content"],
+    "startKinds": ["existing"],
+    "presentationStates": ["inline"],
+    "saveOutcomes": ["save-item"],
+    "requiredCapabilities": [],
+    "contributionDependencies": []
+  }
+}

@@ -8,6 +8,18 @@
           "file": "authoring-message-catalog.en.json"
         },
         {
+          "digest": "sha256-EDQMZcJgHpyCjYnjD1Vle+qINt+ii7df8ackhJ0wyl8=",
+          "file": "authoring-save.plan.example.json"
+        },
+        {
+          "digest": "sha256-zmP9grVS7kYOVsoH6nWd/15IlllVW1vYRJjz3AvajI8=",
+          "file": "authoring-session.example.json"
+        },
+        {
+          "digest": "sha256-oDINh/ZoTlEzYlf+/E31mYddo1LXSYG33aEaUGq2i4I=",
+          "file": "authoring-target.example.json"
+        },
+        {
           "digest": "sha256-VPvgjeVcou8k/vGgrFXfMOx2ureah7+HADcuV1ze8To=",
           "file": "block.grid.example.json"
         },
@@ -48,7 +60,7 @@
           "file": "host-error.conflict.example.json"
         },
         {
-          "digest": "sha256-SJwDS1MjbhC9zDyHhmuXPVjhTrxQnxfKhtJ9o2Uvv+Q=",
+          "digest": "sha256-52sSih7W3FfACN77wf9w69JAnUSiKYmMGGgIELB3tqw=",
           "file": "host-operations.example.json"
         },
         {
@@ -94,6 +106,10 @@
         {
           "digest": "sha256-LYQoj0Jvx3qr4aiqy9r+JhLZixKS1c/rdhrHC2nM5x0=",
           "file": "provenance.example.json"
+        },
+        {
+          "digest": "sha256-t9UP5fgKknUbGHJtIjhDy9z96gqkTuSCth+vgJHg+Mo=",
+          "file": "reusable-content-type.example.json"
         },
         {
           "digest": "sha256-EXaD+hJHyRCGQoxSVo/a7jJBUJ2ZqH5a6eXdjTPfros=",
@@ -926,6 +942,18 @@
     {
       "files": [
         {
+          "digest": "sha256-K34yORwyTZIhuYALL7OMN3I/yTIfohzvX2j0mmJClDc=",
+          "file": "authoring-save.plan-missing-coordinates.json"
+        },
+        {
+          "digest": "sha256-MCJnARlTtq/Bu6cEfE4mgKn+/bF9Ie49nVzjNh1q+ZY=",
+          "file": "authoring-session.missing-entry-state.json"
+        },
+        {
+          "digest": "sha256-cmSS67Tsvof3kidNu4igl/Gx21+4WwW0iSrpCcX74z0=",
+          "file": "authoring-target.missing-resource-types.json"
+        },
+        {
           "digest": "sha256-QioG6zTTAy2LjLUO5oNmYvvvzJ754+kQq9fMCAz2iFA=",
           "file": "binding-projection-vector.unknown-status.json"
         },
@@ -1084,6 +1112,10 @@
         {
           "digest": "sha256-a7E9wkgCsB+d2WxYAjJjmRJJsFhrL+fnZo/aQsMYIE0=",
           "file": "preview-message.viewport-unsafe-role.json"
+        },
+        {
+          "digest": "sha256-Cq6bZogn1IJfqzkIgNtu3mpMHASFAf0hSbRqPjlIhDc=",
+          "file": "reusable-content-type.entry-values.json"
         },
         {
           "digest": "sha256-Ha4ygQciWMcqcM8k/7qDW3CW4mr2EIwdrRCxglwBG2c=",

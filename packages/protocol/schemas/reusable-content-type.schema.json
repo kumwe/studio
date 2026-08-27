@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/reusable-content-type.schema.json",
+  "title": "Studio host-owned reusable content type projection",
+  "description": "The host-facing definition that coordinates exact Model and Blueprint revisions. It is not a portable Studio artifact and never contains Entry values.",
+  "$ref": "#/$defs/definition",
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version", "revision"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/stableId" },
+        "version": { "$ref": "common.schema.json#/$defs/semanticVersion" },
+        "revision": { "$ref": "common.schema.json#/$defs/revision" }
+      }
+    },
+    "authoringPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modes", "itemComposition"],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["model", "blueprint", "content"] }
+        },
+        "itemComposition": { "enum": ["denied", "overrides"] }
+      }
+    },
+    "definition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "id",
+        "version",
+        "revision",
+        "label",
+        "status",
+        "model",
+        "blueprint",
+        "authoringPolicy"
+      ],
+      "properties": {
+        "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+        "kind": { "const": "reusable-content-type" },
+        "id": { "$ref": "common.schema.json#/$defs/stableId" },
+        "version": { "$ref": "common.schema.json#/$defs/semanticVersion" },
+        "revision": { "$ref": "common.schema.json#/$defs/revision" },
+        "label": { "$ref": "common.schema.json#/$defs/messageReference" },
+        "status": { "enum": ["draft", "published", "retired"] },
+        "model": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" },
+        "blueprint": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" },
+        "authoringPolicy": { "$ref": "#/$defs/authoringPolicy" },
+        "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "label", "model", "blueprint"],
+      "properties": {
+        "reference": { "$ref": "#/$defs/reference" },
+        "label": { "$ref": "common.schema.json#/$defs/messageReference" },
+        "model": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" },
+        "blueprint": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" }
+      }
+    },
+    "listQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "resourceContext", "limit"],
+      "properties": {
+        "targetId": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "resourceContext": { "$ref": "common.schema.json#/$defs/resourceContext" },
+        "cursor": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "search": { "type": "string", "maxLength": 500 }
+      }
+    },
+    "listPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/summary" }
+        },
+        "nextCursor": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    }
+  }
+}

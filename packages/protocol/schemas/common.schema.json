@@ -145,6 +145,51 @@
         "integrity": { "$ref": "#/$defs/integrity" }
       }
     },
+    "resourceIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "$ref": "#/$defs/qualifiedName" },
+        "id": { "$ref": "#/$defs/stableId" }
+      }
+    },
+    "resourceScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": { "$ref": "#/$defs/qualifiedName" },
+        "id": { "$ref": "#/$defs/stableId" }
+      }
+    },
+    "resourceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "surface", "scopes"],
+      "properties": {
+        "key": { "$ref": "#/$defs/stableId" },
+        "surface": { "$ref": "#/$defs/qualifiedName" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "scopes": {
+          "type": "array",
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/resourceScope" }
+        },
+        "resource": { "$ref": "#/$defs/resourceIdentity" }
+      }
+    },
+    "returnContext": {
+      "description": "A non-secret host-minted pointer for deterministic return navigation. It is not a URL, credential, or permission.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key"],
+      "properties": {
+        "key": { "$ref": "#/$defs/stableId" },
+        "label": { "$ref": "#/$defs/messageReference" }
+      }
+    },
     "jsonValue": {
       "oneOf": [
         { "type": "null" },

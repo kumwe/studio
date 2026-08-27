@@ -35,6 +35,10 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 | [`common.schema.json`](common.schema.json)                                       | Shared identifiers, references, messages and diagnostics |
 | [`authoring-message-catalog.schema.json`](authoring-message-catalog.schema.json) | Versioned shell locale catalog and named parameters      |
 | [`studio-config.schema.json`](studio-config.schema.json)                         | Resolved serializable session configuration              |
+| [`authoring-target.schema.json`](authoring-target.schema.json)                   | Core/extension contextual target declaration             |
+| [`reusable-content-type.schema.json`](reusable-content-type.schema.json)         | Host-owned Model/Blueprint type projection               |
+| [`authoring-session.schema.json`](authoring-session.schema.json)                 | Coordinated Model/Blueprint/Entry session snapshot       |
+| [`authoring-save.schema.json`](authoring-save.schema.json)                       | Explicit save planning and reconciliation documents      |
 | [`studio-release.schema.json`](studio-release.schema.json)                       | Fixed eight-package Studio release coordinate            |
 | [`content-model.schema.json`](content-model.schema.json)                         | Portable content-model definition                        |
 | [`entry.schema.json`](entry.schema.json)                                         | Typed-model entry envelope and values                    |

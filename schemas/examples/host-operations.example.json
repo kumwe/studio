@@ -58,6 +58,83 @@
       "route": "artifact/unpublish"
     },
     {
+      "capability": "studio.operation/authoring.list-types",
+      "expectsRevision": false,
+      "method": "listTypes",
+      "mutating": false,
+      "operation": "list-types",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/list-types"
+    },
+    {
+      "capability": "studio.operation/authoring.plan-save",
+      "expectsRevision": false,
+      "method": "planSave",
+      "mutating": false,
+      "operation": "plan-save",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/plan-save"
+    },
+    {
+      "capability": "studio.operation/authoring.resolve-target",
+      "expectsRevision": false,
+      "method": "resolveTarget",
+      "mutating": false,
+      "operation": "resolve-target",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/resolve-target"
+    },
+    {
+      "capability": "studio.operation/authoring.save-as-new-type",
+      "expectsRevision": false,
+      "method": "saveAsNewType",
+      "mutating": true,
+      "operation": "save-as-new-type",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/save-as-new-type"
+    },
+    {
+      "capability": "studio.operation/authoring.save-item",
+      "expectsRevision": false,
+      "method": "saveItem",
+      "mutating": true,
+      "operation": "save-item",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/save-item"
+    },
+    {
+      "capability": "studio.operation/authoring.save-new-type-version",
+      "expectsRevision": false,
+      "method": "saveNewTypeVersion",
+      "mutating": true,
+      "operation": "save-new-type-version",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/save-new-type-version"
+    },
+    {
+      "capability": "studio.operation/authoring.start",
+      "expectsRevision": false,
+      "method": "start",
+      "mutating": true,
+      "operation": "start",
+      "port": "authoring",
+      "portCapability": "studio.port/authoring",
+      "required": false,
+      "route": "authoring/start"
+    },
+    {
       "capability": "studio.operation/localization.messages",
       "expectsRevision": false,
       "method": "messages",

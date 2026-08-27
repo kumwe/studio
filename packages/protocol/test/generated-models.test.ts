@@ -25,6 +25,9 @@ const compilerDepthBoundaries = new Set([
 
 const exampleSchemas = new Map<GeneratedProtocolSchemaFile, readonly string[]>([
   ['authoring-message-catalog.schema.json', ['authoring-message-catalog.en.json']],
+  ['authoring-save.schema.json', ['authoring-save.plan.example.json']],
+  ['authoring-session.schema.json', ['authoring-session.example.json']],
+  ['authoring-target.schema.json', ['authoring-target.example.json']],
   ['block-definition.schema.json', ['block.grid.example.json', 'block.price.example.json']],
   ['blueprint.schema.json', ['blueprint.product.example.json']],
   ['command.schema.json', ['command.move-node.example.json']],
@@ -46,6 +49,7 @@ const exampleSchemas = new Map<GeneratedProtocolSchemaFile, readonly string[]>([
   ['preview-message.schema.json', ['preview.render.example.json']],
   ['provenance.schema.json', ['provenance.example.json']],
   ['rich-text.schema.json', ['rich-text.example.json']],
+  ['reusable-content-type.schema.json', ['reusable-content-type.example.json']],
   ['studio-config.schema.json', ['studio-config.example.json']],
   ['theme.schema.json', ['theme.example.json']],
   ['unresolved-contribution.schema.json', ['unresolved-contribution.example.json']],

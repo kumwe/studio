@@ -28,9 +28,9 @@ export const GENERATED_TYPESCRIPT_MODEL_METADATA: GeneratedTypeScriptModelMetada
     name: '@kumwe/studio/typescript-model-generator',
     version: '1.0.0',
   }),
-  schemaCount: 47,
+  schemaCount: 51,
   schemaEpoch: 'https://schemas.kumwe.org/studio/v1/',
-  schemaManifestDigest: 'sha256-ZE3mf9/sFxAd1Z8j02m6pEhf/olVlnccu4iF1M8+DPw=',
+  schemaManifestDigest: 'sha256-S8c0ClVh0fkDfljdRhqNRbZPak7gzlHuXpUOPqZ3250=',
   supportedWireProtocolRange: '0.1.0-draft.2',
 });
 
@@ -48,6 +48,231 @@ export type GeneratedAuthoringMessageCatalogMessage = {
   defaultMessage: string;
   parameters: GeneratedCommonLocalName[];
 };
+
+/** Studio contextual authoring save documents */
+export type GeneratedAuthoringSave =
+  | GeneratedAuthoringSaveSaveIntent
+  | GeneratedAuthoringSaveSavePlan
+  | GeneratedAuthoringSaveSaveItemRequest
+  | GeneratedAuthoringSaveSaveNewTypeVersionRequest
+  | GeneratedAuthoringSaveSaveAsNewTypeRequest
+  | GeneratedAuthoringSaveSaveResult;
+
+export type GeneratedAuthoringSaveAcceptedConsequences = GeneratedCommonQualifiedName[];
+
+export type GeneratedAuthoringSaveArtifactKind =
+  'model' | 'blueprint' | 'entry' | 'reusable-content-type';
+
+export type GeneratedAuthoringSavePlanReference = {
+  id: GeneratedCommonStableId;
+  revision: GeneratedCommonRevision;
+};
+
+export type GeneratedAuthoringSaveSaveAsNewTypeDraft = {
+  authoringPolicy: GeneratedReusableContentTypeAuthoringPolicy;
+  blueprint: GeneratedBlueprint;
+  label: GeneratedCommonMessageReference;
+  model: GeneratedContentModel;
+  outcome: 'save-as-new-type';
+};
+
+export type GeneratedAuthoringSaveSaveAsNewTypeRequest = {
+  acceptedConsequences: GeneratedAuthoringSaveAcceptedConsequences;
+  contractVersion: GeneratedCommonContractVersion;
+  draft: GeneratedAuthoringSaveSaveAsNewTypeDraft;
+  kind: 'authoring-save-as-new-type-request';
+  plan: GeneratedAuthoringSavePlanReference;
+};
+
+export type GeneratedAuthoringSaveSaveDraft =
+  | GeneratedAuthoringSaveSaveItemDraft
+  | GeneratedAuthoringSaveSaveNewTypeVersionDraft
+  | GeneratedAuthoringSaveSaveAsNewTypeDraft;
+
+export type GeneratedAuthoringSaveSaveIntent = {
+  contractVersion: GeneratedCommonContractVersion;
+  draft: GeneratedAuthoringSaveSaveDraft;
+  expected: GeneratedAuthoringSessionArtifactCoordinates;
+  kind: 'authoring-save-intent';
+  sessionId: GeneratedCommonStableId;
+};
+
+export type GeneratedAuthoringSaveSaveItemDraft = {
+  entry: GeneratedEntry;
+  itemBlueprint?: GeneratedBlueprint;
+  outcome: 'save-item';
+};
+
+export type GeneratedAuthoringSaveSaveItemRequest = {
+  acceptedConsequences: GeneratedAuthoringSaveAcceptedConsequences;
+  contractVersion: GeneratedCommonContractVersion;
+  draft: GeneratedAuthoringSaveSaveItemDraft;
+  kind: 'authoring-save-item-request';
+  plan: GeneratedAuthoringSavePlanReference;
+};
+
+export type GeneratedAuthoringSaveSaveNewTypeVersionDraft = {
+  blueprint: GeneratedBlueprint;
+  model: GeneratedContentModel;
+  outcome: 'save-new-type-version';
+};
+
+export type GeneratedAuthoringSaveSaveNewTypeVersionRequest = {
+  acceptedConsequences: GeneratedAuthoringSaveAcceptedConsequences;
+  contractVersion: GeneratedCommonContractVersion;
+  draft: GeneratedAuthoringSaveSaveNewTypeVersionDraft;
+  kind: 'authoring-save-new-type-version-request';
+  plan: GeneratedAuthoringSavePlanReference;
+};
+
+export type GeneratedAuthoringSaveSavePlan = {
+  affectedArtifacts: [GeneratedAuthoringSaveArtifactKind, ...GeneratedAuthoringSaveArtifactKind[]];
+  confirmationRequired: boolean;
+  consequences: GeneratedCommonDiagnostic[];
+  contractVersion: GeneratedCommonContractVersion;
+  expected: GeneratedAuthoringSessionArtifactCoordinates;
+  id: GeneratedCommonStableId;
+  kind: 'authoring-save-plan';
+  outcome: GeneratedAuthoringTargetSaveOutcome;
+  revision: GeneratedCommonRevision;
+  sessionId: GeneratedCommonStableId;
+};
+
+export type GeneratedAuthoringSaveSaveResult = {
+  contractVersion: GeneratedCommonContractVersion;
+  kind: 'authoring-save-result';
+  outcome: GeneratedAuthoringTargetSaveOutcome;
+  plan: GeneratedAuthoringSavePlanReference;
+  session: GeneratedAuthoringSessionSnapshot;
+};
+
+/** Studio coordinated contextual authoring session */
+export type GeneratedAuthoringSession = GeneratedAuthoringSessionSnapshot;
+
+export type GeneratedAuthoringSessionArtifactCoordinates = {
+  blueprint: GeneratedCommonLockedArtifactReference;
+  entry: GeneratedCommonResolvedEntryReference;
+  model: GeneratedCommonLockedArtifactReference;
+  type?: GeneratedReusableContentTypeReference;
+};
+
+export type GeneratedAuthoringSessionArtifactState = {
+  blueprint: GeneratedBlueprint;
+  coordinates: GeneratedAuthoringSessionArtifactCoordinates;
+  diagnostics: GeneratedCommonDiagnostic[];
+  dirty: ('model' | 'blueprint' | 'entry')[];
+  entry: GeneratedEntry;
+  model: GeneratedContentModel;
+};
+
+export type GeneratedAuthoringSessionCapabilities = {
+  modes: ['model' | 'blueprint' | 'content', ...('model' | 'blueprint' | 'content')[]];
+  presentationStates: [
+    GeneratedAuthoringTargetPresentationState,
+    ...GeneratedAuthoringTargetPresentationState[],
+  ];
+  saveOutcomes: [GeneratedAuthoringTargetSaveOutcome, ...GeneratedAuthoringTargetSaveOutcome[]];
+};
+
+export type GeneratedAuthoringSessionPresentation = {
+  current: GeneratedAuthoringTargetPresentationState;
+  returnContext?: GeneratedCommonReturnContext;
+};
+
+export type GeneratedAuthoringSessionSnapshot = {
+  capabilities: GeneratedAuthoringSessionCapabilities;
+  contractVersion: GeneratedCommonContractVersion;
+  contributionGeneration: GeneratedCommonRevision;
+  extensions?: GeneratedCommonExtensions;
+  kind: 'authoring-session';
+  presentation: GeneratedAuthoringSessionPresentation;
+  resourceContext: GeneratedCommonResourceContext;
+  sessionGeneration: GeneratedCommonRevision;
+  sessionId: GeneratedCommonStableId;
+  start: GeneratedAuthoringSessionStartSource;
+  state: GeneratedAuthoringSessionArtifactState;
+  target: GeneratedAuthoringTargetDeclaration;
+  type?: GeneratedReusableContentTypeDefinition;
+};
+
+export type GeneratedAuthoringSessionStartRequest = {
+  presentation?: GeneratedAuthoringTargetPresentationState;
+  resourceContext: GeneratedCommonResourceContext;
+  source: GeneratedAuthoringSessionStartSource;
+  targetId: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedAuthoringSessionStartSource =
+  | { kind: 'blank' }
+  | { kind: 'from-type'; type: GeneratedReusableContentTypeReference }
+  | { kind: 'existing' };
+
+/** Studio contextual authoring target declaration */
+export type GeneratedAuthoringTarget = GeneratedAuthoringTargetDeclaration;
+
+export type GeneratedAuthoringTargetCapabilityRequirement = {
+  id: GeneratedCommonQualifiedName;
+  versions: GeneratedCommonVersionRange;
+};
+
+export type GeneratedAuthoringTargetContributionDependency = {
+  id: GeneratedCommonQualifiedName;
+  kind:
+    | 'block-definition'
+    | 'pattern'
+    | 'field-adapter'
+    | 'inspector'
+    | 'design-vocabulary'
+    | 'migration';
+  required: boolean;
+  versions: GeneratedCommonVersionRange;
+};
+
+export type GeneratedAuthoringTargetDeclaration = {
+  contractVersion: GeneratedCommonContractVersion;
+  contributionDependencies: GeneratedAuthoringTargetContributionDependency[];
+  eligibility: [GeneratedAuthoringTargetEligibility, ...GeneratedAuthoringTargetEligibility[]];
+  extensions?: GeneratedCommonExtensions;
+  id: GeneratedCommonQualifiedName;
+  kind: 'authoring-target';
+  label: GeneratedCommonMessageReference;
+  modes: ['model' | 'blueprint' | 'content', ...('model' | 'blueprint' | 'content')[]];
+  owner: GeneratedCommonOwnerReference;
+  presentationStates: [
+    GeneratedAuthoringTargetPresentationState,
+    ...GeneratedAuthoringTargetPresentationState[],
+  ];
+  requiredCapabilities: GeneratedAuthoringTargetCapabilityRequirement[];
+  resourceTypes: [GeneratedCommonQualifiedName, ...GeneratedCommonQualifiedName[]];
+  saveOutcomes: [GeneratedAuthoringTargetSaveOutcome, ...GeneratedAuthoringTargetSaveOutcome[]];
+  startKinds: [GeneratedAuthoringTargetStartKind, ...GeneratedAuthoringTargetStartKind[]];
+  surface: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedAuthoringTargetEligibility = 'create' | 'edit';
+
+export type GeneratedAuthoringTargetPresentationState =
+  'inline' | 'minimized' | 'maximized' | 'fullscreen';
+
+export type GeneratedAuthoringTargetResolution = {
+  availableStarts: [GeneratedAuthoringTargetStartKind, ...GeneratedAuthoringTargetStartKind[]];
+  initialPresentation: GeneratedAuthoringTargetPresentationState;
+  resourceContext: GeneratedCommonResourceContext;
+  returnContext?: GeneratedCommonReturnContext;
+  target: GeneratedAuthoringTargetDeclaration;
+};
+
+export type GeneratedAuthoringTargetResolveRequest = {
+  intent: GeneratedAuthoringTargetEligibility;
+  requestedPresentation?: GeneratedAuthoringTargetPresentationState;
+  resourceContext: GeneratedCommonResourceContext;
+  targetId: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedAuthoringTargetSaveOutcome =
+  'save-item' | 'save-new-type-version' | 'save-as-new-type';
+
+export type GeneratedAuthoringTargetStartKind = 'blank' | 'from-type' | 'existing';
 
 /** Studio portable web-authoring conformance vector */
 export type GeneratedAuthoringWebVector = {
@@ -654,6 +879,30 @@ export type GeneratedCommonResolvedEntryReference = {
   revision: GeneratedCommonRevision;
 };
 
+export type GeneratedCommonResourceContext = {
+  key: GeneratedCommonStableId;
+  resource?: GeneratedCommonResourceIdentity;
+  revision?: GeneratedCommonRevision;
+  scopes: GeneratedCommonResourceScope[];
+  surface: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedCommonResourceIdentity = {
+  id: GeneratedCommonStableId;
+  type: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedCommonResourceScope = {
+  id: GeneratedCommonStableId;
+  kind: GeneratedCommonQualifiedName;
+};
+
+/** A non-secret host-minted pointer for deterministic return navigation. It is not a URL, credential, or permission. */
+export type GeneratedCommonReturnContext = {
+  key: GeneratedCommonStableId;
+  label?: GeneratedCommonMessageReference;
+};
+
 export type GeneratedCommonRevision = string;
 
 export type GeneratedCommonRfc3339Date = string;
@@ -961,6 +1210,13 @@ export type GeneratedHostOperationsOperationCapability =
   | 'studio.operation/artifact.publish'
   | 'studio.operation/artifact.save'
   | 'studio.operation/artifact.unpublish'
+  | 'studio.operation/authoring.list-types'
+  | 'studio.operation/authoring.plan-save'
+  | 'studio.operation/authoring.resolve-target'
+  | 'studio.operation/authoring.save-as-new-type'
+  | 'studio.operation/authoring.save-item'
+  | 'studio.operation/authoring.save-new-type-version'
+  | 'studio.operation/authoring.start'
   | 'studio.operation/localization.messages'
   | 'studio.operation/media.abort-upload'
   | 'studio.operation/media.authorize-upload'
@@ -988,6 +1244,13 @@ export type GeneratedHostOperationsOperationRoute =
   | 'artifact/publish'
   | 'artifact/save'
   | 'artifact/unpublish'
+  | 'authoring/list-types'
+  | 'authoring/plan-save'
+  | 'authoring/resolve-target'
+  | 'authoring/save-as-new-type'
+  | 'authoring/save-item'
+  | 'authoring/save-new-type-version'
+  | 'authoring/start'
   | 'localization/messages'
   | 'media/abort-upload'
   | 'media/authorize-upload'
@@ -1011,6 +1274,7 @@ export type GeneratedHostOperationsOperationRoute =
 /** The capability identifier a host advertises for a whole port. */
 export type GeneratedHostOperationsPortCapability =
   | 'studio.port/artifact'
+  | 'studio.port/authoring'
   | 'studio.port/localization'
   | 'studio.port/media'
   | 'studio.port/model'
@@ -1022,6 +1286,7 @@ export type GeneratedHostOperationsPortCapability =
 
 export type GeneratedHostOperationsPortName =
   | 'artifact'
+  | 'authoring'
   | 'localization'
   | 'media'
   | 'model'
@@ -1780,6 +2045,54 @@ export type GeneratedRendererWebVector = {
   roots: [GeneratedBlueprintNode, ...GeneratedBlueprintNode[]];
 };
 
+/** Studio host-owned reusable content type projection */
+export type GeneratedReusableContentType = GeneratedReusableContentTypeDefinition;
+
+export type GeneratedReusableContentTypeAuthoringPolicy = {
+  itemComposition: 'denied' | 'overrides';
+  modes: ['model' | 'blueprint' | 'content', ...('model' | 'blueprint' | 'content')[]];
+};
+
+export type GeneratedReusableContentTypeDefinition = {
+  authoringPolicy: GeneratedReusableContentTypeAuthoringPolicy;
+  blueprint: GeneratedCommonLockedArtifactReference;
+  contractVersion: GeneratedCommonContractVersion;
+  extensions?: GeneratedCommonExtensions;
+  id: GeneratedCommonStableId;
+  kind: 'reusable-content-type';
+  label: GeneratedCommonMessageReference;
+  model: GeneratedCommonLockedArtifactReference;
+  revision: GeneratedCommonRevision;
+  status: 'draft' | 'published' | 'retired';
+  version: GeneratedCommonSemanticVersion;
+};
+
+export type GeneratedReusableContentTypeListPage = {
+  items: GeneratedReusableContentTypeSummary[];
+  nextCursor?: string;
+};
+
+export type GeneratedReusableContentTypeListQuery = {
+  cursor?: string;
+  limit: number;
+  resourceContext: GeneratedCommonResourceContext;
+  search?: string;
+  targetId: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedReusableContentTypeReference = {
+  id: GeneratedCommonStableId;
+  revision: GeneratedCommonRevision;
+  version: GeneratedCommonSemanticVersion;
+};
+
+export type GeneratedReusableContentTypeSummary = {
+  blueprint: GeneratedCommonLockedArtifactReference;
+  label: GeneratedCommonMessageReference;
+  model: GeneratedCommonLockedArtifactReference;
+  reference: GeneratedReusableContentTypeReference;
+};
+
 /** Studio rich-text renderer-conformance fixture */
 export type GeneratedRichTextProjection = {
   description: string;
@@ -2151,13 +2464,7 @@ export type GeneratedStudioConfig = {
     sameOriginRequired: boolean;
   };
   protocolVersion: GeneratedCommonSemanticVersion;
-  resourceContext: {
-    key: GeneratedCommonStableId;
-    resource?: { id: GeneratedCommonStableId; type: GeneratedCommonQualifiedName };
-    revision?: GeneratedCommonRevision;
-    scopes: { id: GeneratedCommonStableId; kind: GeneratedCommonQualifiedName }[];
-    surface: GeneratedCommonQualifiedName;
-  };
+  resourceContext: GeneratedCommonResourceContext;
   sessionGeneration: GeneratedCommonRevision;
   sessionId: GeneratedCommonStableId;
   sessionState: 'editable' | 'read-only';
@@ -2348,6 +2655,9 @@ export type GeneratedUnresolvedContribution = {
 
 export interface GeneratedProtocolModelMap {
   readonly 'authoring-message-catalog.schema.json': GeneratedAuthoringMessageCatalog;
+  readonly 'authoring-save.schema.json': GeneratedAuthoringSave;
+  readonly 'authoring-session.schema.json': GeneratedAuthoringSession;
+  readonly 'authoring-target.schema.json': GeneratedAuthoringTarget;
   readonly 'authoring-web-vector.schema.json': GeneratedAuthoringWebVector;
   readonly 'binding-projection-vector.schema.json': GeneratedBindingProjectionVector;
   readonly 'block-definition.schema.json': GeneratedBlockDefinition;
@@ -2381,6 +2691,7 @@ export interface GeneratedProtocolModelMap {
   readonly 'preview-vector.schema.json': GeneratedPreviewVector;
   readonly 'provenance.schema.json': GeneratedProvenance;
   readonly 'renderer-web-vector.schema.json': GeneratedRendererWebVector;
+  readonly 'reusable-content-type.schema.json': GeneratedReusableContentType;
   readonly 'rich-text-projection.schema.json': GeneratedRichTextProjection;
   readonly 'rich-text.schema.json': GeneratedRichText;
   readonly 'schema-profile-vector.schema.json': GeneratedSchemaProfileVector;
@@ -2402,6 +2713,9 @@ export type GeneratedProtocolModel = GeneratedProtocolModelMap[GeneratedProtocol
 export const GENERATED_PROTOCOL_SCHEMA_FILES: readonly GeneratedProtocolSchemaFile[] =
   Object.freeze([
     'authoring-message-catalog.schema.json',
+    'authoring-save.schema.json',
+    'authoring-session.schema.json',
+    'authoring-target.schema.json',
     'authoring-web-vector.schema.json',
     'binding-projection-vector.schema.json',
     'block-definition.schema.json',
@@ -2435,6 +2749,7 @@ export const GENERATED_PROTOCOL_SCHEMA_FILES: readonly GeneratedProtocolSchemaFi
     'preview-vector.schema.json',
     'provenance.schema.json',
     'renderer-web-vector.schema.json',
+    'reusable-content-type.schema.json',
     'rich-text-projection.schema.json',
     'rich-text.schema.json',
     'schema-profile-vector.schema.json',

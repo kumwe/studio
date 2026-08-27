@@ -72,39 +72,7 @@
         "measurementSystem": { "enum": ["metric", "us", "uk"] }
       }
     },
-    "resourceContext": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["key", "surface", "scopes"],
-      "properties": {
-        "key": { "$ref": "common.schema.json#/$defs/stableId" },
-        "surface": { "$ref": "common.schema.json#/$defs/qualifiedName" },
-        "revision": { "$ref": "common.schema.json#/$defs/revision" },
-        "scopes": {
-          "type": "array",
-          "maxItems": 20,
-          "uniqueItems": true,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["kind", "id"],
-            "properties": {
-              "kind": { "$ref": "common.schema.json#/$defs/qualifiedName" },
-              "id": { "$ref": "common.schema.json#/$defs/stableId" }
-            }
-          }
-        },
-        "resource": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["type", "id"],
-          "properties": {
-            "type": { "$ref": "common.schema.json#/$defs/qualifiedName" },
-            "id": { "$ref": "common.schema.json#/$defs/stableId" }
-          }
-        }
-      }
-    },
+    "resourceContext": { "$ref": "common.schema.json#/$defs/resourceContext" },
     "permissions": {
       "type": "array",
       "maxItems": 500,

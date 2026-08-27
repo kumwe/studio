@@ -1,0 +1,41 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "authoring-save-plan",
+  "id": "save-plans/product-page-v2",
+  "revision": "save-plan-r1",
+  "sessionId": "sessions/product-trail-backpack",
+  "outcome": "save-new-type-version",
+  "expected": {
+    "type": {
+      "id": "content-types/product-page",
+      "version": "1.0.0",
+      "revision": "product-page-type-r1"
+    },
+    "model": {
+      "id": "org.example.models/product",
+      "version": "1.0.0",
+      "revision": "product-model-r1"
+    },
+    "blueprint": {
+      "id": "org.example.blueprints/product-card",
+      "version": "1.0.0",
+      "revision": "product-card-r5"
+    },
+    "entry": {
+      "id": "products/trail-backpack",
+      "revision": "entry-r7"
+    }
+  },
+  "affectedArtifacts": ["model", "blueprint", "reusable-content-type"],
+  "consequences": [
+    {
+      "code": "studio.authoring/dependent-entry-migration",
+      "severity": "warning",
+      "message": {
+        "key": "studio.authoring/dependent-entry-migration",
+        "defaultMessage": "Dependent entries remain on the current type version until migrated."
+      }
+    }
+  ],
+  "confirmationRequired": true
+}

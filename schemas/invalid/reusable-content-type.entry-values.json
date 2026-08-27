@@ -1,0 +1,32 @@
+{
+  "schema": "reusable-content-type.schema.json",
+  "description": "A reusable content type coordinates Model and Blueprint revisions but never contains Entry values.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "reusable-content-type",
+    "id": "content-types/product-page",
+    "version": "1.0.0",
+    "revision": "product-page-type-r1",
+    "label": {
+      "key": "org.example.catalog/product-page-type"
+    },
+    "status": "published",
+    "model": {
+      "id": "org.example.models/product",
+      "version": "1.0.0",
+      "revision": "product-model-r1"
+    },
+    "blueprint": {
+      "id": "org.example.blueprints/product-card",
+      "version": "1.0.0",
+      "revision": "product-card-r5"
+    },
+    "authoringPolicy": {
+      "modes": ["content"],
+      "itemComposition": "denied"
+    },
+    "values": {
+      "name": "Must not cross this boundary"
+    }
+  }
+}

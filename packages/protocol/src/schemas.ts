@@ -1,4 +1,7 @@
 import authoringMessageCatalogSchemaDocument from '../schemas/authoring-message-catalog.schema.json' with { type: 'json' };
+import authoringSaveSchemaDocument from '../schemas/authoring-save.schema.json' with { type: 'json' };
+import authoringSessionSchemaDocument from '../schemas/authoring-session.schema.json' with { type: 'json' };
+import authoringTargetSchemaDocument from '../schemas/authoring-target.schema.json' with { type: 'json' };
 import blockDefinitionSchemaDocument from '../schemas/block-definition.schema.json' with { type: 'json' };
 import bindingProjectionVectorSchemaDocument from '../schemas/binding-projection-vector.schema.json' with { type: 'json' };
 import authoringWebVectorSchemaDocument from '../schemas/authoring-web-vector.schema.json' with { type: 'json' };
@@ -34,6 +37,7 @@ import rendererWebVectorSchemaDocument from '../schemas/renderer-web-vector.sche
 import richTextProjectionSchemaDocument from '../schemas/rich-text-projection.schema.json' with { type: 'json' };
 import provenanceSchemaDocument from '../schemas/provenance.schema.json' with { type: 'json' };
 import richTextSchemaDocument from '../schemas/rich-text.schema.json' with { type: 'json' };
+import reusableContentTypeSchemaDocument from '../schemas/reusable-content-type.schema.json' with { type: 'json' };
 import schemaProfileSchemaDocument from '../schemas/schema-profile.schema.json' with { type: 'json' };
 import schemaProfileVectorSchemaDocument from '../schemas/schema-profile-vector.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
@@ -48,6 +52,9 @@ import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribu
 import type { JsonSchema } from './types.js';
 
 export const authoringMessageCatalogSchema: JsonSchema = authoringMessageCatalogSchemaDocument;
+export const authoringSaveSchema: JsonSchema = authoringSaveSchemaDocument;
+export const authoringSessionSchema: JsonSchema = authoringSessionSchemaDocument;
+export const authoringTargetSchema: JsonSchema = authoringTargetSchemaDocument;
 export const blockDefinitionSchema: JsonSchema = blockDefinitionSchemaDocument;
 export const bindingProjectionVectorSchema: JsonSchema = bindingProjectionVectorSchemaDocument;
 export const authoringWebVectorSchema: JsonSchema = authoringWebVectorSchemaDocument;
@@ -83,6 +90,7 @@ export const rendererWebVectorSchema: JsonSchema = rendererWebVectorSchemaDocume
 export const provenanceSchema: JsonSchema = provenanceSchemaDocument;
 export const richTextProjectionSchema: JsonSchema = richTextProjectionSchemaDocument;
 export const richTextSchema: JsonSchema = richTextSchemaDocument;
+export const reusableContentTypeSchema: JsonSchema = reusableContentTypeSchemaDocument;
 export const schemaProfileSchema: JsonSchema = schemaProfileSchemaDocument;
 export const schemaProfileVectorSchema: JsonSchema = schemaProfileVectorSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
@@ -98,6 +106,9 @@ export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSc
 export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   commonSchema,
   authoringMessageCatalogSchema,
+  authoringSaveSchema,
+  authoringSessionSchema,
+  authoringTargetSchema,
   authoringWebVectorSchema,
   blockDefinitionSchema,
   bindingProjectionVectorSchema,
@@ -132,6 +143,7 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   provenanceSchema,
   richTextProjectionSchema,
   richTextSchema,
+  reusableContentTypeSchema,
   schemaProfileSchema,
   schemaProfileVectorSchema,
   studioConfigurationSchema,

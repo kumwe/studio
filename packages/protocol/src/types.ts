@@ -773,6 +773,42 @@ export interface ArtifactPort {
   ): Promise<HostPortResult<null>>;
 }
 
+/**
+ * Host-authoritative contextual authoring operations. The port is additive to
+ * the legacy single-artifact port: no method may be implemented as an
+ * undocumented sequence of `artifact.save` calls.
+ */
+export interface AuthoringPort {
+  listTypes(
+    query: AuthoringTypeListQuery,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringTypeListPage>>;
+  planSave(
+    intent: AuthoringSaveIntent,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringSavePlan>>;
+  resolveTarget(
+    request: AuthoringTargetResolveRequest,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringTargetResolution>>;
+  saveAsNewType(
+    request: AuthoringSaveAsNewTypeRequest,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringSaveResult>>;
+  saveItem(
+    request: AuthoringSaveItemRequest,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringSaveResult>>;
+  saveNewTypeVersion(
+    request: AuthoringSaveNewTypeVersionRequest,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringSaveResult>>;
+  start(
+    request: AuthoringStartRequest,
+    context: HostRequestContext,
+  ): Promise<HostPortResult<AuthoringSessionSnapshot>>;
+}
+
 export interface ModelPort {
   get(
     reference: ArtifactReference,
@@ -895,6 +931,7 @@ export interface TelemetryPort {
 
 export interface HostAdapter {
   artifact: ArtifactPort;
+  authoring?: AuthoringPort;
   localization?: LocalizationPort;
   media?: MediaHostPort;
   model?: ModelPort;
@@ -930,6 +967,254 @@ export interface EntryDocument {
   translationOf?: StableId;
   values: Record<LocalName, JsonValue>;
   workflowState?: QualifiedName;
+}
+
+export type AuthoringTargetEligibility = 'create' | 'edit';
+
+export type AuthoringStartKind = 'blank' | 'existing' | 'from-type';
+
+export type AuthoringPresentationState = 'fullscreen' | 'inline' | 'maximized' | 'minimized';
+
+export type AuthoringSaveOutcome = 'save-as-new-type' | 'save-item' | 'save-new-type-version';
+
+export type AuthoringContributionKind =
+  | 'block-definition'
+  | 'design-vocabulary'
+  | 'field-adapter'
+  | 'inspector'
+  | 'migration'
+  | 'pattern';
+
+export interface AuthoringCapabilityRequirement {
+  id: QualifiedName;
+  versions: string;
+}
+
+export interface AuthoringContributionDependency {
+  id: QualifiedName;
+  kind: AuthoringContributionKind;
+  required: boolean;
+  versions: string;
+}
+
+/**
+ * Bounded discovery metadata shared by host-core and extension-owned targets.
+ * A declaration is never authorization and cannot mint a resource context.
+ */
+export interface AuthoringTargetDeclaration {
+  contractVersion: StudioContractVersion;
+  contributionDependencies: readonly AuthoringContributionDependency[];
+  eligibility: readonly AuthoringTargetEligibility[];
+  extensions?: Record<QualifiedName, JsonValue>;
+  id: QualifiedName;
+  kind: 'authoring-target';
+  label: MessageReference;
+  modes: readonly StudioAuthoringMode[];
+  owner: OwnerReference;
+  presentationStates: readonly AuthoringPresentationState[];
+  requiredCapabilities: readonly AuthoringCapabilityRequirement[];
+  resourceTypes: readonly QualifiedName[];
+  saveOutcomes: readonly AuthoringSaveOutcome[];
+  startKinds: readonly AuthoringStartKind[];
+  surface: QualifiedName;
+}
+
+export interface AuthoringReturnContext {
+  key: StableId;
+  label?: MessageReference;
+}
+
+export interface AuthoringTargetResolveRequest {
+  intent: AuthoringTargetEligibility;
+  requestedPresentation?: AuthoringPresentationState;
+  resourceContext: StudioResourceContext;
+  targetId: QualifiedName;
+}
+
+export interface AuthoringTargetResolution {
+  availableStarts: readonly AuthoringStartKind[];
+  initialPresentation: AuthoringPresentationState;
+  resourceContext: StudioResourceContext;
+  returnContext?: AuthoringReturnContext;
+  target: AuthoringTargetDeclaration;
+}
+
+export interface ReusableContentTypeReference {
+  id: StableId;
+  revision: Revision;
+  version: SemanticVersion;
+}
+
+export interface ReusableContentTypeAuthoringPolicy {
+  itemComposition: 'denied' | 'overrides';
+  modes: readonly StudioAuthoringMode[];
+}
+
+/** Host-owned projection; deliberately not a member of `StudioArtifact`. */
+export interface ReusableContentTypeDefinition extends ReusableContentTypeReference {
+  authoringPolicy: ReusableContentTypeAuthoringPolicy;
+  blueprint: LockedArtifactReference;
+  contractVersion: StudioContractVersion;
+  extensions?: Record<QualifiedName, JsonValue>;
+  kind: 'reusable-content-type';
+  label: MessageReference;
+  model: LockedArtifactReference;
+  status: 'draft' | 'published' | 'retired';
+}
+
+export interface AuthoringTypeSummary {
+  blueprint: LockedArtifactReference;
+  label: MessageReference;
+  model: LockedArtifactReference;
+  reference: ReusableContentTypeReference;
+}
+
+export interface AuthoringTypeListQuery {
+  cursor?: string;
+  limit: number;
+  resourceContext: StudioResourceContext;
+  search?: string;
+  targetId: QualifiedName;
+}
+
+export interface AuthoringTypeListPage {
+  items: AuthoringTypeSummary[];
+  nextCursor?: string;
+}
+
+export type AuthoringStartSource =
+  | { kind: 'blank' }
+  | { kind: 'existing' }
+  | { kind: 'from-type'; type: ReusableContentTypeReference };
+
+export interface AuthoringStartRequest {
+  presentation?: AuthoringPresentationState;
+  resourceContext: StudioResourceContext;
+  source: AuthoringStartSource;
+  targetId: QualifiedName;
+}
+
+export interface AuthoringArtifactCoordinates {
+  blueprint: LockedArtifactReference;
+  entry: ResolvedEntryReference;
+  model: LockedArtifactReference;
+  type?: ReusableContentTypeReference;
+}
+
+export type AuthoringDirtyArtifact = 'blueprint' | 'entry' | 'model';
+
+export interface AuthoringArtifactState {
+  blueprint: BlueprintDocument;
+  coordinates: AuthoringArtifactCoordinates;
+  diagnostics: StudioDiagnostic[];
+  dirty: AuthoringDirtyArtifact[];
+  entry: EntryDocument;
+  model: ContentModelDocument;
+}
+
+export interface AuthoringSessionCapabilities {
+  modes: readonly StudioAuthoringMode[];
+  presentationStates: readonly AuthoringPresentationState[];
+  saveOutcomes: readonly AuthoringSaveOutcome[];
+}
+
+export interface AuthoringSessionPresentation {
+  current: AuthoringPresentationState;
+  returnContext?: AuthoringReturnContext;
+}
+
+export interface AuthoringSessionSnapshot {
+  capabilities: AuthoringSessionCapabilities;
+  contractVersion: StudioContractVersion;
+  contributionGeneration: Revision;
+  extensions?: Record<QualifiedName, JsonValue>;
+  kind: 'authoring-session';
+  presentation: AuthoringSessionPresentation;
+  resourceContext: StudioResourceContext;
+  sessionGeneration: Revision;
+  sessionId: StableId;
+  start: AuthoringStartSource;
+  state: AuthoringArtifactState;
+  target: AuthoringTargetDeclaration;
+  type?: ReusableContentTypeDefinition;
+}
+
+export interface AuthoringSaveItemDraft {
+  entry: EntryDocument;
+  itemBlueprint?: BlueprintDocument;
+  outcome: 'save-item';
+}
+
+export interface AuthoringSaveNewTypeVersionDraft {
+  blueprint: BlueprintDocument;
+  model: ContentModelDocument;
+  outcome: 'save-new-type-version';
+}
+
+export interface AuthoringSaveAsNewTypeDraft {
+  authoringPolicy: ReusableContentTypeAuthoringPolicy;
+  blueprint: BlueprintDocument;
+  label: MessageReference;
+  model: ContentModelDocument;
+  outcome: 'save-as-new-type';
+}
+
+export type AuthoringSaveDraft =
+  AuthoringSaveAsNewTypeDraft | AuthoringSaveItemDraft | AuthoringSaveNewTypeVersionDraft;
+
+export interface AuthoringSaveIntent {
+  contractVersion: StudioContractVersion;
+  draft: AuthoringSaveDraft;
+  expected: AuthoringArtifactCoordinates;
+  kind: 'authoring-save-intent';
+  sessionId: StableId;
+}
+
+export type AuthoringAffectedArtifact = 'blueprint' | 'entry' | 'model' | 'reusable-content-type';
+
+export interface AuthoringSavePlanReference {
+  id: StableId;
+  revision: Revision;
+}
+
+export interface AuthoringSavePlan extends AuthoringSavePlanReference {
+  affectedArtifacts: AuthoringAffectedArtifact[];
+  confirmationRequired: boolean;
+  consequences: StudioDiagnostic[];
+  contractVersion: StudioContractVersion;
+  expected: AuthoringArtifactCoordinates;
+  kind: 'authoring-save-plan';
+  outcome: AuthoringSaveOutcome;
+  sessionId: StableId;
+}
+
+interface AuthoringSaveRequestBase {
+  acceptedConsequences: QualifiedName[];
+  contractVersion: StudioContractVersion;
+  plan: AuthoringSavePlanReference;
+}
+
+export interface AuthoringSaveItemRequest extends AuthoringSaveRequestBase {
+  draft: AuthoringSaveItemDraft;
+  kind: 'authoring-save-item-request';
+}
+
+export interface AuthoringSaveNewTypeVersionRequest extends AuthoringSaveRequestBase {
+  draft: AuthoringSaveNewTypeVersionDraft;
+  kind: 'authoring-save-new-type-version-request';
+}
+
+export interface AuthoringSaveAsNewTypeRequest extends AuthoringSaveRequestBase {
+  draft: AuthoringSaveAsNewTypeDraft;
+  kind: 'authoring-save-as-new-type-request';
+}
+
+export interface AuthoringSaveResult {
+  contractVersion: StudioContractVersion;
+  kind: 'authoring-save-result';
+  outcome: AuthoringSaveOutcome;
+  plan: AuthoringSavePlanReference;
+  session: AuthoringSessionSnapshot;
 }
 
 export type StudioAuthoringMode = 'blueprint' | 'content' | 'model';

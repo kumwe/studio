@@ -13,7 +13,7 @@
     "@kumwe/studio-testkit": "0.1.0-rc.1"
   },
   "protocolVersion": "0.1.0-draft.2",
-  "corpusManifestDigest": "sha256-4/ChS3pCA32CoZ+BjvL2tj2RGOFJNdqXwuqO8gWDxTs=",
+  "corpusManifestDigest": "sha256-SHDJHVvSZ9wrmcBZ/EnoifluAGq4vnngpVrVok1xj2U=",
   "claimedProfiles": [
     "studio.profile/authoring-web",
     "studio.profile/binding-projection-v1",

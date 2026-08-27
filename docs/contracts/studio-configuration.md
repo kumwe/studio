@@ -91,10 +91,12 @@ outcomes (`STUDIO-PROD-006`). The last two coordinate Model and Blueprint revisi
 The host owns identifiers, authorization, validation, transactions, migration policy, persistence, and accepted
 revisions (`STUDIO-PROD-010`).
 
-The current schema and `openStudioSession` API do not define that multi-artifact composition or those
-coordinated save outcomes. They require reviewed additive contract, schema, and API work before an
-implementation may claim this profile. Implementations MUST NOT overload the current single-artifact
-`artifact.save` behavior or infer an undocumented transaction in the meantime (`STUDIO-PROD-014`).
+The legacy StudioConfig shape and `openStudioSession` API do not themselves define that multi-artifact
+composition. The companion canonical `authoring-target`, `reusable-content-type`, `authoring-session`, and
+`authoring-save` schemas plus the typed `AuthoringPort` now define the additive protocol foundation. A
+contextual start returns complete, separately identified Model, Blueprint, and Entry documents with exact
+coordinates; it never relies on hidden adapter binding. Implementations MUST NOT overload the current
+single-artifact `artifact.save` behavior or infer an undocumented transaction (`STUDIO-PROD-014`).
 
 ## Contract and protocol selection
 
@@ -116,17 +118,19 @@ The key and projected identifiers are correlation and routing data, not credenti
 
 ### Target declaration, launch, and presentation continuity
 
-Core surfaces and authorized extensions use the same future generic target declaration to make a typed host
+Core surfaces and authorized extensions use the same canonical `AuthoringTargetDeclaration` to make a typed host
 resource Studio-authorable; the host decides whether that declaration is active and mints the resource context
 (`STUDIO-PROD-008`, `STUDIO-PROD-009`). A contribution is discovery metadata, not permission or a transport
-credential. The current StudioConfig schema does not yet define that target declaration.
+credential. The declaration remains separate from StudioConfig and is resolved for one explicit
+`StudioResourceContext` through the authoring port.
 
 Inline, minimized, maximized, and fullscreen are presentations of the same contextual session where the host
 offers them (`STUDIO-PROD-007`). Moving between them MUST preserve the resource and artifact coordinates,
 drafts, history, selection, focus intent, dirty and validation state, locale, authority, and deterministic
 return context. It MUST NOT create a new item, silently save, or convert the work into another artifact. The
-current schema has no canonical presentation/handoff members and the candidate shell has no such lifecycle; the
-required representation and UI remain planned and MUST NOT be claimed as shipped (`STUDIO-PROD-014`).
+the contextual session snapshot carries the current presentation and a non-secret host-minted return-context
+key. That serialized state does not by itself implement the shell transition lifecycle; the UI MUST NOT claim
+continuity until it preserves the full live state listed above (`STUDIO-PROD-014`).
 
 ## Artifact references
 
