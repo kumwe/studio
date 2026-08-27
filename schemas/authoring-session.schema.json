@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/authoring-session.schema.json",
+  "title": "Studio coordinated contextual authoring session",
+  "description": "One resource-bound authoring snapshot with separately identified Model, Blueprint, and Entry documents and exact host-accepted coordinates.",
+  "$ref": "#/$defs/snapshot",
+  "$defs": {
+    "startSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "blank" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "type"],
+          "properties": {
+            "kind": { "const": "from-type" },
+            "type": { "$ref": "reusable-content-type.schema.json#/$defs/reference" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "existing" } }
+        }
+      ]
+    },
+    "startRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "resourceContext", "source"],
+      "properties": {
+        "targetId": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "resourceContext": { "$ref": "common.schema.json#/$defs/resourceContext" },
+        "source": { "$ref": "#/$defs/startSource" },
+        "presentation": {
+          "$ref": "authoring-target.schema.json#/$defs/presentationState"
+        }
+      }
+    },
+    "artifactCoordinates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "blueprint", "entry"],
+      "properties": {
+        "type": { "$ref": "reusable-content-type.schema.json#/$defs/reference" },
+        "model": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" },
+        "blueprint": { "$ref": "common.schema.json#/$defs/lockedArtifactReference" },
+        "entry": { "$ref": "common.schema.json#/$defs/resolvedEntryReference" }
+      }
+    },
+    "artifactState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinates", "model", "blueprint", "entry", "dirty", "diagnostics"],
+      "properties": {
+        "coordinates": { "$ref": "#/$defs/artifactCoordinates" },
+        "model": { "$ref": "content-model.schema.json" },
+        "blueprint": { "$ref": "blueprint.schema.json" },
+        "entry": { "$ref": "entry.schema.json" },
+        "dirty": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["model", "blueprint", "entry"] }
+        },
+        "diagnostics": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": { "$ref": "common.schema.json#/$defs/diagnostic" }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modes", "presentationStates", "saveOutcomes"],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "enum": ["model", "blueprint", "content"] }
+        },
+        "presentationStates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "authoring-target.schema.json#/$defs/presentationState"
+          }
+        },
+        "saveOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "$ref": "authoring-target.schema.json#/$defs/saveOutcome" }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current"],
+      "properties": {
+        "current": { "$ref": "authoring-target.schema.json#/$defs/presentationState" },
+        "returnContext": { "$ref": "common.schema.json#/$defs/returnContext" }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "kind",
+        "sessionId",
+        "sessionGeneration",
+        "target",
+        "resourceContext",
+        "start",
+        "state",
+        "capabilities",
+        "presentation",
+        "contributionGeneration"
+      ],
+      "properties": {
+        "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+        "kind": { "const": "authoring-session" },
+        "sessionId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "sessionGeneration": { "$ref": "common.schema.json#/$defs/revision" },
+        "target": { "$ref": "authoring-target.schema.json#/$defs/declaration" },
+        "resourceContext": { "$ref": "common.schema.json#/$defs/resourceContext" },
+        "start": { "$ref": "#/$defs/startSource" },
+        "type": { "$ref": "reusable-content-type.schema.json#/$defs/definition" },
+        "state": { "$ref": "#/$defs/artifactState" },
+        "capabilities": { "$ref": "#/$defs/capabilities" },
+        "presentation": { "$ref": "#/$defs/presentation" },
+        "contributionGeneration": { "$ref": "common.schema.json#/$defs/revision" },
+        "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
+      }
+    }
+  }
+}

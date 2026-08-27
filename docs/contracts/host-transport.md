@@ -159,5 +159,6 @@ A host proves this binding by claiming
 revision behaviour, and the error categories the table above transports. The binding itself adds route
 and status obligations that the reference HTTP client in `@kumwe/studio-testkit` exercises.
 
-That proof does not cover the planned contextual save operations or the complete product journey. Those
-outcomes require additive vectors and the executable end-to-end evidence required by `STUDIO-PROD-015`.
+That proof does not yet cover the contextual authoring operations now registered under `authoring/*` or the
+complete product journey. Those outcomes require their additive vectors and the executable end-to-end evidence
+required by `STUDIO-PROD-015`.

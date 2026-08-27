@@ -1,0 +1,34 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "authoring-target",
+  "id": "org.example.catalog/product-content",
+  "owner": {
+    "id": "org.example/catalog",
+    "version": "1.0.0"
+  },
+  "label": {
+    "key": "org.example.catalog/product-content",
+    "defaultMessage": "Product content"
+  },
+  "surface": "org.example.catalog/product-editor",
+  "resourceTypes": ["org.example.catalog/product"],
+  "eligibility": ["create", "edit"],
+  "modes": ["model", "blueprint", "content"],
+  "startKinds": ["blank", "from-type", "existing"],
+  "presentationStates": ["inline", "minimized", "maximized", "fullscreen"],
+  "saveOutcomes": ["save-item", "save-new-type-version", "save-as-new-type"],
+  "requiredCapabilities": [
+    {
+      "id": "studio.capability/contextual-authoring",
+      "versions": ">=0.1.0 <1.0.0"
+    }
+  ],
+  "contributionDependencies": [
+    {
+      "kind": "field-adapter",
+      "id": "org.example.catalog/money-control",
+      "versions": "^1.0.0",
+      "required": true
+    }
+  ]
+}

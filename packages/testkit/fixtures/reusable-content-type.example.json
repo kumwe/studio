@@ -1,0 +1,26 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "reusable-content-type",
+  "id": "content-types/product-page",
+  "version": "1.0.0",
+  "revision": "product-page-type-r1",
+  "label": {
+    "key": "org.example.catalog/product-page-type",
+    "defaultMessage": "Product page"
+  },
+  "status": "published",
+  "model": {
+    "id": "org.example.models/product",
+    "version": "1.0.0",
+    "revision": "product-model-r1"
+  },
+  "blueprint": {
+    "id": "org.example.blueprints/product-card",
+    "version": "1.0.0",
+    "revision": "product-card-r5"
+  },
+  "authoringPolicy": {
+    "modes": ["model", "blueprint", "content"],
+    "itemComposition": "overrides"
+  }
+}

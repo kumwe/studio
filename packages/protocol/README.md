@@ -15,7 +15,7 @@ manifests, and entries. `MediaAsset` describes host-owned library state; the sma
 `contractVersion` and separately negotiate the SemVer wire `protocolVersion`; neither value may be
 inferred from the other or from the `/studio/v1/` schema epoch URI.
 
-The package exports deterministic schema-generated `Generated*` models for all 47 Version 2 protocol
+The package exports deterministic schema-generated `Generated*` models for all 51 Version 2 protocol
 schemas and every reusable `$defs` definition. `GeneratedProtocolModelMap` binds each schema filename to
 its root model, `GENERATED_PROTOCOL_SCHEMA_FILES` exposes the complete checked registry, and
 `GENERATED_TYPESCRIPT_MODEL_METADATA` records generator name/version, schema-manifest digest, schema epoch,
@@ -32,10 +32,18 @@ declares the corresponding `type`; without it, scalar instances remain valid und
 projection deliberately stays broad. The handwritten protocol interfaces remain the ergonomic runtime/port API
 and may not widen the generated wire shape.
 
-The test lane directly assigns 234 corpus literals to their exact filename-specific generated roots. The two
+The test lane directly assigns 238 corpus literals to their exact filename-specific generated roots. The two
 maximum-JSON-depth schema-profile vectors are an explicit TypeScript 6 `TS2321` compiler-depth boundary, not a
-cast: the boundary test requires that diagnostic, and the runtime lane schema-validates and round-trips all 236
+cast: the boundary test requires that diagnostic, and the runtime lane schema-validates and round-trips all 240
 documents.
+
+The contextual authoring foundation is canonical protocol, not a shell-local convention. It exports the
+bounded `AuthoringTargetDeclaration`, host-owned `ReusableContentTypeDefinition`, full
+`AuthoringSessionSnapshot`, exact Model/Blueprint/Entry coordinates, explicit save intent/plan/result documents,
+and the three distinct commit requests. `HostAdapter.authoring` adds resource-bound target resolution, type
+listing, session start, save planning, and explicit item/new-version/new-type operations without changing the
+legacy artifact port. A contextual start returns complete separately identified documents; reusable types never
+carry Entry values.
 
 The typed composition API covers all six canonical contribution payload families. Manifest `block`
 declarations map to `BlockDefinition` documents whose discriminator is `block-definition`; patterns, design
@@ -46,7 +54,7 @@ The authoring message-catalog schema defines versioned locale bundles with close
 default text, and explicit named parameters. The canonical English shell catalog is published by
 `@kumwe/studio` and replayed as a byte-identical testkit fixture.
 
-Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its nine
+Beyond document shapes, the package projects the host adapter surface (`HostAdapter` and its ten
 typed ports sharing one request envelope), the stable host error taxonomy with the
 `isHostPortError` guard, and the JavaScript `HostPortFailure` rejection wrapper with its
 `isHostPortFailure` guard. A stale generation remains `invalid-request` and is distinguished by the

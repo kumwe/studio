@@ -1,0 +1,212 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "authoring-session",
+  "sessionId": "sessions/product-trail-backpack",
+  "sessionGeneration": "session-generation-r3",
+  "target": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-target",
+    "id": "org.example.catalog/product-content",
+    "owner": {
+      "id": "org.example/catalog",
+      "version": "1.0.0"
+    },
+    "label": {
+      "key": "org.example.catalog/product-content",
+      "defaultMessage": "Product content"
+    },
+    "surface": "org.example.catalog/product-editor",
+    "resourceTypes": ["org.example.catalog/product"],
+    "eligibility": ["create", "edit"],
+    "modes": ["model", "blueprint", "content"],
+    "startKinds": ["blank", "from-type", "existing"],
+    "presentationStates": ["inline", "fullscreen"],
+    "saveOutcomes": ["save-item", "save-new-type-version", "save-as-new-type"],
+    "requiredCapabilities": [],
+    "contributionDependencies": []
+  },
+  "resourceContext": {
+    "key": "contexts/product-trail-backpack",
+    "surface": "org.example.catalog/product-editor",
+    "revision": "context-r2",
+    "scopes": [
+      {
+        "kind": "org.example/tenant",
+        "id": "tenants/north"
+      }
+    ],
+    "resource": {
+      "type": "org.example.catalog/product",
+      "id": "products/trail-backpack"
+    }
+  },
+  "start": {
+    "kind": "existing"
+  },
+  "type": {
+    "contractVersion": "0.1-draft",
+    "kind": "reusable-content-type",
+    "id": "content-types/product-page",
+    "version": "1.0.0",
+    "revision": "product-page-type-r1",
+    "label": {
+      "key": "org.example.catalog/product-page-type",
+      "defaultMessage": "Product page"
+    },
+    "status": "published",
+    "model": {
+      "id": "org.example.models/product",
+      "version": "1.0.0",
+      "revision": "product-model-r1"
+    },
+    "blueprint": {
+      "id": "org.example.blueprints/product-card",
+      "version": "1.0.0",
+      "revision": "product-card-r5"
+    },
+    "authoringPolicy": {
+      "modes": ["model", "blueprint", "content"],
+      "itemComposition": "overrides"
+    }
+  },
+  "state": {
+    "coordinates": {
+      "type": {
+        "id": "content-types/product-page",
+        "version": "1.0.0",
+        "revision": "product-page-type-r1"
+      },
+      "model": {
+        "id": "org.example.models/product",
+        "version": "1.0.0",
+        "revision": "product-model-r1"
+      },
+      "blueprint": {
+        "id": "org.example.blueprints/product-card",
+        "version": "1.0.0",
+        "revision": "product-card-r5"
+      },
+      "entry": {
+        "id": "products/trail-backpack",
+        "revision": "entry-r7"
+      }
+    },
+    "model": {
+      "contractVersion": "0.1-draft",
+      "kind": "content-model",
+      "id": "org.example.models/product",
+      "version": "1.0.0",
+      "revision": "product-model-r1",
+      "owner": {
+        "id": "org.example/catalog",
+        "version": "1.0.0"
+      },
+      "status": "published",
+      "label": {
+        "key": "org.example.catalog/product-model",
+        "defaultMessage": "Product"
+      },
+      "fields": [
+        {
+          "id": "name",
+          "kind": "string",
+          "label": {
+            "key": "org.example.catalog/product-name",
+            "defaultMessage": "Name"
+          },
+          "required": true,
+          "localized": true,
+          "cardinality": "one"
+        }
+      ],
+      "relationships": []
+    },
+    "blueprint": {
+      "contractVersion": "0.1-draft",
+      "kind": "blueprint",
+      "id": "org.example.blueprints/product-card",
+      "version": "1.0.0",
+      "revision": "product-card-r5",
+      "owner": {
+        "id": "org.example/catalog",
+        "version": "1.0.0"
+      },
+      "status": "published",
+      "label": {
+        "key": "org.example.catalog/product-card",
+        "defaultMessage": "Product card"
+      },
+      "model": {
+        "id": "org.example.models/product",
+        "version": "1.0.0",
+        "revision": "product-model-r1"
+      },
+      "dependencyLock": {
+        "theme": {
+          "id": "org.example.themes/commerce",
+          "version": "1.0.0",
+          "revision": "commerce-theme-r3"
+        },
+        "blocks": [
+          {
+            "type": "studio.core/text",
+            "version": "1.0.0",
+            "revision": "text-block-r1"
+          }
+        ]
+      },
+      "roots": [
+        {
+          "id": "node-name",
+          "type": "studio.core/text",
+          "version": "1.0.0",
+          "properties": {},
+          "bindings": {
+            "value": {
+              "source": {
+                "kind": "entry-field",
+                "fieldPath": ["name"]
+              },
+              "transforms": [],
+              "onNull": "empty",
+              "onError": "error"
+            }
+          },
+          "slots": {},
+          "authoring": {
+            "mode": "content"
+          }
+        }
+      ]
+    },
+    "entry": {
+      "contractVersion": "0.1-draft",
+      "kind": "entry",
+      "id": "products/trail-backpack",
+      "revision": "entry-r7",
+      "model": {
+        "id": "org.example.models/product",
+        "version": "1.0.0",
+        "revision": "product-model-r1"
+      },
+      "status": "draft",
+      "values": {
+        "name": "Trail Backpack"
+      }
+    },
+    "dirty": [],
+    "diagnostics": []
+  },
+  "capabilities": {
+    "modes": ["model", "blueprint", "content"],
+    "presentationStates": ["inline", "fullscreen"],
+    "saveOutcomes": ["save-item", "save-new-type-version", "save-as-new-type"]
+  },
+  "presentation": {
+    "current": "inline",
+    "returnContext": {
+      "key": "return/product-list"
+    }
+  },
+  "contributionGeneration": "contributions-r8"
+}

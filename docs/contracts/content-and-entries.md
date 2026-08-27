@@ -130,5 +130,5 @@ The target contextual profile MUST present three distinct, explicit outcomes (`S
 Changing a field, block, or value locally never implies that any one of those outcomes succeeded. Studio MUST
 show which artifacts are dirty, request the selected host operation, and reconcile every accepted or rejected
 revision without copy-paste or manual cross-screen repair (`STUDIO-PROD-006`, `STUDIO-PROD-012`). The required
-coordinated operations and UI are planned; the current Blueprint-only host session implements none of these
-multi-artifact save outcomes.
+canonical authoring port now defines the planning and three transaction shapes. That protocol foundation does
+not by itself make the legacy Blueprint-only host session or a shell UI a completed multi-artifact journey.

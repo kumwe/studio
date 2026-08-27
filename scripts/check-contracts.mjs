@@ -499,6 +499,9 @@ assertExactSet(
 
 const schemaByExample = new Map([
   ['authoring-message-catalog.en.json', 'authoring-message-catalog.schema.json'],
+  ['authoring-save.plan.example.json', 'authoring-save.schema.json'],
+  ['authoring-session.example.json', 'authoring-session.schema.json'],
+  ['authoring-target.example.json', 'authoring-target.schema.json'],
   ['block.grid.example.json', 'block-definition.schema.json'],
   ['block.price.example.json', 'block-definition.schema.json'],
   ['blueprint.product.example.json', 'blueprint.schema.json'],
@@ -522,6 +525,7 @@ const schemaByExample = new Map([
   ['preview.render.example.json', 'preview-message.schema.json'],
   ['provenance.example.json', 'provenance.schema.json'],
   ['rich-text.example.json', 'rich-text.schema.json'],
+  ['reusable-content-type.example.json', 'reusable-content-type.schema.json'],
   ['studio-config.example.json', 'studio-config.schema.json'],
   ['theme.example.json', 'theme.schema.json'],
   ['unresolved-contribution.example.json', 'unresolved-contribution.schema.json'],

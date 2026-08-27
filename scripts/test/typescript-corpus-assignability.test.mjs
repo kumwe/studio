@@ -17,6 +17,9 @@ const compilerDepthBoundary = new Set([
 
 const exampleSchemas = new Map([
   ['authoring-message-catalog.schema.json', ['authoring-message-catalog.en.json']],
+  ['authoring-save.schema.json', ['authoring-save.plan.example.json']],
+  ['authoring-session.schema.json', ['authoring-session.example.json']],
+  ['authoring-target.schema.json', ['authoring-target.example.json']],
   ['block-definition.schema.json', ['block.grid.example.json', 'block.price.example.json']],
   ['blueprint.schema.json', ['blueprint.product.example.json']],
   ['command.schema.json', ['command.move-node.example.json']],
@@ -38,6 +41,7 @@ const exampleSchemas = new Map([
   ['preview-message.schema.json', ['preview.render.example.json']],
   ['provenance.schema.json', ['provenance.example.json']],
   ['rich-text.schema.json', ['rich-text.example.json']],
+  ['reusable-content-type.schema.json', ['reusable-content-type.example.json']],
   ['studio-config.schema.json', ['studio-config.example.json']],
   ['theme.schema.json', ['theme.example.json']],
   ['unresolved-contribution.schema.json', ['unresolved-contribution.example.json']],
@@ -59,12 +63,12 @@ const corpusGroups = [
 
 test('canonical corpus literals are assignable to their exact generated schema roots', async () => {
   const documents = await loadApplicableCorpus();
-  assert.equal(documents.length, 236);
+  assert.equal(documents.length, 240);
 
   const bounded = documents.filter(({ path }) => compilerDepthBoundary.has(path));
   assert.deepEqual(bounded.map(({ path }) => path).sort(), [...compilerDepthBoundary].sort());
   const staticallyChecked = documents.filter(({ path }) => !compilerDepthBoundary.has(path));
-  assert.equal(staticallyChecked.length, 234);
+  assert.equal(staticallyChecked.length, 238);
 
   const proofRoot = await mkdtemp(join(tmpdir(), 'studio-typescript-corpus-'));
   try {

@@ -16,7 +16,7 @@ const corpusManifest = JSON.parse(
 const inventory = buildExpectedTypeScriptRuntimeInventory(corpusManifest);
 
 test('TypeScript runtime inventory is derived from the exact positive corpus', () => {
-  assert.equal(inventory.length, 236);
+  assert.equal(inventory.length, 240);
   const report = validReport();
   assert.deepEqual(inspectTypeScriptRuntimeReport(report, inventory), []);
   assert.deepEqual(

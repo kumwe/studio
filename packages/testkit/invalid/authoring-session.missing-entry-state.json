@@ -1,0 +1,9 @@
+{
+  "schema": "authoring-session.schema.json",
+  "description": "A contextual session cannot claim coordinated hydration without a separately identified Entry document.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-session",
+    "sessionId": "sessions/incomplete"
+  }
+}

@@ -55,7 +55,7 @@ Hosts MAY omit optional ports. A plugin cannot add host authority by declaring a
 
 ## Target contextual host responsibilities
 
-For the planned contextual profile, the host MUST resolve Studio availability from an authorized core or
+For the contextual profile, the host MUST resolve Studio availability from an authorized core or
 extension-declared target, authenticate the actor, authorize the exact resource, and return its exact reusable
 type version, Model, Blueprint, Entry, policy, and contribution generation (`STUDIO-PROD-005`,
 `STUDIO-PROD-008`, `STUDIO-PROD-009`, `STUDIO-PROD-010`). An extension declaration can make a target or
@@ -71,11 +71,28 @@ The target host boundary MUST support three distinct author intentions (`STUDIO-
   values.
 
 Each is one declared host-authoritative transactional outcome with its own authorization, expected revisions,
-idempotency, audit, rollback behavior, and normalized response. The existing generic artifact operations do not
-define a multi-artifact transaction, and the current model port is read-only. New operation vocabulary,
-schemas, adapter interfaces, conformance vectors, and capability negotiation are therefore required before
-these target outcomes are implemented. A host MUST NOT approximate them with undocumented sequential saves or
-claim them through the current Blueprint handle (`STUDIO-PROD-014`).
+idempotency, audit, rollback behavior, and normalized response. The canonical `authoring` port now publishes
+the additive operation vocabulary below; the existing generic artifact operations remain unchanged and MUST
+NOT be used as an undocumented multi-artifact transaction:
+
+| Operation                         | Typed method         | Result                                                         |
+| --------------------------------- | -------------------- | -------------------------------------------------------------- |
+| `authoring.resolve-target`        | `resolveTarget`      | Authorized target, bounded resource context, and start choices |
+| `authoring.list-types`            | `listTypes`          | Authorized exact reusable-type summaries                       |
+| `authoring.start`                 | `start`              | Full Model/Blueprint/Entry snapshot and exact coordinates      |
+| `authoring.plan-save`             | `planSave`           | Affected artifacts and host-derived consequences               |
+| `authoring.save-item`             | `saveItem`           | Reconciled session after the Entry transaction                 |
+| `authoring.save-new-type-version` | `saveNewTypeVersion` | Reconciled session after coordinated successor creation        |
+| `authoring.save-as-new-type`      | `saveAsNewType`      | Reconciled session after new reusable-type creation            |
+
+`resolve-target`, `list-types`, and `start` all carry the complete bounded resource context and the request
+envelope carries its key; the host MUST reject a mismatch. Every save plan carries the complete expected type,
+Model, Blueprint, and Entry coordinates. The mutating requests carry a plan identity, accepted consequence
+codes, and an idempotency key in the envelope. Their registry entries deliberately do not use the envelope's
+single `expectedRevision`: the operation payload protects all coordinated revisions instead.
+
+A host MUST NOT approximate these operations with undocumented sequential saves or claim them through the
+legacy Blueprint handle (`STUDIO-PROD-014`).
 
 Presentation changes between inline, minimized, maximized, and fullscreen do not grant authority and MUST NOT
 change the resource context or artifact revisions (`STUDIO-PROD-007`). The host retains the deterministic

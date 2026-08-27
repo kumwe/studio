@@ -1,0 +1,15 @@
+{
+  "schema": "authoring-save.schema.json",
+  "description": "A save plan cannot be confirmed without the exact expected Model, Blueprint, and Entry coordinates.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-save-plan",
+    "id": "save-plans/incomplete",
+    "revision": "save-plan-r1",
+    "sessionId": "sessions/incomplete",
+    "outcome": "save-item",
+    "affectedArtifacts": ["entry"],
+    "consequences": [],
+    "confirmationRequired": false
+  }
+}
