@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-preview",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-beta.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -28,8 +28,8 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-rc.1",
-    "@kumwe/studio-protocol": "0.1.0-rc.1"
+    "@kumwe/studio-core": "0.1.0-beta.2",
+    "@kumwe/studio-protocol": "0.1.0-beta.2"
   },
   "publishConfig": {
     "access": "public",
