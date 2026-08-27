@@ -2,6 +2,9 @@
 
 - Status: proposed
 - Scope: model-port consumption, Blueprint field bindings, authoring controls and portability
+- Supersession: Read-only projection remains valid. The rejection of every separately authorized
+  definition-draft mutation path as a product target is partially superseded by
+  [ADR 0035](0035-contextual-unified-content-authoring.md).
 
 ## Context
 

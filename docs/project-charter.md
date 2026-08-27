@@ -2,7 +2,10 @@
 
 ## Mission
 
-Kumwe Studio makes structured experience composition feel direct: define data, arrange a reusable blueprint, bind fields, select safe design intent, work with media, and populate content without writing presentation code. The result remains portable, governable, accessible, and renderable by the host's own technology.
+Kumwe Studio makes structured content authoring feel direct: create or open content in its host context, start
+from a reusable content type or a blank canvas, define data, arrange reusable structure, bind fields, select safe
+design intent, work with media, and populate values in one continuous experience without writing presentation
+code. The result remains portable, governable, accessible, and renderable by the host's own technology.
 
 [Kumwe App](https://github.com/kumwe/app) is the first and most demanding reference host—the hand for which the glove is made—but the glove has an explicit public protocol and may be worn by other systems.
 
@@ -20,7 +23,15 @@ Studio joins these concerns through contracts rather than by collapsing them:
 
 ## Product promise
 
-An authorized author can open Studio, place and rearrange blocks, create responsive regions, bind schema fields, choose only design capabilities offered by the active profile, select and describe media, preview the host's real rendering, and save a deterministic structured document. Another conforming client—including a future Flutter client—can understand the same document without executing web code.
+An authorized author can open Studio directly for new or existing content, place and rearrange blocks, create
+responsive regions, define or bind schema fields, populate values, choose only design capabilities offered by
+the active profile, select and describe media, preview the host's real rendering, and request explicit
+host-authorized save outcomes. Another conforming client—including a future Flutter client—can understand the
+same artifacts without executing web code.
+
+The complete promise and minimum acceptance journey are normative in
+[`product-contract.md`](product-contract.md). This charter describes the goal; it does not claim the current
+runtime has completed that journey.
 
 ## Principles
 
@@ -41,9 +52,17 @@ Studio includes the portable protocol, deterministic core, Lit authoring applica
 
 Studio does not become a CMS, database, DAM, identity provider, workflow engine, production renderer, arbitrary code sandbox, general CSS editor, or business-rule engine. It integrates with those authorities through explicit ports.
 
-## Two-stage authoring
+## Coordinated contextual authoring
 
-Blueprint mode creates a reusable presentation contract: regions, blocks, bindings, responsive intent, allowed content actions, and theme recipes. Content mode uses that contract to populate or select values. Model mode may coordinate a draft content model, but publishing a content model and blueprint remains an explicit, validated host transaction rather than a silent side effect of dragging a block.
+Studio presents Model, Blueprint, and Content work as permission and artifact-authority boundaries inside one
+contextual journey. An author may begin with an existing reusable type or an authorized blank canvas, coordinate
+a content-model draft, arrange reusable presentation, and populate entry values without a manual handoff to a
+different product surface. The host may implement expanded authoring on a context-preserving route, but Studio
+must return to the originating content resource without copy-and-paste integration.
+
+The artifacts do not collapse. Publishing or versioning a content model, Blueprint, or entry remains an
+explicit, validated host transaction. Dragging a field-like block may offer an authorized model-draft change,
+but it never silently mutates a published model or changes other entries.
 
 ## Success conditions
 

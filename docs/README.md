@@ -5,7 +5,8 @@ This documentation separates normative requirements, architectural rationale, im
 | Area                                   | Purpose                                                    | Authority              |
 | -------------------------------------- | ---------------------------------------------------------- | ---------------------- |
 | [Contributing](../CONTRIBUTING.md)     | One setup, quality, change, and release path               | Working procedure      |
-| [Project charter](project-charter.md)  | Product mission, scope, principles, and success conditions | Governing intent       |
+| [Product contract](product-contract.md) | Sole Studio product intent and acceptance requirements    | Normative product authority |
+| [Project charter](project-charter.md)  | Mission, scope, principles, and success conditions         | Product-contract context |
 | [Glossary](glossary.md)                | Stable vocabulary used across packages and integrations    | Normative terminology  |
 | [Architecture](architecture/README.md) | System boundaries and responsibility model                 | Normative where stated |
 | [Contracts](contracts/README.md)       | Observable portable behaviour                              | Normative              |
@@ -21,4 +22,7 @@ This documentation separates normative requirements, architectural rationale, im
 | [Governance](governance/README.md)     | Compatibility, contribution, and release policy            | Project policy         |
 | [Quality](quality/README.md)           | Qualification dimensions and test strategy                 | Programme policy       |
 
-Normative keywords have the meanings defined in `contracts/normative-language.md`. If prose and a canonical schema conflict, the conflict is a release blocker; neither silently overrides the other.
+Product behaviour begins with [`STUDIO-PROD-1.0-draft`](product-contract.md). Subordinate documents reference
+its stable requirement IDs and must not create a second product track. Normative keywords have the meanings
+defined in `contracts/normative-language.md`. If prose and a canonical schema conflict, the conflict is a
+release blocker; neither silently overrides the other.

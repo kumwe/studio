@@ -3,17 +3,21 @@
 These instructions apply to every change in this repository, whether it is made by a person or an automated contributor.
 
 Every task follows the single setup, change, verification, and release path in
-[`CONTRIBUTING.md`](CONTRIBUTING.md). Read that file and [`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md)
-before editing. Do not invent an alternate bootstrap command, quality gate, versioning route, or release
-workflow in an agent-specific file.
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Read that file, the normative
+[`Studio product contract`](docs/product-contract.md), and
+[`docs/roadmap/STATUS.md`](docs/roadmap/STATUS.md) before editing. Do not invent an alternate bootstrap
+command, quality gate, versioning route, release workflow, or product objective in an agent-specific file.
 
 ## Source of truth
 
-1. Canonical schemas in `schemas/` exclusively define serialized shape; normative contracts in `docs/contracts/` define semantics and observable behaviour.
-2. Architecture decision records in `docs/decisions/` explain why those contracts exist; their formal status
+1. [`docs/product-contract.md`](docs/product-contract.md) exclusively defines Studio's normative product
+   intent and minimum end-to-end authoring outcome. It does not claim that the target is implemented.
+2. Canonical schemas in `schemas/` exclusively define serialized shape; normative contracts in `docs/contracts/` define semantics and observable behaviour.
+3. Architecture decision records in `docs/decisions/` explain why those contracts exist; their formal status
    records contract ratification, not whether a repository implementation has landed.
-3. Package code implements the contracts; it must not silently redefine them.
-4. `docs/roadmap/STATUS.md` is the sole authority for Gate A and Gate B status.
+4. Package code implements the contracts; it must not silently redefine them.
+5. `docs/roadmap/STATUS.md` is the sole authority for implementation, profile, release, Gate A, and Gate B
+   status.
 
 Shape and semantics overlap deliberately and must agree. When code, prose, schemas, or fixtures disagree, stop and resolve the contradiction; it blocks release, and no source silently overrides another outside its declared authority.
 
@@ -28,6 +32,10 @@ Shape and semantics overlap deliberately and must agree. When code, prose, schem
 - Keep Studio a reusable standalone page builder. The renderer turns portable intent into deterministic HTML,
   scoped CSS, and trusted progressive-enhancement JavaScript with an operable no-JavaScript fallback; hosts do
   not need editor internals to render public pages.
+- Preserve contextual authoring as the product goal: creating or editing host content opens Studio for that
+  resource, without a copy-and-paste handoff or a prerequisite trip through a disconnected Blueprint screen.
+- Keep Node.js and npm in contributor, build, test, and release environments only. A production host deploys
+  prebuilt browser assets; it never needs a Node.js or npm runtime to operate Studio.
 - Treat browser validation as authoring assistance; the host remains authoritative.
 - Make every drag action possible with keyboard and explicit structural controls.
 - Preserve deterministic command, migration, serialization, and validation behaviour.
@@ -37,7 +45,8 @@ Shape and semantics overlap deliberately and must agree. When code, prose, schem
 
 ## Change workflow
 
-Before editing, identify the affected contract, compatibility surface, threat boundary, and conformance fixture. For a public behavioural change:
+Before editing, identify the affected `STUDIO-PROD-*` requirements, contract, compatibility surface, threat
+boundary, and conformance fixture. For a public behavioural change:
 
 1. update or add the normative contract and architecture decision;
 2. update the canonical JSON Schema and valid/invalid fixtures;

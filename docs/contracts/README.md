@@ -2,6 +2,11 @@
 
 This directory contains the normative contracts between Studio core, user interfaces, hosts, renderers, themes, blocks, and plugins. Implementations may differ internally while preserving these observable rules.
 
+The sole product-behaviour authority is the
+[`Studio product contract`](../product-contract.md). These technical contracts implement its stable
+`STUDIO-PROD-*` requirements; they must not narrow them or turn a currently bounded implementation profile
+into an alternative product workflow. The roadmap status remains the authority on what is actually delivered.
+
 ## Contract index
 
 - [Normative language](normative-language.md)

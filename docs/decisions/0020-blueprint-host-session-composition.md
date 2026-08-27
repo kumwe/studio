@@ -2,6 +2,9 @@
 
 - Status: proposed
 - Scope: resolved configuration, artifact persistence, failure containment, recovery access, and local lifecycle
+- Supersession: The Blueprint-only profile remains valid as a bounded implementation increment. Its treatment
+  as the complete product session is partially superseded by
+  [ADR 0035](0035-contextual-unified-content-authoring.md).
 
 ## Context
 
