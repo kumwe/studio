@@ -1,4 +1,5 @@
 import { KumweStudioElement } from './kumwe-studio.js';
+import { KumweStudioContextualElement } from './contextual-authoring.js';
 
 export {
   createStudioStandaloneSetup,
@@ -39,6 +40,30 @@ export function defineKumweStudio(tagName = 'kumwe-studio'): void {
     customElements.define(tagName, KumweStudioElement);
   }
 }
+
+/** Register the canonical resource-bound shell and its internal Blueprint canvas. */
+export function defineKumweStudioContextual(
+  tagName = 'kumwe-studio-contextual',
+  blueprintTagName = 'kumwe-studio',
+): void {
+  defineKumweStudio(blueprintTagName);
+  if (customElements.get(tagName) === undefined) {
+    customElements.define(tagName, KumweStudioContextualElement);
+  }
+}
+
+export {
+  KumweStudioContextualElement,
+  STUDIO_CONTEXTUAL_MODES,
+  STUDIO_CONTEXTUAL_PRESENTATIONS,
+  STUDIO_CONTEXTUAL_SAVE_OUTCOMES,
+  type StudioContextualChangeDetail,
+  type StudioContextualDirtyState,
+  type StudioContextualModeChangeDetail,
+  type StudioContextualPresentationChangeDetail,
+  type StudioContextualSaveRequestDetail,
+  type StudioContextualStateVersions,
+} from './contextual-authoring.js';
 
 export {
   KumweStudioElement,

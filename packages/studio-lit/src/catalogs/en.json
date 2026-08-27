@@ -2,9 +2,293 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.4.0",
+  "catalogVersion": "1.5.0",
   "locale": "en",
   "messages": {
+    "studio.contextual/add-field": {
+      "defaultMessage": "Add field",
+      "parameters": []
+    },
+    "studio.contextual/add-typed-field": {
+      "defaultMessage": "Add typed field",
+      "parameters": []
+    },
+    "studio.contextual/all-saved": {
+      "defaultMessage": "All local changes saved",
+      "parameters": []
+    },
+    "studio.contextual/announce-field-added": {
+      "defaultMessage": "Field {label} added.",
+      "parameters": ["label"]
+    },
+    "studio.contextual/announce-mode": {
+      "defaultMessage": "{mode} mode selected.",
+      "parameters": ["mode"]
+    },
+    "studio.contextual/announce-presentation": {
+      "defaultMessage": "{presentation} presentation selected.",
+      "parameters": ["presentation"]
+    },
+    "studio.contextual/announce-save-requested": {
+      "defaultMessage": "{outcome} requested. The host must confirm and accept it.",
+      "parameters": ["outcome"]
+    },
+    "studio.contextual/authoring-mode": {
+      "defaultMessage": "Authoring mode",
+      "parameters": []
+    },
+    "studio.contextual/bind-in-blueprint": {
+      "defaultMessage": "Bind in Blueprint",
+      "parameters": []
+    },
+    "studio.contextual/binding-heading": {
+      "defaultMessage": "Field binding",
+      "parameters": []
+    },
+    "studio.contextual/binding-help": {
+      "defaultMessage": "Choose Blueprint mode, select a block, and bind one of these exact Model fields to a compatible block port. Studio keeps the Model definition, Blueprint binding, and Entry value separate while they remain in this resource session.",
+      "parameters": []
+    },
+    "studio.contextual/cardinality": {
+      "defaultMessage": "Cardinality",
+      "parameters": []
+    },
+    "studio.contextual/cardinality-many": {
+      "defaultMessage": "Multiple values",
+      "parameters": []
+    },
+    "studio.contextual/cardinality-one": {
+      "defaultMessage": "One value",
+      "parameters": []
+    },
+    "studio.contextual/choose-value": {
+      "defaultMessage": "Choose a value",
+      "parameters": []
+    },
+    "studio.contextual/collection-item-type": {
+      "defaultMessage": "Collection item type (used only for a collection field)",
+      "parameters": []
+    },
+    "studio.contextual/control-unavailable": {
+      "defaultMessage": "This field control is unavailable.",
+      "parameters": []
+    },
+    "studio.contextual/diagnostic-count": {
+      "defaultMessage": "{count} diagnostics",
+      "parameters": ["count"]
+    },
+    "studio.contextual/diagnostic-count-one": {
+      "defaultMessage": "1 diagnostic",
+      "parameters": []
+    },
+    "studio.contextual/dirty-artifacts": {
+      "defaultMessage": "Model {model} · Blueprint {blueprint} · Content {entry}",
+      "parameters": ["blueprint", "entry", "model"]
+    },
+    "studio.contextual/enum-values": {
+      "defaultMessage": "Enum choices (one identifier per line; used only for an enum field)",
+      "parameters": []
+    },
+    "studio.contextual/field-identifier": {
+      "defaultMessage": "Field identifier",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-boolean": {
+      "defaultMessage": "Boolean",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-collection": {
+      "defaultMessage": "Collection",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-date": {
+      "defaultMessage": "Date",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-date-time": {
+      "defaultMessage": "Date and time",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-decimal": {
+      "defaultMessage": "Decimal",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-enum": {
+      "defaultMessage": "Choice",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-integer": {
+      "defaultMessage": "Integer",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-media": {
+      "defaultMessage": "Media",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-money": {
+      "defaultMessage": "Money",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-object": {
+      "defaultMessage": "Object",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-resource": {
+      "defaultMessage": "Resource",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-rich-text": {
+      "defaultMessage": "Rich text",
+      "parameters": []
+    },
+    "studio.contextual/field-kind-string": {
+      "defaultMessage": "Text",
+      "parameters": []
+    },
+    "studio.contextual/field-label": {
+      "defaultMessage": "Label",
+      "parameters": []
+    },
+    "studio.contextual/field-optional": {
+      "defaultMessage": "optional",
+      "parameters": []
+    },
+    "studio.contextual/field-required": {
+      "defaultMessage": "required",
+      "parameters": []
+    },
+    "studio.contextual/field-summary": {
+      "defaultMessage": "{path} · {kind} · {cardinality} · {requirement}",
+      "parameters": ["cardinality", "kind", "path", "requirement"]
+    },
+    "studio.contextual/field-type": {
+      "defaultMessage": "Field type",
+      "parameters": []
+    },
+    "studio.contextual/json-array": {
+      "defaultMessage": "JSON array",
+      "parameters": []
+    },
+    "studio.contextual/json-value": {
+      "defaultMessage": "Canonical JSON value",
+      "parameters": []
+    },
+    "studio.contextual/localized": {
+      "defaultMessage": "Localized",
+      "parameters": []
+    },
+    "studio.contextual/mode-blueprint": {
+      "defaultMessage": "Blueprint",
+      "parameters": []
+    },
+    "studio.contextual/mode-content": {
+      "defaultMessage": "Content",
+      "parameters": []
+    },
+    "studio.contextual/mode-model": {
+      "defaultMessage": "Model",
+      "parameters": []
+    },
+    "studio.contextual/model-fields": {
+      "defaultMessage": "Model fields",
+      "parameters": []
+    },
+    "studio.contextual/model-status": {
+      "defaultMessage": "This Model is {status}. The host must open a draft successor before fields can change.",
+      "parameters": ["status"]
+    },
+    "studio.contextual/no-authorable-fields": {
+      "defaultMessage": "This Model exposes no authorable fields.",
+      "parameters": []
+    },
+    "studio.contextual/no-canonical-value": {
+      "defaultMessage": "No canonical value is available for this field yet.",
+      "parameters": []
+    },
+    "studio.contextual/no-fields": {
+      "defaultMessage": "No fields have been defined.",
+      "parameters": []
+    },
+    "studio.contextual/presentation-fullscreen": {
+      "defaultMessage": "Fullscreen",
+      "parameters": []
+    },
+    "studio.contextual/presentation-inline": {
+      "defaultMessage": "Inline",
+      "parameters": []
+    },
+    "studio.contextual/presentation-maximized": {
+      "defaultMessage": "Maximized",
+      "parameters": []
+    },
+    "studio.contextual/presentation-minimized": {
+      "defaultMessage": "Minimized",
+      "parameters": []
+    },
+    "studio.contextual/required": {
+      "defaultMessage": "Required",
+      "parameters": []
+    },
+    "studio.contextual/save-as-new-type": {
+      "defaultMessage": "Save as new type",
+      "parameters": []
+    },
+    "studio.contextual/save-item": {
+      "defaultMessage": "Save item",
+      "parameters": []
+    },
+    "studio.contextual/save-new-type-version": {
+      "defaultMessage": "Save new type version",
+      "parameters": []
+    },
+    "studio.contextual/save-outcome": {
+      "defaultMessage": "Save outcome",
+      "parameters": []
+    },
+    "studio.contextual/save-plan-help": {
+      "defaultMessage": "The authoritative host will plan and show affected artifacts and consequences before confirmation.",
+      "parameters": []
+    },
+    "studio.contextual/start-blank": {
+      "defaultMessage": "Blank start",
+      "parameters": []
+    },
+    "studio.contextual/start-existing": {
+      "defaultMessage": "Existing item",
+      "parameters": []
+    },
+    "studio.contextual/start-from-type": {
+      "defaultMessage": "Reusable type · {type}",
+      "parameters": ["type"]
+    },
+    "studio.contextual/state-changed": {
+      "defaultMessage": "changed",
+      "parameters": []
+    },
+    "studio.contextual/state-unchanged": {
+      "defaultMessage": "unchanged",
+      "parameters": []
+    },
+    "studio.contextual/unavailable": {
+      "defaultMessage": "Load one authorized content resource to open Studio.",
+      "parameters": []
+    },
+    "studio.contextual/unsaved": {
+      "defaultMessage": "Unsaved changes",
+      "parameters": []
+    },
+    "studio.contextual/value-coordinate": {
+      "defaultMessage": "Values belong to {entry}; they are not part of the reusable type.",
+      "parameters": ["entry"]
+    },
+    "studio.contextual/values-heading": {
+      "defaultMessage": "Content values",
+      "parameters": []
+    },
+    "studio.contextual/workspace-size": {
+      "defaultMessage": "Workspace size",
+      "parameters": []
+    },
     "studio.shell/announce-binding-removed": {
       "defaultMessage": "Removed the {port} binding",
       "parameters": ["port"]
