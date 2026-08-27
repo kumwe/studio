@@ -430,10 +430,8 @@ export function buildProofAssertionIndex(
     }
     const profile = profileAssertions.get(target.id);
     const procedure = manualProcedures.get(target.manualProcedureId);
-    if (target.id !== 'studio.profile/authoring-web' || profile?.status !== 'target') {
-      failures.push(
-        'the authoring-web proof target must remain target-only until qualification lands',
-      );
+    if (target.id !== 'studio.profile/authoring-web' || profile === undefined) {
+      failures.push('the authoring-web qualification target must name a declared profile');
     }
     if (
       target.status !== 'target' ||
@@ -456,7 +454,7 @@ export function buildProofAssertionIndex(
       externalSubjects.get('kumwe/app')?.status !== 'target'
     ) {
       failures.push(
-        'authoring-web target must bind exact Kumwe App real-shell and manual accessibility proof',
+        'authoring-web qualification must remain bound to exact Kumwe App real-shell and manual accessibility proof',
       );
     }
     profileTargetsById.set(target.id, target);

@@ -5,6 +5,7 @@ import { describe, it } from 'node:test';
 import {
   assertProductImplementationReady,
   assertPromotionEvidencePolicy,
+  assertReleaseProfilesExecutable,
   nextRcVersion,
   parseProfileInput,
   parseProductImplementationStatus,
@@ -110,6 +111,27 @@ describe('governed release policy', () => {
     );
   });
 
+  it('requires executable assertions for the complete fixed profile surface before RC work', () => {
+    const complete = profileAssertions();
+    assert.equal(Object.keys(assertReleaseProfilesExecutable(complete)).length, 9);
+
+    const targetAuthoring = profileAssertions();
+    targetAuthoring.profiles[0] = {
+      id: 'studio.profile/authoring-web',
+      requiredInputs: [],
+      requiredRuns: [],
+      status: 'target',
+    };
+    assert.throws(
+      () => assertReleaseProfilesExecutable(targetAuthoring),
+      /studio\.profile\/authoring-web/u,
+    );
+
+    const missing = profileAssertions();
+    missing.profiles.pop();
+    assert.throws(() => assertReleaseProfilesExecutable(missing), /missing/u);
+  });
+
   it('parses the repository STATUS table after Markdown formatting pads its cells', async () => {
     const source = await readFile(new URL('../../docs/roadmap/STATUS.md', import.meta.url), 'utf8');
     const status = parseProductImplementationStatus(source);
@@ -155,4 +177,17 @@ function productStatus(overrides = new Map()) {
     ...rows,
     '<!-- studio-product-implementation:end -->',
   ].join('\n');
+}
+
+function profileAssertions() {
+  return {
+    contractVersion: '0.1-draft',
+    kind: 'profile-assertion-registry',
+    profiles: completeProfiles.map((id) => ({
+      id,
+      requiredInputs: ['fixture.test.ts'],
+      requiredRuns: ['unit/workspace'],
+      status: 'executable',
+    })),
+  };
 }

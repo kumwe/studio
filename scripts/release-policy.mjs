@@ -123,6 +123,75 @@ export function assertProductImplementationReady(source) {
   return status;
 }
 
+export function assertReleaseProfilesExecutable(document) {
+  if (
+    document === null ||
+    typeof document !== 'object' ||
+    Array.isArray(document) ||
+    document.contractVersion !== '0.1-draft' ||
+    document.kind !== 'profile-assertion-registry' ||
+    !Array.isArray(document.profiles) ||
+    Object.keys(document).sort().join('\n') !== 'contractVersion\nkind\nprofiles'
+  ) {
+    throw new Error('RC preparation requires a valid profile assertion registry.');
+  }
+
+  const profiles = new Map();
+  for (const profile of document.profiles) {
+    if (
+      profile === null ||
+      typeof profile !== 'object' ||
+      Array.isArray(profile) ||
+      Object.keys(profile).sort().join('\n') !== 'id\nrequiredInputs\nrequiredRuns\nstatus' ||
+      typeof profile.id !== 'string' ||
+      !['executable', 'target'].includes(profile.status) ||
+      !Array.isArray(profile.requiredInputs) ||
+      !Array.isArray(profile.requiredRuns) ||
+      profile.requiredInputs.some((input) => typeof input !== 'string' || input.length === 0) ||
+      profile.requiredRuns.some((run) => typeof run !== 'string' || run.length === 0) ||
+      new Set(profile.requiredInputs).size !== profile.requiredInputs.length ||
+      new Set(profile.requiredRuns).size !== profile.requiredRuns.length
+    ) {
+      throw new Error('RC preparation requires valid profile assertion entries.');
+    }
+    if (profiles.has(profile.id)) {
+      throw new Error(`RC preparation profile assertion ${profile.id} is duplicated.`);
+    }
+    profiles.set(profile.id, profile);
+  }
+
+  const unknown = [...profiles.keys()].filter(
+    (profile) => !VERSION_TWO_RELEASE_PROFILES.includes(profile),
+  );
+  const missing = VERSION_TWO_RELEASE_PROFILES.filter((profile) => !profiles.has(profile));
+  if (
+    unknown.length > 0 ||
+    missing.length > 0 ||
+    profiles.size !== VERSION_TWO_RELEASE_PROFILES.length
+  ) {
+    throw new Error(
+      `RC preparation profile assertions differ from the fixed Version 2 surface: ` +
+        `missing [${missing.join(', ')}], unknown [${unknown.join(', ')}].`,
+    );
+  }
+
+  const incomplete = VERSION_TWO_RELEASE_PROFILES.filter((profile) => {
+    const assertion = profiles.get(profile);
+    return (
+      assertion.status !== 'executable' ||
+      assertion.requiredInputs.length === 0 ||
+      assertion.requiredRuns.length === 0
+    );
+  });
+  if (incomplete.length > 0) {
+    throw new Error(
+      `RC preparation is blocked until every fixed Version 2 profile has executable assertions: ` +
+        incomplete.join(', '),
+    );
+  }
+  return Object.fromEntries(VERSION_TWO_RELEASE_PROFILES.map((id) => [id, profiles.get(id)]));
+}
+
 export function nextRcVersion(sourceVersion) {
   const match = rcVersionPattern.exec(sourceVersion);
   if (match === null) {

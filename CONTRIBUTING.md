@@ -117,10 +117,10 @@ flowchart TD
 
 1. Normal merges accumulate Changesets on `main`.
 2. **Beta development train** runs on every `main` push. With pending Changesets it opens or updates the
-   generated version PR without receiving npm credentials. On the first publishable change after the withdrawn
-   `0.1.0-rc.1` decision, `version-packages` generates the complete `rc`-exit/`beta`-enter transition, consumes
-   the Changeset, clears unearned profile claims, and regenerates every governed coordinate file. Contributors
-   never edit that transition by hand.
+   generated version PR without receiving npm credentials. The first publishable change after the withdrawn
+   `0.1.0-rc.1` decision generated the complete `rc`-exit/`beta`-enter transition, consumed its Changesets,
+   cleared unearned profile claims, and regenerated every governed coordinate file. Later development
+   increments stay on that generated numeric beta train. Contributors never edit the train by hand.
 3. Merging that generated PR consumes the Changesets. The next train run authenticates, accepts only a
    coordinated numeric `beta.N`, uploads the exact approved tarballs under a version-scoped
    `studio-stage-*` tag, verifies the complete set and provenance from npm, and only then repairs the `beta`
@@ -130,10 +130,11 @@ flowchart TD
 5. Hosts pin that exact release and verify `studio-release.json` plus the corpus digest before integration
    qualification.
 6. **Governed RC and stable promotion** is the only manual promotion entry point. RC preparation first parses
-   the closed product-implementation inventory in `STATUS.md` and refuses to continue until every
-   `STUDIO-PROD-001`–`015` row is `repository-verified`. It then generates a reviewable PR for all eight
-   packages. The explicit numeric transform makes any `0.1.0-beta.N` become `0.1.0-rc.1`; changing only the
-   Changesets tag is forbidden because it carries the beta counter forward.
+   the closed product-implementation inventory in `STATUS.md` and the profile assertion registry. It refuses
+   to continue until every `STUDIO-PROD-001`–`015` row is `repository-verified` and every member of the fixed
+   nine-profile Version 2 surface has non-empty executable inputs and lanes. It then generates a reviewable PR
+   for all eight packages. The explicit numeric transform makes any `0.1.0-beta.N` become `0.1.0-rc.1`;
+   changing only the Changesets tag is forbidden because it carries the beta counter forward.
 7. After the promotion PR merges, dispatch the same workflow with the exact RC `expected_main_sha`,
    `channel=rc`, and empty profiles/evidence SHAs. The protected `studio-rc` job publishes the immutable
    tarballs only under the coordinate-scoped `studio-stage-*` quarantine tag, verifies exact bits and source
@@ -192,9 +193,9 @@ RC and stable metadata always carry this complete fixed Version 2 surface:
 preparation selects that complete sorted set; supplying a subset or different set fails. Every profile must
 later appear in reproduced evidence and exactly match the passing Gate A record. A profile label is not
 evidence: `evidence/profile-assertions.json` fixes the source inputs and exact test lanes that each claim must
-reproduce. `studio.profile/authoring-web` is still target-only, so official RC publication remains blocked until
-its exact Kumwe App real-shell and registered manual-accessibility proofs make it executable. The profile may
-not be dropped from the intended page-builder RC to bypass that work.
+reproduce. Repository-executable assertions do not constitute qualification. Official RC publication remains
+blocked until the exact Kumwe App real-shell and registered manual-accessibility proofs support
+`authoring-web`; the profile may not be dropped from the intended page-builder RC to bypass that work.
 
 Stable environment claims follow the same rule. `evidence/environment-assertions.json` covers every
 `evidence/environment-matrix.json` identity and binds each executable variant to exact commands plus required
@@ -204,12 +205,11 @@ operating systems, a clean npm consumer, and the Kumwe App MariaDB/MySQL/Postgre
 and therefore block stable qualification. Dart/Flutter remains a non-blocking Version 3 target. A label such as
 iOS backed by a Linux Chromium run cannot qualify.
 
-The repository currently records every product-requirement row as `active`, Gate A as **Not assessed**, and
-Gate B as **Blocked**. Therefore the promotion workflow refuses even to prepare or stage a new RC today. After
-all 15 implementation rows become `repository-verified`, it may prepare and quarantine a new RC for exact
-registry evidence; official `rc` publication still requires accepted Gate A. A quarantine coordinate is not a
-support claim or a GitHub release. Do not add placeholder status, claims, bundles, or invented gate records to
-make promotion pass.
+Any active product-requirement row or target-only member of the fixed profile assertion set blocks RC
+preparation. After all 15 implementation rows become `repository-verified` and every profile assertion set is
+executable, the workflow may prepare and quarantine a new RC for exact registry evidence; official `rc`
+publication still requires accepted Gate A. A quarantine coordinate is not a support claim or a GitHub
+release. Do not add placeholder status, claims, bundles, or invented gate records to make promotion pass.
 
 Preparation never receives npm credentials. Publication is retry-safe: all eight packages are packed once
 before authentication and those exact retained bytes are rehashed immediately before upload. Missing packages
