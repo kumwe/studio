@@ -9,49 +9,117 @@
   <body>
     <header>
       <p class="eyebrow">Reference host</p>
-      <h1>Kumwe Studio</h1>
+      <h1>Reference content</h1>
       <p>
-        A standalone Studio authoring surface using the complete production catalog and semantic web
-        renderer.
+        Studio opens here for the content being created or edited. The host resolves the exact
+        reusable type, Model, Blueprint, Entry, values, and save authority before the canvas opens.
       </p>
-      <nav class="reference-actions" aria-label="Reference page">
-        <button type="button" class="reference-demo">Load representative page</button>
-        <button type="button" class="reference-new">Start blank page</button>
-        <button type="button" class="reference-save">Save browser draft</button>
-        <button type="button" class="reference-reload">Reload browser draft</button>
-      </nav>
+      <section class="reference-content-actions" aria-labelledby="reference-existing-title">
+        <div>
+          <h2 id="reference-existing-title">Building pages with contextual Studio</h2>
+          <p>Existing content · pinned to type 1.0.0 although 2.0.0 is available</p>
+          <button type="button" class="reference-demo">Edit this content</button>
+        </div>
+        <div>
+          <h2>Create content</h2>
+          <p>Choose a starting point here; no Blueprint or type must be prepared elsewhere.</p>
+          <div class="reference-actions" role="group" aria-label="Create content">
+            <button type="button" class="reference-new">Start blank</button>
+            <button type="button" class="reference-from-type">
+              Start from Reference page 2.0.0
+            </button>
+          </div>
+        </div>
+      </section>
+      <details class="reference-recovery" open>
+        <summary>Local recovery tools</summary>
+        <p>
+          These browser-only controls preserve the recovery demo. Authoritative saves use Studio's
+          explicit save outcomes.
+        </p>
+        <div class="reference-actions">
+          <button type="button" class="reference-save">Save browser draft</button>
+          <button type="button" class="reference-reload">Reload browser draft</button>
+        </div>
+      </details>
       <p class="reference-session-status" role="status" aria-live="polite"></p>
     </header>
-    <kumwe-studio>
-      <div slot="preview" class="preview-surface"></div>
-    </kumwe-studio>
-    <section class="reference-authoring" aria-labelledby="reference-authoring-title">
-      <p class="eyebrow">Studio-owned control registry</p>
-      <h2 id="reference-authoring-title">Inline block authoring</h2>
-      <p>
-        These controls receive canonical values through Studio APIs. The host does not import or
-        configure Editor.js.
-      </p>
-      <p class="reference-authoring-status" role="status" aria-live="polite"></p>
-      <div class="reference-authoring-grid">
-        <section aria-labelledby="reference-prose-title">
-          <h3 id="reference-prose-title">FAQ answer</h3>
-          <div data-reference-control="rich-text"></div>
+    <main>
+      <section class="reference-context" aria-labelledby="reference-context-title">
+        <div>
+          <p class="eyebrow">Resolved authoring context</p>
+          <h2 id="reference-context-title">Exact host coordinates</h2>
+          <dl class="reference-coordinates">
+            <div>
+              <dt>Start</dt>
+              <dd class="reference-start-coordinate"></dd>
+            </div>
+            <div>
+              <dt>Reusable type</dt>
+              <dd class="reference-type-coordinate"></dd>
+            </div>
+            <div>
+              <dt>Model</dt>
+              <dd class="reference-model-coordinate"></dd>
+            </div>
+            <div>
+              <dt>Blueprint</dt>
+              <dd class="reference-blueprint-coordinate"></dd>
+            </div>
+            <div>
+              <dt>Entry</dt>
+              <dd class="reference-entry-coordinate"></dd>
+            </div>
+            <div>
+              <dt>Entry values</dt>
+              <dd class="reference-entry-values"></dd>
+            </div>
+          </dl>
+        </div>
+        <section class="reference-save-review" aria-live="polite" hidden>
+          <h3 class="reference-save-review-title">Confirm save</h3>
+          <strong>Affected artifacts</strong>
+          <ul class="reference-save-artifacts"></ul>
+          <strong>Consequences</strong>
+          <ul class="reference-save-consequences"></ul>
+          <div class="reference-actions">
+            <button type="button" class="reference-save-confirm">Confirm with host</button>
+            <button type="button" class="reference-save-cancel">Cancel</button>
+          </div>
         </section>
-        <section aria-labelledby="reference-media-title">
-          <h3 id="reference-media-title">Hero media</h3>
-          <div data-reference-control="media"></div>
-        </section>
-        <section aria-labelledby="reference-drawing-title">
-          <h3 id="reference-drawing-title">Portable drawing</h3>
-          <div data-reference-control="drawing"></div>
-        </section>
-        <section aria-labelledby="reference-table-title">
-          <h3 id="reference-table-title">Comparison table</h3>
-          <div data-reference-control="table"></div>
-        </section>
-      </div>
-    </section>
+        <p class="reference-save-result" hidden></p>
+      </section>
+      <kumwe-studio-contextual>
+        <div slot="preview" class="preview-surface"></div>
+      </kumwe-studio-contextual>
+      <section class="reference-authoring" aria-labelledby="reference-authoring-title">
+        <p class="eyebrow">Studio-owned control registry</p>
+        <h2 id="reference-authoring-title">Inline block authoring</h2>
+        <p>
+          These controls receive canonical values through Studio APIs. The host does not import or
+          configure Editor.js.
+        </p>
+        <p class="reference-authoring-status" role="status" aria-live="polite"></p>
+        <div class="reference-authoring-grid">
+          <section aria-labelledby="reference-prose-title">
+            <h3 id="reference-prose-title">FAQ answer</h3>
+            <div data-reference-control="rich-text"></div>
+          </section>
+          <section aria-labelledby="reference-media-title">
+            <h3 id="reference-media-title">Hero media</h3>
+            <div data-reference-control="media"></div>
+          </section>
+          <section aria-labelledby="reference-drawing-title">
+            <h3 id="reference-drawing-title">Portable drawing</h3>
+            <div data-reference-control="drawing"></div>
+          </section>
+          <section aria-labelledby="reference-table-title">
+            <h3 id="reference-table-title">Comparison table</h3>
+            <div data-reference-control="table"></div>
+          </section>
+        </div>
+      </section>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
