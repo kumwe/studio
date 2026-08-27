@@ -43,10 +43,13 @@ required for acceptance; the lane or a generic release label alone cannot satisf
 assessed and Gate B is blocked, so the official `rc` and stable channels cannot open today even though a
 frozen RC may be quarantined for evidence.
 
-The checked-in `studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
-one alpha version. That record is not proof that the packages are available from npm. Every publisher verifies
-all eight exact registry versions; RC/stable additionally verify registry integrity, provenance, the channel
-tag, and a source-bound GitHub release before Kumwe App or another deployable host updates its pin.
+At exact current source `829694efb25374d3b498f2d46856d2c39650728a`, the checked-in
+`studio-release.json` coordinates `@kumwe/studio-renderer-web` and the other seven packages at
+`0.1.0-rc.1` and records all nine proposed Version 2 profile names. That record is not proof that the packages
+are available from npm, that any profile is accepted, or that the official `rc` channel is open. Every
+publisher verifies all eight exact registry versions; RC/stable additionally verify registry integrity,
+provenance, the channel tag, and a source-bound GitHub release before Kumwe App or another deployable host
+updates its pin.
 
 Conceptual `beta` qualification requires a declared, executable conformance profile the candidate is
 feature-complete against, claimed with reproduced evidence. It does not add a second release route: the
@@ -68,9 +71,9 @@ The eight npm packages are one Changesets fixed group and advance to the same se
 repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
 into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
 records the release version, exact package versions, wire protocol version, corpus-manifest digest, and the
-fixed promotion profile surface. The current pre-version alpha baseline claims no profiles. RC preparation
-records all nine proposed Version 2 claims; they become publishable claims only when the passing exact-candidate
-gate supports the identical set.
+fixed promotion profile surface. The current `0.1.0-rc.1` candidate records all nine proposed Version 2 claims;
+they become publishable claims only when the passing exact-candidate gate supports the identical set. Candidate
+metadata freezes intended scope and is not itself conformance evidence.
 
 The contracts lane regenerates the record from package manifests, protocol constants, and corpus bytes, then
 fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The alpha

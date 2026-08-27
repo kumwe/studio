@@ -1,6 +1,7 @@
 # `@kumwe/studio-preview`
 
-Status: pre-Gate-A foundation alpha. The channel is an executable contract spike, not a qualified adapter.
+Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. The channel is an
+executable contract implementation, not a qualified host adapter.
 
 An exact-origin, typed request channel between Studio and a host-rendered preview surface. A host can
 render Twig, Liquid, JSX, or another server template without teaching the canvas to reproduce its

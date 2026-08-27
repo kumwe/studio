@@ -30,7 +30,7 @@ portable assertions, documentation, release intent, and verification agree.
 |    5 | Add focused unit/integration/browser coverage and a Changeset for every publishable package change.                                                                     | The changed behavior is measurable and version intent is explicit. |
 |    6 | Run `npm run verify` and `npm run release:plan`. Review the diff for generated-record, package-family, security, accessibility, compatibility, and documentation drift. | Full local gate passes and release operation is understood.        |
 |    7 | Open a pull request. Merge only after CI **Quality** and **Accessibility** pass.                                                                                        | Default branch contains a reviewed, green increment.               |
-|    8 | Let the alpha release train maintain its version PR. Never hand-edit package versions, `.changeset/pre.json`, changelogs, lockfile pins, or release-record copies.      | One generated version PR represents the whole family.              |
+|    8 | Let the governed release workflows maintain the active family/candidate metadata. Never hand-edit package versions, `.changeset/pre.json`, changelogs, lockfile pins, or release-record copies. | One generated operation represents the whole family.               |
 
 ## Environment setup
 
@@ -94,6 +94,11 @@ specified human review.
 Every publishable change carries one truthful Changeset. The fixed group makes all eight package versions move
 together; `npm run version-packages` is the only versioning implementation and also regenerates the lockfile,
 changelogs, and all three release-record copies.
+
+Current source `829694efb25374d3b498f2d46856d2c39650728a` records the coordinated `0.1.0-rc.1` candidate and
+all nine proposed Version 2 profile names. That checked-in metadata is not evidence, an official npm `rc`
+channel, stable support, or production readiness: Gate A remains **Not assessed** and Gate B remains
+**Blocked**. The lifecycle below remains the only route from candidate source to an accepted channel.
 
 ```mermaid
 flowchart TD
@@ -166,7 +171,7 @@ flowchart TD
 
 | Intent                      | `expected_main_sha`                                        | `channel` | `profiles`                                         | `candidate_sha` / `gate_record_sha`             |
 | --------------------------- | ---------------------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------------------------- |
-| Prepare `rc.1`              | Exact current alpha `main`                                 | `rc`      | Empty (defaults to fixed nine) or exact fixed nine | Both empty                                      |
+| Prepare a train's `rc.1`    | Exact active alpha-train `main`                            | `rc`      | Empty (defaults to fixed nine) or exact fixed nine | Both empty                                      |
 | Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                              | Both empty                                      |
 | Stage RC for Gate A proof   | Exact current frozen RC candidate at `main`                | `rc`      | Empty                                              | Both empty                                      |
 | Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                              | Exact RC candidate, then later evidence commit  |

@@ -1,6 +1,7 @@
 # `@kumwe/studio-core`
 
-Status: pre-Gate-A foundation alpha. The implemented kernel does not claim production completeness.
+Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. The implemented kernel
+does not claim product or host-integration completeness.
 
 The framework-neutral state engine for Studio. It registers versioned blocks, validates blueprint
 documents, applies typed commands without mutating caller-owned data, and maintains bounded
