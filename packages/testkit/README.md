@@ -1,8 +1,9 @@
 # `@kumwe/studio-testkit`
 
-Status: pre-Gate-A foundation alpha. Its conformance helpers do not by themselves constitute gate evidence.
+Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. Its conformance helpers
+do not by themselves constitute gate evidence.
 
-The current alpha combines fixture builders and `assertBlueprintConforms` with deterministic host and HTTP
+The current candidate combines fixture builders and `assertBlueprintConforms` with deterministic host and HTTP
 testbeds plus executable command, canonical, host, host-sequence, media, preview, property-schema,
 binding-projection, renderer-web, rich-text, and authoring-web corpus runners. Those helpers let another
 implementation replay the same portable assertions without adopting Studio internals. A green repository
@@ -135,4 +136,4 @@ plugin, host-port, command, preview, media, compatibility, migration, lifecycle,
 accessibility, localization, and the applicable Version 2 TypeScript profile. Eight Version 2 profiles are
 declared executable in the repository; `studio.profile/authoring-web` alone remains a target until its complete
 real-shell assertion set and manual matrix exist. None is claimed by the current release record, and this
-foundation alpha must not be cited as accepted gate evidence. Dart/Flutter parity belongs to Version 3.
+source candidate must not be cited as accepted gate evidence. Dart/Flutter parity belongs to Version 3.

@@ -1,7 +1,7 @@
 # Media architecture and experience
 
 This document specifies the complete target media authoring experience and its Gate A/Gate B obligations; it
-does not claim that the current alpha package implements every surface. Studio does not become the authoritative
+does not claim that the current candidate package implements every surface. Studio does not become the authoritative
 media service. This division lets Kumwe App solve its current clunky Version 2 web authoring workflow while
 allowing Studio to work with another CMS, DAM, object store, or desktop application. Native Flutter hosts are
 Version 3 targets.
@@ -20,7 +20,7 @@ Version 3 targets.
 | Portable stable media-reference shape                                    | Private/public delivery policy, signed URLs and CDN/origin handling |
 | Media port types, diagnostics and conformance tests                      | Rate limits, quotas, lifecycle jobs, backup/restore and operations  |
 
-The table assigns target ownership. The current alpha implements the Studio side of this boundary: the
+The table assigns target ownership. The current candidate implements the Studio side of this boundary: the
 host-neutral provider, cancellation-safe browse/search/pagination and upload state, rendition selection,
 media-field controller, and shell controls for browse, select, replace, paste/drop/upload, progress,
 cancellation, retry, ordering, metadata, and orphan recovery. That repository-verified runtime is not yet a

@@ -15,6 +15,11 @@ product: headless core, Lit authoring shell, generic host adapters, extension an
 and rich text, TypeScript portability, conformance tooling, and a qualified Kumwe App integration profile.
 Native Dart and Flutter delivery remains a Version 3 programme target and does not block Version 2.
 
+The [Studio product contract](../product-contract.md) is the sole authority for the target user outcome.
+This roadmap schedules and qualifies `STUDIO-PROD-001`–`015`; it does not redefine them. In particular, the
+default target is contextual create/edit with layout, fields, and values in one session—not a standalone
+Blueprint tool followed by manual content entry elsewhere.
+
 ## Programme invariants
 
 Every work package and gate preserves these rules:
@@ -40,6 +45,11 @@ Every work package and gate preserves these rules:
 10. No package or integration is called portable beyond the profile it proves. Version 2 requires the
     TypeScript reference to pass its canonical fixtures; Version 3 Dart/Flutter profiles will additionally
     require the Dart SDK to pass the same applicable fixtures.
+11. An extension-declared host target opens Studio for the exact authorized resource and contribution
+    generation. Model, Blueprint, and Entry authority boundaries remain visible to the host but do not become
+    disconnected author-facing products.
+12. Kumwe App keeps every authoritative effect in PHP application services and PHP HTTP endpoints. Compiled
+    Studio browser assets require zero production Node.js/npm runtime.
 
 ## Gate meanings
 
@@ -77,8 +87,9 @@ The Version 2 web qualification target is exactly
 `studio.profile/binding-projection-v1`, and `studio.profile/renderer-web`, plus target
 `studio.profile/authoring-web` when its complete executable assertion set is delivered. A target is not a
 conformance claim: a release may name one of these profiles in
-`claimedProfiles` only after the evidence model permits that exact claim. The current release record
-claims none.
+`claimedProfiles` only after the evidence model permits that exact claim. The current `0.1.0-rc.1` release
+record freezes all nine proposed claims, including target-only `authoring-web`; recording that intended surface
+does not make any claim accepted or open the official `rc` channel.
 
 Version 3 adds the target profiles `studio.profile/engine-dart`,
 `studio.profile/renderer-flutter`, and `studio.profile/authoring-flutter`. Their Dart generation,
@@ -103,11 +114,25 @@ flowchart TD
 The identifiers below are stable programme references. A work package becomes ready only after every
 listed dependency is accepted.
 
+### Product-contract traceability
+
+The meanings stay in the product contract; this table only assigns delivery work.
+
+| Product requirements | Primary programme work |
+| --- | --- |
+| `STUDIO-PROD-001`–`003`, `012` | `M3-03`, `M3-05`, `M4-01`, `M4-03`, `M4-04`, `M5-05`, `M5-06` |
+| `STUDIO-PROD-004`–`006` | `M2-01`, `M2-02`, `M2-04`, `M4-03`, `M4-04`, `M5-05`, `M5-06` |
+| `STUDIO-PROD-007` | `M1-06`, `M4-01`, `M4-05`, `M6-03` |
+| `STUDIO-PROD-008`–`009` | `M2-03`, `M3-02`, `M3-05`, `M5-04`–`M5-06` |
+| `STUDIO-PROD-010`–`011` | `M2-04`, `M3-05`, `M5-05`, `M5-06`, `M6-05` |
+| `STUDIO-PROD-013` | `M1-06`, `M4-05`, `M6-03` |
+| `STUDIO-PROD-014`–`015` | `M1-04`, `M2-08`, `M5-05`, `M5-06`, `M6-06` |
+
 ### Month 1 — product and engineering foundation
 
 | Package                                             | Depends on       | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                   |
 | --------------------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M1-01 Product boundary`                            | —                | Product vocabulary, artifact ownership, authoring modes, non-goals, threat boundary, and supported first-release profiles are normative and internally consistent. Blueprint, entry, schema, binding, design profile, pattern, block, slot, command, and host port each have one unambiguous meaning. |
+| `M1-01 Product boundary`                            | —                | `STUDIO-PROD-001`–`015`, product vocabulary, artifact ownership, internal authority modes, non-goals, threat boundary, and supported first-release profiles are normative and internally consistent. Blueprint, Entry, Model, target, binding, pattern, block, field adapter, command, and host port each have one unambiguous meaning. |
 | `M1-02 Architecture and package boundaries`         | `M1-01`          | Dependency direction, package graph, DOM boundary, host boundary, error boundary, and runtime lifecycle are documented and protected by an architecture-test design. No package needs a Kumwe App import to compile.                                                                                  |
 | `M1-03 Governance and compatibility`                | `M1-01`          | Decision process, public API classification, semantic-version rules, deprecation windows, security disclosure, release authority, and support policy are adopted. License and third-party dependency policy permit Kumwe App and generic host consumption.                                            |
 | `M1-04 Evidence system`                             | `M1-02`, `M1-03` | Machine-readable evidence manifest design, test taxonomy, environment matrix, artifact retention, and gate review procedure are fixed. A sample failing evidence bundle proves missing or stale evidence cannot pass a gate.                                                                          |
@@ -120,8 +145,8 @@ listed dependency is accepted.
 | ---------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `M2-01 Document and definition protocol` | `M1-01`, `M1-02` | Versioned schemas cover blueprints, nodes, slots, field bindings, values, responsive rules, tokens, patterns, design profiles, content/business definitions, provenance, and unresolved contributions. Invalid depth, cycles, unknown keys, unsafe values, and namespace violations fail with stable diagnostics. |
 | `M2-02 Command and state protocol`       | `M2-01`          | Insert, remove, move, duplicate, bind, configure, resize, select, undo/redo, transaction, validation, conflict, and migration semantics are deterministic. Canonical vectors define preconditions, results, inverse operations, failure codes, and serialization.                                                 |
-| `M2-03 Extension and theme contract`     | `M2-01`, `M1-03` | Owner-aware block, field control, inspector, pattern, renderer, enhancement, design-token, recipe, and migration contributions have namespace, version, capability, lifecycle, ordering, collision, trust, and disabled-owner rules.                                                                              |
-| `M2-04 Host and preview contract`        | `M2-01`, `M2-02` | Initialization, capability negotiation, identity, permissions, load/save/publish, optimistic concurrency, preview, render markers, localization, telemetry, network failure, recovery, and teardown are specified without transport assumptions.                                                                  |
+| `M2-03 Extension and theme contract`     | `M2-01`, `M1-03` | Owner-aware authoring targets, blocks, field adapters, inspectors, patterns, renderers, enhancements, design tokens, recipes, and migrations have namespace, version, capability, target/surface, lifecycle, ordering, collision, trust, and disabled-owner rules.                                                    |
+| `M2-04 Host and preview contract`        | `M2-01`, `M2-02` | Contextual target launch, capability negotiation, identity, permissions, exact Model/Blueprint/Entry hydration, explicit item/type/type-version saves, publication, optimistic concurrency, preview, localization, recovery, and teardown are specified without transport assumptions.                              |
 | `M2-05 Media and rich-text contract`     | `M2-01`, `M2-04` | Asset references, upload sessions, progress, cancellation, selection, renditions, focal point, alternative text, decorative state, processing/failure states, and bounded rich-text JSON are specified. Storage and processing remain host responsibilities.                                                      |
 | `M2-06 Portability contract`             | `M2-01`–`M2-05`  | Canonical JSON, numeric/date rules, IDs, ordering, unknown-field handling, feature negotiation, generated-model policy, and the Version 2 TypeScript profile mapping are fixed. TypeScript models compile and round-trip the canonical fixture corpus. Dart mapping and cross-runtime parity belong to Version 3. |
 | `M2-07 Security and privacy contract`    | `M2-03`–`M2-05`  | Threat model and negative fixtures cover stored and reflected injection, unsafe renderers, cross-origin preview, confused-deputy host calls, data leakage, denial-of-service bounds, untrusted packages, media attacks, secrets, and telemetry minimization.                                                      |
@@ -135,17 +160,17 @@ listed dependency is accepted.
 | `M3-02 Contribution runtime`        | Gate A, `M3-01`             | Contributions activate into an immutable registry generation; duplicates and incompatible owners fail closed; disable/reactivate preserves documents; unresolved nodes remain inspectable; stale generations cannot execute.                                                               |
 | `M3-03 Generic host testbed`        | Gate A, `M3-01`             | A framework-neutral reference host supplies identity, policy, persistence, media, preview, localization, and telemetry ports. Disconnect, conflict, permission change, expired session, and partial capability cases are exercised.                                                        |
 | `M3-04 Preview bridge`              | Gate A, `M3-01`             | Authenticated preview handshake, origin pinning, protocol-version negotiation, canonical draft identity and marker preorder, exact render-marker mapping, update acknowledgements, error isolation, reload, and teardown work against server-rendered and client-rendered reference hosts. |
-| `M3-05 Kumwe App integration seams` | Gate A                      | Kumwe App implements additive draft host ports and API/schema surfaces without replacing current editors. The integration preserves contribution ownership, immutable runtime generations, workflow, revisions, translation, policy, audit, Twig rendering, recovery, and strict CSP.      |
+| `M3-05 Kumwe App integration seams` | Gate A                      | Kumwe App implements contextual target launch and authoritative PHP host ports/API surfaces additively while current editors remain transitional fallback. The integration preserves contribution ownership, immutable generations, workflow, revisions, policy, audit, Twig rendering, recovery, strict CSP, and zero production Node.js/npm. |
 | `M3-06 Version 3 Dart headless SDK` | Version 3 contract, `M3-01` | Generated Dart models plus native command, validation, migration, serialization, and host-port APIs pass `studio.profile/engine-dart`. Unsupported web-only capabilities are negotiated rather than silently ignored. This package is not a Version 2 dependency.                          |
 
 ### Month 4 — complete authoring experience
 
 | Package                                   | Depends on       | Deliverable and acceptance criteria                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `M4-01 Lit application shell`             | `M3-01`, `M3-03` | Palette, canvas, outline, inspector, viewport switcher, breadcrumb, diagnostics, command palette, save state, and recovery surfaces work as composable Web Components with host-controlled branding and localization.                                                                                                               |
+| `M4-01 Lit application shell`             | `M3-01`, `M3-03` | Contextual palette, canvas, fields/values, outline, inspector, viewport, diagnostics, save state, and recovery work as composable Web Components; inline/in-context and expanded host presentations preserve exact resource, selection, authority, locale, unsaved state, and return path.                                              |
 | `M4-02 Layout and responsive composition` | `M3-01`, `M4-01` | Section, stack, grid, columns, slots, ordering, constrained sizing, responsive roles, token recipes, alignment, spacing, visibility, and breakpoint inheritance are editable without storing CSS or viewport-specific HTML. Four-to-two-to-one layout is proven in two unrelated themes.                                            |
-| `M4-03 Blueprint and content modes`       | `M4-01`, `M4-02` | The `model`, `blueprint`, and `content` editing modes, bounded `hybrid` composition, and `read-only` session state preserve their permission and mutation boundaries. Content authors cannot change locked structure; designers cannot bypass schema publication or business-field policy.                                          |
-| `M4-04 Bindings and reusable composition` | `M4-02`, `M4-03` | Existing-field binding, governed field creation, collections, references, conditional presentation, slots, nested patterns, global patterns, and detachment are deterministic, migratable, and covered by cycle and missing-source diagnostics.                                                                                     |
+| `M4-03 Coordinated Model/Blueprint/Entry authoring` | `M4-01`, `M4-02` | Model, Blueprint, and Content permissions remain separate authority boundaries while layout, field definition/binding, and values are edited in one contextual session. Ordinary Entry save cannot mutate a reusable type; type changes use explicit versioned outcomes.                                                            |
+| `M4-04 Bindings, hydration, and reusable composition` | `M4-02`, `M4-03` | Blank and reusable-type starts hydrate exact Model/Blueprint revisions and empty/new or existing Entry values; binding, governed field creation, collections, references, slots, patterns, detachment, save-as-type, and update-type-version are deterministic and migratable.                                                        |
 | `M4-05 Accessible interaction parity`     | `M4-01`–`M4-04`  | Every drag, resize, reorder, nest, bind, configure, duplicate, and delete operation is achievable by keyboard/outline/inspector. Focus and announcements survive preview reload, undo, validation failure, and remote conflict.                                                                                                     |
 | `M4-06 Version 3 native Flutter shell`    | `M3-06`, `M4-03` | A Flutter reference application performs the complete semantic authoring command set through native widgets for `studio.profile/authoring-flutter`, including outline, inspector, responsive preview controls, media selection, save/conflict recovery, keyboard, touch, and screen-reader paths. It is not a Version 2 dependency. |
 
@@ -156,9 +181,9 @@ listed dependency is accepted.
 | `M5-01 Media experience`               | `M2-05`, `M4-01`                  | Browse, search, upload, paste/drop, progress, cancel/retry, replace, metadata, alternative text, decorative state, focal point, rendition preview, orphan handling, and policy failures work through the media port. Security and lifecycle tests use real host adapters.                                         |
 | `M5-02 Rich text`                      | `M2-05`, `M4-01`                  | Bounded structured rich text supports the declared mark/node profile, schema-aware embeds, paste normalization, links, keyboard access, serialization, migration, server rendering, sanitization, and no-JavaScript output without leaking editor HTML.                                                           |
 | `M5-03 Block and pattern suite`        | `M4-02`–`M4-04`, `M5-01`, `M5-02` | Production blocks cover section, grid, stack, heading, rich text, image, gallery, video, CTA, cards, accordion, tabs, callout, content reference/collection, and typed money. Each has schema, renderer fixture, accessibility contract, fallback, migration, and design-profile examples.                        |
-| `M5-04 Extension and theme SDK`        | `M3-02`, `M4-04`                  | Scaffolding, typed helpers, schema-driven inspectors, test harnesses, examples, package compatibility checks, lifecycle tests, and deterministic build/signing guidance let an unrelated developer ship a block and theme profile without importing private APIs.                                                 |
-| `M5-05 Generic-host integration proof` | `M3-03`, `M3-04`, `M5-03`         | A second host unrelated to Kumwe App integrates Studio from published packages using only public contracts. Load, edit, preview, save, publish, upgrade, permission reduction, extension disable, rollback, and recovery pass the host conformance profile.                                                       |
-| `M5-06 Kumwe App vertical slice`       | `M3-05`, `M5-03`                  | Kumwe App proves a landing-page blueprint and a reusable product/service blueprint with typed field and media bindings, four-to-two-to-one layout, two theme profiles, extension block lifecycle, Twig public rendering, translation, revisions, workflow, audit, REST consumption, and no public Studio runtime. |
+| `M5-04 Extension and theme SDK`        | `M3-02`, `M4-04`                  | Typed helpers, schemas, harnesses, and lifecycle tests let an unrelated extension declare an authoring target and contribute blocks, patterns, field adapters, inspectors, and design intent without private APIs or a parallel registry.                                                                            |
+| `M5-05 Generic-host integration proof` | `M3-03`, `M3-04`, `M5-03`         | A second host integrates from published packages using only public contracts and completes contextual launch, blank/type hydration, layout+fields+values, explicit saves, presentation continuity, extension lifecycle, preview, conflict, rollback, and recovery.                                                   |
+| `M5-06 Kumwe App vertical slice`       | `M3-05`, `M5-03`                  | Kumwe App completes the same journey through extension-declared targets, PHP-authoritative services, Twig public rendering, typed field/media bindings, real persistence/workflow/audit, compiled browser assets, and zero production Node.js/npm.                                                                  |
 
 ### Month 6 — hardening, qualification, and Gate B
 
@@ -178,14 +203,14 @@ Gate A passes only when all criteria are met:
 1. **`gate-a/01-artifact-vocabulary`** — Public artifact vocabulary and ownership are unambiguous.
 2. **`gate-a/02-protocol-schemas`** — Protocol schemas are versioned, closed where required, bounded, and meta-validated.
 3. **`gate-a/03-deterministic-commands`** — Command semantics and canonical fixtures are deterministic.
-4. **`gate-a/04-extension-theme-lifecycle`** — Extension and theme ownership, lifecycle, collision, migration, and fallback rules are complete.
+4. **`gate-a/04-extension-theme-lifecycle`** — Authoring-target, block, field-adapter, extension, and theme ownership, lifecycle, collision, migration, and fallback rules are complete.
 5. **`gate-a/05-host-ports-negotiation`** — Host ports and capability negotiation cover identity, policy, persistence, preview, render, media,
    localization, telemetry, concurrency, recovery, and teardown.
 6. **`gate-a/06-media-rich-text-boundaries`** — Media and rich-text boundaries identify Studio, host, and renderer responsibilities.
 7. **`gate-a/07-threat-model`** — Security/privacy threat model and negative fixtures cover every trust boundary.
 8. **`gate-a/08-errors-diagnostics`** — Errors and diagnostics are stable, localizable, and free of sensitive values.
 9. **`gate-a/09-typescript-corpus`** — TypeScript models compile and round-trip the canonical corpus for the Version 2 profile set.
-10. **`gate-a/10-host-playbooks`** — The generic-host and Kumwe App playbooks can map every required host responsibility to a public port.
+10. **`gate-a/10-host-playbooks`** — The generic-host and Kumwe App playbooks map contextual launch, coordinated artifact hydration, explicit save outcomes, PHP authority, and every other required host responsibility to a public port or an explicit unimplemented contract gap.
 11. **`gate-a/11-evolution-release-policy`** — Compatibility, deprecation, migration, and release policies are accepted.
 12. **`gate-a/12-accessible-interactions`** — Accessibility and non-drag interaction requirements are executable as conformance assertions.
 13. **`gate-a/13-reproducible-evidence`** — Gate evidence is reproducible from a clean checkout and independently reviewed; its release lane proves the exact quarantined RC registry family, source provenance, and credential-free clean install before the official `rc` channel can move.
@@ -200,13 +225,10 @@ Gate B passes only when all criteria are met:
 2. **`gate-b/02-coordinated-npm-release`** — The fixed eight-package TypeScript release family installs from npm into clean consumers at one release
    coordinate.
 3. **`gate-b/03-dom-free-core`** — The DOM-free TypeScript core passes the applicable command, migration, and serialization fixtures.
-4. **`gate-b/04-web-authoring-operations`** — The Lit shell exposes the complete semantic authoring operation set for
-   `studio.profile/authoring-web`.
-5. **`gate-b/05-host-conformance`** — Generic and Kumwe App hosts pass lifecycle, permission, concurrency, preview, persistence, media, rendering,
-   recovery, and upgrade conformance.
+4. **`gate-b/04-web-authoring-operations`** — The Lit shell exposes contextual layout, field, value, save, contribution-target, and presentation-continuity operations with accessible parity for `studio.profile/authoring-web`.
+5. **`gate-b/05-host-conformance`** — Generic and Kumwe App hosts pass contextual launch, exact hydration, separate artifact transaction, lifecycle, permission, concurrency, preview, persistence, media, rendering, recovery, and upgrade conformance.
 6. **`gate-b/06-public-rendering-boundary`** — Public rendering does not require Studio, privileged authoring APIs, or editor-only metadata.
-7. **`gate-b/07-extension-theme-examples`** — Extension and theme examples install, activate, disable, reactivate, upgrade, and recover without data
-   loss or private API access.
+7. **`gate-b/07-extension-theme-examples`** — Extension target, block, field-adapter, and theme examples install, activate, appear only on declared targets, disable, reactivate, upgrade, and recover without data loss or private API access.
 8. **`gate-b/08-document-compatibility`** — Existing and migrated documents remain readable, diagnosable, and safely renderable.
 9. **`gate-b/09-web-accessibility`** — The Version 2 web accessibility matrix passes automated and manual qualification.
 10. **`gate-b/10-security-resilience`** — Security review, malicious-input corpus, dependency audit, and resilience drills have no unresolved
@@ -215,9 +237,8 @@ Gate B passes only when all criteria are met:
 12. **`gate-b/12-deterministic-builds`** — Builds, generated sources, fixtures, and release archives are deterministic or carry a documented,
     verified source of nondeterminism.
 13. **`gate-b/13-release-materials`** — SBOM, provenance, signatures, checksums, release notes, support matrix, and recovery guide are published.
-14. **`gate-b/14-clean-room-host`** — A clean-room external-host integration succeeds using documentation and public packages alone.
-15. **`gate-b/15-kumwe-app-vertical`** — The Kumwe App vertical slice proves content, business-field, template, extension, media, translation,
-    workflow, revision, authorization, audit, API, and Twig-rendering integration.
+14. **`gate-b/14-clean-room-host`** — A clean-room external host completes `STUDIO-PROD-015` using documentation and public packages alone.
+15. **`gate-b/15-kumwe-app-vertical`** — Kumwe App completes `STUDIO-PROD-015` through PHP-authoritative content, type, extension, media, workflow, revision, audit, API, and Twig integration with zero production Node.js/npm.
 16. **`gate-b/16-upgrade-recovery`** — Rollback and interrupted-upgrade drills preserve authoritative host data and expose actionable recovery.
 17. **`gate-b/17-candidate-evidence`** — All required evidence is attached to the exact release-candidate commit and remains within freshness
     limits.

@@ -1,6 +1,7 @@
 # `@kumwe/studio-protocol`
 
-Status: pre-Gate-A foundation alpha. Its draft contracts may change and are not a supported protocol.
+Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. Its draft contracts may
+change and are not a supported protocol.
 
 Serializable contracts shared by Studio hosts, renderers, extensions, and non-JavaScript clients.
 The package deliberately contains no DOM or framework dependency. JSON Schemas are published under
@@ -73,5 +74,6 @@ scrolling, marker, motion, and responsive-visibility choices without carrying CS
 
 `@kumwe/studio-protocol/studio-release.json` is a byte-identical copy of the canonical workspace
 release record. It binds the exact fixed eight-package family to the wire protocol and testkit corpus
-digest. The publication guard requires all eight versions to equal its `release` coordinate; the
-current pre-version alpha record claims no conformance profiles.
+digest. The publication guard requires all eight versions to equal its `release` coordinate. The current
+`0.1.0-rc.1` candidate record lists nine proposed profile claims; listing them is not accepted evidence or a
+production-support claim.

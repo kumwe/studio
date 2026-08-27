@@ -1,380 +1,139 @@
 # Studio completion plan for Kumwe App Version 2
 
-**Objective.** Take the repository-verified standalone page-builder candidate through one coordinated
-eight-package release, real Kumwe App integration, profile qualification, and evidence review so it can ship
-inside Version 2.
-
-**Companion documents.**
-
-- The host's own steps: [`kumwe/app` → `docs/roadmap/studio-completion.md`](https://github.com/kumwe/app/blob/master/docs/roadmap/studio-completion.md)
-- The joint sequence binding both: [`docs/integration/version-two-joint-plan.md`](../integration/version-two-joint-plan.md)
-
-This file is the completion ledger. Each step records the implementation already present, the acceptance test
-that proves it, and the remaining release/evidence dependency. Steps are ordered: a later step assumes every
-earlier contract and runtime increment landed, but no repository state is silently promoted to accepted
-evidence.
-
----
-
-## Scope decision recorded before anything else
-
-**Version 2 is the web interface only.** Studio ships and is qualified inside Kumwe App's administrator
-as a web authoring surface. Dart and Flutter parity is _not_ Version 2 scope: it becomes critical when
-the App runs in a client and pages must be built there, which is Version 3 of the core.
-
-The earlier programme contradicted this scope through Gate A criterion 9 and Gate B criteria 2, 3, 4
-and 9, which required Dart. **`ST-0` resolves that contradiction before any other work starts**, so
-later packages are judged against the product profile they actually ship.
-
----
-
-## Original blockers and their current closure
-
-| #   | Original blocker                             | Step           | Repository state                                                                                         | Remaining dependency                                                 |
-| --- | -------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 1   | No consumer bound `HostAdapter` to a session | `ST-2`         | Implemented with `openStudioSession`, save/revision/recovery/model/resource seams and lifecycle tests    | Published-coordinate replay through real Kumwe App and a second host |
-| 2   | Contribution runtime activated blocks only   | `ST-3`         | Implemented for all six canonical kinds with immutable generations, lifecycle and SDK parity             | Independent host/extension replay and evidence                       |
-| 3   | No live preview surface                      | `ST-4`         | Implemented with host-staged binding, handshake, coalescing, selection, measured geometry and fallback   | Qualified framed-host CSP and independent evidence                   |
-| 4   | No visual canvas or layout/catalog runtime   | `ST-6`, `ST-7` | Implemented with four layout blocks, 45 production blocks, ten patterns and measured direct manipulation | Complete `authoring-web` profile/manual matrix and App journey       |
-| 5   | No coherent released package set             | `ST-1`         | Eight-package fixed group, merged `alpha.10` record and guarded workflows implemented                    | Recover coordinated publication and complete registry verification   |
-
-The runtime wave also implements `M5-01`–`M5-03`: private Editor.js rich-text authoring, safe HTML/Markdown
-codecs, Studio media and resource controls, complete semantic web rendering, progressive behaviors, and an
-exhaustive `renderer-web` corpus. Those capabilities are candidate bits until the remaining dependencies above
-and below are satisfied.
-
----
-
-## Phase 1 — Make the contract integrable
-
-### `ST-0` — Amend the programme for the Version 2 scope decision
-
-**Repository state:** implemented as a proposed programme decision. This does not accept either gate
-or create a profile claim; those remain evidence-review actions.
-
-**Do this first.** Split the Dart obligation out of the Version 2 path so it stops blocking a gate the
-product needs now.
-
-1. In [`docs/roadmap/README.md`](README.md), rewrite Gate A criterion 9 to require **TypeScript models
-   compile and round-trip the canonical corpus**, and move Dart round-trip into a named Version 3
-   criterion under the Flutter profile. Do the same for Gate B criteria 2, 3, 4 and 9: each keeps its
-   web obligation and defers its Flutter half.
-2. Declare the Version 2 supported profile set explicitly: `studio.profile/engine-core`,
-   `host-baseline`, `host-baseline-v2`, `media-policy`, `preview-identity-v1`, `schema-property`,
-   `binding-projection-v1`, and `renderer-web`, which are now executable, plus target `authoring-web` once
-   its complete assertion set lands. `flutter` profiles are declared as Version 3 targets.
-3. Record the decision as an ADR in [`docs/decisions/`](../decisions/) in the existing style, naming
-   the rejected alternative (hold Version 2 until Dart parity exists) and its cost.
-4. Update [`STATUS.md`](STATUS.md): the six-month board, the gate summary, and the M2-06/M3-06/M4-06
-   rows, which become Version 3 scope rather than open Version 2 blockers.
-
-**Acceptance.** No Version 2 gate criterion names Dart, no roadmap row implies Dart blocks Version 2,
-and the deferral is recorded as a decision rather than an omission.
-
-### `ST-1` — Publish one coherent, pinnable release set
-
-**Repository state:** the fixed-family configuration, generated record, drift checks, and guarded
-version/publish workflow are implemented. PR #36 merged the checked-in record and all eight manifests at
-`0.1.0-alpha.9`; PR #38 added a truthful patch Changeset; and PR #39 consumed it into coordinated
-`0.1.0-alpha.10` metadata. Current merged `main` is
-`5cf3b24f77553d718decd53fe96256952c554591`. Alpha run `32929849656`, attempt 2 failed at **Verify npm
-authentication**, so publish, channel reconciliation, and final registry verification were skipped and no
-`alpha.10` package was published. Recover only from that exact current-main SHA after placing `NPM_TOKEN` in a
-repository Actions secret or an organization Actions secret granted to `kumwe/studio`; the superseded
-`alpha.9` source must not be published.
-
-The old registry baseline remains staggered, so a host still cannot say "we integrate Studio _x_" until the
-coordinated `alpha.10` family is published and verified. The source tree gives all eight packages a
-single release coordinate, while `npm run release:plan` remains the authority on whether the next operation is
-`version` or `publish`.
-
-1. Add a workspace-level release identifier — a `studio-release.json` at the repository root carrying
-   the release name, the exact version of each of the eight packages, the protocol wire version, the
-   corpus manifest digest, and the profile identifiers claimed at that release.
-2. Publish it inside `@kumwe/studio-protocol` and `@kumwe/studio-testkit` so a host vendors it with the
-   corpus it already verifies.
-3. Extend the contracts lane to regenerate and verify it, so it cannot drift from the versions actually
-   published.
-4. Extend the release workflow so a publish always emits a complete set: every package advances to the
-   release coordinate even when its own content did not change, or the release fails.
-
-**Acceptance.** `npm view @kumwe/studio-protocol@<release>` and every sibling resolve to versions the
-release record names; a host pins one identifier; the digest check fails when a package drifts.
-
-### `ST-2` — Bind the host adapter into a real session API _(blocker 1)_
-
-**Repository state:** implemented. `openStudioSession` binds a resolved configuration to the injected adapter,
-serializes saves against accepted revisions, invalidates stale generations, and exposes negotiated recovery,
-model, and resource seams without adding a transport or DOM dependency. Unit, lifecycle, HTTP-testbed, model,
-resource, conflict, retry, and cancellation lanes exercise the public boundary. Real Kumwe App and independent
-second-host replay at the published coordinate remain acceptance work.
-
-The implemented public surface covers the nine ports and 24 operations below.
-
-Ports and operations as published today:
-
-| Port           | Operations                                                                                               |
-| -------------- | -------------------------------------------------------------------------------------------------------- |
-| `artifact`     | `load`, `save`, `publish`, `unpublish`, `dependencies`                                                   |
-| `model`        | `get`, `list`                                                                                            |
-| `media`        | `authorize-upload`, `upload-status`, `complete-upload`, `abort-upload`, `get`, `list`, `import-external` |
-| `preview`      | `render`, `cancel`                                                                                       |
-| `permission`   | `explain`, `refresh`                                                                                     |
-| `recovery`     | `store`, `load`, `discard`                                                                               |
-| `resource`     | `search`                                                                                                 |
-| `localization` | `messages`                                                                                               |
-| `telemetry`    | `emit`                                                                                                   |
-
-1. Add `packages/core/src/host-session.ts` exporting `openStudioSession(adapter, options)`: negotiate
-   capabilities through the existing `negotiation.ts`, load the artifact through the `artifact` port,
-   construct a `StudioSession` bound to the returned revision and session generation, and return a
-   handle exposing the session, the negotiated capabilities, `save()`, recovery reconciliation and
-   `dispose()`.
-2. Fail closed exactly as [`docs/contracts/host-adapter.md`](../contracts/host-adapter.md) requires: no
-   common wire version or a missing required port yields no editable session; missing optional ports
-   degrade with informational diagnostics.
-3. Enforce session-generation invalidation centrally: once any port reports a stale generation, every
-   later operation through the handle fails closed with the canonical category.
-4. Carry expected revisions on mutating operations; a conflict surfaces the host's safe current
-   revision and diagnostics and never overwrites.
-5. Carry idempotency keys per the scope rules the host contract and the testbed already fix.
-6. Keep it DOM-free and Node-free — `scripts/check-boundaries.mjs` governs; the adapter is injected and
-   core never constructs a transport.
-
-**Acceptance.** A suite drives the real testbed from `@kumwe/studio-testkit` through open, edit, save,
-conflict-with-safe-revision, recovery reconciliation, permission change invalidating the generation,
-missing required port refusing to open, missing optional port degrading, disconnect and single-shot
-failures mapping to canonical categories, and idempotent replay producing one effect.
-
-### `ST-3` — Activate every contribution kind _(blocker 2)_
-
-**Repository state:** implemented. Kumwe App's manifest 6 / SPI 4 declares six canonical kinds —
-`block-definition`, `pattern`, `field-adapter`, `inspector`, `design-vocabulary`, `migration` — and Studio's
-runtime activates all six through kind-scoped immutable generations. Schema admission, namespace/collision
-guards, disable/revoke/reactivate/upgrade behavior, unresolved diagnostics, stale-generation refusal, and
-`defineStudioPlugin` parity are covered in the repository. Independent host lifecycle evidence remains open.
-
-1. Extend `ContributionRuntime` so every declared kind activates through the same transactional
-   discipline blocks use: sealed immutable generations, owner-namespace enforcement, duplicate and
-   cross-owner collision refusal, invalid-definition refusal that never disturbs the active generation,
-   disable and trust revocation leaving documents diagnosable, per-kind unresolved reasons, and stale
-   generations refused.
-2. Validate each kind against its own published schema — `pattern`, `field-adapter`, `inspector`,
-   `design-vocabulary`, `migration` all exist in [`schemas/`](../../schemas/). Reuse the profile
-   validator; never hand-roll a second one and never weaken a published schema to make a kind fit.
-3. Add per-kind registry lookups so a consumer can resolve the inspector for a field type, or the
-   migrations for an artifact kind.
-4. Extend `defineStudioPlugin` to mirror the new rules exactly — it adds no invariant the runtime does
-   not enforce, and its rejections stay byte-identical to a real activation rejection.
-
-**Acceptance.** For each non-block kind: activation into a sealed generation, duplicate and cross-owner
-collision failing closed, invalid document refused against its canonical schema, disable and revocation
-leaving the right unresolved reason, atomic upgrade retiring the previous version, stale-generation
-refusal, and SDK parity.
-
-### `ST-4` — A real preview surface _(blocker 3)_
-
-**Repository state:** implemented as a host-owned binding. The shell consumes `PreviewClient`, stages exact
-draft identities through the injected host, waits for readiness, coalesces and cancels superseded renders,
-drives viewports, maps selection both ways, measures marker geometry, and degrades to structural authoring when
-preview authority is absent. The reference host and CSP/accessibility browser lanes exercise the runtime;
-qualified framed-host CSP and independent reproduction remain open.
-
-1. Add a preview region to the shell hosting the renderer in a same-origin frame, driven by the
-   existing `PreviewClient` — never ad-hoc messaging. Perform the ready handshake before any render.
-2. Push the artifact on change, coalesced deterministically, honouring supersession so a late
-   settlement cannot publish stale output.
-3. Map selection both ways through the marker map: selecting a node highlights its rendered region, and
-   a marker resolves back to a node.
-4. Drive the preview viewport from the existing viewport switcher so responsive composition is visible.
-5. Handle reload and teardown per [`docs/contracts/preview.md`](../contracts/preview.md), keeping the
-   existing announcements and never moving focus.
-6. Degrade honestly: with no preview capability negotiated the region says so textually and the rest of
-   the shell stays fully usable. Preview is an enhancement over the keyboard paths, never a requirement.
-7. Everything holds under the pinned policy — `default-src 'none'; script-src 'self'` with Trusted
-   Types — so build DOM through templates, never markup strings.
-8. Wire the existing reference renderer in `examples/reference-host` to run inside that frame, so
-   `npm run dev` shows a live rendered composition beside the outline.
-
-**Acceptance.** Handshake precedes render; one artifact change produces one coalesced request;
-supersession discards a late settlement; selection maps both ways; a viewport change re-renders;
-reload and teardown announce without moving focus; absent capability renders the fallback and editing
-still works; the accessibility and CSP lane stays green.
-
----
-
-## Phase 2 — Make it a page builder
-
-### `ST-5` — Session modes on the wire
-
-**Repository state:** implemented. The configuration, headless session, canonical mode-to-command table,
-command vectors, and shell affordances agree on model, blueprint, content, hybrid, and read-only boundaries.
-Forbidden commands fail closed without changing document, history, or selection. Host profile replay and
-evidence remain open.
-
-1. Add the mode to the negotiated session configuration in the protocol, with the closed vocabulary the
-   core already implements: `model`, `blueprint`, `content`, `hybrid`, `read-only`.
-2. Resolve it in `openStudioSession` from what the host declares, and refuse a mode the host is not
-   authorized to grant.
-3. Surface it in the shell: the mode is visible, affordances a mode forbids are disabled with a textual
-   reason rather than hidden, and `permittedCommandTypes` drives that rendering so the interface can
-   never disagree with the engine.
-4. Add canonical vectors for the mode boundaries, including the `mode-forbidden` code, so the rules are
-   portable rather than TypeScript-only.
-
-**Acceptance.** Each mode grants exactly its command set through a real host session; a forbidden
-command fails closed leaving document, history and selection untouched; the shell renders the same
-boundary the engine enforces.
-
-### `ST-6` — Layout blocks and responsive composition _(blocker 4, part one)_
-
-**Repository state:** implemented. First-party section, stack, grid, and columns definitions ship inside the
-45-block production catalog with bounded defaults, slots, responsive inheritance, semantic presentation
-intent, theme controls, and recipes. Unit tests resolve the same four-to-two-to-one composition in two unrelated
-themes; the browser lane proves live compact/medium/expanded reflow with no stored CSS. Independent renderer
-replay and evidence remain open.
-
-1. Ship the layout block family as first-class block definitions with bounded, theme-driven properties:
-   section, stack, grid, columns, plus slots and constrained sizing.
-2. Complete the layout vocabulary beyond the two size-role axes already delivered: alignment, spacing,
-   visibility per viewport, and breakpoint inheritance — all as bounded token references, never stored
-   CSS.
-3. Expose core token recipes through the inspector and dispatch each selection as one canonical atomic batch.
-4. Prove the four-to-two-to-one responsive behaviour in two unrelated themes, which is `M4-02`'s stated
-   acceptance.
-
-**Acceptance.** A page composed of nested layout blocks reflows four-to-two-to-one across viewports in
-two themes with no stored CSS and no viewport-specific markup, driven entirely by declared vocabulary.
-
-### `ST-7` — The visual canvas and direct manipulation _(blocker 4, part two)_
-
-The measured preview is the visual canvas. It exposes selection, hover, semantic destinations, live indicators,
-pointer reorder/reparent, and the exact same dispatcher through keyboard, outline, and command-palette paths.
-
-1. Render the composition visually in the canvas region using the preview surface from `ST-4` as the
-   visual substrate, with selection, hover and drop targets resolved through the marker map and its
-   measured geometry.
-2. Add direct manipulation over that substrate: drag to reorder and to reparent into slots, with live
-   drop indicators derived from measured rectangles.
-3. Keep every operation reachable without pointer input — drag remains a strict enhancement over the
-   existing keyboard and outline paths, dispatching the identical commands, and a cancelled drag
-   provably changes nothing. This is `M4-05`'s standing rule.
-4. Keep the complete Blueprint command surface reachable, including reparenting moves, restore,
-   inheritance reset, and validated pattern application, so every semantic operation has an interface path.
-
-**Acceptance.** An author builds a nested, responsive page by direct manipulation; every one of those
-operations is also achievable by keyboard; the accessibility lane stays at zero violations; cancelled
-drags change nothing.
-
-**Implemented increment (`5da6ef8`).** The bound ST-4 preview is now the visual canvas: accepted markers
-are measured with generation-safe bounded requests, and a CSP-safe SVG overlay supplies selection, hover,
-reorder/reparent targets and live indicators. Pointer and outline/command-palette destinations use the same
-semantic dispatcher; cancellation is a tested no-op. The Blueprint command surface now includes
-`move-node`, `restore-node`, `reset-inherited-property` and host-supplied validated `apply-pattern` paths in
-addition to the previously exposed commands. Unit and Chromium browser assertions cover stale geometry,
-hybrid/cardinality bounds, pointer/keyboard command identity, cancellation and CSP. This repository-verified
-increment does not itself satisfy acceptance: independent evidence review and the manual assistive-
-technology/touch/zoom/RTL matrix remain open, and the reference host still proves the equivalently isolated
-channel rather than the unresolved dedicated framed-authoring CSP policy.
-
-### `ST-8` — Bind composition to host content types
-
-**Repository state:** implemented as a Studio integration increment. The public host-session consumes
-read-only model `list`/`get`; core projects exact locked fields, controls and invalidation diagnostics; the
-shell binds through canonical commands; and `studio.profile/binding-projection-v1` is executable. This is not
-joint acceptance: it still needs a coordinated published Studio release, Kumwe App AP-2 on that coordinate,
-a real adapter/session replay, an independent second-host replay and evidence review. BusinessRecord
-projection remains a separate App adapter rather than an inferred Content mapping.
-
-This is what makes the builder _the App's_ builder rather than a generic one: blocks bind to real
-content, not to invented fields.
-
-1. Implement the `model` port consumption: `list` and `get` project the host's content and business
-   definitions into Studio content models. The `content-model` and `entry` schemas already carry
-   `fields`, `relationships`, `values`, `compositionOverrides`, `translationOf` and `workflowState`,
-   which is the shape the App's `ContentTypeDefinition`, `FieldDefinition`, `ContentEntry` and
-   `TranslationGroup` map onto.
-2. Drive binding affordances from the projected models: an author binds a block property to a real
-   field on a real content type, with the inspector rendering the field's declared control.
-3. Enforce the boundary: Studio reads projections and never writes a definition; field policy,
-   translation state and workflow remain the host's.
-4. Publish binding vectors so the mapping is portable and a second host implements the same semantics.
-
-**Acceptance.** A block binds to a host content-type field through the `model` port; the inspector shows
-the declared control; changing the host definition surfaces as a diagnosable binding rather than silent
-breakage.
-
----
-
-## Phase 3 — Make it claimable
-
-### `ST-9` — Publish the authoring message catalogue
-
-**Repository state:** implemented. `@kumwe/studio` exports the typed message catalogue and ships the canonical
-English JSON subpath; protocol/testkit copies and the contract gate verify keys, defaults, and named
-parameters. Hosts may provide typed overrides without persisting translated labels. Locale/RTL/long-label
-qualification across the supported matrix remains evidence work.
-
-1. Publish the complete key catalogue as a versioned artifact in `@kumwe/studio`, with a lane that fails
-   when a key is added without entering it.
-2. Document the override contract so a host maps keys into its compiled catalogues, and state that a
-   missing key falls back rather than throwing.
-
-**Acceptance.** A host enumerates every key, supplies overrides for all of them, and a lane proves no
-unpublished key reaches the interface.
-
-### `ST-10` — Close the evidence lane's holes
-
-**Repository state:** implemented as evidence infrastructure only. The registry, strict semantic validator,
-class-scoped pending generator, closed authenticated manual/external intake assembler, negative regression
-suite, and immutable workflows are present. No real bundle has been reproduced, no gate record exists, and
-neither gate nor profile status changed.
-
-The earlier lane accepted evidence it should refuse. These controls are now required before any gate
-claim rests on it.
-
-1. `check-evidence.mjs` resolves every referenced non-sample bundle, refuses unknown or mismatched source
-   commits, authenticates exact files and checksums, and verifies per-criterion evidence-class coverage;
-   the former fabricated zero-commit record is a negative regression case.
-2. The generator records every requested criterion/class in pending scope, executes every available internal
-   class even when a sibling needs manual/external input, writes claims only for complete executed classes,
-   schema-validates before an atomic create, and never records a gate outcome or reproduction. The closed
-   assembler accepts only checksum-bound, signed intake with exact candidate/bundle/execution/run identities,
-   runs its registered credential-free verifier, and cannot manufacture human proof.
-3. All fourteen Gate A and eighteen Gate B criteria have stable identifiers and evidence-class mappings;
-   document/registry drift fails and an absent record prints every criterion as uncovered.
-4. The bundle lane includes format, lint, typecheck, build, every governance script, the complete unit
-   command, and Chromium accessibility with zero retries and bounded credential-scanned logs.
-5. `evidence/README.md` carries the exact clean-room generation and `evidence:assemble` procedure, human review
-   boundary, freshness rules, and durable-retention requirement.
-
-**Acceptance.** A fabricated gate record fails; generation/assembly emits a schema-valid immutable bundle;
-every criterion/class is either authentically covered or named as pending, and a criterion cannot pass until
-all of its registered classes are covered and reviewed.
-
-### `ST-11` — Ratify the contract and open the governed RC channel
-
-1. Replace the `0.1-draft` discriminator with the ratified epoch, declare the supported wire-version
-   range, and record the compatibility policy — this is `M2-08`'s scope.
-2. Merge the deterministic `rc.1` metadata PR, quarantine its exact tarballs under the nonofficial
-   coordinate-scoped staging tag, and produce the Gate A evidence bundle at that commit. The reproducibility
-   criterion must prove the exact registry bits, provenance, and clean install before review. **This step needs a
-   second human**: the evidence model requires two reviewers, one independent of the work-package
-   owners, and states that an automated contributor is never a reviewer. Today the repository has one
-   human author. No amount of implementation removes this.
-3. On acceptance, move only that verified coordinate to the official `rc` tag and create its source-bound
-   GitHub prerelease. `beta` remains a compatibility concept, not a second publication workflow.
-
-**Acceptance.** A ratified protocol version, an accepted Gate A bundle with two reviewer attestations,
-and an immutable official RC family a host can qualify against.
-
----
-
-## What is deliberately not in this plan
-
-- **Dart and Flutter parity** — Version 3, per the scope decision above.
-- **Remaining Months 5 and 6 breadth** beyond the landed media/rich-text/catalog wave: ecosystem,
-  marketplace, independent-host, performance, operations, and second-vertical qualification stay on the
-  programme roadmap.
-- **A public composition editing surface** — Version 2 composes in the administrator only.
-- **Gate B qualification itself**, which is the host's release gate and runs in the App's phase 7.
+**Objective.** Complete and qualify Studio as Kumwe App's default contextual authoring surface without creating
+a second product specification in this roadmap.
+
+The [Studio product contract](../product-contract.md) is the sole authority for the target and stable
+`STUDIO-PROD-001`–`015` identifiers. This file records implementation work and ordering only. Current
+implementation, release, profile, and gate truth remains authoritative in [`STATUS.md`](STATUS.md); the joint
+cross-repository boundary is in
+[`docs/integration/version-two-joint-plan.md`](../integration/version-two-joint-plan.md).
+
+## Fixed scope
+
+Version 2 is the web authoring product. Dart and Flutter remain Version 3 targets and do not block this plan.
+Kumwe App is authoritative through PHP application services, PHP HTTP endpoints, and PHP/Twig delivery. Studio
+ships as compiled browser assets; production requires no Node.js, npm, Vite, or server-side JavaScript process.
+
+The default supported create/edit path is Studio opened in the exact host-resource context. A legacy form may
+remain only as a named migration, recovery, rollback, or unsupported-capability fallback. It does not redefine
+the product target.
+
+## Current baseline
+
+| Item | Exact current truth |
+| --- | --- |
+| Source | Current merged `main` is `829694efb25374d3b498f2d46856d2c39650728a` |
+| Candidate | All eight checked-in packages and `studio-release.json` coordinate at `0.1.0-rc.1` |
+| Proposed profiles | The release record names the fixed nine-profile Version 2 surface; eight mappings are executable and `authoring-web` remains target-only |
+| Composed core host profile | `openStudioSession` currently loads and saves one Blueprint |
+| Lit shell | Separate alpha Blueprint shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence |
+| Reference host | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
+| Gates | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim |
+
+The release record's nine names freeze the candidate's intended profile surface. They are not reproduced
+evidence and do not by themselves open the official npm `rc` channel.
+
+## Completion ledger
+
+| Product requirement | Repository-verified primitive | Work still required for completion |
+| --- | --- | --- |
+| `STUDIO-PROD-001` | Host session configuration and browser element can receive host context | Extension-declared target resolves an exact existing/new resource and launches Studio directly from host create/edit |
+| `STUDIO-PROD-002` | Empty Blueprint roots and reusable patterns can be supplied by a harness | Authorized blank and reusable-type starts through the real host, without pre-creating a Blueprint elsewhere |
+| `STUDIO-PROD-003` | Blueprint composition plus separate headless Model/Entry command primitives | One session/canvas for layout, field definition or binding, and Entry values |
+| `STUDIO-PROD-004` | Separate Model, Blueprint, and Entry protocol artifacts | A host reusable type coordinates exact Model and Blueprint revisions while excluding Entry values |
+| `STUDIO-PROD-005` | Exact references and read-only model projection | Hydrate the selected reusable type and an empty/new or exact existing Entry without leaking prior values |
+| `STUDIO-PROD-006` | Blueprint optimistic-concurrency save | Separate save-item, save-as-new-type, and update-type-version transactions with visible scope/migration impact |
+| `STUDIO-PROD-007` | One standalone responsive shell layout | Preserve resource, selection, authority, locale, unsaved state, and return path across in-context and expanded states |
+| `STUDIO-PROD-008` | Host-neutral configuration and canonical contribution runtime | Canonical extension-declared authoring target with permitted resource/surface/mode and launch binding |
+| `STUDIO-PROD-009` | Canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration generations | Prove target-scoped visibility plus install/activate/disable/reactivate/upgrade/recovery for blocks and field adapters in a real host |
+| `STUDIO-PROD-010` | Host ports, transport binding, renderer callbacks, and authorization boundaries | Kumwe App PHP application services and PHP HTTP endpoints implement every authoritative load/save/type/preview/media/workflow/publication effect |
+| `STUDIO-PROD-011` | Build emits browser packages and renderer output | Production package/install/serve/preview/save/render path with zero Node.js/npm runtime or development server |
+| `STUDIO-PROD-012` | Standalone harness proves primitives can compose | Remove pre-creation, catalogue-screen, copy/paste, and manual reconciliation from the supported author journey |
+| `STUDIO-PROD-013` | Keyboard/outline parity, automated accessibility, responsive and reduced-motion lanes | Complete contextual keyboard/touch/screen-reader/zoom/RTL/manual matrix, including fields, values, saves, and presentation changes |
+| `STUDIO-PROD-014` | Status/evidence machinery distinguishes implementation from acceptance | Keep Blueprint harness, RC metadata, profile claims, gates, and production support explicitly separate in every release surface |
+| `STUDIO-PROD-015` | Existing E2E suites prove canvas, preview, renderer, media, and accessibility slices | One exact real-host journey proves existing/new/blank/type flows, all saves, extension block+field adapter, PHP/Twig delivery, reopen, and zero production Node |
+
+## Dependency-ordered work
+
+### 1. Publish the missing contracts before code claims them
+
+Define the canonical host-target declaration, coordinated session state, exact hydration, and explicit save
+operations through the normal contract/schema/ADR/fixture workflow. Existing configuration and contribution
+schemas remain authoritative until changed; prose does not invent a shipped shape.
+
+Acceptance for this stage:
+
+- an extension can declare where contextual Studio launch is permitted without embedding routes, PHP classes,
+  callbacks, or credentials in portable artifacts;
+- Model, Blueprint, and Entry coordinates and transaction boundaries remain explicit;
+- a content-item save cannot silently mutate a reusable type; and
+- every new operation has deterministic success, denial, conflict, retry, cancellation, and recovery vectors.
+
+### 2. Compose the core and shell
+
+Build the contextual session over the existing DOM-free command/session primitives and Lit shell:
+
+1. resolve an exact existing/new resource from the host target;
+2. hydrate Model, Blueprint, Entry, theme, policy, and contribution generation;
+3. present layout, fields, bindings, and values together while enforcing artifact permissions;
+4. support blank and reusable-type starts;
+5. execute explicit item/new-type/type-version saves through host ports; and
+6. preserve session state across in-context and expanded presentation.
+
+The current single-Blueprint `openStudioSession` and read-only model projection remain truthful supported
+primitives until this composed profile lands; they are not aliases for the target.
+
+### 3. Complete extension targeting
+
+Extend the owner-aware immutable contribution generation with the canonical authoring target. Prove that an
+extension target admits only its authorized blocks, patterns, field adapters, inspectors, design intent, and
+migrations on the declared resource/surface/mode. Disable, revocation, stale generation, trust failure, and
+upgrade remove executable behavior without deleting Model, Blueprint, or Entry data.
+
+### 4. Implement the Kumwe App adapter
+
+Kumwe App maps the public target and ports onto its existing bounded contexts:
+
+- PHP resolves identity, tenant/site, resource, content type, policy, revisions, workflow, and runtime
+  generation;
+- PHP application transactions authorize, validate, revision, audit, and persist item/type/type-version saves;
+- PHP owns media, recovery, preview grants, and publication;
+- PHP/Twig/KIS renders preview and public output from validated portable artifacts; and
+- the administrator serves compiled Studio browser assets without production Node.js/npm.
+
+App-specific owner/trust, presenter/Twig, service, route, database, and policy metadata stays in App host
+bindings. It never enters generic Studio packages or canonical artifacts.
+
+### 5. Qualify one exact candidate
+
+1. Quarantine and verify the complete candidate family through the protected workflow.
+2. Pin its exact release record and corpus digest atomically in Kumwe App.
+3. Replay host, preview, model/binding, contribution, schema, media, renderer, security, and environment
+   assertions through the real PHP/Twig adapter and an unrelated host/renderer where required.
+4. Run `STUDIO-PROD-015` end to end, including blank/type hydration, empty values, item save/reopen,
+   save-as-type, update-type-version, presentation continuity, extension block, field adapter, and public
+   rendering.
+5. Reproduce browser, database, accessibility, migration, restart, backup/restore, rollback, provenance,
+   package-integrity, and zero-production-Node evidence independently.
+
+A changed candidate requires a new coordinate and affected evidence. A workspace tree, mixed package set,
+release-record label, or reference-host demo cannot substitute.
+
+## Release and claim boundary
+
+The active route is frozen RC quarantine → independently reproduced Gate A evidence → authorized official
+`rc` → Gate B qualification → stable. The checked-in `0.1.0-rc.1` source is only the candidate at the start of
+that route.
+
+Completion requires all of the following at the same immutable candidate:
+
+- the contextual authoring implementation and `authoring-web` assertions;
+- the real Kumwe App PHP/Twig journey and an independent host replay;
+- supported manual accessibility and production environment matrices;
+- exact package/provenance/clean-consumer evidence;
+- independently signed evidence and gate decisions; and
+- truthful release notes and support boundaries.
+
+Until those conditions pass, documentation must say Gate A **Not assessed**, Gate B **Blocked**, no supported
+production host, no official stable release, and no completed contextual authoring product.

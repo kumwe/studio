@@ -1,7 +1,7 @@
 # `@kumwe/studio`
 
-Status: integration-candidate alpha. The standalone page-building runtime is implemented; profile, host, and
-release qualification remain governed by the evidence ledger.
+Status: `0.1.0-rc.1` source candidate. The standalone Blueprint-building runtime is implemented; contextual
+Model/Blueprint/Entry authoring, profile evidence, host integration, and release qualification remain open.
 
 The Lit Web Component authoring shell for Studio. It renders a block/pattern palette, measured visual
 canvas with a structural fallback, semantic outline, selection inspector, command history, and a
