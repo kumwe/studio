@@ -4,6 +4,18 @@ import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
   STUDIO_WIRE_PROTOCOL_VERSION,
+  type AuthoringSaveAsNewTypeRequest,
+  type AuthoringSaveIntent,
+  type AuthoringSaveItemRequest,
+  type AuthoringSaveNewTypeVersionRequest,
+  type AuthoringSavePlan,
+  type AuthoringSaveResult,
+  type AuthoringSessionSnapshot,
+  type AuthoringStartRequest,
+  type AuthoringTargetResolution,
+  type AuthoringTargetResolveRequest,
+  type AuthoringTypeListPage,
+  type AuthoringTypeListQuery,
   type ContentModelDocument,
   type HostAdapter,
   type HostErrorCategory,
@@ -21,6 +33,7 @@ import {
   type PreviewRenderPayload,
   type PreviewRenderedPayload,
   type QualifiedName,
+  type ReusableContentTypeDefinition,
   type ResourceSearchHit,
   type Revision,
   type StableId,
@@ -32,6 +45,7 @@ import {
 
 export type TestbedPortName =
   | 'artifact'
+  | 'authoring'
   | 'localization'
   | 'media'
   | 'model'
@@ -47,6 +61,7 @@ export interface TestbedHostOptions {
    * unit tests. Defaults to false and MUST remain false for conformance replay.
    */
   allowTestOperationId?: boolean;
+  authoring?: TestbedAuthoringOptions;
   documents?: StudioArtifact[];
   initialClockMilliseconds?: number;
   mediaAssets?: MediaAsset[];
@@ -61,6 +76,69 @@ export interface TestbedHostOptions {
   sessionGeneration?: Revision;
 }
 
+/**
+ * Exact fixture exchanges for the additive contextual-authoring port. The
+ * testbed deliberately does not invent host business policy: a real host
+ * supplies the exact target, launch, plan, and accepted-result projections it
+ * authorizes, while the testbed supplies deterministic envelope, operation,
+ * isolation, and idempotency behavior around those exchanges.
+ */
+export interface TestbedAuthoringOptions {
+  plans?: TestbedAuthoringPlanFixture[];
+  saves?: TestbedAuthoringSaveFixture[];
+  starts?: TestbedAuthoringStartFixture[];
+  targets?: TestbedAuthoringTargetFixture[];
+  types?: TestbedAuthoringTypeFixture[];
+}
+
+export interface TestbedAuthoringTargetFixture {
+  request: AuthoringTargetResolveRequest;
+  resolution: AuthoringTargetResolution;
+}
+
+export interface TestbedAuthoringTypeFixture {
+  definition: ReusableContentTypeDefinition;
+  resourceContextKey: StableId;
+  targetId: QualifiedName;
+}
+
+export interface TestbedAuthoringStartFixture {
+  request: AuthoringStartRequest;
+  session: AuthoringSessionSnapshot;
+}
+
+export interface TestbedAuthoringPlanFixture {
+  intent: AuthoringSaveIntent;
+  plan: AuthoringSavePlan;
+  resourceContextKey: StableId;
+}
+
+export type TestbedAuthoringSaveRequest =
+  AuthoringSaveAsNewTypeRequest | AuthoringSaveItemRequest | AuthoringSaveNewTypeVersionRequest;
+
+export interface TestbedAuthoringSaveFixture {
+  request: TestbedAuthoringSaveRequest;
+  resourceContextKey: StableId;
+  result: AuthoringSaveResult;
+}
+
+export interface TestbedAuthoringOperation {
+  argument:
+    | AuthoringSaveIntent
+    | AuthoringStartRequest
+    | AuthoringTargetResolveRequest
+    | AuthoringTypeListQuery
+    | TestbedAuthoringSaveRequest;
+  operation:
+    | 'list-types'
+    | 'plan-save'
+    | 'resolve-target'
+    | 'save-as-new-type'
+    | 'save-item'
+    | 'save-new-type-version'
+    | 'start';
+}
+
 /** A deterministic fixed-window policy used by portable sequence replays. */
 export interface TestbedRateLimitPolicy {
   maximumRequests: number;
@@ -70,6 +148,7 @@ export interface TestbedRateLimitPolicy {
 
 export interface TestbedControls {
   advanceClock(milliseconds: number): void;
+  readonly authoringOperations: readonly TestbedAuthoringOperation[];
   artifactStatus(id: StableId): StudioArtifact['status'] | undefined;
   disconnect(): void;
   failNext(portName: TestbedPortName, operation: string, category: HostErrorCategory): void;
@@ -170,6 +249,36 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
 
   const mediaAssets = cloneValue(options.mediaAssets ?? []);
   const resources = cloneValue(options.resources ?? []);
+  const authoringTargets = cloneValue(options.authoring?.targets ?? []);
+  const authoringTypes = cloneValue(options.authoring?.types ?? []);
+  const authoringStarts = cloneValue(options.authoring?.starts ?? []);
+  const authoringPlans = cloneValue(options.authoring?.plans ?? []);
+  const authoringSaves = cloneValue(options.authoring?.saves ?? []);
+  const authoringOperations: TestbedAuthoringOperation[] = [];
+  assertUniqueAuthoringFixtures(
+    'target',
+    authoringTargets.map((fixture) => fixture.request),
+  );
+  assertUniqueAuthoringFixtures(
+    'start',
+    authoringStarts.map((fixture) => fixture.request),
+  );
+  assertUniqueAuthoringFixtures(
+    'plan',
+    authoringPlans.map((fixture) => fixture.intent),
+  );
+  assertUniqueAuthoringFixtures(
+    'save',
+    authoringSaves.map((fixture) => fixture.request),
+  );
+  assertUniqueAuthoringFixtures(
+    'type',
+    authoringTypes.map((fixture) => ({
+      reference: fixture.definition,
+      resourceContextKey: fixture.resourceContextKey,
+      targetId: fixture.targetId,
+    })),
+  );
   const messageBundles = new Map<string, Record<QualifiedName, string>>(
     Object.entries(cloneValue(options.messages ?? {})),
   );
@@ -495,6 +604,40 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
     }
   }
 
+  function recordAuthoringOperation(
+    operation: TestbedAuthoringOperation['operation'],
+    argument: TestbedAuthoringOperation['argument'],
+  ): void {
+    authoringOperations.push({ argument: cloneValue(argument), operation });
+  }
+
+  function requireMatchingResourceContext(
+    resourceContextKey: StableId,
+    context: HostRequestContext,
+  ): void {
+    if (resourceContextKey !== context.resourceContextKey) {
+      fail(
+        'invalid-request',
+        'The contextual authoring request does not match the authoritative resource context.',
+      );
+    }
+  }
+
+  function exactFixture<TArgument, TFixture>(
+    fixtures: readonly TFixture[],
+    argument: TArgument,
+    select: (fixture: TFixture) => TArgument,
+  ): TFixture {
+    const fingerprint = canonicalStringify(argument as unknown as JsonValue);
+    const fixture = fixtures.find(
+      (candidate) => canonicalStringify(select(candidate) as unknown as JsonValue) === fingerprint,
+    );
+    if (fixture === undefined) {
+      fail('not-found', 'The requested contextual authoring fixture is not available.');
+    }
+    return fixture;
+  }
+
   const host: HostAdapter = {
     artifact: {
       dependencies(reference, context) {
@@ -528,6 +671,123 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
           context,
           () => setStatus(reference.id, context, 'draft'),
         );
+      },
+    },
+    authoring: {
+      listTypes(query, context) {
+        return run('authoring', 'list-types', context, () => {
+          requireMatchingResourceContext(query.resourceContext.key, context);
+          ensureLimit(query.limit);
+          recordAuthoringOperation('list-types', query);
+          const search = query.search?.toLowerCase();
+          const available = authoringTypes
+            .filter(
+              (fixture) =>
+                fixture.targetId === query.targetId &&
+                fixture.resourceContextKey === context.resourceContextKey &&
+                (search === undefined ||
+                  fixture.definition.id.toLowerCase().includes(search) ||
+                  (fixture.definition.label.defaultMessage?.toLowerCase().includes(search) ??
+                    false)),
+            )
+            .sort(
+              (left, right) =>
+                compareCodeUnits(left.definition.id, right.definition.id) ||
+                compareCodeUnits(left.definition.version, right.definition.version) ||
+                compareCodeUnits(left.definition.revision, right.definition.revision),
+            );
+          const start = resolveStart(query.cursor);
+          const nextIndex = start + query.limit;
+          const value: AuthoringTypeListPage = {
+            items: available.slice(start, nextIndex).map(({ definition }) => ({
+              blueprint: cloneValue(definition.blueprint),
+              label: cloneValue(definition.label),
+              model: cloneValue(definition.model),
+              reference: {
+                id: definition.id,
+                revision: definition.revision,
+                version: definition.version,
+              },
+            })),
+            ...(nextIndex < available.length ? { nextCursor: encodeCursor(nextIndex) } : {}),
+          };
+          return { value };
+        });
+      },
+      planSave(intent, context) {
+        return run('authoring', 'plan-save', context, () => {
+          const fixture = exactFixture(authoringPlans, intent, (candidate) => candidate.intent);
+          requireMatchingResourceContext(fixture.resourceContextKey, context);
+          recordAuthoringOperation('plan-save', intent);
+          return { value: cloneValue(fixture.plan) };
+        });
+      },
+      resolveTarget(request, context) {
+        return run('authoring', 'resolve-target', context, () => {
+          requireMatchingResourceContext(request.resourceContext.key, context);
+          recordAuthoringOperation('resolve-target', request);
+          const fixture = exactFixture(authoringTargets, request, (candidate) => candidate.request);
+          return { value: cloneValue(fixture.resolution) };
+        });
+      },
+      saveAsNewType(request, context) {
+        return runMutation(
+          'authoring',
+          'save-as-new-type',
+          request as unknown as JsonValue,
+          context,
+          () => {
+            const fixture = exactFixture(authoringSaves, request, (candidate) => candidate.request);
+            if (fixture.request.kind !== 'authoring-save-as-new-type-request') {
+              fail('not-found', 'The requested contextual save fixture is not available.');
+            }
+            requireMatchingResourceContext(fixture.resourceContextKey, context);
+            recordAuthoringOperation('save-as-new-type', request);
+            return { value: cloneValue(fixture.result) };
+          },
+        );
+      },
+      saveItem(request, context) {
+        return runMutation(
+          'authoring',
+          'save-item',
+          request as unknown as JsonValue,
+          context,
+          () => {
+            const fixture = exactFixture(authoringSaves, request, (candidate) => candidate.request);
+            if (fixture.request.kind !== 'authoring-save-item-request') {
+              fail('not-found', 'The requested contextual save fixture is not available.');
+            }
+            requireMatchingResourceContext(fixture.resourceContextKey, context);
+            recordAuthoringOperation('save-item', request);
+            return { value: cloneValue(fixture.result) };
+          },
+        );
+      },
+      saveNewTypeVersion(request, context) {
+        return runMutation(
+          'authoring',
+          'save-new-type-version',
+          request as unknown as JsonValue,
+          context,
+          () => {
+            const fixture = exactFixture(authoringSaves, request, (candidate) => candidate.request);
+            if (fixture.request.kind !== 'authoring-save-new-type-version-request') {
+              fail('not-found', 'The requested contextual save fixture is not available.');
+            }
+            requireMatchingResourceContext(fixture.resourceContextKey, context);
+            recordAuthoringOperation('save-new-type-version', request);
+            return { value: cloneValue(fixture.result) };
+          },
+        );
+      },
+      start(request, context) {
+        return runMutation('authoring', 'start', request as unknown as JsonValue, context, () => {
+          requireMatchingResourceContext(request.resourceContext.key, context);
+          recordAuthoringOperation('start', request);
+          const fixture = exactFixture(authoringStarts, request, (candidate) => candidate.request);
+          return { value: cloneValue(fixture.session) };
+        });
       },
     },
     localization: {
@@ -847,6 +1107,9 @@ export function createTestbedHost(options: TestbedHostOptions = {}): TestbedHost
       }
       clockMilliseconds = next;
     },
+    get authoringOperations(): readonly TestbedAuthoringOperation[] {
+      return cloneValue(authoringOperations);
+    },
     artifactStatus(id: StableId): StudioArtifact['status'] | undefined {
       return artifactStore.get(id)?.document.status;
     },
@@ -1034,6 +1297,17 @@ function cloneValue<T>(value: T): T {
 
 function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
+}
+
+function assertUniqueAuthoringFixtures(label: string, values: readonly unknown[]): void {
+  const fingerprints = new Set<string>();
+  for (const value of values) {
+    const fingerprint = canonicalStringify(value as JsonValue);
+    if (fingerprints.has(fingerprint)) {
+      throw new TypeError(`Testbed contextual authoring ${label} fixture is duplicated.`);
+    }
+    fingerprints.add(fingerprint);
+  }
 }
 
 /**

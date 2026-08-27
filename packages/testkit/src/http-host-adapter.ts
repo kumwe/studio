@@ -2,6 +2,18 @@ import {
   isHostPortError,
   STUDIO_CONTRACT_VERSION,
   type ArtifactReference,
+  type AuthoringSaveAsNewTypeRequest,
+  type AuthoringSaveIntent,
+  type AuthoringSaveItemRequest,
+  type AuthoringSaveNewTypeVersionRequest,
+  type AuthoringSavePlan,
+  type AuthoringSaveResult,
+  type AuthoringSessionSnapshot,
+  type AuthoringStartRequest,
+  type AuthoringTargetResolution,
+  type AuthoringTargetResolveRequest,
+  type AuthoringTypeListPage,
+  type AuthoringTypeListQuery,
   type ContentModelDocument,
   type HostAdapter,
   type HostErrorCategory,
@@ -207,6 +219,50 @@ export function createHttpHostAdapter(
         context: HostRequestContext,
       ): Promise<HostPortResult<null>> {
         return call('artifact', 'unpublish', { reference: asJson(reference) }, context);
+      },
+    },
+    authoring: {
+      listTypes(
+        query: AuthoringTypeListQuery,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringTypeListPage>> {
+        return call('authoring', 'list-types', { query: asJson(query) }, context);
+      },
+      planSave(
+        intent: AuthoringSaveIntent,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringSavePlan>> {
+        return call('authoring', 'plan-save', { intent: asJson(intent) }, context);
+      },
+      resolveTarget(
+        request: AuthoringTargetResolveRequest,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringTargetResolution>> {
+        return call('authoring', 'resolve-target', { request: asJson(request) }, context);
+      },
+      saveAsNewType(
+        request: AuthoringSaveAsNewTypeRequest,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringSaveResult>> {
+        return call('authoring', 'save-as-new-type', { request: asJson(request) }, context);
+      },
+      saveItem(
+        request: AuthoringSaveItemRequest,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringSaveResult>> {
+        return call('authoring', 'save-item', { request: asJson(request) }, context);
+      },
+      saveNewTypeVersion(
+        request: AuthoringSaveNewTypeVersionRequest,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringSaveResult>> {
+        return call('authoring', 'save-new-type-version', { request: asJson(request) }, context);
+      },
+      start(
+        request: AuthoringStartRequest,
+        context: HostRequestContext,
+      ): Promise<HostPortResult<AuthoringSessionSnapshot>> {
+        return call('authoring', 'start', { request: asJson(request) }, context);
       },
     },
     localization: {

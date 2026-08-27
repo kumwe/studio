@@ -5,6 +5,13 @@ import { StudioSession } from '@kumwe/studio-core';
 import {
   isHostPortError,
   type ArtifactReference,
+  type AuthoringSaveAsNewTypeRequest,
+  type AuthoringSaveIntent,
+  type AuthoringSaveItemRequest,
+  type AuthoringSaveNewTypeVersionRequest,
+  type AuthoringStartRequest,
+  type AuthoringTargetResolveRequest,
+  type AuthoringTypeListQuery,
   type BlueprintDocument,
   type ContentModelDocument,
   type HostErrorCategory,
@@ -308,6 +315,73 @@ function insertCommand(
 }
 
 describe('createHttpHostAdapter over a real node:http transport', () => {
+  it('maps every contextual authoring operation to its exact public route and argument', async () => {
+    const calls: { body: string; url: string }[] = [];
+    const adapter = createHttpHostAdapter('https://authoring.test/', {
+      fetchImplementation: (url, init) => {
+        calls.push({ body: init.body, url });
+        return Promise.resolve({ status: 200, text: () => Promise.resolve('{"value":null}') });
+      },
+    });
+    const authoring = definedPort(adapter.authoring);
+    const context = createHostRequestContextFixture();
+    const resolveRequest = { marker: 'resolve-target' } as unknown as AuthoringTargetResolveRequest;
+    const typeQuery = { marker: 'list-types' } as unknown as AuthoringTypeListQuery;
+    const startRequest = { marker: 'start' } as unknown as AuthoringStartRequest;
+    const saveIntent = { marker: 'plan-save' } as unknown as AuthoringSaveIntent;
+    const saveItem = { marker: 'save-item' } as unknown as AuthoringSaveItemRequest;
+    const saveVersion = {
+      marker: 'save-new-type-version',
+    } as unknown as AuthoringSaveNewTypeVersionRequest;
+    const saveAsType = {
+      marker: 'save-as-new-type',
+    } as unknown as AuthoringSaveAsNewTypeRequest;
+
+    await authoring.resolveTarget(resolveRequest, context);
+    await authoring.listTypes(typeQuery, context);
+    await authoring.start(startRequest, context);
+    await authoring.planSave(saveIntent, context);
+    await authoring.saveItem(saveItem, context);
+    await authoring.saveNewTypeVersion(saveVersion, context);
+    await authoring.saveAsNewType(saveAsType, context);
+
+    expect(
+      calls.map(({ body, url }) => ({
+        arguments: (JSON.parse(body) as WireRequest).arguments,
+        url,
+      })),
+    ).toEqual([
+      {
+        arguments: { request: resolveRequest },
+        url: 'https://authoring.test/ports/authoring/resolve-target',
+      },
+      {
+        arguments: { query: typeQuery },
+        url: 'https://authoring.test/ports/authoring/list-types',
+      },
+      {
+        arguments: { request: startRequest },
+        url: 'https://authoring.test/ports/authoring/start',
+      },
+      {
+        arguments: { intent: saveIntent },
+        url: 'https://authoring.test/ports/authoring/plan-save',
+      },
+      {
+        arguments: { request: saveItem },
+        url: 'https://authoring.test/ports/authoring/save-item',
+      },
+      {
+        arguments: { request: saveVersion },
+        url: 'https://authoring.test/ports/authoring/save-new-type-version',
+      },
+      {
+        arguments: { request: saveAsType },
+        url: 'https://authoring.test/ports/authoring/save-as-new-type',
+      },
+    ]);
+  });
+
   it('serializes model get and list through their exact public routes', async () => {
     const projectedModel: ContentModelDocument = {
       contractVersion: '0.1-draft',
