@@ -29,6 +29,14 @@ export {
   createTestbedHost,
   TestbedHostError,
   type HostRequestContextFixtureOptions,
+  type TestbedAuthoringOperation,
+  type TestbedAuthoringOptions,
+  type TestbedAuthoringPlanFixture,
+  type TestbedAuthoringSaveFixture,
+  type TestbedAuthoringSaveRequest,
+  type TestbedAuthoringStartFixture,
+  type TestbedAuthoringTargetFixture,
+  type TestbedAuthoringTypeFixture,
   type TestbedControls,
   type TestbedHost,
   type TestbedHostOptions,
@@ -59,6 +67,18 @@ export {
   type AuthoringWebVector,
   type AuthoringWebVectorResult,
 } from './web-conformance.js';
+
+export {
+  runContextualAuthoringStrideVector,
+  type ContextualAuthoringCommandAssertion,
+  type ContextualAuthoringConformanceAdapter,
+  type ContextualAuthoringConformanceSession,
+  type ContextualAuthoringLaunchAssertion,
+  type ContextualAuthoringSaveAssertion,
+  type ContextualAuthoringSaveRequest,
+  type ContextualAuthoringStrideResult,
+  type ContextualAuthoringStrideVector,
+} from './contextual-conformance.js';
 
 export interface BlueprintFixtureOptions {
   blockLocks?: BlueprintBlockLock[];

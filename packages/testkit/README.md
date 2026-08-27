@@ -52,6 +52,17 @@ strict hosts. The `allowTestOperationId` option permits only the fixture wildcar
 defaults off, and must never be enabled for conformance replay. The testbed uses no wall clock,
 randomness, or timers, so runs are fully reproducible.
 
+The optional `authoring` fixtures add the canonical contextual target, reusable-type listing, exact start,
+save-plan, and three distinct save operations to that same testbed. Resolve, list, and start reject a body/
+envelope resource-context mismatch; start and the three saves share the deterministic idempotency boundary;
+and `controls.authoringOperations` exposes detached observations for assertions. The injected HTTP adapter maps
+the seven operations to `/ports/authoring/*` without introducing a server-side JavaScript runtime requirement.
+`runContextualAuthoringStrideVector(vector, adapter)` is a selector-neutral first-stride runner for exact blank,
+from-type, and existing hydration; separately governed Model, Blueprint, and Entry commands; typed values;
+item-local composition; and host-authoritative save boundaries. Its result always carries
+`completeProfile: false`: presentation continuity, contribution lifecycle, real-shell accessibility, and the
+remaining browser matrix still prevent a complete `studio.profile/authoring-web` claim.
+
 ## Host conformance corpus
 
 `@kumwe/studio-testkit/vectors/host/<filename>` publishes the executable assertion set for
