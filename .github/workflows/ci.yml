@@ -61,3 +61,26 @@ jobs:
           name: playwright-report
           path: .cache/playwright/report
           retention-days: 7
+
+  php-reference:
+    name: PHP reference host
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify PHP reference boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php --version
+          find examples/php-authoring-host/src \
+            examples/php-authoring-host/public \
+            examples/php-authoring-host/tests \
+            -type f -name '*.php' -print0 \
+            | sort -z \
+            | xargs -0 -n1 php -l
+          php examples/php-authoring-host/tests/run.php
