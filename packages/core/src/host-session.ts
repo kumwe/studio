@@ -133,10 +133,13 @@ export interface StudioHostSessionHandle {
 export type StudioHostSessionErrorCode =
   | 'configuration-blocked'
   | 'disposed'
+  | 'invalid-authoring-request'
   | 'invalid-identifier'
   | 'invalid-model-reference'
   | 'invalid-resource-query'
   | 'read-only-session'
+  | 'save-plan-mismatch'
+  | 'unexpected-authoring-result'
   | 'unexpected-artifact';
 
 /** A local composition/state failure, distinct from a host-port rejection. */
@@ -613,7 +616,7 @@ interface ScheduledSave {
   snapshotFingerprint: string;
 }
 
-class SessionIdentifierAllocator {
+export class SessionIdentifierAllocator {
   readonly #factories: StudioHostSessionIdentifierFactories;
   readonly #idempotencyIntents = new Map<string, string>();
   readonly #requestIds = new Set<StableId>();
@@ -860,7 +863,7 @@ function requestedOptionalPorts(
   return [...ports];
 }
 
-function createContext(
+export function createContext(
   configuration: StudioConfiguration,
   requestId: StableId,
   options: ContextOptions,
@@ -879,7 +882,7 @@ function createContext(
   };
 }
 
-function createDiagnostic(
+export function createDiagnostic(
   code: QualifiedName,
   defaultMessage: string,
   severity: StudioDiagnostic['severity'],
@@ -1121,7 +1124,7 @@ function compareCodeUnits(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function mutationFingerprint(
+export function mutationFingerprint(
   argument: JsonValue,
   configuration: StudioConfiguration,
   expectedRevision?: Revision,
@@ -1144,7 +1147,7 @@ async function invokeOpeningHostCall<TValue>(operation: () => Promise<TValue>): 
   }
 }
 
-function normalizeHostRejection(error: unknown): HostPortFailure {
+export function normalizeHostRejection(error: unknown): HostPortFailure {
   if (isHostPortFailure(error)) {
     return error;
   }
@@ -1154,7 +1157,10 @@ function normalizeHostRejection(error: unknown): HostPortFailure {
   );
 }
 
-function adapterContractFailure(code: QualifiedName, defaultMessage: string): HostPortFailure {
+export function adapterContractFailure(
+  code: QualifiedName,
+  defaultMessage: string,
+): HostPortFailure {
   const error: HostPortError = {
     category: 'internal',
     contractVersion: STUDIO_CONTRACT_VERSION,
@@ -1166,7 +1172,7 @@ function adapterContractFailure(code: QualifiedName, defaultMessage: string): Ho
   return new HostPortFailure(error);
 }
 
-function isStaleGenerationFailure(failure: HostPortFailure): boolean {
+export function isStaleGenerationFailure(failure: HostPortFailure): boolean {
   return (
     failure.error.category === 'invalid-request' &&
     (failure.error.diagnostics?.some(

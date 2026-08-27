@@ -12,6 +12,16 @@ export {
   type NodeFieldBindingProjection,
 } from './binding-projection.js';
 export {
+  openContextualStudioSession,
+  type OpenContextualStudioSessionOptions,
+  type StudioContextualArtifactStateVersions,
+  type StudioContextualDirtyArtifacts,
+  type StudioContextualHostSessionHandle,
+  type StudioContextualSaveIntentOptions,
+  type StudioContextualSession,
+  type StudioContextualTypeCatalog,
+} from './contextual-session.js';
+export {
   applyCommand,
   invertCommand,
   StudioCommandError,
