@@ -9,6 +9,11 @@ Doctrine DBAL, Twig server rendering, focused Lit enhancements, immutable versio
 trusted extensions, owner-aware contributions, immutable runtime generations, strict public/admin/portal
 boundaries, recovery isolation, revision/workflow/translation support, and bounded KIS customization.
 
+The target default is Studio opened directly for the exact managed-content resource being created or edited,
+with layout, fields, bindings, and values available in one continuous authoring journey. The sole product
+authority is the [Studio product contract](../product-contract.md); this playbook maps
+`STUDIO-PROD-001`–`015` to Kumwe App without redefining them.
+
 ## Current Studio candidate boundary
 
 The Studio-side runtime needed by the App is present in the integration candidate: the eight-package family,
@@ -17,7 +22,10 @@ resource controls, complete semantic web renderer, and portable host/renderer/bi
 consume those capabilities through public Studio contracts; it must not reproduce the catalog, expose
 Editor.js, or carry a private fork of renderer behavior.
 
-That candidate has not yet become an official coordinated npm release. The required landing order is:
+Exact current Studio `main` is `829694efb25374d3b498f2d46856d2c39650728a`. The checked-in release record
+coordinates all eight packages at `0.1.0-rc.1` and records the fixed nine proposed profile claims. That is a
+candidate source record, not accepted profile evidence, an open official npm `rc` channel, stable support, or a
+production-host claim. The required landing order is:
 
 1. merge and publish one exact eight-package Studio coordinate through the protected release train;
 2. atomically pin all eight versions plus the release/corpus digests in Kumwe App;
@@ -25,8 +33,8 @@ That candidate has not yet become an official coordinated npm release. The requi
 4. qualify the integrated browser, database, security, media, extension, migration, and rollback matrices.
 
 Until step 1 completes, App work is an additive integration candidate rather than a supported production
-dependency. Workspace tarballs, mixed alpha versions, and copied Studio runtime are not substitutes for the
-published coordinate.
+dependency. Workspace tarballs, mixed prerelease versions, and copied Studio runtime are not substitutes for
+the published coordinate. Gate A remains **Not assessed** and Gate B remains **Blocked**.
 
 The adapter is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
 assertion set for [`studio.profile/host-baseline`](../contracts/conformance-profiles.md): language-neutral
@@ -65,11 +73,39 @@ The integration must preserve Kumwe App's existing rules:
 10. Documents use bounded typed ASTs and semantic KIS/theme choices, never stored executable code, raw Twig,
     unrestricted HTML/CSS, JavaScript, SQL, or hidden service calls. Allowed pasted HTML is normalized into
     Studio safe-markup structures, while scoped styles remain separately authorized renderer context.
+11. Every authoritative Studio operation terminates in Kumwe App PHP application services and PHP HTTP
+    endpoints; browser JavaScript never becomes a parallel server authority (`STUDIO-PROD-010`).
+12. Studio ships as compiled browser assets. Production containers and operators require neither Node.js nor
+    npm to install, start, preview, save, publish, or render (`STUDIO-PROD-011`).
 
-## Target authoring model
+## Contextual authoring target and current limitation
+
+An authorized Kumwe App extension declares the managed-content target on which Studio is available. The host
+create/edit action resolves that target to the exact content resource, type/model revision, reusable Blueprint,
+Entry revision when editing, design intent, active contribution generation, permissions, presentation state,
+and deterministic return route. Studio opens from that action; the author does not pre-create a Blueprint,
+visit a disconnected catalogue screen, or manually reconcile identifiers (`STUDIO-PROD-001`, `008`, `012`).
+
+The target declaration admits extension-owned canonical block, pattern, and field-adapter contributions through
+the same immutable owner-aware generation and lifecycle as other Studio contributions
+(`STUDIO-PROD-008`, `009`). The precise target schema/API is planned contract work; it is not present in the
+current `0.1.0-rc.1` public surface and this playbook does not invent one.
+
+Within the contextual workspace, Model, Blueprint, and Entry remain separate versioned artifacts but appear as
+one coordinated journey. Starting blank creates authorized empty structure and values; starting from a reusable
+content type hydrates the exact Model and Blueprint revisions with empty values for a new Entry
+(`STUDIO-PROD-002`, `004`, `005`). Layout, field definition/binding, and value entry share the canvas and
+inspector under the resolved permissions (`STUDIO-PROD-003`).
+
+The current implementation is narrower: `openStudioSession` composes one Blueprint, while the Lit shell is a
+separate alpha surface with read-only model projection and no coordinated Entry persistence. Its external
+block-authoring controls and blank-Blueprint harness are primitives, not the target contextual journey
+(`STUDIO-PROD-014`).
+
+### Internal authority boundaries
 
 Kumwe App adds a versioned `ContentAuthoringDefinition` beside, not inside, the validation schema. Its supported
-modes map to Studio as follows:
+modes remain internal permission/artifact boundaries rather than separate products or prerequisite screens:
 
 | Kumwe App choice        | Studio session configuration                | Use                                                                                     |
 | ----------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
@@ -80,9 +116,20 @@ modes map to Studio as follows:
 | Mixed structured/visual | `mode: content`, `composite: hybrid`        | Products/services retain typed business fields while designated regions use composition |
 | Inspection/recovery     | appropriate mode, `sessionState: read-only` | Unsupported/missing contributions remain diagnosable without execution                  |
 
-Existing content types default to the current form path. Enabling Studio creates a new authoring-definition
-revision and, where structure changes, a new content-type/model revision with an explicit migration plan.
-Studio never silently edits a published JSON Schema because a block was dragged onto the canvas.
+For each supported target, Studio becomes the default create/edit surface. The existing form remains a
+transitional fallback for migration, recovery, rollback, or a capability the contextual target cannot yet
+provide; it does not redefine the intended workflow. Enabling Studio creates a new authoring-definition revision
+and, where structure changes, a new content-type/model revision with an explicit migration plan. Studio never
+silently edits a published JSON Schema because a block was dragged onto the canvas.
+
+### Explicit save outcomes
+
+The workspace presents separate host transactions for saving the current item, saving the design as a new
+content type, and creating a new version of the current type (`STUDIO-PROD-006`). A content-item save persists
+Entry values and any permitted entry-scoped composition without silently mutating the reusable type. A type
+save coordinates Model and Blueprint revisions but excludes the current Entry's values. A type-version save
+shows migration and dependent-entry consequences before confirmation. Kumwe App authenticates, authorizes,
+validates, transacts, revisions, and audits each result independently.
 
 ### AP-2 content projection coordinate
 
@@ -136,7 +183,7 @@ binding stores a stable field reference; save commands invoke Kumwe App use case
 | Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                               |
 | Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                   |
 | Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                      |
-| Contributions      | Manifest 6 / SPI 4 admits the six canonical Studio resource families plus separate host bindings into the existing owner-aware immutable generation     |
+| Contributions      | Manifest 6 / SPI 4 admits the declared authoring target plus canonical blocks, patterns, field adapters, inspectors, design vocabulary, and migrations into the existing owner-aware immutable generation; the target shape remains planned Studio contract work |
 | Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client |
 | Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                    |
 | References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                      |
@@ -196,7 +243,9 @@ preview is not part of the Kumwe App Gate B profile.
 
 ## Extension contribution shape
 
-Studio contributions extend Kumwe App's typed, owner-aware contribution system. A block declaration includes:
+Studio contributions extend Kumwe App's typed, owner-aware contribution system. An extension first declares
+the host authoring target and the surfaces/modes on which its contributions are available; a block declaration
+then includes:
 
 - namespaced stable ID, owner and contract/semantic version;
 - localized label/help/category keys and icon reference;
@@ -238,7 +287,11 @@ The correction is additive because Kumwe App's frozen generations are compatibil
 | Legacy adapter         | Translate a manifest 5 / SPI 3 declaration only when the complete mapping is deterministic and lossless. Fail closed and require an explicit manifest 6 / SPI 4 declaration when any canonical meaning would be inferred, defaulted, widened, or discarded.       |
 | Generation admission   | Admit all canonical resources and host bindings atomically into one immutable owner-aware generation; disagreement rejects the owning contribution rather than publishing a partial translation.                                                                  |
 
-Until manifest 6 / SPI 4, exact schema validation, and corpus replay exist in Kumwe App, its composition
+The additive generation must also carry the future canonical host-target declaration once Studio publishes its
+shape. Blocks and field adapters do not implicitly create a target, and host binding metadata does not become
+portable Studio data.
+
+Until manifest 6 / SPI 4, exact schema validation, target declaration, and corpus replay exist in Kumwe App, its composition
 contribution Gate A item is an integration blocker rather than evidence that the Studio profile is implemented.
 Studio does not weaken its portable schema contract to make the older host-specific declaration equivalent.
 
@@ -265,7 +318,8 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 1. add protocol and host ports without changing existing content-type behaviour;
 2. add Blueprint/authoring-definition persistence and read-only diagnostics;
 3. add authenticated preview and public Twig block rendering;
-4. expose Studio only for explicitly opted-in authoring definitions;
+4. make Studio the default create/edit surface for supported declared targets, with the old form retained only
+   as the named transitional fallback;
 5. prove save/revision/workflow/translation/permission/media/extension lifecycle;
 6. bind Studio's shipped rich-text/media/resource controls to Kumwe App adapters while Kumwe App continues to
    own routes, security, persistence and policy; Editor.js remains private to Studio;
@@ -296,7 +350,7 @@ dependency until the contract and exact release coordinate are accepted.
 
 | Studio package  | Kumwe App integration result                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------------- |
-| `M3-05`         | Additive host-port, persistence, preview, policy and API seams; existing editors remain default         |
+| `M3-05`         | Additive host-port, persistence, preview, policy and API seams; existing editors remain an explicitly transitional fallback while contextual coverage is incomplete |
 | `M5-06`         | Landing and product/service vertical slices using real extensions, themes, media, workflow and Twig     |
 | `M6-01`–`M6-05` | Migration, security, accessibility, performance, release, restart, backup/restore and rollback evidence |
 | Gate B          | Studio packages and the Kumwe App profile are eligible for release/integration merge                    |
@@ -320,3 +374,11 @@ The integration is not complete until evidence proves:
 9. PHP/Twig and Lit assets remain deterministic, same-origin and bound to the trusted runtime generation.
 10. Supported MariaDB/MySQL/PostgreSQL, desktop/mobile browser, localization, accessibility, backup/restore,
     restart, upgrade and rollback matrices are green.
+11. Create/edit launches Studio from an extension-declared target, and supported inline/expanded presentation
+    changes preserve resource identity, selection, authority, unsaved work, and return route.
+12. Blank and reusable-type starts, exact empty-value hydration, layout plus field/value authoring, and all
+    three explicit save outcomes complete without a disconnected screen or manual data transfer.
+13. An extension-contributed block and field adapter participate in the same target/generation lifecycle.
+14. The accepted PHP/Twig path starts from compiled assets and completes with zero production Node.js/npm
+    requirement.
+15. The exact integrated journey satisfies `STUDIO-PROD-015`; standalone harness evidence is insufficient.
