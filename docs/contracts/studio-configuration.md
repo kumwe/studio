@@ -1,10 +1,19 @@
 # Studio configuration contract
 
+This configuration contract is subordinate to the [Studio product contract](../product-contract.md).
+`STUDIO-PROD-001` through `STUDIO-PROD-013` define the contextual product outcome; this document defines only
+configuration behavior that has an accepted protocol shape.
+
 ## Purpose
 
 A resolved Studio configuration describes one authoring session and its policy. It does not contain secrets, bearer tokens, executable callbacks in serialized form, or persistent artifacts.
 
-The serializable portion conforms to [`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations and deterministic identifier factories remain separate from that document. The headless `openStudioSession` composition API consumes the complete resolved configuration for the bounded Blueprint persistence profile described below. The experimental custom-element shell remains a separate alpha surface: `defineKumweStudio()` registers a shell whose `ExperimentalShellConfiguration` does not yet consume this canonical configuration or host-adapter contract.
+The serializable portion conforms to [`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations and deterministic identifier factories remain separate from that document. The headless `openStudioSession` composition API consumes the complete resolved configuration for the bounded Blueprint persistence profile described below. The experimental custom-element shell remains a separate candidate surface: `defineKumweStudio()` registers a shell whose `ExperimentalShellConfiguration` does not yet consume this canonical configuration or host-adapter contract.
+
+That final limitation is material: the current implementation is not the coordinated contextual authoring
+profile required by the product contract. Model, Content, and hybrid documents remain valid contract concepts,
+but their coordinated state, history, persistence, presentation continuity, and save outcomes are planned work
+rather than supported configuration behavior (`STUDIO-PROD-014`).
 
 ## Required configuration
 
@@ -67,9 +76,29 @@ automatically. Recovery validation, compatibility, reconciliation, and UI remain
 concerns. Synchronous `dispose()` is a local idempotent lifecycle boundary and does not claim host
 teardown ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
 
+## Target coordinated contextual profile
+
+The product target requires one contextual Studio session to coordinate separately versioned Model,
+Blueprint, and Entry artifacts while the author composes layout, defines permitted fields, and enters actual
+values in one continuous experience (`STUDIO-PROD-003`, `STUDIO-PROD-004`). A host launch for new content
+resolves either authorized empty draft artifacts or an existing reusable content type; a launch for existing
+content resolves the exact resource and its accepted artifact revisions (`STUDIO-PROD-001`,
+`STUDIO-PROD-002`, `STUDIO-PROD-005`). It MUST NOT require a prerequisite type-creation screen, copy-paste, or
+manual reconciliation (`STUDIO-PROD-012`).
+
+The target also requires explicit, distinct **save item**, **save new type version**, and **save as new type**
+outcomes (`STUDIO-PROD-006`). The last two coordinate Model and Blueprint revisions but exclude Entry values.
+The host owns identifiers, authorization, validation, transactions, migration policy, persistence, and accepted
+revisions (`STUDIO-PROD-010`).
+
+The current schema and `openStudioSession` API do not define that multi-artifact composition or those
+coordinated save outcomes. They require reviewed additive contract, schema, and API work before an
+implementation may claim this profile. Implementations MUST NOT overload the current single-artifact
+`artifact.save` behavior or infer an undocumented transaction in the meantime (`STUDIO-PROD-014`).
+
 ## Contract and protocol selection
 
-`contractVersion` selects the StudioConfig document shape and semantics. In the current draft it is `0.1-draft`; it is not SemVer. `protocolVersion` is the single SemVer wire version selected during negotiation from the versions supported by Studio and `hostCapabilities.protocolVersions`. In the current alpha, the only supported wire version is `0.1.0-draft.2`.
+`contractVersion` selects the StudioConfig document shape and semantics. In the current draft it is `0.1-draft`; it is not SemVer. `protocolVersion` is the single SemVer wire version selected during negotiation from the versions supported by Studio and `hostCapabilities.protocolVersions`. In the current candidate, the only supported wire version is `0.1.0-draft.2`.
 
 The schema epoch in the StudioConfig schema `$id`, currently `/studio/v1/`, names the intended major schema family. It is not a session field and does not mean that Studio has reached version 1. Implementations MUST NOT derive any one of these three values from another. The complete mapping is defined by the [versioning and migration contract](versioning-and-migrations.md).
 
@@ -85,9 +114,29 @@ The schema epoch in the StudioConfig schema `$id`, currently `/studio/v1/`, name
 
 The key and projected identifiers are correlation and routing data, not credentials, bearer authority, permission claims, or proof that a resource exists. They MUST NOT contain secrets, policy internals, personal attributes, or signed authorization material. The trusted host adapter resolves the key, binds the authenticated actor and independently authorizes every operation. A stale, altered, unknown, or session-mismatched context fails closed.
 
+### Target declaration, launch, and presentation continuity
+
+Core surfaces and authorized extensions use the same future generic target declaration to make a typed host
+resource Studio-authorable; the host decides whether that declaration is active and mints the resource context
+(`STUDIO-PROD-008`, `STUDIO-PROD-009`). A contribution is discovery metadata, not permission or a transport
+credential. The current StudioConfig schema does not yet define that target declaration.
+
+Inline, minimized, maximized, and fullscreen are presentations of the same contextual session where the host
+offers them (`STUDIO-PROD-007`). Moving between them MUST preserve the resource and artifact coordinates,
+drafts, history, selection, focus intent, dirty and validation state, locale, authority, and deterministic
+return context. It MUST NOT create a new item, silently save, or convert the work into another artifact. The
+current schema has no canonical presentation/handoff members and the candidate shell has no such lifecycle; the
+required representation and UI remain planned and MUST NOT be claimed as shipped (`STUDIO-PROD-014`).
+
 ## Artifact references
 
 Versioned definition artifacts—model, Blueprint, and theme—use locked references containing semantic version and host revision. An existing entry uses a `resolvedEntryReference` containing `id` and required host `revision`, with optional integrity for cache or transport verification. Entries do not acquire an invented semantic version: their model reference supplies schema compatibility, while their host revision supplies optimistic concurrency and exact-state identity. Integrity never replaces the authoritative revision or grants access.
+
+A target reusable content type coordinates the exact Model and Blueprint locks through host-owned authoring
+policy; it does not merge those artifacts or add Entry values to either one (`STUDIO-PROD-004`). An
+existing-item launch MUST hydrate the exact accepted type version and Entry values rather than select a newer
+compatible definition (`STUDIO-PROD-005`). The current configuration can carry the individual references but
+does not yet compose their complete contextual lifecycle.
 
 ## Immutability
 
@@ -110,7 +159,7 @@ At minimum, a host specifies limits for:
 
 A missing limit is a configuration error. Protocol releases publish safe maxima; a host MAY lower them. Raising a security-critical maximum beyond the protocol maximum requires a new negotiated capability version.
 
-`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo history; zero is not a hidden way to disable the invariant. `openStudioSession` passes the resolved value to the core history engine. The experimental alpha shell does not yet consume canonical StudioConfig and currently uses the core's explicit default, so it does not claim this pass-through is implemented there.
+`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo history; zero is not a hidden way to disable the invariant. `openStudioSession` passes the resolved value to the core history engine. The experimental candidate shell does not yet consume canonical StudioConfig and currently uses the core's explicit default, so it does not claim this pass-through is implemented there.
 
 ## Feature policy
 

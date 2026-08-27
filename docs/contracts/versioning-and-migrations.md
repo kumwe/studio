@@ -35,7 +35,7 @@ A resolved StudioConfig carries both `contractVersion` and `protocolVersion`:
 - every host-port exchange and preview handshake for that session uses the selected wire version; and
 - a session fails before write mode when there is no common wire version or a document contract revision is unsupported.
 
-Session generation changes do not change either version axis. A host may advertise newer wire versions in its capabilities, but the current alpha implementation supports only `0.1.0-draft.2`.
+Session generation changes do not change either version axis. A host may advertise newer wire versions in its capabilities, but the current candidate implementation supports only `0.1.0-draft.2`.
 
 ## Semantic compatibility
 

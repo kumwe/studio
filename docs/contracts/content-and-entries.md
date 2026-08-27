@@ -1,5 +1,15 @@
 # Content model and entry contracts
 
+This contract is subordinate to the [Studio product contract](../product-contract.md). In particular,
+`STUDIO-PROD-001` through `STUDIO-PROD-006`, `STUDIO-PROD-008` through `STUDIO-PROD-012`, and
+`STUDIO-PROD-014` define the contextual authoring outcome these artifacts must support. The product term
+**reusable content type** means one host-owned authoring definition that coordinates exact Content Model and
+Blueprint revisions. It is not a new portable artifact and it never contains an Entry's values.
+
+> **Current implementation:** the shipped headless composition profile persists one Blueprint, the model
+> projection is read-only, and the Lit shell does not hold or persist an Entry. The coordinated contextual
+> behavior below is a required target, not an implementation claim (`STUDIO-PROD-014`).
+
 ## Content models
 
 A content model defines stable field IDs, types, constraints, semantic roles, relationships, localization, defaults, and authoring metadata. It conforms to [`content-model.schema.json`](../../schemas/content-model.schema.json).
@@ -22,11 +32,25 @@ Published model revisions are immutable. A model draft may add, remove or change
 
 Dragging an unbound field-like block into a Blueprint MAY offer to create a model field only when the actor has model-design permission. Creation occurs in a visible model draft and never silently mutates a published model.
 
+The target coordinated contextual profile MUST let an authorized author add and configure typed fields while
+composing the layout and values in the same Studio session (`STUDIO-PROD-003`). The host still creates a model
+draft and returns its accepted revision; Studio MUST NOT make a published model mutable or disguise a model
+version operation as a local canvas change. Field-adapter contributions declared by an authorized extension
+MAY supply the control for a namespaced field kind, but they do not gain definition-write authority
+(`STUDIO-PROD-009`, `STUDIO-PROD-010`).
+
 ## Entries
 
 An entry is a set of values conforming to one exact model revision. It conforms to [`entry.schema.json`](../../schemas/entry.schema.json).
 
 Entries contain stable identity, model reference, host revision, locale/translation metadata, workflow state, values, and optional composition overrides explicitly allowed by the Blueprint. Host-generated audit, authorization, and publication data MUST NOT be accepted from untrusted clients as authoritative.
+
+When Studio opens an existing item in the target contextual profile, the host MUST supply the exact reusable
+content-type version, its locked Model and Blueprint revisions, and the Entry revision and values that belong to
+that item (`STUDIO-PROD-005`). Studio MUST NOT substitute the latest type, reconstruct values from rendered
+markup, or ask the author to copy values between a legacy form and the canvas. A new item MUST be able to start
+from an authorized reusable type or from host-created empty draft artifacts in the same launch flow
+(`STUDIO-PROD-002`, `STUDIO-PROD-012`).
 
 ## Values and precision
 
@@ -79,6 +103,12 @@ The `hybrid` composite coordinates Blueprint and Content mode operations for str
 
 The authorized compositional regions are declared by the Blueprint itself through node authoring policy: hybrid grants Content-mode field commands plus the structure commands — insert, remove, restore, move, duplicate, reorder, and their batches — whose every affected collection is a named slot of a node whose authoring policy mode is `structural`, or a slot the node's per-slot composition marker names ([ADR 0013](../decisions/0013-per-slot-composition-markers.md)). Inserted block types MUST satisfy the governing `allowedBlocks` when declared — the marked slot's own list ahead of the node-level list; subtrees containing a `locked` node are never inserted, removed, moved, or duplicated; document roots are never in bounds; and pattern application together with property, binding, size-role, and inheritance-reset configuration remains Blueprint-mode vocabulary. A structure command outside these bounds fails closed with `mode-forbidden`, leaving document, history, and selection untouched ([ADR 0011](../decisions/0011-editing-modes.md)).
 
+The target product experience coordinates Model, Blueprint, and Entry operations without collapsing their
+artifacts or permission boundaries. An author may see layout, field-definition controls, and actual Entry values
+on one canvas, but every command still targets exactly one declared artifact and every durable effect is accepted
+by the host (`STUDIO-PROD-003`, `STUDIO-PROD-010`). The current Blueprint session's helper reducers for model
+and entry commands do not provide that coordinated state, history, persistence, or UI.
+
 ## Translations
 
 Translatable fields declare translation behavior in the model. Structure and node identity SHOULD remain shared across locales unless the host explicitly allows locale-specific Blueprint or collection structure. Fallbacks are host policy and MUST be visible in the authoring UI; inherited text must not be mistaken for translated content.
@@ -86,3 +116,19 @@ Translatable fields declare translation behavior in the model. Structure and nod
 ## Save and publish
 
 Entry save uses an expected revision and idempotency key. The host returns the accepted revision and normalized values or a structured conflict/validation error. Publication is a separate authorized operation and MUST validate the entry against its exact model and Blueprint dependencies.
+
+The target contextual profile MUST present three distinct, explicit outcomes (`STUDIO-PROD-006`):
+
+1. **Save item** persists the Entry values and authorized item-local composition only. It does not change the
+   reusable type.
+2. **Save new type version** asks the host to create coordinated immutable Model and Blueprint revisions and to
+   return the accepted authoring-definition version. The host validates dependent-entry migration and binding
+   impact as one declared transactional outcome.
+3. **Save as new type** asks the host to create a new reusable authoring definition from the draft Model and
+   Blueprint, excluding all Entry values (`STUDIO-PROD-004`).
+
+Changing a field, block, or value locally never implies that any one of those outcomes succeeded. Studio MUST
+show which artifacts are dirty, request the selected host operation, and reconcile every accepted or rejected
+revision without copy-paste or manual cross-screen repair (`STUDIO-PROD-006`, `STUDIO-PROD-012`). The required
+coordinated operations and UI are planned; the current Blueprint-only host session implements none of these
+multi-artifact save outcomes.

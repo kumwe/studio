@@ -1,5 +1,10 @@
 # Conformance profiles
 
+Product conformance is governed by the [Studio product contract](../product-contract.md). The
+`STUDIO-PROD-*` requirements are product outcomes, not claims that the current protocol or shell implements
+them. In particular, `STUDIO-PROD-014` requires every profile and evidence record to distinguish current
+Blueprint-only behavior from the planned coordinated contextual profile.
+
 ## Purpose
 
 A conformance profile is a named, versioned set of assertions an implementation must satisfy before it
@@ -39,12 +44,19 @@ implementation that claimed a profile keeps claiming it for the version it passe
 The Version 2 qualification target comprises the eight declared executable profiles plus
 `authoring-web` when its assertion set becomes executable. The three Dart/Flutter
 profiles are Version 3 targets and do not block Version 2. A target row is not a support or conformance
-claim; the current release record claims no profiles.
+claim. The `0.1.0-rc.1` candidate release record lists nine profile coordinates, including
+`authoring-web`, but that listing is candidate metadata rather than accepted conformance evidence.
 
 A profile marked **Target** is named so that consumers can see the intended boundary. It is not
 claimable: its assertion set is not yet complete and executable, and no implementation may advertise it.
 An executable profile is likewise not advertised until an immutable evidence bundle records an accepted
-claim; the current release record intentionally claims none.
+claim. Gate A and Gate B have not accepted the nine candidate profile coordinates; their presence in
+`studio-release.json` alone is not an accepted conformance claim.
+
+The target `studio.profile/authoring-web` is not claimable until its executable assertion set covers the full
+contextual journey required by `STUDIO-PROD-001` through `STUDIO-PROD-015`. Passing the existing Blueprint
+interaction vectors alone cannot be presented as evidence that Studio is the default content editor, edits
+Model/Blueprint/Entry together, saves reusable types, or preserves inline/fullscreen continuity.
 
 ## `studio.profile/host-baseline`
 
@@ -96,6 +108,11 @@ recorded rather than implied, and a host must still satisfy them:
 - **Rate limiting and cancellation.** `rate-limited` and `cancelled` are declared categories with no
   reproducible precondition a single exchange can state — a rate limit needs a request count and a
   cancellation needs an in-flight request to cancel.
+- **Coordinated contextual transactions.** The current host vectors exercise one artifact operation at a time.
+  They do not prove the target **save item**, **save new type version**, or **save as new type** outcomes across
+  separately versioned Model, Blueprint, and Entry artifacts (`STUDIO-PROD-004`, `STUDIO-PROD-006`). A future
+  additive executable assertion set must define the host transaction and rollback expectations before such an
+  outcome can be claimed; the current corpus must not be cited as that proof.
 
 Those limitations remain part of `host-baseline`. Integrations that depend on their executable
 assertions claim the additive profile below rather than retroactively widening this one.
@@ -248,6 +265,33 @@ motion, automated accessibility and manual assistive-technology lanes.
 digest-pinned runner increment is not the complete browser assertion set. Neither repository tests nor an
 executable profile are by themselves a product conformance claim, Gate A/B evidence, or authority to promote
 a package beyond alpha.
+
+### Required contextual-authoring increment
+
+The complete `authoring-web` target MUST add an executable end-to-end journey that begins at both a core and an
+extension-declared host target and proves all of the following (`STUDIO-PROD-008`, `STUDIO-PROD-009`,
+`STUDIO-PROD-015`):
+
+1. Studio is offered in the resource's normal content workflow, with no prerequisite type-creation screen,
+   copy-paste, or manual reconciliation (`STUDIO-PROD-001`, `STUDIO-PROD-012`).
+2. A new item can begin blank or from an existing reusable type, while an existing item hydrates its exact type
+   version and Entry revision (`STUDIO-PROD-002`, `STUDIO-PROD-005`).
+3. The author adds layout blocks and typed fields and enters actual values in the same coordinated session;
+   extension blocks, field adapters, and patterns obey enable/disable/upgrade lifecycle rules
+   (`STUDIO-PROD-003`, `STUDIO-PROD-009`).
+4. Inline, minimized, maximized, and fullscreen presentations preserve the same artifact coordinates, draft,
+   selection, history, dirty state, validation, and return context (`STUDIO-PROD-007`).
+5. **Save item**, **save new type version**, and **save as new type** produce their distinct host-authoritative
+   results and never leak Entry values into the reusable Model/Blueprint pair (`STUDIO-PROD-004`,
+   `STUDIO-PROD-006`, `STUDIO-PROD-010`).
+6. Pointer, keyboard, touch, focus, announcement, zoom/reflow, directionality, and assistive-technology lanes
+   provide equivalent outcomes (`STUDIO-PROD-013`).
+7. The production host runs the authoritative API, persistence, validation, authorization, and transactions;
+   the delivered Studio UI is precompiled browser code and the production server installs or runs neither Node
+   nor npm (`STUDIO-PROD-010`, `STUDIO-PROD-011`).
+
+This journey is a required target. No such complete executable corpus or accepted evidence bundle exists in the
+current repository (`STUDIO-PROD-014`).
 
 ## Claiming a profile
 

@@ -1,5 +1,9 @@
 # Commands and history contract
 
+This command contract is subordinate to the [Studio product contract](../product-contract.md). The current
+canonical subset is implementation evidence for the bounded Blueprint profile; it is not evidence that the
+coordinated contextual product requirements are complete (`STUDIO-PROD-014`).
+
 ## Command model
 
 All persistent authoring changes are expressed as commands conforming to [`command.schema.json`](../../schemas/command.schema.json). Pointer gestures, keyboard actions, inspector edits, automation, collaboration, and accessibility alternatives dispatch the same commands.
@@ -103,6 +107,35 @@ recovery authority.
 `set-field-value` and `add-model-field` belong to entry and content-model authoring surfaces respectively;
 they are intentionally not represented as Blueprint controls.
 
+## Target contextual command coverage
+
+The product target requires layout, typed-field definition, and actual Entry values to be authorable in one
+coordinated Studio session (`STUDIO-PROD-003`). The current vocabulary supplies rich Blueprint commands, one
+Entry value command, and one top-level model-field addition command. It does not yet supply the complete Model
+field lifecycle, coordinated multi-artifact history and dirty-state behavior, or Lit controls that dispatch
+Entry and Model commands.
+
+Before the contextual profile is implementable, reviewed additive protocol work MUST either define or
+deliberately resolve at least:
+
+- updating, removing, and reordering fields in a draft Model, including binding-impact diagnostics and verified
+  compensation behavior;
+- the nested/object/collection and localization operations needed by supported field kinds;
+- coordinated session dispatch and history rules that preserve separate Model, Blueprint, and Entry revisions;
+- permission and extension-field-adapter behavior for every visible field operation; and
+- canonical vectors for pointer, keyboard, explicit-control, automation, and failure parity
+  (`STUDIO-PROD-009`, `STUDIO-PROD-013`).
+
+This list does not assign command identifiers or claim schemas or reducers already exist. New identifiers become
+canonical only through the normal additive protocol process. **Save item**, **save new type version**, and
+**save as new type** are host outcomes, not document reducer commands; their transactional operation contract is
+also planned (`STUDIO-PROD-004`, `STUDIO-PROD-006`, `STUDIO-PROD-010`).
+
+Changing between inline, minimized, maximized, and fullscreen presentation is local session presentation, not
+a persistent content command. It MUST preserve coordinates, drafts, history, selection, dirty and validation
+state, and return context without copy-paste, implicit save, or a fresh artifact session
+(`STUDIO-PROD-007`, `STUDIO-PROD-012`).
+
 ## Canonical vectors
 
 Every implemented command carries canonical vectors in [`schemas/vectors/command/`](../../schemas/vectors/command/), published verbatim through `@kumwe/studio-testkit` under `vectors/command/`. A vector fixes one initial document, one command, and either the exact expected document or a stable failure code, plus the inverse command for successful transitions. The TypeScript reference replays the whole corpus (`packages/core/test/command-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same results and MUST compute the same inverse commands.
@@ -118,7 +151,7 @@ viewport map, and an empty responsive record are never stored. Inserting into an
 slot creates its collection; removing or moving the last child drops it again. This keeps every
 successful command byte-invertible and keeps serialization canonical across runtimes.
 
-## Gate A target vocabulary
+## Gate A Blueprint vocabulary
 
 The Gate A contract is required to add or deliberately resolve the following vocabulary before claiming integration stability:
 
@@ -136,10 +169,12 @@ The Gate A contract is required to add or deliberately resolve the following voc
   under the reserved `sizeRoles` member with responsive overrides under `responsiveSizeRoles`
   ([ADR 0010](../decisions/0010-responsive-role-resize.md)).
 
-No target item remains open — the list above is fully resolved and the Gate A command
-vocabulary is complete. Every command of the canonical subset carries a payload schema, reducer
-semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules;
-future vocabulary additions follow the additive protocol-change rules rather than this list.
+No item in this bounded Blueprint list remains open. The canonical subset carries payload schema, reducer
+semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules for its declared
+operations. This statement does **not** mean the contextual product vocabulary is complete: the Model, Entry,
+multi-artifact coordination, presentation, and save-outcome work above remains required before the product
+contract can be claimed. Future vocabulary additions follow the additive protocol-change rules rather than
+being implied by this Blueprint list (`STUDIO-PROD-014`).
 
 Plugins may add namespaced commands with schema, authorization operation, deterministic reducer, inverse/compensation behavior, and migration rules.
 
