@@ -13,9 +13,10 @@ rather than asserted: a claim is a corpus an implementation replays, not a parag
 
 The [compatibility contract](../governance/compatibility.md) records the conformance-profile version as
 its own axis — independent of document contract revision, wire protocol version, and package version.
-The [release policy](../governance/releases.md) binds channels to profiles: the `beta` channel means a
-feature-complete candidate **for a declared profile**, so a profile must be declared and executable
-before any package may leave `alpha`.
+The [release policy](../governance/releases.md) keeps beta development separate from conformance claims. A
+beta package may be incomplete and claims no profile. Before RC preparation, all 15 product requirements must
+be repository-verified; every profile the resulting RC advertises must then be reproduced and accepted before
+official RC publication.
 
 ## Profile identity
 
@@ -44,8 +45,8 @@ implementation that claimed a profile keeps claiming it for the version it passe
 The Version 2 qualification target comprises the eight declared executable profiles plus
 `authoring-web` when its assertion set becomes executable. The three Dart/Flutter
 profiles are Version 3 targets and do not block Version 2. A target row is not a support or conformance
-claim. The `0.1.0-rc.1` candidate release record lists nine profile coordinates, including
-`authoring-web`, but that listing is candidate metadata rather than accepted conformance evidence.
+claim. The abandoned `0.1.0-rc.1` release record listed nine profile coordinates, including `authoring-web`.
+Those proposed claims are withdrawn with that candidate and generated beta versioning clears them.
 
 A profile marked **Target** is named so that consumers can see the intended boundary. It is not
 claimable: its assertion set is not yet complete and executable, and no implementation may advertise it.
@@ -218,7 +219,7 @@ the portable identity boundary executable without overstating the wider renderer
 ## `studio.profile/schema-property`
 
 The assertions a validator must satisfy before it admits a contributed block's property schema. The
-profile is intentionally narrow for the alpha boundary: a closed object root, the published keyword
+profile is intentionally narrow for the prerelease boundary: a closed object root, the published keyword
 and operand grammar, bounded canonical UTF-8 size and structural complexity, same-document JSON
 Pointer references, no recursion, no `format`, and no code-generating or implementation-specific
 keywords.
@@ -264,7 +265,7 @@ motion, automated accessibility and manual assistive-technology lanes.
 `renderer-web` is therefore declared and executable but unclaimed. `authoring-web` remains **Target**: its
 digest-pinned runner increment is not the complete browser assertion set. Neither repository tests nor an
 executable profile are by themselves a product conformance claim, Gate A/B evidence, or authority to promote
-a package beyond alpha.
+a package into RC.
 
 ### Required contextual-authoring increment
 
@@ -305,13 +306,12 @@ replayed, and the commit it was replayed at. A green run of a subset is not a cl
 
 ## Profiles and channels
 
-| Channel | Profile obligation                                                                               |
-| ------- | ------------------------------------------------------------------------------------------------ |
-| `alpha` | No profile claim. Contract and assertion sets may change with a changeset.                       |
-| `beta`  | Feature-complete against at least one declared, executable profile, claimed with evidence.       |
-| `rc`    | Every profile the release advertises is claimed at the exact candidate commit.                   |
-| Stable  | Gate B qualification, which includes every advertised profile plus the host and client matrices. |
+| Channel | Profile obligation                                                                                                       |
+| ------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `beta`  | No profile claim. Contract and assertion sets may change through reviewed Changesets while product completion continues. |
+| `rc`    | Every advertised profile is executable; official publication requires accepted exact-candidate evidence for all of them. |
+| Stable  | Gate B qualification, which includes every advertised profile plus the host and client matrices.                         |
 
-Moving a package from `alpha` to `beta` therefore requires a declared profile it is feature-complete
-against, an evidence-backed claim, and acceptance that further contract changes are release blockers
-rather than routine changesets.
+Moving a package from `beta` to `rc` requires all `STUDIO-PROD-001`–`015` rows to be
+`repository-verified` and the complete fixed Version 2 profile set to be executable. That implementation
+guard does not replace the evidence-backed profile claims required before the official `rc` channel moves.

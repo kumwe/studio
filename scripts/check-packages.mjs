@@ -42,7 +42,7 @@ for (const packageName of packageNames) {
   }
   if (classifyReleaseVersion(manifest.version) === undefined) {
     throw new Error(
-      `${manifest.name ?? packageName} must use a governed numeric alpha, rc, or stable coordinate.`,
+      `${manifest.name ?? packageName} must use a governed numeric beta, rc, or stable coordinate.`,
     );
   }
   // Provenance-signed publishes verify repository.url against the repository

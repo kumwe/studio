@@ -14,7 +14,7 @@ export function isErroneousPrereleaseLatest(version) {
   return typeof version === 'string' && prereleaseVersionPattern.test(version);
 }
 
-export async function reconcileAlphaTags(
+export async function reconcileBetaTags(
   packages,
   { addTag = addNpmTag, npmValue = readNpmValue, removeTag = removeNpmTag } = {},
 ) {
@@ -52,13 +52,13 @@ export async function reconcileAlphaTags(
       }
     }
 
-    const current = await npmValue(['view', name, 'dist-tags.alpha']);
+    const current = await npmValue(['view', name, 'dist-tags.beta']);
     if (current === version) {
       unchanged.push(`${name}@${version}`);
       continue;
     }
     try {
-      await addTag(name, version, 'alpha');
+      await addTag(name, version, 'beta');
       moved.push(`${name}: ${current ?? 'none'} -> ${version}`);
     } catch (error) {
       failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`);
@@ -66,7 +66,7 @@ export async function reconcileAlphaTags(
   }
 
   if (failures.length > 0) {
-    throw new Error(`Could not reconcile alpha registry tags:\n- ${failures.join('\n- ')}`);
+    throw new Error(`Could not reconcile beta registry tags:\n- ${failures.join('\n- ')}`);
   }
   return { latestRemoved, latestRetained, moved, unchanged, unpublished };
 }
@@ -87,7 +87,7 @@ async function removeNpmTag(name, tag) {
 
 async function main() {
   if (process.argv.length !== 2) {
-    throw new Error('Usage: node scripts/reconcile-alpha-tag.mjs');
+    throw new Error('Usage: node scripts/reconcile-beta-tag.mjs');
   }
   const packages = await Promise.all(
     STUDIO_RELEASE_PACKAGES.map(async ({ directory, name }) => {
@@ -100,7 +100,7 @@ async function main() {
       return { name, version: manifest.version };
     }),
   );
-  const result = await reconcileAlphaTags(packages);
+  const result = await reconcileBetaTags(packages);
   for (const line of result.latestRemoved) {
     console.log(`Removed erroneous prerelease latest ${line}`);
   }
@@ -108,13 +108,13 @@ async function main() {
     console.warn(`Registry refused to delete prerelease latest ${line}; tag retained`);
   }
   for (const line of result.moved) {
-    console.log(`Moved alpha ${line}`);
+    console.log(`Moved beta ${line}`);
   }
   for (const line of result.unpublished) {
     console.log(`Skipped ${line}: not on the registry yet`);
   }
   console.log(
-    `Alpha tags reconciled: ${result.moved.length} moved, ${result.unchanged.length} already correct, ` +
+    `Beta tags reconciled: ${result.moved.length} moved, ${result.unchanged.length} already correct, ` +
       `${result.latestRemoved.length} prerelease latest removed, ` +
       `${result.latestRetained.length} retained by registry policy, ${result.unpublished.length} unpublished.`,
   );

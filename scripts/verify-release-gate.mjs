@@ -88,6 +88,7 @@ const stableGeneratedPaths = Object.freeze([
 ]);
 const stableGeneratorInputPaths = Object.freeze([
   ...stableGeneratedPaths,
+  'docs/roadmap/STATUS.md',
   'packages/protocol/src/types.ts',
   'packages/testkit/corpus-manifest.json',
 ]);

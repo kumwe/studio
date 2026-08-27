@@ -27,7 +27,7 @@ the product target.
 | Candidate                  | All eight checked-in packages and `studio-release.json` coordinate at `0.1.0-rc.1`                                                                          |
 | Proposed profiles          | The release record names the fixed nine-profile Version 2 surface; eight mappings are executable and `authoring-web` remains target-only                    |
 | Composed core host profile | `openStudioSession` currently loads and saves one Blueprint                                                                                                 |
-| Lit shell                  | Separate alpha Blueprint shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence       |
+| Lit shell                  | Separate Blueprint-oriented shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence    |
 | Reference host             | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
 | Gates                      | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim                                                            |
 

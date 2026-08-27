@@ -20,7 +20,7 @@ describe('staged RC release evidence', () => {
       assertStagedVerificationSource(record('0.1.0-rc.1'), sha, '0.1.0-rc.1'),
     );
     assert.throws(
-      () => assertStagedVerificationSource(record('0.1.0-alpha.9'), sha),
+      () => assertStagedVerificationSource(record('0.1.0-beta.9'), sha),
       /requires an RC coordinate/u,
     );
     assert.throws(
@@ -208,7 +208,7 @@ describe('staged RC release evidence', () => {
 
 function record(version) {
   return {
-    claimedProfiles: version.includes('-alpha.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
+    claimedProfiles: version.includes('-beta.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };

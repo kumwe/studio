@@ -1,8 +1,15 @@
 const shaPattern = /^[a-f0-9]{40}$/u;
-const alphaVersionPattern =
-  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-alpha\.(0|[1-9][0-9]*)$/u;
+const betaVersionPattern =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-beta\.(0|[1-9][0-9]*)$/u;
 const rcVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.(0|[1-9][0-9]*)$/u;
 const stableVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
+
+export const STUDIO_PRODUCT_REQUIREMENTS = Object.freeze(
+  Array.from({ length: 15 }, (_, index) => `STUDIO-PROD-${String(index + 1).padStart(3, '0')}`),
+);
+
+const productStatusStart = '<!-- studio-product-implementation:start -->';
+const productStatusEnd = '<!-- studio-product-implementation:end -->';
 
 // This is the fixed Version 2 RC/stable product surface. Preparation always
 // carries the complete set; Gate A still blocks publication while any member,
@@ -25,8 +32,8 @@ export function classifyReleaseVersion(version) {
   if (typeof version !== 'string') {
     return undefined;
   }
-  if (alphaVersionPattern.test(version)) {
-    return 'alpha';
+  if (betaVersionPattern.test(version)) {
+    return 'beta';
   }
   if (rcVersionPattern.test(version)) {
     return 'rc';
@@ -39,11 +46,11 @@ export function classifyReleaseVersion(version) {
 
 export function promotionTargetVersion(channel, sourceVersion) {
   if (channel === 'rc') {
-    const match = alphaVersionPattern.exec(sourceVersion);
+    const match = betaVersionPattern.exec(sourceVersion);
     if (match === null) {
-      throw new Error('RC preparation requires a coordinated numeric alpha source release.');
+      throw new Error('RC preparation requires a coordinated numeric beta source release.');
     }
-    // The counter is intentionally reset. Retagging alpha.9 as rc would let
+    // The counter is intentionally reset. Retagging beta.9 as rc would let
     // Changesets carry the prerelease counter forward and produce rc.10.
     return `${match[1]}.${match[2]}.${match[3]}-rc.1`;
   }
@@ -55,6 +62,65 @@ export function promotionTargetVersion(channel, sourceVersion) {
     return `${match[1]}.${match[2]}.${match[3]}`;
   }
   throw new Error(`Promotion channel must be rc or stable; received ${String(channel)}.`);
+}
+
+export function parseProductImplementationStatus(source, expected = STUDIO_PRODUCT_REQUIREMENTS) {
+  if (typeof source !== 'string') {
+    throw new Error('Product implementation status must be Markdown source.');
+  }
+  const start = source.indexOf(productStatusStart);
+  const end = source.indexOf(productStatusEnd);
+  if (start < 0 || end < 0 || end <= start || source.indexOf(productStatusStart, start + 1) >= 0) {
+    throw new Error('STATUS.md must contain one closed product-implementation status block.');
+  }
+  if (source.indexOf(productStatusEnd, end + 1) >= 0) {
+    throw new Error('STATUS.md must contain one closed product-implementation status block.');
+  }
+
+  const rows = new Map();
+  const body = source.slice(start + productStatusStart.length, end);
+  for (const line of body.split('\n')) {
+    const match =
+      /^\|\s*`(STUDIO-PROD-[0-9]{3})`\s*\|\s*`(active|repository-verified)`\s*\|\s*([^|]+?)\s*\|$/u.exec(
+        line.trim(),
+      );
+    if (match === null) {
+      continue;
+    }
+    const [, id, state, proof] = match;
+    if (rows.has(id)) {
+      throw new Error(`STATUS.md repeats product requirement ${id}.`);
+    }
+    if (proof.trim().length === 0) {
+      throw new Error(`STATUS.md product requirement ${id} has no proof/blocker statement.`);
+    }
+    rows.set(id, { proof: proof.trim(), state });
+  }
+
+  const expectedSet = new Set(expected);
+  const unknown = [...rows.keys()].filter((id) => !expectedSet.has(id));
+  const missing = expected.filter((id) => !rows.has(id));
+  if (unknown.length > 0 || missing.length > 0 || rows.size !== expected.length) {
+    throw new Error(
+      `STATUS.md product implementation inventory differs from the contract: ` +
+        `missing [${missing.join(', ')}], unknown [${unknown.join(', ')}].`,
+    );
+  }
+  return Object.fromEntries(expected.map((id) => [id, rows.get(id)]));
+}
+
+export function assertProductImplementationReady(source) {
+  const status = parseProductImplementationStatus(source);
+  const incomplete = STUDIO_PRODUCT_REQUIREMENTS.filter(
+    (id) => status[id].state !== 'repository-verified',
+  );
+  if (incomplete.length > 0) {
+    throw new Error(
+      `RC preparation is blocked until every Studio product requirement is repository-verified: ` +
+        incomplete.join(', '),
+    );
+  }
+  return status;
 }
 
 export function nextRcVersion(sourceVersion) {

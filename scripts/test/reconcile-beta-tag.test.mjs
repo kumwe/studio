@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { isErroneousPrereleaseLatest, reconcileAlphaTags } from '../reconcile-alpha-tag.mjs';
+import { isErroneousPrereleaseLatest, reconcileBetaTags } from '../reconcile-beta-tag.mjs';
 
-const version = '0.1.0-alpha.10';
+const version = '0.1.0-beta.10';
 
 function registry(initial) {
   const state = structuredClone(initial);
@@ -23,35 +23,35 @@ function registry(initial) {
   };
 }
 
-describe('alpha dist-tag reconciliation', () => {
+describe('beta dist-tag reconciliation', () => {
   it('tolerates the registry refusing to delete a prerelease latest tag', async () => {
     const { addTag, npmValue, state } = registry({
       '@kumwe/studio-core': {
-        tags: { alpha: '0.1.0-alpha.8', latest: '0.1.0-alpha.8' },
-        versions: ['0.1.0-alpha.8', version],
+        tags: { beta: '0.1.0-beta.8', latest: '0.1.0-beta.8' },
+        versions: ['0.1.0-beta.8', version],
       },
     });
-    const result = await reconcileAlphaTags([{ name: '@kumwe/studio-core', version }], {
+    const result = await reconcileBetaTags([{ name: '@kumwe/studio-core', version }], {
       addTag,
       npmValue,
       removeTag: async () => {
         throw new Error('npm error code E403: 403 Forbidden - DELETE dist-tags/latest');
       },
     });
-    assert.deepEqual(result.latestRetained, ['@kumwe/studio-core@0.1.0-alpha.8']);
+    assert.deepEqual(result.latestRetained, ['@kumwe/studio-core@0.1.0-beta.8']);
     assert.deepEqual(result.latestRemoved, []);
-    assert.deepEqual(result.moved, ['@kumwe/studio-core: 0.1.0-alpha.8 -> 0.1.0-alpha.10']);
-    assert.equal(state['@kumwe/studio-core'].tags.alpha, version);
+    assert.deepEqual(result.moved, ['@kumwe/studio-core: 0.1.0-beta.8 -> 0.1.0-beta.10']);
+    assert.equal(state['@kumwe/studio-core'].tags.beta, version);
   });
 
   it('records an actual removal of an erroneous prerelease latest tag', async () => {
     const { addTag, npmValue, state } = registry({
       '@kumwe/studio-core': {
-        tags: { latest: '0.1.0-alpha.8' },
-        versions: ['0.1.0-alpha.8', version],
+        tags: { latest: '0.1.0-beta.8' },
+        versions: ['0.1.0-beta.8', version],
       },
     });
-    const result = await reconcileAlphaTags([{ name: '@kumwe/studio-core', version }], {
+    const result = await reconcileBetaTags([{ name: '@kumwe/studio-core', version }], {
       addTag,
       npmValue,
       removeTag: async (name, tag) => {
@@ -60,32 +60,32 @@ describe('alpha dist-tag reconciliation', () => {
         );
       },
     });
-    assert.deepEqual(result.latestRemoved, ['@kumwe/studio-core@0.1.0-alpha.8']);
+    assert.deepEqual(result.latestRemoved, ['@kumwe/studio-core@0.1.0-beta.8']);
     assert.deepEqual(result.latestRetained, []);
-    assert.equal(state['@kumwe/studio-core'].tags.alpha, version);
+    assert.equal(state['@kumwe/studio-core'].tags.beta, version);
   });
 
   it('still fails when a removal error leaves the latest tag in a different state', async () => {
     const { addTag, npmValue, state } = registry({
       '@kumwe/studio-core': {
-        tags: { latest: '0.1.0-alpha.8' },
-        versions: ['0.1.0-alpha.8', version],
+        tags: { latest: '0.1.0-beta.8' },
+        versions: ['0.1.0-beta.8', version],
       },
     });
     await assert.rejects(
-      reconcileAlphaTags([{ name: '@kumwe/studio-core', version }], {
+      reconcileBetaTags([{ name: '@kumwe/studio-core', version }], {
         addTag,
         npmValue,
         removeTag: async (name) => {
-          state[name].tags.latest = '0.1.0-alpha.7';
+          state[name].tags.latest = '0.1.0-beta.7';
           throw new Error('registry wrote an unexpected tag state');
         },
       }),
-      /Could not reconcile alpha registry tags/u,
+      /Could not reconcile beta registry tags/u,
     );
   });
 
-  it('still fails when the alpha tag itself cannot be moved', async () => {
+  it('still fails when the beta tag itself cannot be moved', async () => {
     const { npmValue } = registry({
       '@kumwe/studio-core': {
         tags: { latest: '1.0.0' },
@@ -93,14 +93,14 @@ describe('alpha dist-tag reconciliation', () => {
       },
     });
     await assert.rejects(
-      reconcileAlphaTags([{ name: '@kumwe/studio-core', version }], {
+      reconcileBetaTags([{ name: '@kumwe/studio-core', version }], {
         addTag: async () => {
           throw new Error('npm error code E403');
         },
         npmValue,
         removeTag: async () => undefined,
       }),
-      /Could not reconcile alpha registry tags/u,
+      /Could not reconcile beta registry tags/u,
     );
   });
 
@@ -109,7 +109,7 @@ describe('alpha dist-tag reconciliation', () => {
       '@kumwe/studio-core': { tags: {}, versions: [] },
     });
     let removals = 0;
-    const result = await reconcileAlphaTags([{ name: '@kumwe/studio-core', version }], {
+    const result = await reconcileBetaTags([{ name: '@kumwe/studio-core', version }], {
       addTag,
       npmValue,
       removeTag: async () => {
@@ -121,7 +121,7 @@ describe('alpha dist-tag reconciliation', () => {
   });
 
   it('classifies only prerelease coordinates as erroneous latest values', () => {
-    assert.equal(isErroneousPrereleaseLatest('0.1.0-alpha.10'), true);
+    assert.equal(isErroneousPrereleaseLatest('0.1.0-beta.10'), true);
     assert.equal(isErroneousPrereleaseLatest('1.2.3-rc.1'), true);
     assert.equal(isErroneousPrereleaseLatest('1.2.3'), false);
     assert.equal(isErroneousPrereleaseLatest(undefined), false);

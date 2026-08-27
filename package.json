@@ -40,7 +40,7 @@
     "release:plan": "node scripts/release-plan.mjs",
     "release:promotion-plan": "node scripts/promotion-plan.mjs",
     "release:prepare": "node scripts/prepare-promotion.mjs",
-    "release:publish-alpha": "node scripts/publish-alpha.mjs",
+    "release:publish-prerelease": "node scripts/publish-beta.mjs",
     "release:publish": "node scripts/publish-promotion.mjs",
     "release:publish-stage": "node scripts/publish-staged-candidate.mjs",
     "release:readiness": "node scripts/verify-release-gate.mjs && npm run check",

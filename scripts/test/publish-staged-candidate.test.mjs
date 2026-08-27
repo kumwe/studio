@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
-import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
+import { STUDIO_PRODUCT_REQUIREMENTS, VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { assertStagedCandidateState } from '../publish-staged-candidate.mjs';
 
 const sha = 'a'.repeat(40);
@@ -17,6 +17,7 @@ describe('RC quarantine publication guard', () => {
         expectedVersion: '0.1.0-rc.1',
         pendingChangesets: [],
         preState: { mode: 'pre', tag: 'rc' },
+        productStatusSource: productStatus('repository-verified'),
         releaseRecord: record('0.1.0-rc.1'),
         workingTreeState: '',
       }),
@@ -31,6 +32,7 @@ describe('RC quarantine publication guard', () => {
       expectedVersion: '0.1.0-rc.1',
       pendingChangesets: [],
       preState: { mode: 'pre', tag: 'rc' },
+      productStatusSource: productStatus('repository-verified'),
       releaseRecord: record('0.1.0-rc.1'),
       workingTreeState: '',
     };
@@ -50,6 +52,14 @@ describe('RC quarantine publication guard', () => {
       () => assertStagedCandidateState({ ...input, workingTreeState: ' M package.json' }),
       /clean exact-source/u,
     );
+    assert.throws(
+      () =>
+        assertStagedCandidateState({
+          ...input,
+          productStatusSource: productStatus('active'),
+        }),
+      /STUDIO-PROD-001/u,
+    );
   });
 });
 
@@ -59,4 +69,12 @@ function record(version) {
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };
+}
+
+function productStatus(state) {
+  return [
+    '<!-- studio-product-implementation:start -->',
+    ...STUDIO_PRODUCT_REQUIREMENTS.map((id) => `| \`${id}\` | \`${state}\` | fixture proof |`),
+    '<!-- studio-product-implementation:end -->',
+  ].join('\n');
 }

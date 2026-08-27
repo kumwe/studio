@@ -70,17 +70,17 @@ test('publish workflows prove new registry bits before moving distribution tags'
     const preTagVerification = source.indexOf(
       name === 'release.yml'
         ? 'name: Verify immutable package bits before moving the channel tag'
-        : 'name: Verify immutable package bits before moving the alpha tag',
+        : 'name: Verify immutable package bits before moving the beta tag',
     );
     const reconciliation = source.indexOf(
       name === 'release.yml'
         ? 'name: Reconcile the channel distribution tag'
-        : 'name: Reconcile the alpha dist-tag',
+        : 'name: Reconcile the beta dist-tag',
     );
     const finalVerification = source.indexOf(
       name === 'release.yml'
         ? 'name: Verify the complete registry release, provenance, and channel tag'
-        : 'name: Verify the complete published release set, provenance, and alpha tag',
+        : 'name: Verify the complete published release set, provenance, and beta tag',
     );
     const cleanup = source.indexOf(
       'name: Remove the non-channel staging tag after complete success',
@@ -114,16 +114,16 @@ test('Changesets action is version-PR-only and cannot publish tags or GitHub rel
   assert.match(source, /create-github-releases: false/u);
   assert.match(source, /push-git-tags: false/u);
   assert.doesNotMatch(source, /publish-script:/u);
-  assert.match(source, /run: npm run release:publish-alpha/u);
+  assert.match(source, /run: npm run release:publish-prerelease/u);
   const publishBlock = source.split('name: Publish missing approved tarballs')[1];
   assert.match(publishBlock, /STUDIO_EXPECTED_MAIN_SHA: \$\{\{ github\.sha \}\}/u);
 });
 
 test('npm credentials stay in their channel-specific GitHub secret boundaries', async () => {
-  const alpha = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
-  assert.doesNotMatch(alpha, /^\s+environment:/mu);
-  assert.match(alpha, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/u);
-  assert.doesNotMatch(alpha, /vars\.NPM_TOKEN/u);
+  const beta = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
+  assert.doesNotMatch(beta, /^\s+environment:/mu);
+  assert.match(beta, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/u);
+  assert.doesNotMatch(beta, /vars\.NPM_TOKEN/u);
 
   const promotion = await readFile(`${workflowRoot}release.yml`, 'utf8');
   const stageJob = promotion.split('\n  stage:')[1].split('\n  publish:')[0];

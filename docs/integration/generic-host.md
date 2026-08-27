@@ -11,7 +11,7 @@ preserve host and runtime authority. This guide describes the required host mapp
 port, declaration, command, or shell surface is implemented today.
 
 The current composed `openStudioSession` profile opens and saves one Blueprint. The current Lit shell is a
-separate alpha surface with read-only model projection and no coordinated Entry persistence. Those primitives
+separate Blueprint-oriented surface with read-only model projection and no coordinated Entry persistence. Those primitives
 are useful integration scaffolding, but they are not completed contextual authoring (`STUDIO-PROD-014`).
 
 The adapter's obligations are executable: replay the canonical host conformance corpus published as
@@ -82,7 +82,7 @@ first-party definitions are not a deployable integration. Exact current source
 proposed profile claims. That checked-in candidate is not proof of npm availability, accepted conformance, an
 open official `rc` channel, or production support.
 
-For the current Blueprint-only alpha shell, the browser harness starts from Studio's additive bootstrap rather
+For the current Blueprint-only shell, the browser harness starts from Studio's additive bootstrap rather
 than recreating the page-builder catalog:
 
 ```ts

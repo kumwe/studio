@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
-import { VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
+import { STUDIO_PRODUCT_REQUIREMENTS, VERSION_TWO_RELEASE_PROFILES } from '../release-policy.mjs';
 import { inspectPromotionPlan } from '../promotion-plan.mjs';
 
 const subsetProfile = 'studio.profile/engine-core';
@@ -21,8 +21,8 @@ afterEach(async () => {
 });
 
 describe('promotion plan', () => {
-  it('prepares the first RC from alpha with the complete default claims', async () => {
-    const root = await fixture('0.1.0-alpha.9', { mode: 'pre', tag: 'alpha' });
+  it('prepares the first RC from beta with the complete default claims', async () => {
+    const root = await fixture('0.1.0-beta.9', { mode: 'pre', tag: 'beta' });
     const plan = await inspectPromotionPlan(root, { channel: 'rc' });
     assert.equal(plan.operation, 'prepare');
     assert.equal(plan.targetVersion, '0.1.0-rc.1');
@@ -30,7 +30,7 @@ describe('promotion plan', () => {
   });
 
   it('rejects a subset override while preparing the first RC', async () => {
-    const root = await fixture('0.1.0-alpha.9', { mode: 'pre', tag: 'alpha' });
+    const root = await fixture('0.1.0-beta.9', { mode: 'pre', tag: 'beta' });
     await assert.rejects(
       inspectPromotionPlan(root, { channel: 'rc', profiles: subsetProfile }),
       /complete fixed Version 2 set/u,
@@ -71,6 +71,11 @@ describe('promotion plan', () => {
     await assert.rejects(inspectPromotionPlan(root, { channel: 'rc' }), /patch-only Changesets/u);
   });
 
+  it('blocks RC preparation while any product requirement is incomplete', async () => {
+    const root = await fixture('0.1.0-beta.9', { mode: 'pre', tag: 'beta' }, [], 'active');
+    await assert.rejects(inspectPromotionPlan(root, { channel: 'rc' }), /STUDIO-PROD-001/u);
+  });
+
   it('publishes an immutable RC only with later evidence', async () => {
     const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
     const plan = await inspectPromotionPlan(root, {
@@ -109,11 +114,13 @@ describe('promotion plan', () => {
   });
 });
 
-async function fixture(version, preState, changesets = []) {
+async function fixture(version, preState, changesets = [], productState = 'repository-verified') {
   const directory = await mkdtemp(join(tmpdir(), 'studio-promotion-plan-'));
   temporaryDirectories.push(directory);
   const root = pathToFileURL(`${directory}/`);
   await mkdir(new URL('.changeset/', root), { recursive: true });
+  await mkdir(new URL('docs/roadmap/', root), { recursive: true });
+  await writeFile(new URL('docs/roadmap/STATUS.md', root), productStatus(productState));
   await writeFile(new URL('.changeset/README.md', root), 'fixture\n');
   if (preState !== undefined) {
     await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
@@ -133,8 +140,16 @@ async function fixture(version, preState, changesets = []) {
 
 function release(version) {
   return {
-    claimedProfiles: version.includes('-alpha.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
+    claimedProfiles: version.includes('-beta.') ? [] : [...VERSION_TWO_RELEASE_PROFILES],
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, version])),
     release: version,
   };
+}
+
+function productStatus(state) {
+  return [
+    '<!-- studio-product-implementation:start -->',
+    ...STUDIO_PRODUCT_REQUIREMENTS.map((id) => `| \`${id}\` | \`${state}\` | fixture proof |`),
+    '<!-- studio-product-implementation:end -->',
+  ].join('\n');
 }
