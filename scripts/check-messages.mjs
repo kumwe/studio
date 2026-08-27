@@ -25,7 +25,7 @@ const catalog = JSON.parse(canonicalBytes.toString('utf8'));
 if (
   catalog.kind !== 'authoring-message-catalog' ||
   catalog.contractVersion !== '0.1-draft' ||
-  catalog.catalogVersion !== '1.4.0' ||
+  catalog.catalogVersion !== '1.5.0' ||
   catalog.locale !== 'en'
 ) {
   throw new Error('The canonical English authoring catalog has an unexpected identity.');
@@ -53,13 +53,17 @@ for (const key of keys) {
 
 const source = (
   await Promise.all(
-    ['kumwe-studio.ts', 'outline.ts'].map((file) =>
+    ['contextual-authoring.ts', 'kumwe-studio.ts', 'outline.ts'].map((file) =>
       readFile(new URL(`../packages/studio-lit/src/${file}`, import.meta.url), 'utf8'),
     ),
   )
 ).join('\n');
 const usedKeys = [
-  ...new Set([...source.matchAll(/['"](studio\.shell\/[a-z0-9-]+)['"]/g)].map((match) => match[1])),
+  ...new Set(
+    [...source.matchAll(/['"](studio\.(?:contextual|shell)\/[a-z0-9-]+)['"]/g)].map(
+      (match) => match[1],
+    ),
+  ),
 ].sort();
 if (JSON.stringify(usedKeys) !== JSON.stringify(sortedKeys)) {
   const unpublished = usedKeys.filter((key) => !catalog.messages[key]);
