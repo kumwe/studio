@@ -23,16 +23,16 @@ the product target.
 
 | Item                       | Exact current truth                                                                                                                                         |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source                     | Current merged `main` is `829694efb25374d3b498f2d46856d2c39650728a`                                                                                         |
-| Candidate                  | All eight checked-in packages and `studio-release.json` coordinate at `0.1.0-rc.1`                                                                          |
-| Proposed profiles          | The release record names the fixed nine-profile Version 2 surface; eight mappings are executable and `authoring-web` remains target-only                    |
+| Maturity                   | Active beta development; this is incomplete implementation, not a support or conformance claim                                                              |
+| Historical coordinate      | All eight checked-in packages and `studio-release.json` preserve immutable abandoned-candidate `0.1.0-rc.1` provenance; it MUST NOT be staged or published  |
+| Proposed profiles          | The abandoned release record preserves nine withdrawn proposals; beta clears claims and a new RC restores them only after all 15 requirements are verified  |
 | Composed core host profile | `openStudioSession` currently loads and saves one Blueprint                                                                                                 |
 | Lit shell                  | Separate Blueprint-oriented shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence    |
 | Reference host             | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
 | Gates                      | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim                                                            |
 
-The release record's nine names freeze the candidate's intended profile surface. They are not reproduced
-evidence and do not by themselves open the official npm `rc` channel.
+The abandoned release record's nine names preserve historical intent. They are withdrawn, are not reproduced
+evidence, and do not open the official npm `rc` channel.
 
 ## Completion ledger
 
@@ -122,9 +122,9 @@ release-record label, or reference-host demo cannot substitute.
 
 ## Release and claim boundary
 
-The active route is frozen RC quarantine → independently reproduced Gate A evidence → authorized official
-`rc` → Gate B qualification → stable. The checked-in `0.1.0-rc.1` source is only the candidate at the start of
-that route.
+The active route is generated beta development → machine-verified `STUDIO-PROD-001`–`015` → prepared RC →
+independently reproduced Gate A evidence → authorized official `rc` → Gate B qualification → stable. The
+checked-in `0.1.0-rc.1` metadata is abandoned history and is not a candidate on that route.
 
 Completion requires all of the following at the same immutable candidate:
 

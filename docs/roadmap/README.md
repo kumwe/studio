@@ -87,9 +87,9 @@ The Version 2 web qualification target is exactly
 `studio.profile/binding-projection-v1`, and `studio.profile/renderer-web`, plus target
 `studio.profile/authoring-web` when its complete executable assertion set is delivered. A target is not a
 conformance claim: a release may name one of these profiles in
-`claimedProfiles` only after the evidence model permits that exact claim. The current `0.1.0-rc.1` release
-record freezes all nine proposed claims, including target-only `authoring-web`; recording that intended surface
-does not make any claim accepted or open the official `rc` channel.
+`claimedProfiles` only after the evidence model permits that exact claim. The abandoned `0.1.0-rc.1` release
+record preserves nine withdrawn proposed claims, including target-only `authoring-web`; those historical names
+do not make any claim accepted or open the official `rc` channel. Beta development carries no profile claims.
 
 Version 3 adds the target profiles `studio.profile/engine-dart`,
 `studio.profile/renderer-flutter`, and `studio.profile/authoring-flutter`. Their Dart generation,

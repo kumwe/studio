@@ -30,16 +30,17 @@ The integration candidate contains the runtime an embedding host consumes, not o
 | Contribution generation | Owner-aware canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration contributions                                                                        | The host-target declaration that selects where those contributions appear and launches the exact resource remains target work (`STUDIO-PROD-008`, `009`)                                   |
 | Media                   | Studio-owned browse/upload/metadata/reorder/recovery controls over host-owned media providers and upload transports                                                                   | Real host custody, authorization, persistence, and audit remain unproved                                                                                                                   |
 
-This is candidate implementation, not completed contextual authoring or a support claim. Exact current `main`
-is `829694efb25374d3b498f2d46856d2c39650728a`; the checked-in coordinated family is
-`0.1.0-rc.1`. Its release record names the fixed nine-profile product surface, but recording those proposed
-claims is not reproduced conformance evidence and does not mean the official npm `rc` channel is open. Gate A
-remains **Not assessed**, Gate B remains **Blocked**, and no production host is supported.
+This is beta-development implementation, not completed contextual authoring or a support claim. The checked-in
+`0.1.0-rc.1` family is immutable abandoned-candidate provenance from
+`829694efb25374d3b498f2d46856d2c39650728a`; it is not the current maturity and MUST NOT be staged or
+published. Its proposed profile claims were withdrawn. The next publishable runtime Changeset generates one
+coordinated beta successor and clears those claims. Gate A remains **Not assessed**, Gate B remains **Blocked**,
+and no production host is supported.
 
 ## Cross-repository landing sequence
 
-1. Freeze and quarantine all eight exact `0.1.0-rc.1` packages from the reviewed candidate, then verify the
-   registry copies against `studio-release.json`; do not treat the checked-in coordinate as npm availability.
+1. Complete `STUDIO-PROD-001`–`015` on the governed beta-development lane. Use only generated Changesets
+   versioning for a coordinated beta successor; never stage or publish the abandoned `0.1.0-rc.1` metadata.
 2. In the host, update one exact release record and corpus digest atomically. Never combine an old Studio
    package with the new renderer, vendor workspace builds, or reconstruct the catalog inside the host.
 3. Bind contextual resource launch, session, preview, media, resource, renderer, localization, contribution,

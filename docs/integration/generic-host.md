@@ -77,10 +77,10 @@ grants a capability.
 
 Consume the exact eight versions in the published `studio-release.json`; verify its corpus digest before
 replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
-first-party definitions are not a deployable integration. Exact current source
-`829694efb25374d3b498f2d46856d2c39650728a` records coordinated `0.1.0-rc.1` metadata and the fixed nine
-proposed profile claims. That checked-in candidate is not proof of npm availability, accepted conformance, an
-open official `rc` channel, or production support.
+first-party definitions are not a deployable integration. The checked-in `0.1.0-rc.1` metadata from
+`829694efb25374d3b498f2d46856d2c39650728a` is immutable abandoned-candidate provenance whose proposed profile
+claims were withdrawn. It is not the current maturity and MUST NOT be staged or published. Active work follows
+the governed beta-development lane; only a generated coordinated successor can become an integration input.
 
 For the current Blueprint-only shell, the browser harness starts from Studio's additive bootstrap rather
 than recreating the page-builder catalog:

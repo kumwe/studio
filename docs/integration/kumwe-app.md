@@ -14,7 +14,7 @@ with layout, fields, bindings, and values available in one continuous authoring 
 authority is the [Studio product contract](../product-contract.md); this playbook maps
 `STUDIO-PROD-001`–`015` to Kumwe App without redefining them.
 
-## Current Studio candidate boundary
+## Current Studio beta-development boundary
 
 The Studio-side runtime needed by the App is present in the integration candidate: the eight-package family,
 45 first-party blocks, ten patterns, measured page canvas, private Editor.js rich-text adapter, media and
@@ -22,10 +22,10 @@ resource controls, complete semantic web renderer, and portable host/renderer/bi
 consume those capabilities through public Studio contracts; it must not reproduce the catalog, expose
 Editor.js, or carry a private fork of renderer behavior.
 
-Exact current Studio `main` is `829694efb25374d3b498f2d46856d2c39650728a`. The checked-in release record
-coordinates all eight packages at `0.1.0-rc.1` and records the fixed nine proposed profile claims. That is a
-candidate source record, not accepted profile evidence, an open official npm `rc` channel, stable support, or a
-production-host claim. The required landing order is:
+The checked-in release record coordinates all eight packages at `0.1.0-rc.1` from historical source
+`829694efb25374d3b498f2d46856d2c39650728a`. That coordinate is immutable abandoned-candidate provenance, its
+proposed profile claims are withdrawn, and it MUST NOT be staged or published. Active work follows the governed
+beta-development lane. The required landing order is:
 
 1. merge and publish one exact eight-package Studio coordinate through the protected release train;
 2. atomically pin all eight versions plus the release/corpus digests in Kumwe App;
@@ -88,8 +88,8 @@ visit a disconnected catalogue screen, or manually reconcile identifiers (`STUDI
 
 The target declaration admits extension-owned canonical block, pattern, and field-adapter contributions through
 the same immutable owner-aware generation and lifecycle as other Studio contributions
-(`STUDIO-PROD-008`, `009`). The precise target schema/API is planned contract work; it is not present in the
-current `0.1.0-rc.1` public surface and this playbook does not invent one.
+(`STUDIO-PROD-008`, `009`). The precise target schema/API is planned contract work; the abandoned
+`0.1.0-rc.1` surface does not provide it and this playbook does not invent one.
 
 Within the contextual workspace, Model, Blueprint, and Entry remain separate versioned artifacts but appear as
 one coordinated journey. Starting blank creates authorized empty structure and values; starting from a reusable
