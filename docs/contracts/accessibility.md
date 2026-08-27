@@ -18,7 +18,7 @@ Every persistent canvas operation available through pointer drag/drop MUST also 
 - set properties, variants and bindings;
 - undo, redo and inspect change consequences.
 
-This list defines the complete product standard, not a claim that the foundation alpha exposes every operation. Gate A maps each ratified command to equivalent interactions and diagnostics; Gate B proves the supported task set end to end. An implementation cannot expose a pointer-only operation while deferring its non-pointer equivalent.
+This list defines the complete product standard, not a claim that the current source candidate exposes every operation. Gate A maps each ratified command to equivalent interactions and diagnostics; Gate B proves the supported task set end to end. An implementation cannot expose a pointer-only operation while deferring its non-pointer equivalent.
 
 Keyboard operations use documented shortcuts and discoverable menus. They do not require memorizing shortcuts. Drag targets are not the only indicator of valid destinations.
 

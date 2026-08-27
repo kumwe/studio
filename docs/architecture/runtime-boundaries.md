@@ -3,18 +3,40 @@
 ## Three runtimes
 
 Studio has three distinct runtimes that must not be collapsed.
+The required contextual product behavior is defined in the [product contract](../product-contract.md); this
+document distinguishes that target from the current shipped shell (`STUDIO-PROD-014`).
 
 ### Authoring runtime
 
-The authoring runtime is a browser application composed of the DOM-free core, Lit UI, trusted plugins, and a host adapter. Its headless Blueprint composition owns a local `StudioSession` and a host-session handle that coordinates negotiated load, save, optional raw recovery access, invalidation, and local disposal. It may maintain unsaved state, selection, overlays, panels, history, and preview coordination. It has no direct authority over persisted or published data.
+The authoring runtime is a browser application composed of the DOM-free core, Lit UI, trusted plugins, and a
+host adapter. The currently shipped composition owns a local Blueprint `StudioSession` and a host-session handle
+that coordinates negotiated Blueprint load/save, an optional read-only model projection, optional raw recovery
+access, invalidation, and local disposal. It may maintain unsaved state, selection, overlays, panels, history,
+and preview coordination. It has no direct authority over persisted or published data.
+
+The required target extends that browser experience into one contextual session launched from any eligible
+core or extension-declared host target. Blocks, typed fields, and Entry values share the canvas while Model,
+Blueprint, and Entry state remains separately identified. Changing between inline, minimized, maximized, and
+fullscreen presentation preserves context, selection, unsaved changes, and history; it is presentation
+continuity rather than an export/import or a second editor (`STUDIO-PROD-001`, `STUDIO-PROD-003`,
+`STUDIO-PROD-007`, and
+`STUDIO-PROD-008`). No current host-session or shell API is claimed to provide that target yet.
 
 ### Host runtime
 
-The host runtime authenticates the actor, authorizes operations, owns storage and workflows, validates artifacts, resolves resources, processes media, renders previews, and publishes revisions. The reference Kumwe App host uses PHP application services and Twig, but the public host contract is transport-neutral.
+The host runtime authenticates the actor, resolves the contextual launch target, authorizes operations, owns
+storage and workflows, validates artifacts, resolves resources, processes media, renders previews, and publishes
+revisions. It alone accepts item saves and new or updated reusable-type revisions. The reference Kumwe App host
+uses PHP application services exposed through PHP HTTP endpoints and uses Twig for rendering, but the public
+host contract is transport-neutral
+(`STUDIO-PROD-006` and `STUDIO-PROD-010`).
 
 ### Delivery runtime
 
 The delivery runtime renders published artifacts for visitors or downstream clients. It must operate without Studio UI or authoring plugins. A host may implement it in PHP/Twig, another server language, static generation, or a native client renderer, provided it passes contract conformance for the supported block set.
+
+Browser authoring assets are compiled before deployment. Node.js and npm are build, test, and release tools, not
+production services or requirements of the PHP host or delivery runtime (`STUDIO-PROD-011`).
 
 ## Source of truth
 
@@ -72,3 +94,10 @@ Disposing the headless handle is a local, idempotent operation. It prevents late
 handle and releases local coordination state, but it does not log out the actor, discard recovery,
 dispose preview state, release a host lease, or invoke a host teardown endpoint. Those effects require
 separately declared and authorized port operations; none is inferred from local disposal.
+
+For the target contextual product, host chrome may present the authoring session inline, minimized, maximized,
+or fullscreen without turning those views into separate drafts. A presentation transition must retain the
+same authorized context and preserve selection, focus recovery, dirty state, and undo/redo continuity. Closing
+or abandoning the authoring context remains a distinct, explicit host-governed lifecycle decision. The current
+shipped handle does not define these presentation transitions or a host handoff protocol; those remain required
+planned work (`STUDIO-PROD-007`, `STUDIO-PROD-013`, and `STUDIO-PROD-014`).

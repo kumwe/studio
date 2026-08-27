@@ -7,6 +7,11 @@ exist, `manual:` names a documented human procedure, and `open` is an honest gap
 relevant work package. Removing or renumbering an identifier is a breaking change to recorded
 evidence.
 
+The sole normative product requirements are `STUDIO-PROD-001` through `STUDIO-PROD-015` in the
+[product contract](../product-contract.md). This interaction registry supplies lower-level evidence; it neither
+redefines those requirements nor turns an existing Blueprint-shell assertion into proof of the target
+contextual product (`STUDIO-PROD-014`).
+
 | ID     | Requirement                                                                                         | Source               | Enforcement                                        |
 | ------ | --------------------------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------- |
 | SR-001 | Every structural operation is achievable without dragging                                           | interaction-model.md | packages/studio-lit/test/kumwe-studio.test.ts      |
@@ -39,6 +44,23 @@ evidence.
 | SR-028 | Visual selection, hover and drop geometry comes only from the latest accepted preview measurement   | preview.md           | packages/studio-lit/test/preview-surface.test.ts   |
 | SR-029 | Measured pointer reparenting and the outline path dispatch the identical semantic move command      | keyboard.md          | e2e/specs/visual-canvas.spec.ts                    |
 | SR-030 | Blueprint surfaces expose restore, reparent, inheritance-reset and pattern-application commands     | commands.md          | packages/studio-lit/test/command-surfaces.test.ts  |
+
+## Product-contract evidence relationship
+
+The descriptions below are navigation summaries only; the linked product contract remains authoritative.
+
+| Product IDs                          | Interaction evidence needed                                                                                    | Current relationship                                                                      |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `STUDIO-PROD-001`, `STUDIO-PROD-008` | Contextual launch from every eligible core or extension-owned target                                           | Open; no shipped end-to-end target declaration and launch journey                         |
+| `STUDIO-PROD-002`, `STUDIO-PROD-012` | Blank/from-type start without pre-creation, copy/paste, or manual reconciliation                               | Open; the current composed session requires an existing Blueprint                         |
+| `STUDIO-PROD-003`                    | Blocks, typed fields, bindings, and Entry values authored in one continuous canvas                             | Partial Blueprint evidence only; Model and Entry composition is open                      |
+| `STUDIO-PROD-004`–`STUDIO-PROD-006`  | Separate artifacts, exact type-version hydration, and the three explicit save choices                          | Open; current model projection is read-only and composed persistence is Blueprint-only    |
+| `STUDIO-PROD-007`                    | Inline, minimized, maximized, and fullscreen continuity                                                        | Open; custom-element embedding alone is not continuity proof                              |
+| `STUDIO-PROD-009`                    | Extension block, field-adapter, and pattern lifecycle throughout the contextual journey                        | Component-level lifecycle evidence exists; contextual end-to-end coverage is open         |
+| `STUDIO-PROD-010`, `STUDIO-PROD-011` | Host-authoritative acceptance with compiled browser assets and no production Node.js/npm dependency            | Architectural constraints exist; integrated PHP-host product evidence remains open        |
+| `STUDIO-PROD-013`                    | Complete keyboard, focus, announcement, reflow, and assistive-technology parity for the new journeys           | Existing `SR-*` rows cover Blueprint surfaces only; expanded target qualification is open |
+| `STUDIO-PROD-014`                    | Truthful distinction between current shipped behavior and required target state                                | Documentation-level distinction; it is not proof of another product behavior              |
+| `STUDIO-PROD-015`                    | Executable end-to-end acceptance across launch, authoring, continuity, save/refusal, reload, and accepted data | Open; existing unit/browser assertions do not constitute this target product journey      |
 
 ## Manual procedures
 

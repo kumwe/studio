@@ -3,6 +3,9 @@
 ## Overview
 
 Studio treats modeling, composition, content, and visual language as related but independently versioned concerns.
+The target contextual experience may coordinate them in one canvas, but it does not merge their serialized
+identity, revisions, publication, or authority. The normative distinction is defined in the
+[product contract](../product-contract.md) (`STUDIO-PROD-003`–`STUDIO-PROD-006`).
 
 | Artifact             | Meaning                                                                             | Typical owner               |
 | -------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
@@ -13,6 +16,35 @@ Studio treats modeling, composition, content, and visual language as related but
 | Block definition     | Node properties, slots, binding ports, authoring controls and renderer requirements | Core or extension           |
 | Plugin manifest      | Executable authoring contributions and required host capabilities                   | Trusted package             |
 | Studio configuration | Session-level policy, limits, enabled capabilities and port bindings                | Embedding host              |
+
+### Current shipped shell boundary
+
+The currently shipped shell surface composes an existing Blueprint and consumes an exact content-model
+projection read-only for binding. It does not yet open or persist a coordinated Model/Blueprint/Entry draft,
+create a blank definition, hydrate and save Entry values through that composed session, or implement the three
+target save outcomes below. This section describes required product state, not shipped behavior
+(`STUDIO-PROD-014`).
+
+## Coordinated authoring definitions
+
+A **reusable content type** is the host-facing coordination of one versioned Content Model and one versioned
+Blueprint plus authoring policy. It is not a fourth portable artifact or an opaque document joining the two. It
+never contains Entry values. A blank start coordinates new Model and Blueprint drafts; a reusable start selects
+an exact compatible Model-and-Blueprint version before any values are hydrated (`STUDIO-PROD-002`,
+`STUDIO-PROD-004`, and `STUDIO-PROD-005`).
+
+The target product exposes three explicit, non-interchangeable save intentions (`STUDIO-PROD-006`):
+
+- **Save item** persists the authorized Entry draft against its exact Model and Blueprint dependencies.
+- **Save as new type** asks the host to accept new, separately versioned Model and Blueprint drafts;
+  current Entry values are excluded.
+- **Save new type version** asks the host to create the appropriate successor definition revisions under its
+  migration, compatibility, and publication policy; it never mutates an immutable published revision in place.
+
+The host owns identity allocation, validation, concurrency, atomicity, migration, publication, and failure
+recovery for those outcomes. Future protocol contracts must define any necessary operations before the product
+claims them. Authors must not have to pre-create companion records, copy serialized artifacts between tools, or
+manually reconcile browser- and host-created definitions (`STUDIO-PROD-010` and `STUDIO-PROD-012`).
 
 ## Identity and revisions
 
@@ -29,6 +61,10 @@ Host persistence records own tenant/site scope, authoritative ownership, actors,
 Namespaced contract identifiers use a namespace/name form such as `org.example/product-card` or `studio.core/grid`. Human labels are localized metadata and are never identifiers.
 
 Blueprints pin exact compatible revisions of their model and block definitions at publication. A theme declares the block contracts and semantic recipes it can render. Entries pin a model revision. A resolved session identifies an existing entry by ID and exact host revision, not by an invented semantic version; an optional digest may verify transferred or cached bytes but never replaces the host revision. The host records which blueprint revision presents an entry; an entry never embeds a mutable blueprint by reference.
+
+Contextual editing of an existing item must hydrate values only after the host resolves the exact reusable type
+and definition versions that govern that Entry. Studio must not infer a nearby model, silently switch a
+Blueprint, or project values through a merely compatible-looking type (`STUDIO-PROD-005`).
 
 ## Blueprint tree
 
@@ -67,6 +103,11 @@ Blueprint nodes classify each editable concern as:
 - `designer`: available only in blueprint/model design mode.
 
 This lets a product template preserve layout while a landing page exposes flexible regions.
+
+In the target canvas, active extension-owned blocks, field adapters, and patterns participate through their
+declared lifecycle and compatibility. Removing or revoking an owner disables its executable contribution while
+preserving the separately owned Model, Blueprint, and Entry data for diagnosis and migration
+(`STUDIO-PROD-008` and `STUDIO-PROD-009`).
 
 ## Theme semantics
 

@@ -2,21 +2,40 @@
 
 ## Purpose
 
-Studio is an embeddable visual composition environment. It coordinates a schema-aware canvas, model designer, blueprint designer, in-context entry editor, media experience, preview, command history, and extension surfaces. It does not replace the host application's domain, security, workflow, persistence, rendering, or media services.
+Studio is the planned central contextual editor for host content. Any eligible core surface or host extension
+must be able to declare and launch the same Studio workspace for that exact context, rather than sending the
+author through a separate schema editor, layout builder, and value form. The target workspace coordinates a
+schema-aware canvas, model designer, Blueprint designer, in-context Entry editor, media experience, preview,
+command history, and extension surfaces while keeping their artifacts and authority separate
+(`STUDIO-PROD-001`, `STUDIO-PROD-003`, and `STUDIO-PROD-008`). The normative product requirements live only in
+the [product contract](../product-contract.md).
+
+Studio does not replace the host application's domain, security, workflow, persistence, rendering, or media
+services. The host resolves the launch target, authenticates and authorizes the actor, supplies exact artifact
+and value context, and accepts or refuses every durable effect (`STUDIO-PROD-010`).
+
+### Current shipped shell boundary
+
+The currently shipped shell surface is an integration candidate, not the completed contextual product. Its
+composed host-session path edits one existing Blueprint and can project an exact host content model read-only for
+field binding. It does not yet compose Model and Entry persistence, create a blank coordinated definition,
+provide item/type save choices, or preserve a contextual session across inline and fullscreen host surfaces.
+Those behaviors are required target state, not claims about the implementation (`STUDIO-PROD-014`).
 
 ## Participants
 
-| Participant    | Owns                                                                                                               | Must not own                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
-| Studio core    | Artifact validation, deterministic commands, selection, history, registries, compatibility diagnostics             | Authentication, persistence, network policy, template execution |
-| Studio UI      | Canvas overlays, palette, outline, inspector, keyboard interaction, responsive preview controls                    | Authoritative domain validation, direct database access         |
-| Host adapter   | Authenticated transport, permissions, persistence, publication, preview, content/model discovery, media operations | Private mutations of Studio state outside commands              |
-| Renderer       | Trusted transformation from validated artifacts and data to output                                                 | Authoring state or editor-only metadata                         |
-| Theme          | Design tokens, recipes, responsive roles, block render mappings and preview surfaces                               | Arbitrary document-authored code                                |
-| Plugin         | Namespaced blocks, inspectors, patterns, commands, locales and optional UI assets                                  | Undeclared host access, global mutation, trust escalation       |
-| Content author | Entry values and permitted composition choices                                                                     | Schema or blueprint changes without permission                  |
-| Designer       | Blueprint composition and theme-approved appearance                                                                | Executable template source in a blueprint                       |
-| Model designer | Versioned content-model drafts                                                                                     | Silent mutation of published models                             |
+| Participant    | Owns                                                                                                               | Must not own                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Studio core    | Artifact validation, deterministic commands, selection, history, registries, compatibility diagnostics             | Authentication, persistence, network policy, template execution  |
+| Studio UI      | Canvas overlays, palette, outline, inspector, keyboard interaction, responsive preview controls                    | Authoritative domain validation, direct database access          |
+| Host adapter   | Authenticated transport, permissions, persistence, publication, preview, content/model discovery, media operations | Private mutations of Studio state outside commands               |
+| Renderer       | Trusted transformation from validated artifacts and data to output                                                 | Authoring state or editor-only metadata                          |
+| Theme          | Design tokens, recipes, responsive roles, block render mappings and preview surfaces                               | Arbitrary document-authored code                                 |
+| Plugin         | Namespaced blocks, field adapters, inspectors, patterns, commands, locales and optional UI assets                  | Undeclared host access, global mutation, trust escalation        |
+| Host extension | Declared contextual authoring targets and contribution ownership                                                   | Authentication, persistence, or authority granted by declaration |
+| Content author | Entry values and permitted composition choices                                                                     | Schema or blueprint changes without permission                   |
+| Designer       | Blueprint composition and theme-approved appearance                                                                | Executable template source in a blueprint                        |
+| Model designer | Versioned content-model drafts                                                                                     | Silent mutation of published models                              |
 
 ## Trust boundaries
 
@@ -29,6 +48,26 @@ Studio crosses five explicit trust boundaries:
 5. **Publication boundary.** Draft artifacts become public only through the host's validation, workflow, revision, audit, and publication transaction.
 
 ## Reference flows
+
+### Contextual coordinated authoring target
+
+This is a required product flow; the current shipped shell does not implement it end to end
+(`STUDIO-PROD-001`–`STUDIO-PROD-008`, `STUDIO-PROD-012`).
+
+1. A resolved core or extension-owned host target invokes Studio with the authenticated actor and exact item,
+   reusable-type, revision, locale, workflow, and surface context that the host authorizes.
+2. The author starts from a host-authorized blank definition or one exact reusable definition version. The host
+   supplies or coordinates the necessary draft identities; the author is not required to pre-create companion
+   records, copy values between tools, or reconcile duplicate drafts manually.
+3. One contextual canvas exposes compatible blocks, typed fields, and Entry values. Model, Blueprint, and Entry
+   changes remain distinguishable even when the experience presents them together.
+4. Moving among inline, minimized, maximized, and fullscreen presentation preserves the logical authoring
+   session, selection, unsaved work, undo state, and host context.
+5. The author explicitly chooses **save item**, **save as new type**, or **save new type version**. The latter two
+   affect separately versioned Model and Blueprint definitions, while Entry values remain excluded from the
+   reusable content type.
+6. The host authoritatively validates, persists, versions, audits, and returns the accepted result or structured
+   refusal. Studio never treats a browser draft as durable merely because the UI changed.
 
 ### Blueprint design
 
@@ -59,3 +98,7 @@ Studio crosses five explicit trust boundaries:
 Kumwe App should implement the host and renderer contracts while preserving its own inward dependency direction. Studio packages must not import Kumwe App PHP, Twig, route, database, or extension types. Kumwe App should adapt its content definitions, business definitions, contribution registry, media service, authorization, workflows, revisions, and Twig presentation into the public Studio contracts.
 
 For business records, a blueprint binds to typed fields and authorized query or action references. The blueprint is presentation metadata; it is not the authoritative business record store.
+
+Kumwe App's PHP application services, exposed through PHP HTTP endpoints, remain authoritative for every
+contextual launch and save outcome. Studio is delivered to the browser as compiled assets; neither Node.js nor
+npm is a Kumwe App production-runtime dependency (`STUDIO-PROD-010` and `STUDIO-PROD-011`).
