@@ -100,7 +100,7 @@ single-artifact `artifact.save` behavior or infer an undocumented transaction (`
 
 ## Contract and protocol selection
 
-`contractVersion` selects the StudioConfig document shape and semantics. In the current draft it is `0.1-draft`; it is not SemVer. `protocolVersion` is the single SemVer wire version selected during negotiation from the versions supported by Studio and `hostCapabilities.protocolVersions`. In the current candidate, the only supported wire version is `0.1.0-draft.2`.
+`contractVersion` selects the StudioConfig document shape and semantics. In the current draft it is `0.1-draft`; it is not SemVer. `protocolVersion` is the single SemVer wire version selected during negotiation from the versions supported by Studio and `hostCapabilities.protocolVersions`. In the current beta-development implementation, the only supported wire version is `0.1.0-draft.2`.
 
 The schema epoch in the StudioConfig schema `$id`, currently `/studio/v1/`, names the intended major schema family. It is not a session field and does not mean that Studio has reached version 1. Implementations MUST NOT derive any one of these three values from another. The complete mapping is defined by the [versioning and migration contract](versioning-and-migrations.md).
 

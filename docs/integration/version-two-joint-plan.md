@@ -33,18 +33,18 @@ no Node.js, npm, Vite, or server-side JavaScript process. These outcomes are gov
 
 ## Current coordinated checkpoint
 
-| Area                  | Current truth                                                                                                                             | Required next state                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Studio source         | Exact `main` `829694efb25374d3b498f2d46856d2c39650728a`; coordinated eight-package `0.1.0-rc.1` candidate                                 | Keep all qualification and host work pinned to this exact family or a deliberately regenerated successor      |
-| Release record        | Records the fixed nine proposed profile claims                                                                                            | Reproduce the exact assertion sets; a recorded claim is not accepted evidence or an official channel          |
-| Composed host session | Loads and saves one Blueprint                                                                                                             | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions                      |
-| Lit authoring shell   | Separate Blueprint-oriented surface with measured canvas, broad catalog, preview, media/resource controls, and read-only model projection | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity  |
-| Contributions         | Six canonical contribution kinds compile into an immutable owner-aware generation                                                         | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target       |
-| Kumwe App             | Host mapping and additive integration work remain candidates                                                                              | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
-| Gates                 | Gate A **Not assessed**; Gate B **Blocked**                                                                                               | Accept independently reproduced evidence before official `rc`, stable, or production-support claims           |
+| Area                  | Current truth                                                                                                                                | Required next state                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Studio source         | Active beta development; checked-in `0.1.0-rc.1` is immutable abandoned-candidate provenance from `829694efb25374d3b498f2d46856d2c39650728a` | Generate one coordinated beta successor through Changesets; never stage or publish the abandoned coordinate   |
+| Release record        | The abandoned record preserves nine withdrawn proposed profile claims                                                                        | Beta clears claims; a new RC may restore the fixed set only after all 15 requirements are repository-verified |
+| Composed host session | Loads and saves one Blueprint                                                                                                                | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions                      |
+| Lit authoring shell   | Separate Blueprint-oriented surface with measured canvas, broad catalog, preview, media/resource controls, and read-only model projection    | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity  |
+| Contributions         | Six canonical contribution kinds compile into an immutable owner-aware generation                                                            | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target       |
+| Kumwe App             | Host mapping and additive integration work remain candidates                                                                                 | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
+| Gates                 | Gate A **Not assessed**; Gate B **Blocked**                                                                                                  | Accept independently reproduced evidence before official `rc`, stable, or production-support claims           |
 
-The checked-in `0.1.0-rc.1` metadata is not proof that npm has the family, that the official `rc` tag moved, or
-that any host is supported.
+The checked-in `0.1.0-rc.1` metadata is not the current maturity, MUST NOT be staged or published, and proves
+neither npm availability nor host support.
 
 ## Ownership split
 
@@ -118,7 +118,7 @@ The coordinated product remains unqualified until `STUDIO-PROD-015` passes again
 host, the profile assertions are independently reproduced, Gate A is accepted, and Gate B qualification later
 supports stable/production claims. Until then:
 
-- call the source an `0.1.0-rc.1` candidate, not an official or stable release;
+- call the active source beta development and the checked-in `0.1.0-rc.1` metadata abandoned provenance;
 - call the current UI a Blueprint composition shell, not completed contextual content authoring;
 - call the reference host a harness, not a production host; and
 - retain existing Kumwe App editors as explicit transitional fallback rather than redefining the target default.
