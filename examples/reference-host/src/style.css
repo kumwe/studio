@@ -20,7 +20,8 @@ body > header {
   gap: 0.5rem;
 }
 
-.reference-actions button {
+.reference-actions button,
+.reference-content-actions button {
   background: #fff;
   border: 1px solid #9fa9b8;
   border-radius: 0.375rem;
@@ -30,7 +31,8 @@ body > header {
   padding: 0.625rem 0.875rem;
 }
 
-.reference-actions button:focus-visible {
+.reference-actions button:focus-visible,
+.reference-content-actions button:focus-visible {
   outline: 0.1875rem solid #3157d5;
   outline-offset: 0.125rem;
 }
@@ -47,12 +49,97 @@ h1 {
   margin-block: 0.25rem;
 }
 
-kumwe-studio {
+.reference-content-actions,
+.reference-context {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(28rem, 100%), 1fr));
+}
+
+.reference-content-actions > div,
+.reference-context {
+  background: #fff;
+  border: 1px solid #d7dce2;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.reference-content-actions h2,
+.reference-context h2 {
+  font-size: 1rem;
+  margin-block: 0 0.25rem;
+}
+
+.reference-content-actions p {
+  color: #4a5668;
+  margin-block: 0.25rem 0.75rem;
+}
+
+.reference-recovery {
+  margin-block-start: 1rem;
+}
+
+.reference-recovery summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+main {
+  display: grid;
+  gap: 1.5rem;
+  margin: auto;
+  max-width: 90rem;
+}
+
+.reference-context {
+  grid-template-columns: minmax(18rem, 1fr) minmax(18rem, 1fr);
+}
+
+.reference-coordinates {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.reference-coordinates div {
+  display: grid;
+  gap: 0.25rem;
+  grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+}
+
+.reference-coordinates dt {
+  font-weight: 700;
+}
+
+.reference-coordinates dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.reference-save-review {
+  background: #f5f8ff;
+  border: 1px solid #9eb3ee;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.reference-save-review h3 {
+  margin-block-start: 0;
+}
+
+.reference-save-result {
+  background: #e9f7ed;
+  border: 1px solid #83b891;
+  border-radius: 0.5rem;
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.75rem;
+}
+
+kumwe-studio-contextual {
   background: white;
   border-radius: 0.75rem;
   box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
-  margin: auto;
-  max-width: 90rem;
   overflow: hidden;
 }
 
@@ -60,8 +147,7 @@ kumwe-studio {
   background: #fff;
   border-radius: 0.75rem;
   box-shadow: 0 0.75rem 2.5rem rgb(20 30 45 / 10%);
-  margin: 1.5rem auto 0;
-  max-width: 86rem;
+  margin: 0;
   padding: 2rem;
 }
 
@@ -253,5 +339,19 @@ kumwe-studio {
     scroll-behavior: auto !important;
     transition-delay: 0s !important;
     transition-duration: 0s !important;
+  }
+}
+
+@media (max-width: 50rem) {
+  body {
+    padding: 1rem;
+  }
+
+  .reference-context {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .reference-coordinates div {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
