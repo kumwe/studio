@@ -35,14 +35,14 @@ Likewise, Studio does not dictate that other hosts use revisions, workflows, or 
 ## Data evolution
 
 Schema artifacts are language-neutral. The Version 2 package now exports deterministic generated TypeScript
-models for all 47 canonical schema roots and their reusable definitions. Their metadata records the generator
+models for all 51 canonical schema roots and their 186 reusable definitions. Their metadata records the generator
 name/version, exact schema-manifest digest, schema epoch URI, document contract revision, and supported wire
 protocol range. `npm run protocol:models:generate` reproduces the checked-in source and
 `npm run protocol:models:check` rejects drift; the complete applicable positive corpus is schema-validated and
-round-tripped through the generated map in the TypeScript test lane. A synthesized compiler test assigns 234
+round-tripped through the generated map in the TypeScript test lane. A synthesized compiler test assigns 238
 corpus literals directly to their filename-specific root models. The two intentional maximum-JSON-depth
 schema-profile vectors exceed TypeScript 6's recursive comparison limit (`TS2321`); the test names both,
-requires that diagnostic, and still schema-validates and round-trips all 236 documents at runtime.
+requires that diagnostic, and still schema-validates and round-trips all 240 documents at runtime.
 
 Generated TypeScript or future Dart types are conveniences and never supersede schemas or semantic
 conformance fixtures. TypeScript cannot encode every JSON Schema refinement: patterns, numeric/string and

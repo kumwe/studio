@@ -56,7 +56,7 @@ must still apply the matching published schema and the normative behavior contra
 that cannot soundly represent a refinement deliberately remains broader rather than falsely excluding valid
 JSON; no generated root degenerates to an `any`/`unknown` placeholder.
 
-The compiler phase also synthesizes direct filename-to-root assignments for 234 of the 236 corpus literals.
+The compiler phase also synthesizes direct filename-to-root assignments for 238 of the 240 corpus literals.
 The two maximum-JSON-depth schema-profile vectors deliberately reach a TypeScript 6 recursive-comparison
 limit; their named boundary test must produce `TS2321` until the compiler can compare them, while both remain
 inside the all-document runtime schema and JSON-round-trip lane. This boundary is explicit and cannot silently

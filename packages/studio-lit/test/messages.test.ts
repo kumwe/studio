@@ -11,7 +11,7 @@ describe('authoring message catalog', () => {
     expect(studioMessageCatalog.kind).toBe('authoring-message-catalog');
     expect(studioMessageCatalog.catalogVersion).toBe('1.5.0');
     expect(studioMessageCatalog.locale).toBe('en');
-    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(231);
+    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(243);
     expect(Object.keys(studioMessages)).toEqual(Object.keys(studioMessageCatalog.messages));
   });
 

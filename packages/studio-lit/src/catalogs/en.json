@@ -49,6 +49,14 @@
       "defaultMessage": "Choose Blueprint mode, select a block, and bind one of these exact Model fields to a compatible block port. Studio keeps the Model definition, Blueprint binding, and Entry value separate while they remain in this resource session.",
       "parameters": []
     },
+    "studio.contextual/blueprint-coordinate-mismatch": {
+      "defaultMessage": "The session coordinates do not identify the supplied exact Blueprint revision.",
+      "parameters": []
+    },
+    "studio.contextual/blueprint-model-mismatch": {
+      "defaultMessage": "The Blueprint does not lock the supplied exact Model revision.",
+      "parameters": []
+    },
     "studio.contextual/cardinality": {
       "defaultMessage": "Cardinality",
       "parameters": []
@@ -69,6 +77,10 @@
       "defaultMessage": "Collection item type (used only for a collection field)",
       "parameters": []
     },
+    "studio.contextual/configuration-generation-mismatch": {
+      "defaultMessage": "The Studio configuration and contextual session generations do not match.",
+      "parameters": []
+    },
     "studio.contextual/control-unavailable": {
       "defaultMessage": "This field control is unavailable.",
       "parameters": []
@@ -84,6 +96,18 @@
     "studio.contextual/dirty-artifacts": {
       "defaultMessage": "Model {model} · Blueprint {blueprint} · Content {entry}",
       "parameters": ["blueprint", "entry", "model"]
+    },
+    "studio.contextual/entry-coordinate-mismatch": {
+      "defaultMessage": "The session coordinates do not identify the supplied exact Entry revision.",
+      "parameters": []
+    },
+    "studio.contextual/entry-model-mismatch": {
+      "defaultMessage": "The Entry does not lock the supplied exact Model revision.",
+      "parameters": []
+    },
+    "studio.contextual/entry-resource-mismatch": {
+      "defaultMessage": "The existing-item target does not identify the supplied Entry.",
+      "parameters": []
     },
     "studio.contextual/enum-values": {
       "defaultMessage": "Enum choices (one identifier per line; used only for an enum field)",
@@ -189,6 +213,10 @@
       "defaultMessage": "Model",
       "parameters": []
     },
+    "studio.contextual/model-coordinate-mismatch": {
+      "defaultMessage": "The session coordinates do not identify the supplied exact Model revision.",
+      "parameters": []
+    },
     "studio.contextual/model-fields": {
       "defaultMessage": "Model fields",
       "parameters": []
@@ -225,6 +253,10 @@
       "defaultMessage": "Minimized",
       "parameters": []
     },
+    "studio.contextual/presentation-not-authorized": {
+      "defaultMessage": "The current presentation is not authorized by this contextual session.",
+      "parameters": []
+    },
     "studio.contextual/required": {
       "defaultMessage": "Required",
       "parameters": []
@@ -249,6 +281,10 @@
       "defaultMessage": "The authoritative host will plan and show affected artifacts and consequences before confirmation.",
       "parameters": []
     },
+    "studio.contextual/session-generation-missing": {
+      "defaultMessage": "The contextual session has no authoritative generation.",
+      "parameters": []
+    },
     "studio.contextual/start-blank": {
       "defaultMessage": "Blank start",
       "parameters": []
@@ -267,6 +303,18 @@
     },
     "studio.contextual/state-unchanged": {
       "defaultMessage": "unchanged",
+      "parameters": []
+    },
+    "studio.contextual/type-blueprint-mismatch": {
+      "defaultMessage": "The reusable type does not identify the supplied exact Blueprint revision.",
+      "parameters": []
+    },
+    "studio.contextual/type-coordinate-mismatch": {
+      "defaultMessage": "The session coordinates do not identify the supplied exact reusable type version.",
+      "parameters": []
+    },
+    "studio.contextual/type-model-mismatch": {
+      "defaultMessage": "The reusable type does not identify the supplied exact Model revision.",
       "parameters": []
     },
     "studio.contextual/unavailable": {

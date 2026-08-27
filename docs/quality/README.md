@@ -55,7 +55,7 @@ capability.
   `contracts:check` lane runs `protocol:models:check` and verifies exact schema-registry parity and manifest
   provenance. The enclosing `npm run check` typecheck compiles generated sources, while its test phase proves
   exact-root literal assignability within the documented compiler-depth boundary and schema-validates plus
-  JSON-round-trips all 236 applicable positive documents. Add the same Dart lane before a Version 3 native
+  JSON-round-trips all 240 applicable positive documents. Add the same Dart lane before a Version 3 native
   profile is claimed.
 - Validate examples and documentation snippets against the exact schema/version they describe.
 - Run public API/schema compatibility diff against every supported release.

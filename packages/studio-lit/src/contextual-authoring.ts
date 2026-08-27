@@ -864,7 +864,7 @@ export class KumweStudioContextualElement extends LitElement {
               <input
                 name="id"
                 required
-                pattern="[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*"
+                pattern="[a-z][a-z0-9]*(?:(?:[._]|-)[a-z0-9]+)*"
                 ?disabled=${disabled}
               />
             </label>
@@ -1150,7 +1150,23 @@ export class KumweStudioContextualElement extends LitElement {
   }
 
   #fieldKindLabel(kind: ContentFieldKind): string {
-    return this.#text(`studio.contextual/field-kind-${kind}` as StudioMessageKey);
+    const keys: Partial<Record<ContentFieldKind, StudioMessageKey>> = {
+      boolean: 'studio.contextual/field-kind-boolean',
+      collection: 'studio.contextual/field-kind-collection',
+      date: 'studio.contextual/field-kind-date',
+      'date-time': 'studio.contextual/field-kind-date-time',
+      decimal: 'studio.contextual/field-kind-decimal',
+      enum: 'studio.contextual/field-kind-enum',
+      integer: 'studio.contextual/field-kind-integer',
+      media: 'studio.contextual/field-kind-media',
+      money: 'studio.contextual/field-kind-money',
+      object: 'studio.contextual/field-kind-object',
+      resource: 'studio.contextual/field-kind-resource',
+      'rich-text': 'studio.contextual/field-kind-rich-text',
+      string: 'studio.contextual/field-kind-string',
+    };
+    const key = keys[kind];
+    return key === undefined ? kind : this.#text(key);
   }
 
   #modeLabel(mode: StudioAuthoringMode): string {
@@ -1160,11 +1176,22 @@ export class KumweStudioContextualElement extends LitElement {
   }
 
   #presentationLabel(presentation: AuthoringPresentationState): string {
-    return this.#text(`studio.contextual/presentation-${presentation}` as StudioMessageKey);
+    const keys: Record<AuthoringPresentationState, StudioMessageKey> = {
+      fullscreen: 'studio.contextual/presentation-fullscreen',
+      inline: 'studio.contextual/presentation-inline',
+      maximized: 'studio.contextual/presentation-maximized',
+      minimized: 'studio.contextual/presentation-minimized',
+    };
+    return this.#text(keys[presentation]);
   }
 
   #saveOutcomeLabel(outcome: AuthoringSaveOutcome): string {
-    return this.#text(`studio.contextual/${outcome}` as StudioMessageKey);
+    const keys: Record<AuthoringSaveOutcome, StudioMessageKey> = {
+      'save-as-new-type': 'studio.contextual/save-as-new-type',
+      'save-item': 'studio.contextual/save-item',
+      'save-new-type-version': 'studio.contextual/save-new-type-version',
+    };
+    return this.#text(keys[outcome]);
   }
 
   #startLabel(session: AuthoringSessionSnapshot): string {

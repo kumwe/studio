@@ -191,7 +191,7 @@
         "schemaValidatedRoundTrips"
       ],
       "properties": {
-        "assignableDocuments": { "const": 234 },
+        "assignableDocuments": { "const": 238 },
         "compilerDepthBoundaries": {
           "type": "array",
           "minItems": 2,
@@ -207,7 +207,7 @@
         "command": { "$ref": "#/$defs/command" },
         "inventoryChecksum": { "$ref": "#/$defs/sha256Integrity" },
         "runtimeCommand": { "$ref": "#/$defs/command" },
-        "schemaValidatedRoundTrips": { "const": 236 }
+        "schemaValidatedRoundTrips": { "const": 240 }
       }
     },
     "command": {
