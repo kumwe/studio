@@ -76,6 +76,23 @@ describe('promotion plan', () => {
     await assert.rejects(inspectPromotionPlan(root, { channel: 'rc' }), /STUDIO-PROD-001/u);
   });
 
+  it('blocks RC preparation while authoring-web assertions remain target-only', async () => {
+    const root = await fixture('0.1.0-beta.9', { mode: 'pre', tag: 'beta' });
+    const assertions = profileAssertions();
+    assertions.profiles.find(({ id }) => id === 'studio.profile/authoring-web').status = 'target';
+    assertions.profiles.find(({ id }) => id === 'studio.profile/authoring-web').requiredInputs = [];
+    assertions.profiles.find(({ id }) => id === 'studio.profile/authoring-web').requiredRuns = [];
+    await writeFile(
+      new URL('evidence/profile-assertions.json', root),
+      `${JSON.stringify(assertions)}\n`,
+    );
+
+    await assert.rejects(
+      inspectPromotionPlan(root, { channel: 'rc' }),
+      /studio\.profile\/authoring-web/u,
+    );
+  });
+
   it('publishes an immutable RC only with later evidence', async () => {
     const root = await fixture('0.1.0-rc.1', { mode: 'pre', tag: 'rc' });
     const plan = await inspectPromotionPlan(root, {
@@ -120,7 +137,12 @@ async function fixture(version, preState, changesets = [], productState = 'repos
   const root = pathToFileURL(`${directory}/`);
   await mkdir(new URL('.changeset/', root), { recursive: true });
   await mkdir(new URL('docs/roadmap/', root), { recursive: true });
+  await mkdir(new URL('evidence/', root), { recursive: true });
   await writeFile(new URL('docs/roadmap/STATUS.md', root), productStatus(productState));
+  await writeFile(
+    new URL('evidence/profile-assertions.json', root),
+    `${JSON.stringify(profileAssertions())}\n`,
+  );
   await writeFile(new URL('.changeset/README.md', root), 'fixture\n');
   if (preState !== undefined) {
     await writeFile(new URL('.changeset/pre.json', root), `${JSON.stringify(preState)}\n`);
@@ -136,6 +158,19 @@ async function fixture(version, preState, changesets = [], productState = 'repos
   const document = release(version);
   await writeFile(new URL('studio-release.json', root), `${JSON.stringify(document)}\n`);
   return root;
+}
+
+function profileAssertions() {
+  return {
+    contractVersion: '0.1-draft',
+    kind: 'profile-assertion-registry',
+    profiles: VERSION_TWO_RELEASE_PROFILES.map((id) => ({
+      id,
+      requiredInputs: ['fixture.test.ts'],
+      requiredRuns: ['unit/workspace'],
+      status: 'executable',
+    })),
+  };
 }
 
 function release(version) {

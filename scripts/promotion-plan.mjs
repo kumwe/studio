@@ -6,6 +6,7 @@ import { assertCoordinatedRelease } from './release-record.mjs';
 import {
   assertProductImplementationReady,
   assertPromotionPackageState,
+  assertReleaseProfilesExecutable,
   assertSameReleaseCoordinate,
   nextRcVersion,
   parseProfileInput,
@@ -27,6 +28,9 @@ export async function inspectPromotionPlan(
   if (channel === 'rc' || channel === 'stable') {
     assertProductImplementationReady(
       await readFile(new URL('docs/roadmap/STATUS.md', root), 'utf8'),
+    );
+    assertReleaseProfilesExecutable(
+      JSON.parse(await readFile(new URL('evidence/profile-assertions.json', root), 'utf8')),
     );
   }
   const pendingChangesets = await listPendingChangesets(root);

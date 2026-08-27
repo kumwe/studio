@@ -239,7 +239,7 @@ test('a repository-controlled authority checksum is structural, not release auth
   );
 });
 
-test('proof registry is closed, advances only landed internal producers, and keeps authoring-web target-bound', () => {
+test('proof registry is closed and keeps authoring-web external qualification target-bound', () => {
   const missing = structuredClone(proofAssertionRegistry);
   missing.assertions.pop();
   assert.ok(

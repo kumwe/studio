@@ -26,8 +26,9 @@ the `beta` distribution tag with provenance. Beta is where the integrated produc
 does not claim feature completeness, conformance, production readiness, compatibility support, or Gate A/B.
 The single manual **Governed RC and stable promotion** workflow implements preparation and protected
 publication. It refuses RC work unless the closed implementation inventory in `docs/roadmap/STATUS.md` contains
-exactly `STUDIO-PROD-001`–`015` and every row is `repository-verified`. After a reviewed RC metadata PR merges,
-its protected quarantine operation may publish the exact candidate only under its nonofficial staging tag so
+exactly `STUDIO-PROD-001`–`015`, every row is `repository-verified`, and all nine fixed Version 2 profile
+assertion entries have non-empty executable inputs and lanes. After a reviewed RC metadata PR merges, its
+protected quarantine operation may publish the exact candidate only under its nonofficial staging tag so
 release evidence can inspect real npm bits and provenance. Opening the official `rc` channel still fails closed
 until that exact candidate has accepted, independently reproduced evidence, required human review, and an
 authoritative passing gate. A local prerelease version MUST NOT be published manually around these controls.
@@ -39,27 +40,29 @@ manual/external bytes may enter later only through the closed `evidence:assemble
 can fabricate human proof, publish, make a gate decision, or authenticate to npm. Gate A criterion 13 binds
 its exact quarantined-registry install lane plus the complete family, provenance, SBOM, reproducibility,
 clean-consumer, and signature artifacts, and still requires its registered manual class. Every class is
-required for acceptance; the lane or a generic release label alone cannot satisfy it. Every product requirement
-is currently active, Gate A is not assessed, and Gate B is blocked, so no new RC may be prepared or quarantined
-today and the official `rc` and stable channels cannot open.
+required for acceptance; the lane or a generic release label alone cannot satisfy it. Any active product row,
+target-only fixed profile assertion, or missing Gate A evidence blocks the corresponding RC operation. Gate A
+is not assessed and Gate B is blocked, so the official `rc` and stable channels cannot open.
 
 At source `829694efb25374d3b498f2d46856d2c39650728a`, `studio-release.json` coordinated all eight packages at
 `0.1.0-rc.1` and recorded nine proposed Version 2 profile names. Product review withdrew that maturity decision
 after confirming the contextual authoring gap. The coordinate and commit remain immutable provenance, but the
-candidate is abandoned and MUST NOT be staged, published, overwritten, or treated as current maturity. The
-first publishable runtime Changeset causes generated versioning to exit the stale RC prerelease state, enter
-beta, reset proposed profile claims, and regenerate the complete family. Every publisher still verifies all
-eight exact registry versions and provenance before a channel tag moves.
+candidate is abandoned and MUST NOT be staged, published, overwritten, or treated as current maturity.
+Generated versioning has since exited that stale RC state, entered the numeric beta train, cleared proposed
+claims, and coordinated the source family at `0.1.0-beta.2`. Every publisher still verifies all eight exact
+registry versions and provenance before a channel tag moves.
 
 Beta publication and conformance qualification are deliberately separate. A beta build may be incomplete and
-claims no profile. RC preparation requires repository-verified completion of the product contract; official RC
-publication additionally requires reproduced evidence for the complete fixed profile set. Profile definitions
-and assertion sets remain in [conformance profiles](../contracts/conformance-profiles.md).
+claims no profile. RC preparation requires repository-verified completion of the product contract and
+executable assertions for the complete fixed profile set; official RC publication additionally requires
+reproduced evidence for that exact set. Profile definitions and assertion sets remain in
+[conformance profiles](../contracts/conformance-profiles.md).
 
 Version 2 RC and stable promotion use one fixed nine-profile surface, including `authoring-web`. Initial RC
 preparation defaults to that complete sorted set and rejects a subset. Preparation freezes the intended product
 surface; it does not prove it. Official RC publication still requires Gate A to support all nine at the exact
-candidate, so the current target-only authoring binding blocks publication and cannot be omitted as a shortcut.
+candidate. A target-only authoring assertion or an unavailable Kumwe App/manual proof blocks the corresponding
+operation and cannot be omitted as a shortcut.
 
 “Release-candidate implementation” may describe a proposed immutable source tree under evaluation. It does
 not mean the npm `rc` channel has opened. An `rc` publication is allowed only after every advertised profile
