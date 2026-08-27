@@ -101,6 +101,7 @@ function createSession(
   modelDocument: ContentModelDocument,
   entryDocument: EntryDocument,
   start: AuthoringStartSource,
+  itemComposition: 'denied' | 'overrides',
 ): AuthoringSessionSnapshot {
   const target: AuthoringTargetDeclaration = {
     contractVersion: STUDIO_CONTRACT_VERSION,
@@ -120,7 +121,7 @@ function createSession(
   };
   const type: ReusableContentTypeDefinition = {
     authoringPolicy: {
-      itemComposition: 'denied' as const,
+      itemComposition,
       modes: ['model', 'blueprint', 'content'] as const,
     },
     blueprint: {
@@ -195,7 +196,9 @@ function createSession(
 
 async function mount(
   options: {
+    itemComposition?: 'denied' | 'overrides';
     modelFields?: FieldDefinition[];
+    readOnly?: boolean;
     start?: AuthoringStartSource;
     values?: EntryDocument['values'];
   } = {},
@@ -232,7 +235,10 @@ async function mount(
     modelDocument,
     options.values ?? { featured: false, title: 'Exact value' },
   );
-  const session = createStudioConfigurationFixture({ mode: 'blueprint' });
+  const session = createStudioConfigurationFixture({
+    mode: 'blueprint',
+    sessionState: options.readOnly === true ? 'read-only' : 'editable',
+  });
   session.hostCapabilities.ports.push({
     id: 'studio.port/model',
     operations: ['studio.operation/model.get', 'studio.operation/model.list'],
@@ -250,6 +256,7 @@ async function mount(
     modelDocument,
     entryDocument,
     options.start ?? { kind: 'existing' },
+    options.itemComposition ?? 'denied',
   );
   document.body.append(element);
   await element.updateComplete;
@@ -280,19 +287,23 @@ describe('contextual authoring shell', () => {
   });
 
   it.each([
-    [{ kind: 'blank' } as const, 'blank'],
+    [{ kind: 'blank' } as const, 'blank', 'Blank start'],
     [
       {
         kind: 'from-type',
         type: { id: 'article-type', revision: 'type-r4', version: '1.2.0' },
       } as const,
       'from-type',
+      'Reusable type · article-type@1.2.0#type-r4',
     ],
-  ])('renders a %s launch without another workspace', async (start, expected) => {
+  ])('renders a %s launch without another workspace', async (start, expected, label) => {
     const element = await mount({ start, values: {} });
     expect(
       element.shadowRoot?.querySelector('.contextual-workspace')?.getAttribute('data-start'),
     ).toBe(expected);
+    expect(element.shadowRoot?.querySelector('.contextual-identity p')?.textContent).toContain(
+      label,
+    );
     expect(element.shadowRoot?.querySelectorAll('kumwe-studio')).toHaveLength(1);
     expect(element.snapshot?.state.entry.values).toEqual({});
   });
@@ -453,6 +464,82 @@ describe('contextual authoring shell', () => {
     expect(detail?.intent.draft).not.toHaveProperty('entry');
     expect(JSON.stringify(detail?.intent.draft)).not.toContain('Private item value');
     expect(detail?.intent.expected).toEqual(element.session?.state.coordinates);
+  });
+
+  it('includes an authorized item Blueprint only when item composition actually changed', async () => {
+    const element = await mount({ itemComposition: 'overrides' });
+    const intents: StudioContextualSaveRequestDetail[] = [];
+    element.addEventListener('studio-contextual-save-request', (event) => {
+      intents.push((event as CustomEvent<StudioContextualSaveRequestDetail>).detail);
+    });
+
+    element.setEntryValue(['title'], 'Entry only');
+    element.requestSave('save-item');
+    expect(intents.at(-1)?.intent.draft).not.toHaveProperty('itemBlueprint');
+
+    const blueprint = element.blueprintElement;
+    if (blueprint === undefined || element.configuration === undefined) {
+      throw new Error('Missing Blueprint shell.');
+    }
+    blueprint.execute({
+      artifactId: blueprint.document?.id ?? '',
+      baseStateVersion: blueprint.stateVersion,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: 'set-item-card-title',
+      kind: 'command',
+      payload: { nodeId: 'article-card-1', property: 'title', value: 'Item override' },
+      sessionGeneration: element.configuration.session.sessionGeneration,
+      type: 'studio.command/set-property',
+    });
+    await element.updateComplete;
+
+    element.requestSave('save-item');
+    expect(intents.at(-1)?.intent.draft).toHaveProperty('itemBlueprint');
+  });
+
+  it('keeps read-only resources navigable while blocking every durable authoring path', async () => {
+    const element = await mount({ readOnly: true });
+    element.setMode('model');
+    await element.updateComplete;
+    expect(
+      element.shadowRoot?.querySelector(
+        '.model-field-form :is(input,select,textarea,button):not(:disabled)',
+      ),
+    ).toBeNull();
+    expect(element.shadowRoot?.querySelector('.contextual-save-button:not(:disabled)')).toBeNull();
+
+    const newField: FieldDefinition = {
+      authoring: { control: 'studio.control/single-line-text', order: 2 },
+      cardinality: 'one',
+      id: 'summary',
+      kind: 'string',
+      label: { defaultMessage: 'Summary', key: 'studio.test/summary' },
+      localized: true,
+      required: false,
+    };
+    for (const operation of [
+      (): unknown => element.addField(newField),
+      (): unknown => element.setEntryValue(['title'], 'Blocked'),
+      (): unknown => element.requestSave('save-item'),
+    ]) {
+      try {
+        operation();
+        throw new Error('Expected a read-only command failure.');
+      } catch (error) {
+        expect(error).toMatchObject({ code: 'read-only-session' });
+      }
+    }
+
+    element.setMode('content');
+    element.setPresentation('maximized');
+    await element.updateComplete;
+    expect(element.currentMode).toBe('content');
+    expect(element.currentPresentation).toBe('maximized');
+    expect(
+      element.shadowRoot
+        ?.querySelector('[data-field-path="title"] input')
+        ?.hasAttribute('disabled'),
+    ).toBe(true);
   });
 
   it('keeps exact-coordinate mismatches visible and stable across presentation changes', async () => {

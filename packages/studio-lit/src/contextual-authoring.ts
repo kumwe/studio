@@ -129,6 +129,11 @@ interface DraftState {
 }
 
 const LOCAL_NAME = /^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/;
+const FORBIDDEN_LOCAL_NAMES: ReadonlySet<string> = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+]);
 const BUILT_IN_FIELD_KINDS = Object.freeze([
   'string',
   'rich-text',
@@ -620,6 +625,12 @@ export class KumweStudioContextualElement extends LitElement {
       !session.capabilities.saveOutcomes.includes(outcome)
     ) {
       throw new RangeError(`Studio save outcome ${outcome} is not authorized for this resource.`);
+    }
+    if (this.configuration?.session.sessionState === 'read-only') {
+      throw new StudioCommandError(
+        'read-only-session',
+        'A read-only contextual session cannot request a durable save.',
+      );
     }
     const intent: AuthoringSaveIntent = {
       contractVersion: snapshot.contractVersion,
@@ -1277,7 +1288,10 @@ export class KumweStudioContextualElement extends LitElement {
     this.#resourceDiagnostics =
       session === undefined
         ? []
-        : [...session.state.diagnostics.map((entry) => structuredClone(entry)), ...validateSession(session)];
+        : [
+            ...session.state.diagnostics.map((entry) => structuredClone(entry)),
+            ...validateSession(session),
+          ];
     if (session === undefined || configuration === undefined) {
       this.#blueprintDraft = undefined;
       this.#blueprintSessionConfiguration = undefined;
@@ -1312,8 +1326,14 @@ export class KumweStudioContextualElement extends LitElement {
       sessionGeneration: session.sessionGeneration,
       sessionState: configuration.sessionState,
     } as const;
-    this.#entryExecutor = new StudioSession({ ...options, mode: 'content' });
-    this.#modelExecutor = new StudioSession({ ...options, mode: 'model' });
+    this.#entryExecutor = new StudioSession({
+      ...options,
+      mode: configuration.sessionState === 'read-only' ? 'read-only' : 'content',
+    });
+    this.#modelExecutor = new StudioSession({
+      ...options,
+      mode: configuration.sessionState === 'read-only' ? 'read-only' : 'model',
+    });
     const modes = session.capabilities.modes;
     this.mode = modes.includes(configuration.mode) ? configuration.mode : (modes[0] ?? 'blueprint');
     const presentations = session.capabilities.presentationStates;
@@ -1370,7 +1390,12 @@ export class KumweStudioContextualElement extends LitElement {
     const id = formString(data, 'id').trim();
     const label = formString(data, 'label').trim();
     const kind = formString(data, 'kind', 'string') as ContentFieldKind;
-    if (!LOCAL_NAME.test(id) || id.length > 100 || label.length === 0) {
+    if (
+      !isLocalName(id) ||
+      label.length === 0 ||
+      label.length > 200 ||
+      !BUILT_IN_FIELD_KINDS.includes(kind as (typeof BUILT_IN_FIELD_KINDS)[number])
+    ) {
       this.#announceCommandFailure(new TypeError('Enter a valid field identifier and label.'));
       return;
     }
@@ -1386,8 +1411,8 @@ export class KumweStudioContextualElement extends LitElement {
       const values = formString(data, 'enumValues')
         .split(/\r?\n/u)
         .map((value) => value.trim())
-        .filter((value) => LOCAL_NAME.test(value));
-      if (values.length === 0) {
+        .filter((value) => isLocalName(value));
+      if (values.length === 0 || new Set(values).size !== values.length) {
         this.#announceCommandFailure(new TypeError('An enum field requires at least one choice.'));
         return;
       }
@@ -1396,10 +1421,15 @@ export class KumweStudioContextualElement extends LitElement {
         value,
       }));
     } else if (kind === 'collection') {
-      field.itemKind = formString(data, 'itemKind', 'string') as Exclude<
-        FieldDefinition['itemKind'],
-        undefined
-      >;
+      const itemKind = formString(data, 'itemKind', 'string');
+      if (
+        itemKind === 'collection' ||
+        !BUILT_IN_FIELD_KINDS.includes(itemKind as (typeof BUILT_IN_FIELD_KINDS)[number])
+      ) {
+        this.#announceCommandFailure(new TypeError('Choose a valid collection item type.'));
+        return;
+      }
+      field.itemKind = itemKind as Exclude<FieldDefinition['itemKind'], undefined>;
     } else if (kind === 'object') {
       field.fields = [];
     }
@@ -1545,6 +1575,10 @@ function formString(data: FormData, name: string, fallback = ''): string {
   return typeof value === 'string' ? value : fallback;
 }
 
+function isLocalName(value: string): boolean {
+  return value.length <= 100 && LOCAL_NAME.test(value) && !FORBIDDEN_LOCAL_NAMES.has(value);
+}
+
 function primitiveInputValue(value: JsonValue | undefined): string {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
 }
@@ -1560,7 +1594,8 @@ function saveDraft(
   if (outcome === 'save-item') {
     return {
       entry: structuredClone(snapshot.state.entry),
-      ...(snapshot.type?.authoringPolicy.itemComposition === 'overrides'
+      ...(snapshot.type?.authoringPolicy.itemComposition === 'overrides' &&
+      snapshot.state.dirty.includes('blueprint')
         ? { itemBlueprint: structuredClone(snapshot.state.blueprint) }
         : {}),
       outcome,
@@ -1671,10 +1706,7 @@ function validateSession(session: AuthoringSessionSnapshot): StudioDiagnostic[] 
         ),
       );
     }
-    if (
-      coordinates.type === undefined ||
-      !sameReference(coordinates.type, session.type)
-    ) {
+    if (coordinates.type === undefined || !sameReference(coordinates.type, session.type)) {
       diagnostics.push(
         resourceDiagnostic(
           'studio.contextual/type-coordinate-mismatch',

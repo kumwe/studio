@@ -42,11 +42,8 @@ export function defineKumweStudio(tagName = 'kumwe-studio'): void {
 }
 
 /** Register the canonical resource-bound shell and its internal Blueprint canvas. */
-export function defineKumweStudioContextual(
-  tagName = 'kumwe-studio-contextual',
-  blueprintTagName = 'kumwe-studio',
-): void {
-  defineKumweStudio(blueprintTagName);
+export function defineKumweStudioContextual(tagName = 'kumwe-studio-contextual'): void {
+  defineKumweStudio();
   if (customElements.get(tagName) === undefined) {
     customElements.define(tagName, KumweStudioContextualElement);
   }
