@@ -202,10 +202,15 @@ describe('hosted browser runtime', () => {
     });
     expect(server.saveRequests[0]?.acceptedConsequences).toEqual([CONFIRMATION_CODE]);
     expect(result.session.state.entry.revision).toBe('entry-r8');
+    expect(result.plan.successorContext).toEqual(detail.plan.successorContext);
+    expect(result.session.presentation.returnContext).toEqual(detail.plan.successorContext);
     expect(runtime.element.snapshot?.state.entry).toMatchObject({
       revision: 'entry-r8',
       values: { name: 'Hosted round trip' },
     });
+    expect(runtime.element.snapshot?.presentation.returnContext).toEqual(
+      detail.plan.successorContext,
+    );
     expect(runtime.element.dirty).toBe(false);
 
     const remove: RemoveNodeCommand = {
@@ -834,6 +839,7 @@ function createBrowserAuthoringServer(
     outcome: 'save-item',
     revision: 'save-plan-r1',
     sessionId: initial.sessionId,
+    successorContext: { key: 'returns/hosted-item-r8' },
   };
 
   const browserFetch: typeof fetch = (_input, init) => {
@@ -882,11 +888,12 @@ function createBrowserAuthoringServer(
           revision: accepted.state.entry.revision,
         };
         accepted.state.dirty = [];
+        accepted.presentation.returnContext = structuredClone(plan.successorContext);
         const result: AuthoringSaveResult = {
           contractVersion: initial.contractVersion,
           kind: 'authoring-save-result',
           outcome: 'save-item',
-          plan: { id: plan.id, revision: plan.revision },
+          plan: structuredClone(request.plan),
           session: accepted,
         };
         value = result;
@@ -942,6 +949,10 @@ function deployment(session: AuthoringSessionSnapshot): StudioHostedDeploymentCo
       targetId: session.target.id,
     },
     mount: '#hosted-studio',
+    release: {
+      corpusManifestDigest: 'sha256-HCQ5pF8NMk9nPOXfU6kVX/E8sjgJjHdyDQ86CTOjGi0=',
+      version: '0.1.0-beta.2',
+    },
     session: configuration,
     transport: {
       authentication: {

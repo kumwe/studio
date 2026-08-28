@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schemas.kumwe.org/studio/v1/studio-deployment.schema.json",
   "title": "Studio browser deployment configuration",
-  "description": "A bounded, declarative browser bootstrap for one Studio mount. An omitted transport selects local standalone authoring; an HTTP transport names exact host routes but never grants server authority.",
+  "description": "A bounded, declarative browser bootstrap for one Studio mount, bound to the exact prebuilt browser release that consumes it. An omitted transport selects local standalone authoring; an HTTP transport names exact host routes but never grants server authority.",
   "$ref": "#/$defs/configuration",
   "$defs": {
     "mountSelector": {
@@ -265,11 +265,14 @@
     "configuration": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["kind", "mount", "release"],
       "properties": {
         "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
         "kind": { "const": "studio-deployment" },
         "instanceId": { "$ref": "common.schema.json#/$defs/stableId" },
         "mount": { "$ref": "#/$defs/mountSelector" },
+        "release": { "$ref": "studio-browser-assets.schema.json#/$defs/release" },
+        "locale": { "$ref": "common.schema.json#/$defs/locale" },
         "launch": { "$ref": "#/$defs/launch" },
         "session": { "$ref": "studio-config.schema.json" },
         "contributions": { "$ref": "#/$defs/contributionBundle" },
@@ -295,6 +298,7 @@
             "propertyNames": {},
             "properties": {
               "launch": {},
+              "locale": false,
               "session": {}
             },
             "required": ["launch", "session"]

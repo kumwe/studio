@@ -30,7 +30,7 @@ export const GENERATED_TYPESCRIPT_MODEL_METADATA: GeneratedTypeScriptModelMetada
   }),
   schemaCount: 55,
   schemaEpoch: 'https://schemas.kumwe.org/studio/v1/',
-  schemaManifestDigest: 'sha256-+gWHkLQRl+dc8zTrelE/L3CRfodxige0UQZyz5cPurc=',
+  schemaManifestDigest: 'sha256-zkKU3uaMsVS+D3lxGu23Ih135EIuMjcAKe0ftjRhndM=',
   supportedWireProtocolRange: '0.1.0-draft.2',
 });
 
@@ -73,6 +73,11 @@ export type GeneratedAuthoringHttpVector = {
     GeneratedAuthoringHttpVectorSecurityCase,
     GeneratedAuthoringHttpVectorSecurityCase,
     ...GeneratedAuthoringHttpVectorSecurityCase[],
+  ];
+  successorContextCases: [
+    GeneratedAuthoringHttpVectorSuccessorContextCase,
+    GeneratedAuthoringHttpVectorSuccessorContextCase,
+    ...GeneratedAuthoringHttpVectorSuccessorContextCase[],
   ];
 };
 
@@ -138,6 +143,16 @@ export type GeneratedAuthoringHttpVectorSecurityCase = {
     | 'host-rate-limited'
     | 'host-internal-failure';
   requestIntegrity: boolean;
+};
+
+export type GeneratedAuthoringHttpVectorSuccessorContextCase = {
+  beforeContext: GeneratedCommonReturnContext;
+  expect:
+    | { acceptedContext: GeneratedCommonReturnContext; outcome: 'accepted' }
+    | { code: 'studio.host/unexpected-authoring-save-result'; outcome: 'rejected' };
+  id: GeneratedCommonLocalName;
+  planReference: GeneratedAuthoringSavePlanReference;
+  resultContext: GeneratedCommonReturnContext;
 };
 
 /** Studio contextual authoring HTTP exchange */
@@ -482,9 +497,11 @@ export type GeneratedAuthoringSaveAcceptedConsequences = GeneratedCommonQualifie
 export type GeneratedAuthoringSaveArtifactKind =
   'model' | 'blueprint' | 'entry' | 'reusable-content-type';
 
+/** The exact reviewed plan identity and host-minted return context adopted only after that plan is accepted. */
 export type GeneratedAuthoringSavePlanReference = {
   id: GeneratedCommonStableId;
   revision: GeneratedCommonRevision;
+  successorContext: GeneratedCommonReturnContext;
 };
 
 export type GeneratedAuthoringSaveSaveAsNewTypeDraft = {
@@ -544,6 +561,7 @@ export type GeneratedAuthoringSaveSaveNewTypeVersionRequest = {
   plan: GeneratedAuthoringSavePlanReference;
 };
 
+/** A host-reviewed save transaction whose successorContext binds post-acceptance return navigation without granting authority. */
 export type GeneratedAuthoringSaveSavePlan = {
   affectedArtifacts: [GeneratedAuthoringSaveArtifactKind, ...GeneratedAuthoringSaveArtifactKind[]];
   confirmationRequired: boolean;
@@ -555,6 +573,7 @@ export type GeneratedAuthoringSaveSavePlan = {
   outcome: GeneratedAuthoringTargetSaveOutcome;
   revision: GeneratedCommonRevision;
   sessionId: GeneratedCommonStableId;
+  successorContext: GeneratedCommonReturnContext;
 };
 
 export type GeneratedAuthoringSaveSaveResult = {
@@ -2810,6 +2829,7 @@ export type GeneratedSchemaProfileTypeName =
 /** Studio prebuilt browser asset manifest */
 export type GeneratedStudioBrowserAssets = {
   assets: [GeneratedStudioBrowserAssetsAsset, ...GeneratedStudioBrowserAssetsAsset[]];
+  contentSecurityPolicy: GeneratedStudioBrowserAssetsContentSecurityPolicy;
   kind: 'studio-browser-assets';
   module: {
     entryPoint: GeneratedStudioBrowserAssetsPath;
@@ -2838,7 +2858,7 @@ export type GeneratedStudioBrowserAssets = {
     requires: string[];
     servingModel: 'static-files';
   };
-  release: { corpusManifestDigest: string; version: string };
+  release: GeneratedStudioBrowserAssetsRelease;
   schemaVersion: 1;
 };
 
@@ -2850,7 +2870,22 @@ export type GeneratedStudioBrowserAssetsAsset = {
   role: 'browser-module' | 'license' | 'notice' | 'release-record' | 'documentation' | 'schema';
 };
 
+export type GeneratedStudioBrowserAssetsContentSecurityPolicy = {
+  headerTemplate: "default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types lit-html; style-src 'self' 'nonce-{{STYLE_NONCE}}'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'none'; frame-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'";
+  inertConfigurationScript: {
+    element: 'script';
+    mediaType: 'application/json';
+    requiresHash: false;
+    requiresNonce: false;
+  };
+  profile: 'same-origin-http';
+  styleNonce: { minimumEntropyBits: 128; placeholder: '{{STYLE_NONCE}}'; scope: 'response' };
+};
+
 export type GeneratedStudioBrowserAssetsPath = string;
+
+/** The exact coordinated Studio release identity copied into every deployment configuration served with this asset generation. */
+export type GeneratedStudioBrowserAssetsRelease = { corpusManifestDigest: string; version: string };
 
 /** Studio canonical chart */
 export type GeneratedStudioChart = {
@@ -2955,9 +2990,11 @@ export type GeneratedStudioDeploymentConfiguration = {
   contractVersion?: GeneratedCommonContractVersion;
   contributions?: GeneratedStudioDeploymentContributionBundle;
   instanceId?: GeneratedCommonStableId;
-  kind?: 'studio-deployment';
+  kind: 'studio-deployment';
   launch?: GeneratedStudioDeploymentLaunch;
-  mount?: GeneratedStudioDeploymentMountSelector;
+  locale?: GeneratedCommonLocale;
+  mount: GeneratedStudioDeploymentMountSelector;
+  release: GeneratedStudioBrowserAssetsRelease;
   session?: GeneratedStudioConfig;
   transport?: GeneratedStudioDeploymentTransport;
 };

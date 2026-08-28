@@ -5,6 +5,7 @@ import {
   STUDIO_CONTRACT_VERSION,
   type StudioDeploymentConfiguration,
   type StudioHostedDeploymentConfiguration,
+  type StudioStandaloneDeploymentConfiguration,
 } from '@kumwe/studio-protocol';
 import {
   autoMountStudio,
@@ -15,12 +16,22 @@ import {
   type StudioDeploymentRuntimeResolver,
 } from '../src/index.js';
 
-const hostedDeploymentFixture = JSON.parse(
-  await readFile(
-    join(process.cwd(), 'schemas/examples/studio-deployment.hosted.example.json'),
-    'utf8',
-  ),
-) as StudioHostedDeploymentConfiguration;
+const releaseRecord = JSON.parse(
+  await readFile(join(process.cwd(), 'studio-release.json'), 'utf8'),
+) as { corpusManifestDigest: string; release: string };
+const browserRelease = Object.freeze({
+  corpusManifestDigest: releaseRecord.corpusManifestDigest,
+  version: releaseRecord.release,
+});
+const hostedDeploymentFixture = {
+  ...(JSON.parse(
+    await readFile(
+      join(process.cwd(), 'schemas/examples/studio-deployment.hosted.example.json'),
+      'utf8',
+    ),
+  ) as StudioHostedDeploymentConfiguration),
+  release: browserRelease,
+};
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -94,8 +105,31 @@ describe('Studio browser mounting', () => {
     const handle = await mountStudio(mountTarget, { hosted, runtimeResolver: resolver });
 
     expect(resolver).toHaveBeenCalledOnce();
-    expect(resolver.mock.calls[0]?.[1]).toEqual({});
+    expect(resolver.mock.calls[0]?.[1]).toBeUndefined();
     expect(resolver.mock.calls[0]?.[2]).toBe(hosted);
+    await handle.dispose();
+  });
+
+  it('carries a bounded standalone locale without admitting hosted session configuration', async () => {
+    const mountTarget = target('localized-standalone');
+    const configuration = {
+      ...deployment('localized-instance', '#localized-standalone'),
+      locale: 'ar-EG',
+    } satisfies StudioDeploymentConfiguration;
+
+    const handle = await mountStudio(mountTarget, configuration);
+    const runtime = handle.element as KumweStudioStandaloneElement;
+    await runtime.updateComplete;
+
+    expect(runtime.lang).toBe('ar-EG');
+    expect(runtime.dir).toBe('rtl');
+    expect(runtime.contextualElement?.configuration?.session.locale).toEqual({
+      direction: 'rtl',
+      fallbacks: ['en'],
+      requested: 'ar-EG',
+      resolved: 'ar-EG',
+      timeZone: 'UTC',
+    });
     await handle.dispose();
   });
 
@@ -270,6 +304,36 @@ describe('Studio browser mounting', () => {
     await handle.dispose();
   });
 
+  it('rejects stale release or corpus identity before selector resolution or runtime work', async () => {
+    const mountTarget = target('release-bound');
+    const resolver = vi.fn(testResolver());
+    for (const release of [
+      { ...browserRelease, version: '0.1.0-beta.999' },
+      {
+        ...browserRelease,
+        corpusManifestDigest: 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+      },
+    ]) {
+      await expect(
+        mountStudio(
+          mountTarget,
+          { ...deployment('stale-release', '#release-bound'), release },
+          { runtimeResolver: resolver },
+        ),
+      ).rejects.toThrow(/does not match the loaded Studio browser asset manifest/u);
+    }
+    expect(resolver).not.toHaveBeenCalled();
+    expect(mountTarget.children).toHaveLength(0);
+
+    const script = configurationScript('stale-release-config', {
+      ...deployment('stale-release-script', '#release-bound'),
+      release: { ...browserRelease, version: '0.1.0-beta.999' },
+    });
+    expect(() => parseStudioDeploymentConfiguration(script)).toThrow(
+      /does not match the loaded Studio browser asset manifest/u,
+    );
+  });
+
   it('rejects executable, external, malformed, duplicate, oversized, deep, and ambiguous configuration', async () => {
     target('invalid');
 
@@ -391,10 +455,8 @@ describe('Studio browser mounting', () => {
     second.dataset.kumweStudio = 'auto-second-config';
     configurationScript('auto-first-config', deployment('auto-instance-first', '#auto-first'));
     configurationScript('auto-second-config', {
-      contractVersion: STUDIO_CONTRACT_VERSION,
-      instanceId: 'auto-instance-second',
-      kind: 'studio-deployment',
-    } satisfies StudioDeploymentConfiguration);
+      ...deployment('auto-instance-second', '#auto-second'),
+    });
     const resolver = testResolver();
 
     expect(first.children).toHaveLength(0);
@@ -452,7 +514,7 @@ describe('Studio browser mounting', () => {
     const second = target('shared-config-second');
     first.dataset.kumweStudio = 'shared-config';
     second.dataset.kumweStudio = 'shared-config';
-    configurationScript('shared-config', {} satisfies StudioDeploymentConfiguration);
+    configurationScript('shared-config', {});
     const resolver = vi.fn(testResolver());
 
     const report = await autoMountStudio({ runtimeResolver: resolver });
@@ -532,7 +594,7 @@ describe('Studio browser mounting', () => {
       deployment('runtime-instance-later', '#runtime-later'),
     );
     const resolver = vi.fn<StudioDeploymentRuntimeResolver>((targetElement, configuration) => {
-      if (configuration.instanceId === 'runtime-instance-refused') {
+      if (configuration?.instanceId === 'runtime-instance-refused') {
         return Promise.reject(
           Object.assign(new Error('Host refused Studio with HTTP 403.'), {
             status: 403,
@@ -569,12 +631,13 @@ describe('Studio browser mounting', () => {
   });
 });
 
-function deployment(instanceId: string, mount: string): StudioDeploymentConfiguration {
+function deployment(instanceId: string, mount: string): StudioStandaloneDeploymentConfiguration {
   return {
     contractVersion: STUDIO_CONTRACT_VERSION,
     instanceId,
     kind: 'studio-deployment',
     mount,
+    release: browserRelease,
   };
 }
 
@@ -602,11 +665,11 @@ function configurationScript(
 function testResolver(disposed: string[] = []): StudioDeploymentRuntimeResolver {
   return (targetElement, configuration) => {
     const element = document.createElement('section');
-    element.dataset.instanceId = configuration.instanceId ?? configuration.mount ?? 'local';
+    element.dataset.instanceId = configuration?.instanceId ?? configuration?.mount ?? 'local';
     targetElement.append(element);
     return {
       dispose: () => {
-        disposed.push(configuration.instanceId ?? configuration.mount ?? 'local');
+        disposed.push(configuration?.instanceId ?? configuration?.mount ?? 'local');
         element.remove();
       },
       element,

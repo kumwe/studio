@@ -605,6 +605,11 @@ function deployment(): StudioHostedDeploymentConfiguration {
       start: { kind: 'existing' },
       targetId: snapshot.target.id,
     },
+    mount: '#services-test',
+    release: {
+      corpusManifestDigest: 'sha256-HCQ5pF8NMk9nPOXfU6kVX/E8sjgJjHdyDQ86CTOjGi0=',
+      version: '0.1.0-beta.2',
+    },
     session: configuration,
     transport: {
       authentication: {

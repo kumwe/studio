@@ -17,6 +17,24 @@ if (target !== null) {
 }
 ```
 
+To request a local interface locale, emit or pass a complete standalone deployment. Its required `release` is
+the exact object copied from the verified `studio-assets.json`, and its required selector still identifies the
+same target:
+
+```ts
+await mountStudio(target, {
+  kind: 'studio-deployment',
+  locale: 'rw',
+  mount: '#studio',
+  release: verifiedStudioAssetManifest.release,
+});
+```
+
+`locale` is bounded to the canonical BCP 47-style form and defaults to `en`. Standalone resolves direction
+deterministically and retains English as its built-in fallback. A top-level locale is forbidden for hosted
+deployments, whose complete locale context comes only from `session.locale`. Configless mounting means no
+configuration document; `{}` is not a valid deployment.
+
 An external browser module may instead call `autoMountStudio()` for explicitly opted-in
 `<div data-kumwe-studio></div>` elements. Each canonical mount creates an isolated blank page with the full
 contextual Model, Blueprint, and Entry surfaces. State is kept only by that mounted element. Reloading or

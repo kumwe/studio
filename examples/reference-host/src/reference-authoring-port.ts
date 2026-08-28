@@ -303,17 +303,25 @@ export class ReferenceAuthoringPort implements AuthoringPort {
     assertCoordinates(intent.expected, session.state.coordinates);
     assertDraftMatchesOutcome(intent);
     const consequences = saveConsequences(intent.draft.outcome);
+    const planSerial = this.#nextSerial();
     const plan: AuthoringSavePlan = {
       affectedArtifacts: affectedArtifacts(intent),
       confirmationRequired: consequences.length > 0,
       consequences,
       contractVersion: STUDIO_CONTRACT_VERSION,
       expected: structuredClone(intent.expected),
-      id: `reference-save-plan-${this.#nextSerial()}`,
+      id: `reference-save-plan-${planSerial}`,
       kind: 'authoring-save-plan',
       outcome: intent.draft.outcome,
       revision: 'plan-r1',
       sessionId: intent.sessionId,
+      successorContext: {
+        key: `returns/reference-content-list/${intent.draft.outcome}-${planSerial}`,
+        label: {
+          defaultMessage: 'Reference content',
+          key: 'studio.reference/content-list',
+        },
+      },
     };
     this.#plans.set(plan.id, { intent: structuredClone(intent), plan: structuredClone(plan) });
     return result(plan, plan.revision);
@@ -443,6 +451,12 @@ export class ReferenceAuthoringPort implements AuthoringPort {
     const stored = this.#plans.get(request.plan.id);
     if (
       stored?.plan.revision !== request.plan.revision ||
+      canonical(request.plan) !==
+        canonical({
+          id: stored.plan.id,
+          revision: stored.plan.revision,
+          successorContext: stored.plan.successorContext,
+        }) ||
       stored.plan.outcome !== outcome ||
       stored.intent.draft.outcome !== outcome ||
       canonical(stored.intent.draft) !== canonical(request.draft)
@@ -454,6 +468,7 @@ export class ReferenceAuthoringPort implements AuthoringPort {
     assertCoordinates(stored.plan.expected, session.state.coordinates);
     assertAcceptedConsequences(request.acceptedConsequences, stored.plan);
     apply(session);
+    session.presentation.returnContext = structuredClone(stored.plan.successorContext);
     session.state.dirty = [];
     session.state.diagnostics = [];
     this.#sessions.set(session.sessionId, structuredClone(session));

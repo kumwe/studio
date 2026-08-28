@@ -56,8 +56,10 @@ authorize, version, or publish it. See the [standalone local integration guide](
 
 `mountStudio(target)` opens blank standalone Studio in an ordinary element or exact selector. Pass a canonical
 `StudioDeploymentConfiguration` as the second argument to add declared launch/transport behavior; if that
-configuration also carries `mount`, it must resolve to the same target. The configuration-only overload uses
-its `mount` selector. Every call returns an isolated handle whose idempotent `dispose()` removes only its own
+configuration is present, its required `mount` must resolve to the same target. Every emitted configuration also
+requires `kind: "studio-deployment"` and the exact `{version, corpusManifestDigest}` copied from the verified
+browser asset manifest; the module rejects a cross-release pairing before mounting. The configuration-only
+overload uses its `mount` selector. Every call returns an isolated handle whose idempotent `dispose()` removes only its own
 runtime.
 
 For server-rendered HTML, an empty `<div data-kumwe-studio></div>` is an explicitly opted-in local mount. A
@@ -65,6 +67,10 @@ non-empty value names one inert `<script type="application/json" id="…">` conf
 that target. Every non-empty configuration ID must be unique in the discovery scope and referenced by exactly
 one target. `autoMountStudio()` performs the scan only when called; package import has no DOM side effect.
 `mountStudioFromConfigElement()` handles a single script whose configuration supplies `mount`.
+
+Configless local mounting means no configuration document, not an empty JSON object. A complete standalone
+document may include a bounded top-level `locale`; hosted documents forbid it because hosted locale is carried
+only by `session.locale`.
 
 The bounded strict JSON parser rejects duplicate members before native parsing, never uses string-to-code
 compilation, and rejects executable/external script elements, invalid canonical configuration, more than

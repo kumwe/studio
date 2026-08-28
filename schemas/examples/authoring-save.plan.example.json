@@ -3,6 +3,13 @@
   "kind": "authoring-save-plan",
   "id": "save-plans/product-page-v2",
   "revision": "save-plan-r1",
+  "successorContext": {
+    "key": "returns/product-trail-backpack-r8",
+    "label": {
+      "key": "studio.example/return-to-product",
+      "defaultMessage": "Return to accepted product"
+    }
+  },
   "sessionId": "sessions/product-trail-backpack",
   "outcome": "save-new-type-version",
   "expected": {

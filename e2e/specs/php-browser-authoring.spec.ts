@@ -7,6 +7,7 @@ interface HostedObservation {
   entryRevision: string;
   entryValues: Record<string, unknown>;
   resourceContextKey: string;
+  returnContextKey: string;
   sessionGeneration: string;
   sessionId: string;
 }
@@ -46,6 +47,8 @@ interface QualificationAudit {
   security: {
     cookieAuthenticated: boolean;
     csrfMatched: boolean;
+    fetchDestination: string | null;
+    fetchMode: string | null;
     mount: string;
     originMatched: boolean;
     resourceRoutePrefix: string;
@@ -282,8 +285,39 @@ test('compiled Studio completes isolated authoritative round trips through real 
   const acceptedHeaders = {
     'Content-Type': 'application/json',
     Origin: phpOrigin,
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
     'Sec-Fetch-Site': 'same-origin',
   };
+  const browserModeRefusal = await page.evaluate(
+    async ({ body, csrfHeaderName, csrfToken, origin }) => {
+      const modeResponse = await fetch(`${origin}/studio/alpha/ports/authoring/resolve-target`, {
+        body,
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          [csrfHeaderName]: csrfToken,
+        },
+        method: 'POST',
+        mode: 'same-origin',
+      });
+      const responseBody: unknown = await modeResponse.json();
+      return { body: responseBody, status: modeResponse.status };
+    },
+    {
+      body: alphaResolveRequestBody,
+      csrfHeaderName: alphaConfiguration.csrfHeaderName,
+      csrfToken: alphaConfiguration.csrfToken,
+      origin: phpOrigin,
+    },
+  );
+  expect(browserModeRefusal.status).toBe(403);
+  expect(browserModeRefusal.body).toMatchObject({
+    category: 'forbidden',
+    kind: 'host-error',
+    message: { key: 'studio.php/http-request-integrity-failed' },
+    retryable: false,
+  });
   const unauthenticatedResponse = await isolatedRequest.post(
     `${phpOrigin}/studio/alpha/ports/authoring/resolve-target`,
     {
@@ -317,11 +351,45 @@ test('compiled Studio completes isolated authoritative round trips through real 
       },
     },
     {
-      label: 'wrong Fetch Metadata',
+      label: 'wrong Fetch Site',
       headers: {
         ...acceptedHeaders,
         [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
         'Sec-Fetch-Site': 'cross-site',
+      },
+    },
+    {
+      label: 'wrong Fetch Mode',
+      headers: {
+        ...acceptedHeaders,
+        [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
+        'Sec-Fetch-Mode': 'navigate',
+      },
+    },
+    {
+      label: 'wrong Fetch Destination',
+      headers: {
+        ...acceptedHeaders,
+        [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
+        'Sec-Fetch-Dest': 'document',
+      },
+    },
+    {
+      label: 'partial Fetch Metadata',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: phpOrigin,
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
+      },
+    },
+    {
+      label: 'missing Fetch Metadata',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: phpOrigin,
+        [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
       },
     },
   ];
@@ -360,6 +428,7 @@ test('compiled Studio completes isolated authoritative round trips through real 
   expect(await observe(alpha)).toMatchObject({
     dirty: { blueprint: false, entry: false, model: false },
     entryValues: { name: 'Alpha accepted by PHP' },
+    returnContextKey: 'returns/php-e2e-alpha/accepted-entry',
   });
   expect(await observe(beta)).toMatchObject({
     entryRevision: 'entry-beta-r7',
@@ -417,6 +486,8 @@ test('compiled Studio completes isolated authoritative round trips through real 
     (entry) =>
       entry.cookieAuthenticated &&
       entry.csrfMatched &&
+      entry.fetchDestination === 'empty' &&
+      entry.fetchMode === 'cors' &&
       entry.originMatched &&
       entry.sameOriginFetch,
   );
@@ -496,6 +567,7 @@ async function observe(studio: Locator): Promise<HostedObservation> {
     const contextual = element as HTMLElement & {
       dirtyState: { blueprint: boolean; entry: boolean; model: boolean };
       snapshot?: {
+        presentation: { returnContext: { key: string } };
         resourceContext: { key: string };
         sessionGeneration: string;
         sessionId: string;
@@ -511,6 +583,7 @@ async function observe(studio: Locator): Promise<HostedObservation> {
       entryRevision: snapshot.state.entry.revision,
       entryValues: structuredClone(snapshot.state.entry.values),
       resourceContextKey: snapshot.resourceContext.key,
+      returnContextKey: snapshot.presentation.returnContext.key,
       sessionGeneration: snapshot.sessionGeneration,
       sessionId: snapshot.sessionId,
     };

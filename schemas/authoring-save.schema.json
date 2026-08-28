@@ -71,15 +71,21 @@
       }
     },
     "planReference": {
+      "description": "The exact reviewed plan identity and host-minted return context adopted only after that plan is accepted.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "revision"],
+      "required": ["id", "revision", "successorContext"],
       "properties": {
         "id": { "$ref": "common.schema.json#/$defs/stableId" },
-        "revision": { "$ref": "common.schema.json#/$defs/revision" }
+        "revision": { "$ref": "common.schema.json#/$defs/revision" },
+        "successorContext": {
+          "description": "The exact host return context that the accepted result session must carry.",
+          "$ref": "common.schema.json#/$defs/returnContext"
+        }
       }
     },
     "savePlan": {
+      "description": "A host-reviewed save transaction whose successorContext binds post-acceptance return navigation without granting authority.",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -87,6 +93,7 @@
         "kind",
         "id",
         "revision",
+        "successorContext",
         "sessionId",
         "outcome",
         "expected",
@@ -99,6 +106,10 @@
         "kind": { "const": "authoring-save-plan" },
         "id": { "$ref": "common.schema.json#/$defs/stableId" },
         "revision": { "$ref": "common.schema.json#/$defs/revision" },
+        "successorContext": {
+          "description": "The exact host return context copied into the request/result planReference and adopted after acceptance.",
+          "$ref": "common.schema.json#/$defs/returnContext"
+        },
         "sessionId": { "$ref": "common.schema.json#/$defs/stableId" },
         "outcome": { "$ref": "authoring-target.schema.json#/$defs/saveOutcome" },
         "expected": {

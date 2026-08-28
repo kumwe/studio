@@ -37,6 +37,9 @@ final class QualificationBoundarySchemaValidator implements SchemaValidator
             return $value instanceof stdClass
                 && ($value->kind ?? null) === 'studio-deployment'
                 && is_string($value->mount ?? null)
+                && ($value->release ?? null) instanceof stdClass
+                && is_string($value->release->version ?? null)
+                && is_string($value->release->corpusManifestDigest ?? null)
                 && ($value->launch ?? null) instanceof stdClass
                 && ($value->session ?? null) instanceof stdClass
                 && ($value->transport ?? null) instanceof stdClass
@@ -131,7 +134,7 @@ final class QualificationState
         }
     }
 
-    public static function deployment(string $mount): stdClass
+    public static function deployment(string $mount, stdClass $browserRelease): stdClass
     {
         $state = self::mountState($mount);
         $snapshot = self::cloneObject($state['session']);
@@ -158,6 +161,7 @@ final class QualificationState
             'kind' => 'studio-deployment',
             'instanceId' => 'php-e2e-' . $mount,
             'mount' => '#studio-' . $mount,
+            'release' => self::cloneObject($browserRelease),
             'launch' => (object) [
                 'targetId' => $snapshot->target->id,
                 'intent' => 'edit',
@@ -322,6 +326,8 @@ final class QualificationState
             'csrfMatched' => is_string($suppliedToken) && hash_equals($expectedToken, $suppliedToken),
             'originMatched' => self::singleHeader($input->headers, 'Origin') === QualificationServer::ORIGIN,
             'sameOriginFetch' => self::singleHeader($input->headers, 'Sec-Fetch-Site') === 'same-origin',
+            'fetchDestination' => self::singleHeader($input->headers, 'Sec-Fetch-Dest'),
+            'fetchMode' => self::singleHeader($input->headers, 'Sec-Fetch-Mode'),
         ];
     }
 
@@ -670,6 +676,9 @@ final class QualificationApplication implements AuthoringApplicationService
             'kind' => 'authoring-save-plan',
             'id' => 'save-plans/php-e2e-' . $this->mount,
             'revision' => 'save-plan-' . $this->mount . '-r1',
+            'successorContext' => (object) [
+                'key' => 'returns/php-e2e-' . $this->mount . '/accepted-entry',
+            ],
             'sessionId' => $session->sessionId,
             'outcome' => 'save-item',
             'expected' => QualificationState::session($this->mount)->state->coordinates,
@@ -697,9 +706,14 @@ final class QualificationApplication implements AuthoringApplicationService
         $stored = QualificationState::plan($this->mount);
         $session = QualificationState::session($this->mount);
         $plan = $stored['plan'];
+        $planReference = (object) [
+            'id' => $plan->id,
+            'revision' => $plan->revision,
+            'successorContext' => $plan->successorContext,
+        ];
         if (
             ($request->kind ?? null) !== 'authoring-save-item-request'
-            || ($request->plan ?? null) != (object) ['id' => $plan->id, 'revision' => $plan->revision]
+            || ($request->plan ?? null) != $planReference
             || ($request->acceptedConsequences ?? null) !== [self::confirmationCode()]
             || ($request->draft->outcome ?? null) !== 'save-item'
             || ($request->draft->entry->id ?? null) !== $session->state->entry->id
@@ -723,13 +737,14 @@ final class QualificationApplication implements AuthoringApplicationService
             'revision' => $acceptedEntry->revision,
         ];
         $session->state->dirty = [];
+        $session->presentation->returnContext = $plan->successorContext;
         QualificationState::replaceSession($this->mount, $session);
 
         return (object) [
             'contractVersion' => $session->contractVersion,
             'kind' => 'authoring-save-result',
             'outcome' => 'save-item',
-            'plan' => (object) ['id' => $plan->id, 'revision' => $plan->revision],
+            'plan' => $planReference,
             'session' => $session,
         ];
     }

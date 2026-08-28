@@ -92,12 +92,21 @@ Model, Blueprint, and Entry coordinates. The mutating requests carry a plan iden
 codes, and an idempotency key in the envelope. Their registry entries deliberately do not use the envelope's
 single `expectedRevision`: the operation payload protects all coordinated revisions instead.
 
+Every `savePlan` also carries a required `successorContext`: the bounded, non-secret return context the host
+will adopt if and only if that exact plan commits. Each mutating request MUST copy `id`, `revision`, and
+`successorContext` unchanged into its `planReference`; the accepted `saveResult.plan` MUST echo that complete
+reference, and `saveResult.session.presentation.returnContext` MUST equal the same `successorContext` exactly.
+Studio preserves the current local presentation mode while adopting that host-returned context. Cancellation,
+refusal, conflict, malformed output, or a returned context that differs from the plan MUST leave the prior
+return context active; a client MUST NOT infer or synthesize a successor.
+
 A host MUST NOT approximate these operations with undocumented sequential saves or claim them through the
 legacy Blueprint handle (`STUDIO-PROD-014`).
 
 Presentation changes between inline, minimized, maximized, and fullscreen do not grant authority and MUST NOT
 change the resource context or artifact revisions (`STUDIO-PROD-007`). The host retains the deterministic
-return context and blocks navigation that would silently discard or misattribute dirty state.
+return context and blocks navigation that would silently discard or misattribute dirty state. An accepted save
+may advance that opaque pointer only through the planned `successorContext` binding above.
 
 Choosing the browser Return control emits `studio-contextual-return-request`. Its event detail contains exactly
 `{ returnContext }`, cloned from the resolved target/session; it contains no URL, callback, draft, actor, or

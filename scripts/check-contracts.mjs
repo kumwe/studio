@@ -1291,6 +1291,31 @@ for (const authoringHttpVectorFile of authoringHttpVectorFiles) {
     expectedHostErrorCategories,
     vector.errorMappings.map((entry) => entry.category),
   );
+  assertExactSet(
+    `${authoringHttpVectorFile} successor-context cases`,
+    ['accepted-advance', 'mismatched-result'],
+    vector.successorContextCases.map((entry) => entry.id),
+  );
+  for (const contextCase of vector.successorContextCases) {
+    const before = canonicalJson(contextCase.beforeContext);
+    const planned = canonicalJson(contextCase.planReference.successorContext);
+    const returned = canonicalJson(contextCase.resultContext);
+    if (contextCase.expect.outcome === 'accepted') {
+      if (
+        before === planned ||
+        returned !== planned ||
+        canonicalJson(contextCase.expect.acceptedContext) !== planned
+      ) {
+        throw new Error(
+          `${authoringHttpVectorFile} accepted successor-context case does not advance to the exact planned host context.`,
+        );
+      }
+    } else if (returned === planned) {
+      throw new Error(
+        `${authoringHttpVectorFile} mismatched successor-context case does not exercise a mismatch.`,
+      );
+    }
+  }
 }
 const validateHostVector = getCanonicalValidator('host-vector.schema.json');
 const hostVectorIdentifiers = new Set();

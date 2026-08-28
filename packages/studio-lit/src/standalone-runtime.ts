@@ -51,6 +51,20 @@ const LOCAL_THEME = {
 } as const;
 const MAXIMUM_PROJECT_BYTES = 16 * 1_024 * 1_024;
 const MAXIMUM_PROJECT_DEPTH = 64;
+const STANDALONE_LOCALE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/u;
+const RIGHT_TO_LEFT_LANGUAGES = new Set([
+  'ar',
+  'ckb',
+  'dv',
+  'fa',
+  'he',
+  'ks',
+  'ps',
+  'sd',
+  'ug',
+  'ur',
+  'yi',
+]);
 const LOCAL_STUDIO_LIMITS: Readonly<StudioLimits> = Object.freeze({
   maxChildrenPerSlot: 1_000,
   maxCommandBatch: 100,
@@ -86,6 +100,8 @@ export interface StudioStandaloneRuntimeOptions {
   download?: StudioStandaloneDownloadHandler;
   /** Optional localized shell text. */
   messages?: StudioMessageOverrides;
+  /** Requested bounded BCP 47-style locale. Defaults to `en`. */
+  locale?: string;
 }
 
 export interface StudioStandaloneRuntimeHandle {
@@ -340,6 +356,7 @@ export class KumweStudioStandaloneElement extends LitElement {
 
   #configuration: ExperimentalShellConfiguration;
   #definitions: BlockDefinition[];
+  #locale: string;
   #patterns: PatternDocument[];
   #project: AuthoringSessionSnapshot;
   #sequence = 0;
@@ -347,9 +364,10 @@ export class KumweStudioStandaloneElement extends LitElement {
   public constructor() {
     super();
     this.#definitions = createCoreProductionBlockDefinitions();
+    this.#locale = 'en';
     this.#patterns = createCoreProductionPatterns();
     this.#project = createStudioStandaloneProject();
-    this.#configuration = standaloneConfiguration(this.#project, this.#definitions);
+    this.#configuration = standaloneConfiguration(this.#project, this.#definitions, this.#locale);
     this.announcement = '';
     this.downloadHandler = defaultDownload;
     this.saveOutcome = 'save-as-new-type';
@@ -367,11 +385,21 @@ export class KumweStudioStandaloneElement extends LitElement {
     return structuredClone(this.contextualElement?.snapshot ?? this.#project);
   }
 
+  /** Apply the local UI locale without introducing a hosted session or authority input. */
+  public setLocale(locale: string): void {
+    assertStandaloneLocale(locale);
+    this.#locale = locale;
+    this.#configuration = standaloneConfiguration(this.#project, this.#definitions, locale);
+    this.lang = locale;
+    this.dir = standaloneDirection(locale);
+    this.requestUpdate();
+  }
+
   /** Replace the current in-memory project after complete canonical validation. */
   public importProjectJson(input: unknown): void {
     const project = parseStudioStandaloneProject(input);
     this.#project = project;
-    this.#configuration = standaloneConfiguration(project, this.#definitions);
+    this.#configuration = standaloneConfiguration(project, this.#definitions, this.#locale);
     if (!project.capabilities.saveOutcomes.includes(this.saveOutcome)) {
       this.saveOutcome = project.capabilities.saveOutcomes[0] ?? 'save-as-new-type';
     }
@@ -629,6 +657,7 @@ export function createStudioStandaloneRuntime(
   if (!(element instanceof KumweStudioStandaloneElement)) {
     throw new TypeError('The registered standalone Studio element has an incompatible class.');
   }
+  element.setLocale(options.locale ?? 'en');
   if (options.download !== undefined) element.downloadHandler = options.download;
   if (options.messages !== undefined) element.messages = options.messages;
   if (options.initialProject !== undefined) element.importProjectJson(options.initialProject);
@@ -656,6 +685,7 @@ export function mountStudioStandalone(
 function standaloneConfiguration(
   project: AuthoringSessionSnapshot,
   definitions: readonly BlockDefinition[],
+  locale: string,
 ): ExperimentalShellConfiguration {
   return {
     blockDefinitions: definitions.map((definition) => structuredClone(definition)),
@@ -697,10 +727,10 @@ function standaloneConfiguration(
       },
       limits: structuredClone(LOCAL_STUDIO_LIMITS),
       locale: {
-        direction: 'ltr',
-        fallbacks: [],
-        requested: 'en',
-        resolved: 'en',
+        direction: standaloneDirection(locale),
+        fallbacks: locale.toLowerCase() === 'en' ? [] : ['en'],
+        requested: locale,
+        resolved: locale,
         timeZone: 'UTC',
       },
       mode: 'blueprint',
@@ -718,6 +748,16 @@ function standaloneConfiguration(
       sessionState: 'editable',
     },
   };
+}
+
+function assertStandaloneLocale(locale: string): void {
+  if (locale.length > 50 || !STANDALONE_LOCALE_PATTERN.test(locale)) {
+    throw new TypeError('Standalone Studio locale must be a bounded BCP 47-style language tag.');
+  }
+}
+
+function standaloneDirection(locale: string): 'ltr' | 'rtl' {
+  return RIGHT_TO_LEFT_LANGUAGES.has(locale.split('-', 1)[0]?.toLowerCase() ?? '') ? 'rtl' : 'ltr';
 }
 
 function normalizeProjectInput(input: unknown): unknown {

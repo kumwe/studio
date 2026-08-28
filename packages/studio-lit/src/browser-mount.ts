@@ -2,9 +2,11 @@ import {
   assertStudioDeploymentConfiguration,
   parseJsonRejectingDuplicateMembers,
 } from '@kumwe/studio-core';
-import type {
-  StudioDeploymentConfiguration,
-  StudioHostedDeploymentConfiguration,
+import {
+  STUDIO_RELEASE_IDENTITY,
+  type StudioDeploymentConfiguration,
+  type StudioDeploymentRelease,
+  type StudioHostedDeploymentConfiguration,
 } from '@kumwe/studio-protocol';
 import { mountStudioHosted, type StudioHostedRuntimeOptions } from './hosted-runtime.js';
 import { mountStudioStandalone } from './standalone-runtime.js';
@@ -28,7 +30,7 @@ export interface StudioDeploymentRuntimeHandle {
  */
 export type StudioDeploymentRuntimeResolver = (
   target: HTMLElement,
-  configuration: StudioDeploymentConfiguration,
+  configuration: StudioDeploymentConfiguration | undefined,
   hostedOptions?: StudioHostedRuntimeOptions,
 ) => MaybePromise<StudioDeploymentRuntimeHandle>;
 
@@ -43,7 +45,9 @@ export const resolveStudioDeploymentRuntime: StudioDeploymentRuntimeResolver = (
 ) => {
   return isHostedConfiguration(configuration)
     ? mountStudioHosted(target, configuration, hostedOptions)
-    : mountStudioStandalone(target);
+    : mountStudioStandalone(target, {
+        ...(configuration?.locale === undefined ? {} : { locale: configuration.locale }),
+      });
 };
 
 /** Allocate live browser services independently for one configured mount. */
@@ -136,13 +140,16 @@ export async function mountStudio(
     explicitOptions,
     arguments.length >= 3,
   );
-  const configuration = cloneAndAssertConfiguration(normalized.configuration);
+  const configuration =
+    normalized.configuration === undefined
+      ? undefined
+      : cloneAndAssertConfiguration(normalized.configuration);
   const root = normalized.options.root ?? defaultRoot(normalized.target);
-  if (normalized.target === undefined && configuration.mount === undefined) {
+  if (normalized.target === undefined && configuration === undefined) {
     throw new TypeError('Configuration-only Studio mounting requires configuration.mount.');
   }
   const canonicalTarget =
-    configuration.mount === undefined
+    configuration === undefined
       ? undefined
       : resolveUniqueTarget(configuration.mount, root, 'configuration.mount');
   const target =
@@ -152,7 +159,7 @@ export async function mountStudio(
 
   if (canonicalTarget !== undefined && target !== canonicalTarget) {
     throw new TypeError(
-      `The supplied Studio mount target does not match configuration.mount (${configuration.mount}).`,
+      `The supplied Studio mount target does not match configuration.mount (${configuration?.mount ?? ''}).`,
     );
   }
   if (activeMounts.has(target) || pendingMounts.has(target)) {
@@ -162,7 +169,8 @@ export async function mountStudio(
   pendingMounts.add(target);
   try {
     const resolver = normalized.options.runtimeResolver ?? resolveStudioDeploymentRuntime;
-    const runtimeConfiguration = structuredClone(configuration);
+    const runtimeConfiguration =
+      configuration === undefined ? undefined : structuredClone(configuration);
     const hostedOptions = resolveHostedRuntimeOptions(
       normalized.options.hosted,
       target,
@@ -170,7 +178,7 @@ export async function mountStudio(
     );
     const runtime = await resolver(target, runtimeConfiguration, hostedOptions);
     assertRuntimeHandle(runtime, target);
-    const handle = new StudioMountHandleImplementation(target, runtime, configuration.instanceId);
+    const handle = new StudioMountHandleImplementation(target, runtime, configuration?.instanceId);
     activeMounts.set(target, handle);
     return handle;
   } finally {
@@ -181,7 +189,7 @@ export async function mountStudio(
 function resolveHostedRuntimeOptions(
   configured: StudioMountOptions['hosted'],
   target: HTMLElement,
-  configuration: StudioDeploymentConfiguration,
+  configuration: StudioDeploymentConfiguration | undefined,
 ): StudioHostedRuntimeOptions | undefined {
   if (configured === undefined || typeof configured !== 'function') return configured;
   if (!isHostedConfiguration(configuration)) return undefined;
@@ -252,11 +260,11 @@ async function mountDiscoveredTarget(
     }
     configuration =
       configurationElementId.length === 0
-        ? ({} satisfies StudioDeploymentConfiguration)
+        ? undefined
         : parseStudioDeploymentConfiguration(
             resolveConfigurationElement(configurationElementId, root),
           );
-    if (configuration.mount !== undefined) {
+    if (configuration !== undefined) {
       const canonicalTarget = resolveUniqueTarget(
         configuration.mount,
         root,
@@ -281,25 +289,12 @@ async function mountDiscoveredTarget(
     };
   }
 
-  if (configuration === undefined) {
-    return {
-      failure: Object.freeze({
-        configurationElementId:
-          configurationElementId.length === 0 ? undefined : configurationElementId,
-        error: new TypeError('Studio deployment configuration did not resolve.'),
-        instanceId: undefined,
-        phase: 'configuration',
-        target,
-      }),
-    };
-  }
-
   try {
     return {
-      handle: await mountStudio(target, configuration, {
-        ...options,
-        root,
-      }),
+      handle:
+        configuration === undefined
+          ? await mountStudio(target, { ...options, root })
+          : await mountStudio(target, configuration, { ...options, root }),
     };
   } catch (error) {
     return {
@@ -307,7 +302,7 @@ async function mountDiscoveredTarget(
         configurationElementId:
           configurationElementId.length === 0 ? undefined : configurationElementId,
         error,
-        instanceId: configuration.instanceId,
+        instanceId: configuration?.instanceId,
         phase: 'runtime',
         target,
       }),
@@ -373,6 +368,7 @@ export function parseStudioDeploymentConfiguration(
   }
   assertMaximumDepth(parsed, MAX_CONFIGURATION_DEPTH);
   assertStudioDeploymentConfiguration(parsed);
+  assertMatchingBrowserRelease(parsed.release);
   return structuredClone(parsed);
 }
 
@@ -423,7 +419,7 @@ function normalizeMountArguments(
   explicitOptions: StudioMountOptions,
   hasExplicitOptions: boolean,
 ): {
-  configuration: StudioDeploymentConfiguration;
+  configuration: StudioDeploymentConfiguration | undefined;
   options: StudioMountOptions;
   target: HTMLElement | string | undefined;
 } {
@@ -433,7 +429,7 @@ function normalizeMountArguments(
       (isMountOptionsOnly(configurationOrOptions) && !hasExplicitOptions)
     ) {
       return {
-        configuration: {},
+        configuration: undefined,
         options: configurationOrOptions ?? {},
         target: targetOrConfiguration,
       };
@@ -471,7 +467,19 @@ function cloneAndAssertConfiguration(
   }
   assertMaximumDepth(clone, MAX_CONFIGURATION_DEPTH);
   assertStudioDeploymentConfiguration(clone);
+  assertMatchingBrowserRelease(clone.release);
   return clone;
+}
+
+function assertMatchingBrowserRelease(release: StudioDeploymentRelease): void {
+  if (
+    release.version !== STUDIO_RELEASE_IDENTITY.version ||
+    release.corpusManifestDigest !== STUDIO_RELEASE_IDENTITY.corpusManifestDigest
+  ) {
+    throw new TypeError(
+      'Studio deployment release does not match the loaded Studio browser asset manifest.',
+    );
+  }
 }
 
 function assertMaximumDepth(value: unknown, maximumDepth: number): void {
@@ -608,9 +616,9 @@ function deploymentLabel(configuration: StudioDeploymentConfiguration): string {
 }
 
 function isHostedConfiguration(
-  configuration: StudioDeploymentConfiguration,
+  configuration: StudioDeploymentConfiguration | undefined,
 ): configuration is StudioHostedDeploymentConfiguration {
-  return configuration.transport?.kind === 'http';
+  return configuration?.transport?.kind === 'http';
 }
 
 function isMountOptionsOnly(value: unknown): value is StudioMountOptions {

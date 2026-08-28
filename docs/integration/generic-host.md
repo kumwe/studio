@@ -120,6 +120,7 @@ await autoMountStudio();
 For HTTP operation, the server emits one inert `script[type="application/json"]` associated with the mount.
 Its schema-valid deployment contains:
 
+- required `kind`, exact `mount`, and the unchanged `release` object from the verified `studio-assets.json`;
 - `launch`: the exact target, create/edit intent, resource context, start source, and presentation;
 - `session`: the complete resolved `StudioConfiguration` for the current display context and policy;
 - `transport.routing`: either exact URLs keyed by supported operation or one exact dispatcher URL; and
@@ -138,7 +139,8 @@ JSON contract. The prebuilt start module is identical for every actor and resour
 cookie value, hidden form, or application global.
 
 An empty `data-kumwe-studio` value means local defaults. A non-empty value names the exact inert configuration
-element for that target. Several pairs may appear on one page; every mount owns independent draft, history,
+element for that target; its complete deployment still requires kind, mount, and release. Configless means the
+configuration document is absent, not `{}`. Several pairs may appear on one page; every mount owns independent draft, history,
 focus, lifecycle, and transport state. A configured hosted failure remains visible and never switches that
 instance to local work.
 
@@ -274,6 +276,12 @@ Model, Blueprint, and Entry coordinates live in the intent/plan rather than the 
 `expectedRevision`; a host MUST reject any mismatch, unknown/invalidated/host-expired plan, altered draft,
 changed authority, changed generation, or idempotency-key reuse for different intent. A successful save returns one normalized
 `AuthoringSaveResult` carrying the reconciled complete session.
+
+The plan's required `successorContext` is part of both `savePlan` and the complete `planReference`. The host
+copies it unchanged through the request/result boundary and returns the same value as the accepted session's
+`presentation.returnContext`. Studio keeps its local presentation mode but advances the opaque host return
+pointer only after that exact result is accepted; a mismatch, refusal, or cancellation retains the prior
+context.
 
 The remaining standard port routes are additive and capability-negotiated:
 
@@ -542,6 +550,42 @@ The host records Studio protocol/package versions with stored artifacts and foll
 7. activate or roll back atomically.
 
 A host must reject an unsupported downgrade rather than attempt to interpret newer artifacts.
+
+### Migrating pinned host-error digests
+
+The conditional `host-error.schema.json` rules are breaking for a host pinned to the earlier digest even
+though they add no member or category name. Before re-pinning a deployment to the current schema and corpus
+manifest, inventory every HTTP responder, in-process adapter, queued/replayed failure, and test fixture, then:
+
+1. keep `revision` only on a `conflict`, where it is the safe current host revision; otherwise omit it;
+2. keep `retryAfterMilliseconds` only on `rate-limited` or `unavailable` with `retryable: true`; otherwise omit
+   the delay or correct the category and retry classification to match the real failure;
+3. validate the complete emitted-error corpus against the new schema, including all conditional negative
+   fixtures; and
+4. deploy the updated emitters and atomically re-pin the schema/corpus digests, retaining the prior complete
+   generation for rollback.
+
+Do not relabel an authorization, validation, or internal failure merely to retain metadata. Until every
+producer is migrated, keep the previous complete Studio coordinate and digest set active; mixed schema/client
+generations cause current validators and configured HTTP clients to reject the old combinations, with the
+client surfacing a safe `internal` failure instead of their revision or retry semantics.
+
+### Migrating contextual save plan references
+
+The required `successorContext` member is a wire-breaking change for hosts pinned to an earlier
+`authoring-save.schema.json` digest. Before atomically re-pinning the release, schema manifest, and testkit
+corpus, update every plan producer and all three save handlers so that:
+
+1. `savePlan.successorContext` is a bounded host-minted `returnContext` for the post-commit resource;
+2. every request copies `{ id, revision, successorContext }` exactly into its `planReference` and the host
+   rejects an altered member as a stale or mismatched plan;
+3. `saveResult.plan` echoes that complete reference and
+   `saveResult.session.presentation.returnContext` equals its `successorContext`; and
+4. idempotent replays return the original successor while refusals and cancellations retain the prior context.
+
+An old two-member `{ id, revision }` reference is invalid under the new digest; do not fabricate a browser-side
+default or run old and new plan/result producers in one active generation. Validate the portable accepted and
+mismatched successor-context cases before switching the complete coordinate.
 
 ## 12. Generic-host acceptance
 

@@ -66,6 +66,10 @@ item-local composition; and host-authoritative save boundaries. Its result alway
 `completeProfile: false`: presentation continuity, contribution lifecycle, real-shell accessibility, and the
 remaining browser matrix still prevent a complete `studio.profile/authoring-web` claim.
 
+The language-neutral `vectors/authoring-http/transport-matrix.json` additionally fixes accepted and mismatched
+save-successor-context cases. A host replay must advance from the prior context to the plan reference's exact
+`successorContext` on acceptance and reject a result carrying any other context.
+
 ## Host conformance corpus
 
 `@kumwe/studio-testkit/vectors/host/<filename>` publishes the executable assertion set for

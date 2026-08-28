@@ -293,6 +293,7 @@ interface AuthoringProbe {
   contexts: HostRequestContext[];
   failNextSave: boolean;
   failNextStart?: boolean;
+  mismatchedSuccessorContext?: boolean;
   resolution: AuthoringTargetResolution;
   snapshot: AuthoringSessionSnapshot;
 }
@@ -371,6 +372,10 @@ function planFor(intent: AuthoringSaveIntent): AuthoringSavePlan {
     outcome: intent.draft.outcome,
     revision: `plan-${intent.draft.outcome}-r1`,
     sessionId: intent.sessionId,
+    successorContext: {
+      key: `return/article-list/accepted-${intent.draft.outcome}`,
+      label: { defaultMessage: 'Accepted article', key: 'studio.test/accepted-article' },
+    },
   };
 }
 
@@ -384,6 +389,10 @@ function saveResult(
     return Promise.reject(hostFailure('unavailable', 'studio.test/retry-save'));
   }
   const accepted = acceptedSnapshot(probe.snapshot, request);
+  if (probe.mismatchedSuccessorContext === true) {
+    probe.mismatchedSuccessorContext = false;
+    accepted.presentation.returnContext = { key: 'return/unplanned-host-context' };
+  }
   probe.snapshot = structuredClone(accepted);
   return Promise.resolve({
     value: {
@@ -402,6 +411,7 @@ function acceptedSnapshot(
     AuthoringSaveAsNewTypeRequest | AuthoringSaveItemRequest | AuthoringSaveNewTypeVersionRequest,
 ): AuthoringSessionSnapshot {
   const accepted = structuredClone(prior);
+  accepted.presentation.returnContext = structuredClone(request.plan.successorContext);
   if (request.kind === 'authoring-save-item-request') {
     accepted.state.entry = {
       ...structuredClone(request.draft.entry),
@@ -1001,20 +1011,42 @@ describe('explicit save planning and host reconciliation', () => {
     expect(handle.session.dirty.blueprint).toBe(false);
   });
 
-  it('preserves local presentation through a save without inventing a host mutation', async () => {
+  it('preserves local presentation and adopts the exact planned host successor context', async () => {
     const { handle } = await openFixture();
     expect(handle.session.setPresentation('maximized')).toBe('maximized');
     expect(handle.session.snapshot.presentation.current).toBe('maximized');
+    const priorReturnContext = handle.session.snapshot.presentation.returnContext;
 
     const intent = handle.session.createSaveIntent({ outcome: 'save-item' });
     const plan = (await handle.planSave(intent)).value;
     const result = await handle.save(intent, plan);
 
+    expect(plan.successorContext).not.toEqual(priorReturnContext);
+    expect(result.value.plan.successorContext).toEqual(plan.successorContext);
+    expect(result.value.session.presentation.returnContext).toEqual(plan.successorContext);
     expect(result.value.session.presentation.current).toBe('maximized');
+    expect(handle.session.snapshot.presentation.returnContext).toEqual(plan.successorContext);
     expect(handle.session.snapshot.presentation.current).toBe('maximized');
     expect(() => handle.session.setPresentation('minimized')).toThrow(
       expect.objectContaining({ code: 'invalid-authoring-request' }) as Error,
     );
+  });
+
+  it('rejects a host result that returns a context other than the planned successor', async () => {
+    const { handle, probe } = await openFixture();
+    const priorReturnContext = handle.session.snapshot.presentation.returnContext;
+    const intent = handle.session.createSaveIntent({ outcome: 'save-item' });
+    const plan = (await handle.planSave(intent)).value;
+    probe.mismatchedSuccessorContext = true;
+
+    await expect(handle.save(intent, plan)).rejects.toMatchObject({
+      error: {
+        diagnostics: [
+          expect.objectContaining({ code: 'studio.host/unexpected-authoring-save-result' }),
+        ],
+      },
+    });
+    expect(handle.session.snapshot.presentation.returnContext).toEqual(priorReturnContext);
   });
 
   it('saves an immutable successor type version and preserves dirty Entry values', async () => {

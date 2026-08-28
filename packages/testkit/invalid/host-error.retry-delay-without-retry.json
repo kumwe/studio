@@ -4,11 +4,11 @@
   "value": {
     "contractVersion": "0.1-draft",
     "kind": "host-error",
-    "category": "forbidden",
+    "category": "rate-limited",
     "correlationId": "requests/invalid-retry-delay",
     "message": {
-      "key": "studio.host/forbidden",
-      "defaultMessage": "The request is forbidden."
+      "key": "studio.host/rate-limited",
+      "defaultMessage": "The request is rate limited."
     },
     "retryable": false,
     "retryAfterMilliseconds": 1000

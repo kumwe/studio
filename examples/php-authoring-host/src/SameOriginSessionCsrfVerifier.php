@@ -12,8 +12,9 @@ use InvalidArgumentException;
  *
  * The session callback resolves the server-side session/HttpOnly cookie and
  * returns its trusted principal. The CSRF callback reads the current token
- * from that same server-side session. Both callbacks run for every request so
- * rotation and revocation are observed immediately.
+ * from that same server-side session. Callback results are never cached, so
+ * rotation and revocation are observed immediately. Exact Origin and complete
+ * browser Fetch Metadata checks run before either callback.
  */
 final class SameOriginSessionCsrfVerifier implements TransportSecurityVerifier
 {
@@ -46,10 +47,17 @@ final class SameOriginSessionCsrfVerifier implements TransportSecurityVerifier
             return TransportSecurityDecision::forbidden();
         }
 
-        // Fetch Metadata supplements Origin and CSRF. Absence is tolerated for
-        // older user agents; any explicit non-same-origin value fails closed.
+        // Fetch Metadata supplements Origin and CSRF. Require the exact tuple
+        // emitted by Studio's same-origin browser fetch. Missing, ambiguous,
+        // partial, navigation, and resource-load metadata all fail closed.
         $fetchSite = self::singleHeader($input->headers, 'Sec-Fetch-Site');
-        if ($fetchSite === false || ($fetchSite !== null && $fetchSite !== 'same-origin')) {
+        $fetchMode = self::singleHeader($input->headers, 'Sec-Fetch-Mode');
+        $fetchDestination = self::singleHeader($input->headers, 'Sec-Fetch-Dest');
+        if (
+            $fetchSite !== 'same-origin'
+            || $fetchMode !== 'cors'
+            || $fetchDestination !== 'empty'
+        ) {
             return TransportSecurityDecision::forbidden();
         }
 

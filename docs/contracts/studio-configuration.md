@@ -9,7 +9,7 @@ configuration behavior that has an accepted protocol shape.
 Studio has two deliberately separate serializable configuration layers:
 
 - [`StudioDeploymentConfiguration`](studio-deployment.md) is the small browser bootstrap. It selects an
-  explicit or associated mount, standalone or HTTP transport, launch request, transient authentication
+  exact mount, binds it to the verified browser asset release, selects standalone or HTTP transport, launch request, transient authentication
   projection, and optional safe declarative contribution bundle. An HTTP deployment includes the complete
   host-resolved session configuration below.
 - `StudioConfiguration`, defined here, describes one resolved authoring session and its host policy. It contains
@@ -102,7 +102,9 @@ manual reconciliation (`STUDIO-PROD-012`).
 The target also requires explicit, distinct **save item**, **save new type version**, and **save as new type**
 outcomes (`STUDIO-PROD-006`). The last two coordinate Model and Blueprint revisions but exclude Entry values.
 The host owns identifiers, authorization, validation, transactions, migration policy, persistence, and accepted
-revisions (`STUDIO-PROD-010`).
+revisions (`STUDIO-PROD-010`). Its save plan also mints the exact bounded successor return context: every save
+request binds it through the complete plan reference, and only an accepted result carrying that same context
+advances the live session. A refusal or mismatch retains the prior host return context.
 
 `StudioConfiguration` and the lower-level `openStudioSession` Blueprint API do not by themselves define that
 multi-artifact composition. The normal browser deployment combines this resolved configuration with the

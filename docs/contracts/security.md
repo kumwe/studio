@@ -60,20 +60,37 @@ Schemas use closed objects by default. Extension maps are namespaced, schema-reg
 
 ### Content Security Policy baseline
 
-Hosts MUST be able to embed the authoring shell under a policy at least as strict as the pinned
-baseline below, which the reference host serves on every response and `e2e/specs/csp.spec.ts`
-verifies verbatim (TH-013):
+`studio-assets.json.contentSecurityPolicy` is the machine-readable authority for the prebuilt archive's
+same-origin HTTP profile. A host MUST replace the one `{{STYLE_NONCE}}` placeholder with a freshly generated,
+base64-style nonce carrying at least 128 bits of entropy for that response and emit this exact header value
+(TH-013):
 
 ```
-default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types lit-html; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'none'; worker-src 'none'; frame-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
+default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types lit-html; style-src 'self' 'nonce-{{STYLE_NONCE}}'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'none'; frame-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'
 ```
 
-The chrome runs without inline scripts, inline event handlers, inline styles, cross-origin
-subresources, or string-to-code compilation under this baseline: core Blueprint and property
-validation is interpreted (`packages/core/src/profile-validator.ts`), so no directive grants
-`unsafe-eval`. Trusted Types is enforced with `lit-html` as the only allowed policy — the one Lit
-creates to parse its static template strings; the shell registers no default policy and writes no
-raw string to a governed sink.
+`script-src 'self'` admits the integrity-verified external start module and fingerprinted archive module; it
+does not admit an inline executable script, handler, `eval`, or `Function`. The deployment
+`<script type="application/json">` is an inert data block and therefore receives neither a script nonce nor a
+script hash. `style-src` admits same-origin style sheets and only inline `<style>` elements carrying the fresh
+response nonce; it does not use `unsafe-inline`. The same-origin HTTP deployment routes every configured fetch
+through `connect-src 'self'`. A standalone deployment can tighten that directive to `'none'` because it makes
+no network request.
+
+If the verified archive is deliberately served from another origin, the host adds only that exact origin to
+`script-src`. If bearer/custom-header operation URLs are deliberately cross-origin, it adds only the distinct
+configured HTTPS origins to `connect-src` and enforces the transport contract's exact CORS allowlist. A wildcard,
+scheme-only source, `unsafe-eval`, or `unsafe-inline` is not compatible with this profile. Host-owned media
+origins similarly require explicit `img-src`/`media-src` entries; preview frames use their separate dedicated
+response policy rather than weakening the authoring document.
+
+The chrome runs without inline executable code or string-to-code compilation under this baseline: core
+Blueprint and property validation is interpreted (`packages/core/src/profile-validator.ts`). Trusted Types is
+enforced with `lit-html` as the only archive policy — the one Lit creates to parse its static template strings;
+the shell registers no default policy and writes no raw string to a governed sink. A host that separately uses
+the semantic renderer's reviewed HTML sink may add the distinct `studio-renderer` policy and applies the same
+style nonce to its renderer-owned scoped `<style>` element; that is not ambient permission for plugins or
+authored content.
 
 ## Plugin controls
 

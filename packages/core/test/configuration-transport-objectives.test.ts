@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import hostedDeployment from '../../../schemas/examples/studio-deployment.hosted.example.json' with { type: 'json' };
+import standaloneDeployment from '../../../schemas/examples/studio-deployment.standalone.example.json' with { type: 'json' };
 import {
   HostPortFailure,
   STUDIO_WIRE_PROTOCOL_VERSION,
@@ -15,8 +16,14 @@ const now = (): number => Date.parse('2029-01-01T00:00:00Z');
 
 describe('configuration-driven transport objectives', () => {
   it('admits only the isolated local profile when HTTP transport is absent or standalone', () => {
-    expect(validateStudioDeploymentConfiguration({})).toBe(true);
-    expect(validateStudioDeploymentConfiguration({ transport: { kind: 'standalone' } })).toBe(true);
+    expect(validateStudioDeploymentConfiguration({})).toBe(false);
+    expect(validateStudioDeploymentConfiguration(standaloneDeployment)).toBe(true);
+    expect(
+      validateStudioDeploymentConfiguration({
+        ...standaloneDeployment,
+        transport: { kind: 'standalone' },
+      }),
+    ).toBe(true);
 
     const withoutTransport = structuredClone(hostedDeployment) as unknown as Record<
       string,

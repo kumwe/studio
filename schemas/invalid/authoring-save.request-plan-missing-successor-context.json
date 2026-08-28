@@ -1,0 +1,26 @@
+{
+  "schema": "authoring-save.schema.json",
+  "description": "A save request must echo the complete plan reference, including its planned successor return context.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-save-item-request",
+    "plan": { "id": "save-plans/entry-r8", "revision": "save-plan-r1" },
+    "acceptedConsequences": [],
+    "draft": {
+      "outcome": "save-item",
+      "entry": {
+        "contractVersion": "0.1-draft",
+        "kind": "entry",
+        "id": "entries/article",
+        "revision": "entry-r7",
+        "model": {
+          "id": "models/article",
+          "version": "1.0.0",
+          "revision": "model-r1"
+        },
+        "status": "draft",
+        "values": {}
+      }
+    }
+  }
+}

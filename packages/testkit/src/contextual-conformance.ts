@@ -168,6 +168,7 @@ export async function runContextualAuthoringStrideVector(
     if (result.outcome !== save.intent.draft.outcome) {
       mismatches.push(`${path}.result outcome differs from the planned intent`);
     }
+    compareExact(mismatches, `${path}.result plan`, result.plan, save.request.plan);
     assertSnapshotCoordinates(mismatches, `${path}.result.session`, result.session);
     assertSaveResultBoundary(mismatches, path, save.before, save.intent, result);
   }
@@ -333,6 +334,7 @@ function assertSaveBoundary(
   compareExact(mismatches, `${path}.request plan`, request.plan, {
     id: plan.id,
     revision: plan.revision,
+    successorContext: plan.successorContext,
   });
   compareExact(mismatches, `${path}.request draft`, request.draft, intent.draft);
 
@@ -402,6 +404,12 @@ function assertSaveResultBoundary(
   if (result.session.sessionId !== intent.sessionId) {
     mismatches.push(`${path}.result belongs to another session`);
   }
+  compareExact(
+    mismatches,
+    `${path}.result successor context`,
+    result.session.presentation.returnContext,
+    result.plan.successorContext,
+  );
 
   if (intent.draft.outcome === 'save-item') {
     compareExact(mismatches, `${path}.result reusable type`, result.session.type, before.type);
