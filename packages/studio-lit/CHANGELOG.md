@@ -4,6 +4,12 @@
 
 ### Minor Changes
 
+- Complete the configuration-driven browser distribution for repeated inline mounts, standalone default editing,
+  hosted PHP/AJAX operation routing, contextual extension targets, and immutable release-bound asset selection.
+  The authoring module and public enhancement runtime are prebuilt, deterministic, minified, content-hashed,
+  SRI-bound, budgeted, and deploy without Node.js. The former fixed `@kumwe/studio/browser-bundle` subpath is
+  removed; hosts resolve and verify exact bytes through `@kumwe/studio/browser-assets`.
+
 - [#48](https://github.com/kumwe/studio/pull/48) [`bda0fdc`](https://github.com/kumwe/studio/commit/bda0fdcd1a5989c9602be8062cc640ee481ce8ba) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the canonical resource-bound contextual authoring shell with blank, reusable-type, and existing-item
   starts; continuous Model, Blueprint, and Content modes; typed field and Entry-value commands; presentation
   continuity; keyboard mode navigation; and a host-authoritative save-intent event.

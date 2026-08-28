@@ -148,8 +148,8 @@ Exact versions are recorded in each release record and its qualification evidenc
 - current stable Android Chrome and iOS Safari for supported web-authoring workflows;
 - supported Windows, macOS and Linux desktop environments for browser claims;
 - clean npm consumers on the repository-declared Node/npm versions;
-- generic reference host and Kumwe App profile; and
-- Kumwe App's supported PHP and MariaDB/MySQL/PostgreSQL matrix for its adapter.
+- generic reference host and Producer-backed Kumwe App profile; and
+- Kumwe App's supported PHP and MariaDB/MySQL/PostgreSQL matrix behind its exact Producer realization.
 
 An environment is removed only through compatibility/release policy and published migration/support dates.
 Version 3 adds the supported Flutter desktop/mobile environments and the current stable Dart/Flutter line

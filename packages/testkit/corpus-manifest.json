@@ -1254,35 +1254,35 @@
     {
       "files": [
         {
-          "digest": "sha256-um5bUbyx+OjtIAus2YHG00cP/2zSjS3JTCdfnsFOpfw=",
+          "digest": "sha256-2oGROiWkPVzuaR5SUt781ys7Q6itRY3IBwK7MXq4yAA=",
           "file": "blob-default-deny.json"
         },
         {
-          "digest": "sha256-Oehibv24K+zMZTUR12Ixfzb6F8FByn66QJtPrd3nXbI=",
+          "digest": "sha256-IIiRyZBhwOx6mmHQkYkVivizehpbNOTssHNHwEe0YwA=",
           "file": "chart-fallback.json"
         },
         {
-          "digest": "sha256-NXARG7Ek/CMM4fzudJ5b89syBnQjQCM6nI/2NkFZ7i4=",
+          "digest": "sha256-ScdG3XmPTIr8iUNo6oIe73876e3I626nGK0VdWqkOCg=",
           "file": "complete-catalog.json"
         },
         {
-          "digest": "sha256-7lirFue9gaXchg9DzSllFjDp9p4dcW/C4M3+iEdORRQ=",
+          "digest": "sha256-8MSR3lTM8xTYOzo7IsVFjvxIf46gh/xo6z9YIrURVUo=",
           "file": "escaped-heading.json"
         },
         {
-          "digest": "sha256-7JwEi3hJV5J21CdHrii1WP28m8wDz9vO0zcxVcTAF48=",
+          "digest": "sha256-mqB9ODQSu5BmCcZwUKVWEzZMYjsXTj6qnzsXpIearaU=",
           "file": "interactive-behaviors.json"
         },
         {
-          "digest": "sha256-dgJ3SWlGYPHLQtp1WXgmiWlwE35LitFsrQOgvYw3aqM=",
+          "digest": "sha256-cCRU6GZqgWqd2G+yR3CoGjY9R9bal/9t/x4M48bCAIo=",
           "file": "presentation-capabilities.json"
         },
         {
-          "digest": "sha256-mSB0xRbCvWVb1QmcjjKcZEhXibjbr+5Xxg1FKIIkMrk=",
+          "digest": "sha256-bJpIcWGTUkKxXbAmMTkvPIs40dBjE4wO39xHRJn2eYs=",
           "file": "responsive-grid.json"
         },
         {
-          "digest": "sha256-e4Y140UiCb3kabaYhc5QzNFvOzCrLpE3RSSXf2c9x8E=",
+          "digest": "sha256-M6fXBiAu5c73xGHt7m2914EHPvMbIfkcJxJUCqyXm7o=",
           "file": "security-fallbacks.json"
         }
       ],

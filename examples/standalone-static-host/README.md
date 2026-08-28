@@ -13,11 +13,12 @@ npm run build:static-host
 
 The command creates `examples/standalone-static-host/dist/` with:
 
-- `index.html` and fingerprinted `assets/studio-*.js`/CSS for contextual browser authoring;
-- `public.html` and `public.css`, rendered before deployment and usable with JavaScript disabled;
+- `index.html` and content-hashed, minified `assets/studio-*.min.js`/`.min.css` files for contextual browser authoring;
+- `public.html` and a content-hashed, minified `assets/studio-public-*.min.css`, rendered before deployment and usable with JavaScript disabled;
 - `build-manifest.json`, the contributor-side bundler mapping; and
 - `studio-assets.json`, which records every deployed file's bytes, SHA-256 digest, media type, role, release
-  family, entry point, and empty production-runtime requirement list.
+  family, entry point, and empty production-runtime requirement list. Every deployable JavaScript and CSS
+  record additionally carries its exact SHA-256 content hash, governed byte budget, and `minified: true` gate.
 
 Copy the contents of `dist/` to any ordinary static document root, CDN origin, object store, or framework's
 public-assets directory, including a nested URL path: every generated browser reference is relative. The

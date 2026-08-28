@@ -4,7 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { classifyReleaseVersion } from './release-policy.mjs';
-import { assertSelfContainedBrowserModule } from './studio-browser-artifacts.mjs';
+import { assertPublishedPackageDistMinified } from './minify-package-dist.mjs';
+import {
+  assertPackagedStudioEnhancementRuntime,
+  assertSelfContainedEnhancementRuntime,
+} from './studio-enhancement-artifacts.mjs';
+import {
+  assertBrowserAssetManifestFiles,
+  assertSelfContainedBrowserModule,
+} from './studio-browser-artifacts.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -46,6 +54,7 @@ for (const packageName of packageNames) {
       `${manifest.name ?? packageName} must use a governed numeric beta, rc, or stable coordinate.`,
     );
   }
+  await assertPublishedPackageDistMinified(fileURLToPath(packageDirectory));
   // Provenance-signed publishes verify repository.url against the repository
   // named in the signed build environment; an absent or mismatched field is
   // rejected by the registry at publish time (E422).
@@ -88,7 +97,43 @@ for (const packageName of packageNames) {
   if (manifest.name === '@kumwe/studio-testkit') {
     requiredFiles.push('studio-release.json');
   }
+  if (manifest.name === '@kumwe/studio-renderer-web') {
+    const enhancementFiles = packedFiles.filter((path) =>
+      /^dist\/browser\/assets\/studio-enhancements-[a-f0-9]{16}\.min\.js$/u.test(path),
+    );
+    if (enhancementFiles.length !== 1) {
+      throw new Error(
+        `@kumwe/studio-renderer-web must ship one content-hashed enhancement runtime; found ${enhancementFiles.length}.`,
+      );
+    }
+    assertSelfContainedEnhancementRuntime(
+      await readFile(new URL(enhancementFiles[0], packageDirectory), 'utf8'),
+    );
+    const browserManifest = JSON.parse(
+      await readFile(
+        new URL('../studio-lit/dist/browser/studio-assets.json', packageDirectory),
+        'utf8',
+      ),
+    );
+    await assertPackagedStudioEnhancementRuntime(
+      new URL('../', packagesDirectory),
+      browserManifest.assets?.find((asset) => asset?.role === 'enhancement-runtime'),
+    );
+  }
   if (manifest.name === '@kumwe/studio') {
+    await assertBrowserAssetManifestFiles(
+      fileURLToPath(new URL('dist/browser/', packageDirectory)),
+    );
+    const browserManifest = JSON.parse(
+      await readFile(new URL('dist/browser/studio-assets.json', packageDirectory), 'utf8'),
+    );
+    const browserEntry = browserManifest.module?.entryPoint;
+    if (
+      typeof browserEntry !== 'string' ||
+      !/^assets\/studio-browser-[a-f0-9]{16}\.min\.js$/u.test(browserEntry)
+    ) {
+      throw new Error('@kumwe/studio browser manifest has no content-hashed minified entry.');
+    }
     requiredFiles.push(
       'dist/browser-entry.d.ts',
       'dist/browser/LICENSE',
@@ -96,11 +141,11 @@ for (const packageName of packageNames) {
       'dist/browser/THIRD_PARTY_NOTICES.md',
       'dist/browser/studio-assets.json',
       'dist/browser/studio-browser-assets.schema.json',
-      'dist/browser/studio-browser.js',
+      `dist/browser/${browserEntry}`,
       'dist/browser/studio-release.json',
     );
     assertSelfContainedBrowserModule(
-      await readFile(new URL('dist/browser/studio-browser.js', packageDirectory), 'utf8'),
+      await readFile(new URL(`dist/browser/${browserEntry}`, packageDirectory), 'utf8'),
     );
   }
   for (const required of requiredFiles) {
@@ -111,6 +156,7 @@ for (const packageName of packageNames) {
   const forbidden = packedFiles.find(
     (path) =>
       path.endsWith('.tsbuildinfo') ||
+      path.endsWith('.js.map') ||
       path.startsWith('src/') ||
       path.startsWith('test/') ||
       (path.includes('/src/') &&

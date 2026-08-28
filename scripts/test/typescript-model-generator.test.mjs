@@ -195,6 +195,21 @@ test('prefixItems and minItems produce the exact required tuple prefix', async (
   );
 });
 
+test('contains bounds remain validator-owned without widening the array projection', async () => {
+  const generated = await generateFor({
+    ...baseSchema,
+    additionalProperties: undefined,
+    properties: undefined,
+    required: undefined,
+    type: 'array',
+    items: { type: 'string' },
+    contains: { const: 'required-member' },
+    minContains: 1,
+    maxContains: 1,
+  });
+  assert.match(generated, /export type GeneratedExample = string\[\];/u);
+});
+
 test('generator fails closed on unsupported keywords instead of widening silently', async () => {
   const schema = { ...baseSchema, unevaluatedProperties: false };
   await assert.rejects(

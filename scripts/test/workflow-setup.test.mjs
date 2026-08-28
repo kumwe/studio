@@ -49,7 +49,7 @@ test('one candidate qualification command owns repository, PHP, and browser proo
   assert.equal(manifest.scripts['check:php-reference'], 'node scripts/check-php-reference.mjs');
   assert.equal(
     manifest.scripts['qualify:candidate'],
-    'npm run check && npm run check:php-reference && npm run check:a11y',
+    'npm run check && npm run check:php-reference && npm run check:a11y && npm run check:public-runtime',
   );
   assert.equal(manifest.scripts.verify, 'npm run qualify:candidate');
   assert.equal(

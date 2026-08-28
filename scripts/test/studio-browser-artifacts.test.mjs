@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { describe, it } from 'node:test';
@@ -11,15 +11,93 @@ import { Window } from 'happy-dom';
 
 import {
   SAME_ORIGIN_BROWSER_CSP,
+  assertBrowserAssetManifestSemantics,
   assertBrowserDistributionReferences,
   assertSelfContainedBrowserModule,
   buildStudioBrowserReleaseArtifact,
 } from '../studio-browser-artifacts.mjs';
+import {
+  STUDIO_PUBLIC_ENHANCEMENT_CSP,
+  STUDIO_PUBLIC_ENHANCEMENT_FAMILIES,
+  assertPackagedStudioEnhancementRuntime,
+  assertSelfContainedEnhancementRuntime,
+  enhancementRuntimeManifest,
+} from '../studio-enhancement-artifacts.mjs';
+import {
+  contentHashedAssetName,
+  minifyReleaseJavaScript,
+  releaseRuntimeAssetRecord,
+} from '../release-asset-policy.mjs';
 
 const repositoryRoot = new URL('../../', import.meta.url);
 const repositoryPath = fileURLToPath(repositoryRoot);
 
 describe('governed Studio browser distribution', () => {
+  it('rejects stale, tampered, duplicate, or mapped packaged enhancement runtimes', async (t) => {
+    const temporary = await mkdtemp(join(tmpdir(), 'studio-enhancement-package-'));
+    t.after(async () => rm(temporary, { force: true, recursive: true }));
+    const browser = join(temporary, 'packages', 'renderer-web', 'dist', 'browser');
+    const assets = join(browser, 'assets');
+    await mkdir(assets, { recursive: true });
+    const bytes = Buffer.from(
+      await minifyReleaseJavaScript(
+        `globalThis.__studioEnhancementFixture=${JSON.stringify('x'.repeat(1_100))};`,
+        { fileName: 'studio-enhancements.js', format: 'iife' },
+      ),
+    );
+    const path = `assets/${contentHashedAssetName('studio-enhancements', bytes, '.js')}`;
+    const expected = releaseRuntimeAssetRecord({
+      bytes,
+      mediaType: 'text/javascript',
+      path,
+      policy: 'enhancement-runtime',
+      role: 'enhancement-runtime',
+    });
+    await writeFile(join(browser, path), bytes);
+    const root = pathToFileURL(`${temporary}/`);
+    await assertPackagedStudioEnhancementRuntime(root, expected);
+
+    const mapPath = join(assets, `${path.split('/').at(-1)}.map`);
+    await writeFile(mapPath, '{}');
+    await assert.rejects(
+      assertPackagedStudioEnhancementRuntime(root, expected),
+      /source map|exactly one runtime/u,
+    );
+    await rm(mapPath);
+
+    const duplicatePath = join(assets, 'studio-enhancements-aaaaaaaaaaaaaaaa.min.js');
+    await writeFile(duplicatePath, bytes);
+    await assert.rejects(
+      assertPackagedStudioEnhancementRuntime(root, expected),
+      /exactly one runtime/u,
+    );
+    await rm(duplicatePath);
+
+    await writeFile(join(browser, path), Buffer.from(`${bytes.toString('utf8')} `));
+    await assert.rejects(
+      assertPackagedStudioEnhancementRuntime(root, expected),
+      /incorrect (?:bytes|contentHash|integrity)/u,
+    );
+
+    const replacement = Buffer.from(
+      await minifyReleaseJavaScript(
+        `globalThis.__studioEnhancementFixture=${JSON.stringify('y'.repeat(1_100))};`,
+        { fileName: 'studio-enhancements.js', format: 'iife' },
+      ),
+    );
+    const replacementPath = `assets/${contentHashedAssetName(
+      'studio-enhancements',
+      replacement,
+      '.js',
+    )}`;
+    await rm(join(browser, path));
+    await writeFile(join(browser, replacementPath), replacement);
+    await assert.rejects(
+      assertPackagedStudioEnhancementRuntime(root, expected),
+      /does not match the release manifest path\/role/u,
+    );
+  });
+
   it('reproduces the exact self-contained archive across two independent builds', async (t) => {
     const temporary = await mkdtemp(join(tmpdir(), 'studio-browser-repro-'));
     t.after(async () => rm(temporary, { force: true, recursive: true }));
@@ -71,7 +149,8 @@ describe('governed Studio browser distribution', () => {
     const schema = JSON.parse(
       entries.get(`${prefix}/studio-browser-assets.schema.json`).toString('utf8'),
     );
-    const validate = new Ajv2020({ strict: true }).compile(schema);
+    const ajv = new Ajv2020({ strict: true });
+    const validate = ajv.compile(schema);
     assert.equal(validate(manifest), true, JSON.stringify(validate.errors));
     const malformedReleaseDigest = structuredClone(manifest);
     malformedReleaseDigest.release.corpusManifestDigest = 'sha256-AA==';
@@ -87,6 +166,55 @@ describe('governed Studio browser distribution', () => {
       false,
       'asset schema accepted an asset integrity that is not an exact SHA-256 digest',
     );
+    const disguisedExecutable = structuredClone(manifest);
+    const supportAsset = disguisedExecutable.assets.find(({ role }) => role === 'documentation');
+    supportAsset.mediaType = 'text/javascript';
+    assert.equal(
+      validate(disguisedExecutable),
+      false,
+      'asset schema accepted JavaScript disguised as documentation',
+    );
+    assert.throws(
+      () => assertBrowserAssetManifestSemantics(disguisedExecutable),
+      /disguise executable JavaScript/u,
+    );
+    for (const mutation of [
+      (candidate) => {
+        candidate.assets = candidate.assets.filter(({ role }) => role !== 'browser-module');
+      },
+      (candidate) => {
+        candidate.assets.push(
+          structuredClone(candidate.assets.find(({ role }) => role === 'enhancement-runtime')),
+        );
+      },
+    ]) {
+      const alteredInventory = structuredClone(manifest);
+      mutation(alteredInventory);
+      assert.equal(
+        validate(alteredInventory),
+        false,
+        'asset schema accepted a missing or duplicate runtime role',
+      );
+    }
+    assert.equal(assertBrowserAssetManifestSemantics(manifest), manifest);
+    for (const mutation of [
+      (candidate) => {
+        candidate.module.entryPoint = candidate.enhancementRuntime.entryPoint;
+      },
+      (candidate) => {
+        candidate.enhancementRuntime.entryPoint = candidate.module.entryPoint;
+      },
+      (candidate) => {
+        candidate.assets[1].path = candidate.assets[0].path;
+      },
+    ]) {
+      const alteredBinding = structuredClone(manifest);
+      mutation(alteredBinding);
+      assert.throws(
+        () => assertBrowserAssetManifestSemantics(alteredBinding),
+        /paths must be unique|must bind/u,
+      );
+    }
     assert.ok(manifest.assets.length <= 500, 'asset manifest exceeds its governed 500-file bound');
     assert.equal(
       manifest.assets.length,
@@ -117,7 +245,78 @@ describe('governed Studio browser distribution', () => {
       false,
       'asset schema accepted a non-self-contained production runtime',
     );
-    assert.match(manifest.module.entryPoint, /^assets\/studio-browser-[a-f0-9]{16}\.js$/u);
+    assert.match(manifest.module.entryPoint, /^assets\/studio-browser-[a-f0-9]{16}\.min\.js$/u);
+    assert.match(
+      manifest.enhancementRuntime.entryPoint,
+      /^assets\/studio-enhancements-[a-f0-9]{16}\.min\.js$/u,
+    );
+    assert.deepEqual(
+      manifest.enhancementRuntime,
+      enhancementRuntimeManifest(manifest.enhancementRuntime.entryPoint),
+    );
+    assert.deepEqual(manifest.enhancementRuntime.enhancements, STUDIO_PUBLIC_ENHANCEMENT_FAMILIES);
+    assert.equal(manifest.enhancementRuntime.contentSecurityPolicy, STUDIO_PUBLIC_ENHANCEMENT_CSP);
+    const enhancementAssets = manifest.assets.filter(({ role }) => role === 'enhancement-runtime');
+    assert.equal(enhancementAssets.length, 1);
+    assert.equal(enhancementAssets[0].path, manifest.enhancementRuntime.entryPoint);
+    assert.deepEqual(manifest.publicRenderer, {
+      style: {
+        budgetBytes: 262_144,
+        contentHashAlgorithm: 'sha256',
+        fileNameTemplate: 'studio-public-{{CONTENT_HASH_16}}.min.css',
+        integrityAlgorithm: 'sha256',
+        materialization: 'exact-utf8-bytes',
+        mediaType: 'text/css',
+        minified: true,
+        outputSchema:
+          'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json#/$defs/publicStyleAsset',
+        source: 'renderer-web.css',
+      },
+    });
+    const validatePublicStyle = ajv.getSchema(
+      'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json#/$defs/publicStyleAsset',
+    );
+    assert.equal(typeof validatePublicStyle, 'function');
+    const publicCss = Buffer.from('[data-studio-block]{box-sizing:border-box}');
+    const publicStyle = releaseRuntimeAssetRecord({
+      bytes: publicCss,
+      mediaType: 'text/css',
+      path: `assets/${contentHashedAssetName('studio-public', publicCss, '.css')}`,
+      policy: 'public-style',
+      role: 'public-style',
+    });
+    assert.equal(
+      validatePublicStyle(publicStyle),
+      true,
+      JSON.stringify(validatePublicStyle.errors),
+    );
+    assert.equal(
+      validatePublicStyle({ ...publicStyle, role: 'host-style' }),
+      false,
+      'public style output schema accepted an alternate role',
+    );
+    for (const mutation of [
+      (candidate) => {
+        delete candidate.enhancementRuntime;
+      },
+      (candidate) => {
+        candidate.enhancementRuntime.enhancements.push('chart');
+      },
+      (candidate) => {
+        candidate.enhancementRuntime.needSignal.source = 'host-private-flag';
+      },
+      (candidate) => {
+        candidate.enhancementRuntime.contentSecurityPolicy = "script-src 'unsafe-inline'";
+      },
+    ]) {
+      const alteredRuntime = structuredClone(manifest);
+      mutation(alteredRuntime);
+      assert.equal(
+        validate(alteredRuntime),
+        false,
+        'asset schema accepted public enhancement contract drift',
+      );
+    }
     assert.equal(manifest.productionRuntime.requires.length, 0);
     assert.deepEqual(manifest.productionRuntime.forbidden, [
       'node',
@@ -184,6 +383,13 @@ describe('governed Studio browser distribution', () => {
         asset.integrity,
         `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
       );
+      if (asset.role === 'browser-module' || asset.role === 'enhancement-runtime') {
+        const contentHash = createHash('sha256').update(bytes).digest('hex');
+        assert.equal(asset.contentHash, contentHash);
+        assert.equal(asset.minified, true);
+        assert.ok(asset.bytes <= asset.budgetBytes);
+        assert.ok(asset.path.includes(contentHash.slice(0, 16)));
+      }
     }
 
     const schemaDocuments = [...entries]
@@ -209,6 +415,23 @@ describe('governed Studio browser distribution', () => {
 
     const browserModule = entries.get(`${prefix}/${manifest.module.entryPoint}`).toString('utf8');
     assertSelfContainedBrowserModule(browserModule);
+    const enhancementBytes = entries.get(`${prefix}/${manifest.enhancementRuntime.entryPoint}`);
+    const rendererEnhancementBytes = await readFile(
+      join(
+        repositoryPath,
+        'packages',
+        'renderer-web',
+        'dist',
+        'browser',
+        manifest.enhancementRuntime.entryPoint,
+      ),
+    );
+    assert.deepEqual(
+      enhancementBytes,
+      rendererEnhancementBytes,
+      'renderer-web and authoring archive enhancement bytes differ',
+    );
+    assertSelfContainedEnhancementRuntime(enhancementBytes.toString('utf8'));
     assert.ok(
       browserModule.includes(manifest.release.version),
       'browser module does not carry its asset-manifest release version',

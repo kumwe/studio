@@ -41,9 +41,12 @@ export function isHostPortError(value: unknown): value is HostPortError {
     isMessageReference(value.message) &&
     typeof value.retryable === 'boolean' &&
     (value.correlationId === undefined || isStableId(value.correlationId)) &&
-    (value.revision === undefined || isRevision(value.revision)) &&
+    (value.revision === undefined ||
+      (value.category === 'conflict' && isRevision(value.revision))) &&
     (value.retryAfterMilliseconds === undefined ||
-      (isNonNegativeInteger(value.retryAfterMilliseconds) &&
+      ((value.category === 'rate-limited' || value.category === 'unavailable') &&
+        value.retryable &&
+        isNonNegativeInteger(value.retryAfterMilliseconds) &&
         value.retryAfterMilliseconds <= 86_400_000)) &&
     (value.diagnostics === undefined || isArrayOf(value.diagnostics, isDiagnostic, 1_000))
   );

@@ -31,6 +31,21 @@
   ],
   "media": [],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6320,
+    "cssSha256": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+    "htmlBytes": 398,
+    "htmlSha256": "5f95e47df5ec5ea95dfafd5c1c76cc3cb4e529f0ba80d307ba99d4fab6b73f9e",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-8d4d00dfa489396d.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6320,
+      "budgetBytes": 262144,
+      "contentHash": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+      "integrity": "sha256-jU0A36SJOW3ApCB7PR76IH12WOMlydtLui50uRpgdkk=",
+      "minified": true
+    },
     "htmlContains": ["<table data-studio-chart-table>", "Revenue", "Q1", "20"],
     "htmlExcludes": ["<script", "onClick"],
     "cssContains": ["data-studio-chart-table"],

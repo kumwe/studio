@@ -26,8 +26,9 @@ media-field controller, and shell controls for browse, select, replace, paste/dr
 cancellation, retry, ordering, metadata, and orphan recovery. That repository-verified runtime is not yet a
 supported host claim. Gate qualification still needs a real persistent host adapter, hostile-media and
 supported-browser evidence, lifecycle/recovery drills, and independent reproduction. The authoritative media
-application/domain/infrastructure remains in [`kumwe/app`](https://github.com/kumwe/app) and is exposed by the
-Kumwe App adapter for Studio. A separate media repository is unnecessary unless Kumwe App later decides to
+application/domain/infrastructure remains in [`kumwe/app`](https://github.com/kumwe/app) and is exposed through
+Producer's reusable PHP adapters to Studio. Producer owns neither media authority nor storage. A separate media
+repository is unnecessary unless Kumwe App later decides to
 extract its entire media service for reasons independent of Studio.
 
 ## Portable media reference
@@ -218,7 +219,8 @@ same accepted reference and processing-state semantics.
 4. Stable identity, version/replacement, permission and reference-impact semantics are declared.
 5. Security/privacy threat fixtures and accessibility requirements are executable.
 6. TypeScript models round-trip the canonical corpus. Version 3 adds Dart parity before a native profile claim.
-7. Generic-host and Kumwe App adapters map every port without leaking storage/runtime internals.
+7. Generic hosts map every port without leaking storage/runtime internals; Kumwe App proves the same mapping
+   through Producer against App-owned media services.
 
 ## Media Gate B criteria
 

@@ -20,6 +20,13 @@ code. Build against the corpus rather than against this prose alone. The server 
 shape too: routes, bodies and status mapping are normative in the
 [host transport binding](../contracts/host-transport.md).
 
+A PHP host may consume a qualified release of [Kumwe Producer](https://github.com/kumwe/producer), the separate
+PHP realization of this public boundary now under founding development. Producer's release contract requires
+one complete Studio pin, verified schemas/corpus/prebuilt assets, and replay of the applicable conformance
+vectors in PHP. It is an implementation option, not a Studio runtime dependency: Studio never imports or
+recognizes Producer, and another PHP or non-PHP host may implement the same contract directly. In every case,
+the integrating host—not Producer or browser Studio—owns authority and storage.
+
 ## 1. Establish host ownership
 
 Before wiring UI, record where the host authoritatively stores and enforces:
@@ -40,6 +47,12 @@ workflow engine, media store, renderer registry, or policy authority.
 Consume all eight exact versions from the published `studio-release.json` and verify its corpus digest before
 replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
 first-party definitions are not a deployable integration.
+
+When using Producer, select one Producer release whose vendored `studio-release.json`, canonical schema
+closure, `corpus-manifest.json`, conformance vectors, and prebuilt asset manifests all resolve to that same
+Studio coordinate. A Studio contract change is not inherited automatically: it requires a deliberate,
+digest-verified Producer re-pin and successful PHP replay before the host upgrades. Do not add a second,
+different Studio pin in the host.
 
 Node.js, npm, and Vite belong only in a contributor, CI, build, test, or release environment. A consuming
 project normally verifies and extracts the published prebuilt browser archive, copies that immutable directory
@@ -112,7 +125,7 @@ import/download and save-intent download actions:
 
 ```js
 // /assets/start-studio.js
-import { autoMountStudio } from './studio-browser-<fingerprint>.js';
+import { autoMountStudio } from './assets/studio-browser-<fingerprint>.min.js';
 
 await autoMountStudio();
 ```
@@ -411,12 +424,43 @@ The host maps validated block/theme contracts to trusted renderers. Rendering ob
 The preview DOM is disposable. Studio uses markers for selection geometry but never scrapes it to recreate an
 artifact. Production delivery must work without the Studio authoring packages.
 
-`@kumwe/studio-renderer-web` is the portable first-party delivery implementation. A JavaScript delivery host
-may call `renderStudioWeb` and install the returned trusted enhancement jobs with `enhanceStudioWeb`; a
-server-side host may implement native templates instead. Both paths resolve media and dynamic bindings through
-authorized host callbacks, preserve the no-JavaScript semantic fallback, and replay the same exhaustive
-`conformance/renderer-web/` corpus. A server renderer does not translate Studio block names into a separate,
-weaker semantic contract.
+`@kumwe/studio-renderer-web` is the portable first-party delivery implementation. Trusted build, test, and
+authoring-preview code may call `renderStudioWeb`; `enhanceStudioWeb` and its optional Chart.js, Mermaid, and
+KaTeX adapters are library/test seams for those controlled environments. They are not a published-page
+deployment recipe and hosts MUST NOT bundle them as an alternative public runtime.
+
+A server-side host renders the same contract natively (Producer is contracted to do so for PHP once its
+release is qualified), resolves media and dynamic bindings through authorized host callbacks, preserves every
+no-JavaScript semantic fallback, and replays the
+exhaustive `conformance/renderer-web/` corpus. The renderer's `enhancements` result is the complete per-page
+need-signal input. Only a non-empty intersection with the exact public family set (`tabs`, `dialog`, `popover`,
+`notice`, `slideshow`, `lightbox`, `countdown`, and `navigation`) authorizes the host to include Studio's single
+manifest-pinned, prebuilt `enhancement-runtime` with `defer`; an empty intersection requires omission. `chart`,
+`diagram`, `math`, and `motion` alone never authorize it. Published-page behavior comes only from that one
+runtime and the renderer-emitted data attributes. A server renderer does not translate Studio block names
+into a separate, weaker semantic contract or ship another behavior source.
+
+The same public render materializes the renderer's exact compact CSS bytes as one minified, content-hashed
+stylesheet, records its SHA-256 SRI, byte size, and reviewed budget in the host's immutable delivery manifest,
+and links that exact file with integrity. Producer is contracted to perform this materialization for PHP once
+qualified. Inline preview styles, runtime CSS rewriting, or a separately generated host stylesheet are not
+published-delivery alternatives.
+
+`studio-assets.json.publicRenderer.style` freezes that algorithm and budget; its `outputSchema` points to the
+normative `$defs.publicStyleAsset` per-page record. Producer MUST also replay each
+renderer-web vector's `htmlBytes`, `htmlSha256`, `cssBytes`, and `cssSha256`; passing only the diagnostic
+`activationMarkers`, `htmlContains`, or `cssContains` members is not a conformance result. Producer must also
+match each vector's exact `publicStyleAsset`, because the closed output schema cannot by itself prove that all
+record members derive from the same CSS bytes.
+
+Published delivery and contextual authoring are separate browser surfaces. The authoring ESM uses
+`studio-assets.json.contentSecurityPolicy.headerTemplate`; a published page selects the one
+`enhancement-runtime` asset bound to `enhancementRuntime.entryPoint`, uses its matching manifest SRI with
+`crossorigin="anonymous"` and `defer`, and preserves the exact runtime CSP baseline
+`default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'`. Do not apply
+the authoring `lit-html` policy to public delivery or load the public IIFE as a module. See the
+[prebuilt asset guide](prebuilt-browser-assets.md#two-browser-surfaces-two-policies) for the exact selection and
+load contract.
 
 ### Preview handshake
 
@@ -534,7 +578,7 @@ prior manifest/directory. Verify the declared integrity and size bounds before a
 Content authors and operators do not run Vite, Node.js, npm, a package-registry client, or a server-side
 JavaScript process. All authoritative effects stay in the host application's services and HTTP/API boundary
 (`STUDIO-PROD-010`, `011`), and public delivery remains operable without Studio or authoring JavaScript. Kumwe
-App's stricter PHP mapping is described in its playbook.
+App's stricter PHP/Producer mapping is described in its playbook.
 
 ## 11. Lifecycle and compatibility
 
@@ -597,7 +641,8 @@ Gate B generic-host evidence proves:
 - Model/Blueprint/Entry/theme separation, exact reusable-type hydration, and empty values for a new Entry;
 - fields, values, bindings, and layout in one session, with explicit Entry/new-type/new-type-version saves;
 - create, edit, preview, conflict, publish, recover, and in-context/expanded presentation continuity;
-- server and client rendering examples without reverse-parsing DOM;
+- server-rendering and isolated authoring-preview examples without reverse-parsing DOM or a published client
+  renderer;
 - media completion/failure, extension target/block/field-adapter/theme lifecycle and unresolved-node behaviour;
 - authorization reduction with no hidden-field or hidden-count leakage;
 - accessibility, localization, RTL, mobile/touch and keyboard completion;

@@ -1,4 +1,4 @@
-# ADR 0028: Portable semantic web rendering with optional advanced adapters
+# ADR 0028: Portable semantic web rendering with one public enhancement runtime
 
 - **Status:** Proposed
 - **Date:** 2026-08-25
@@ -16,12 +16,20 @@ the public contract.
 Studio ships `@kumwe/studio-renderer-web` as an eighth coordinated package. It renders all first-party
 types to escaped semantic HTML and deterministic CSS. Dynamic binding and media values come from host
 callbacks; the renderer never queries a database or storage system. Base output remains readable and
-operable without JavaScript. Trusted progressive enhancement is installed after rendering and is
-disposable.
+operable without JavaScript.
+
+Published Studio output has exactly eight progressive-enhancement families: `tabs`, `dialog`, `popover`,
+`notice`, `slideshow`, `lightbox`, `countdown`, and `navigation`. The renderer's closed `enhancements` output
+intersected with that exact set is the sole per-page need signal. A non-empty intersection authorizes the host
+to include one release-manifest-pinned, content-hashed, self-contained IIFE with `defer`; an empty intersection
+does not. The IIFE activates only from renderer-emitted bounded `data-studio-*` attributes. It is the sole
+source of behavior inside published Studio output.
 
 Chart, Mermaid and LaTeX values use Studio-owned canonical data/source shapes. Exact Chart.js 4.5.1,
 Mermaid 11.17.1 and KaTeX 0.18.4 support is isolated behind lazy optional peer adapters and subpath
-exports. Their configuration and runtime objects never enter a Blueprint.
+exports for controlled authoring-preview, direct library, and test use. Their configuration and runtime
+objects never enter a Blueprint. `chart`, `diagram`, `math`, and `motion` cannot authorize the public IIFE;
+their semantic/server-rendered or no-JavaScript output remains authoritative on published pages.
 
 Raw authored HTML is not a renderer input. Approved HTML is converted at an earlier trust boundary to
 a structural `SafeMarkupFragment`, then rechecked and escaped. Scoped CSS is a bounded rule/declaration
@@ -34,14 +42,24 @@ the host's validated CSP nonce. Authored JavaScript remains excluded.
 - Hosts may omit advanced peers; accessible source/table fallbacks remain.
 - Server and client implementations can implement the same schema without linking a JavaScript
   editor or renderer library.
+- A qualified Producer release, as the separate PHP realization layer, must deliberately pin the Studio
+  release and replay the same renderer vectors, exact emitted attributes, and enhancement need signal. Studio
+  neither imports nor special-cases Producer; this requirement does not claim Producer is already qualified.
+- A published host includes at most the one manifest-pinned IIFE for Studio behavior. `enhanceStudioWeb`,
+  optional adapters, host scripts, and frontend frameworks are not alternate published behavior sources.
 - A renderer-web profile claim still requires executable corpus and browser evidence; this ADR does
   not mark a release gate complete.
 
 ## Rejected alternatives
 
 - Core-specific Twig generation was rejected as the only implementation because Studio would cease
-  to be standalone. Core may project the same semantics into Twig through its adapter.
+  to be standalone. Producer or another host adapter may project the same semantics into PHP/Twig while
+  preserving the exact vector and attribute contract.
 - Eagerly bundling all advanced libraries was rejected for startup cost and unnecessary attack
   surface.
+- Selecting public scripts by scanning arbitrary DOM or host configuration was rejected because the renderer's
+  closed enhancement result is the single deterministic need signal.
+- Shipping multiple host- or feature-specific published enhancers was rejected because it fragments behavior,
+  CSP, integrity, fallback, and compatibility ownership.
 - Storing arbitrary HTML, CSS, JavaScript, SVG, or library options was rejected as non-portable and
   unsafe.

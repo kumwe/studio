@@ -560,6 +560,16 @@ describe('profile corpus agreement with the reference validator', () => {
         instances: [[1], [1, 'x'], []],
         schema: { items: false, prefixItems: [{ type: 'integer' }], type: 'array' },
       },
+      // contains applies exact cardinality bounds without projecting member diagnostics.
+      {
+        instances: [[], ['required'], ['required', 'other'], ['required', 'required']],
+        schema: {
+          contains: { const: 'required' },
+          maxContains: 1,
+          minContains: 1,
+          type: 'array',
+        },
+      },
       // A $ref with adjacent keywords applies both (draft 2020-12).
       {
         instances: [5, 15, 'x'],

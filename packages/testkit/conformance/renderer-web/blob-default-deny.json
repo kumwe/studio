@@ -39,6 +39,21 @@
     }
   ],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6320,
+    "cssSha256": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+    "htmlBytes": 153,
+    "htmlSha256": "c4bc7134b14028faf96ee6166f3925e0cbbbc0f17457a969fcbacf1d1f4dd79f",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-8d4d00dfa489396d.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6320,
+      "budgetBytes": 262144,
+      "contentHash": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+      "integrity": "sha256-jU0A36SJOW3ApCB7PR76IH12WOMlydtLui50uRpgdkk=",
+      "minified": true
+    },
     "htmlContains": ["Image unavailable"],
     "htmlExcludes": ["blob:https://"],
     "cssContains": ["prefers-reduced-motion"],

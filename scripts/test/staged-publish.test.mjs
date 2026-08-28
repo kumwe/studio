@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 
 import { cleanupStagingTags } from '../cleanup-staging-tags.mjs';
 import { reconcileBetaTags } from '../reconcile-beta-tag.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
+import { RELEASE_PACKAGE_BUDGETS } from '../release-asset-policy.mjs';
 import { STUDIO_RELEASE_PACKAGES } from '../release-family.mjs';
 import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
 import {
@@ -243,11 +244,12 @@ async function createArtifacts(t) {
   const record = releaseRecord(version);
   const packages = {};
   for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {
-    const path = `.release-artifacts/packages/${directory}.tgz`;
     const bytes = Buffer.from(`approved:${name}@${version}`);
+    const artifact = artifactFromBytes(bytes, version);
+    const path = `.release-artifacts/packages/${directory}-${artifact.sha256.slice(0, 16)}.tgz`;
     await mkdir(join(rootPath, path, '..'), { recursive: true });
     await writeFile(join(rootPath, path), bytes);
-    packages[name] = { ...artifactFromBytes(bytes, version), path };
+    packages[name] = { ...artifact, budgetBytes: RELEASE_PACKAGE_BUDGETS[name], path };
   }
   const assetManifestBytes = Buffer.from('{"kind":"test-browser-assets"}\n');
   const browserBytes = singleFileTar(
@@ -259,7 +261,7 @@ async function createArtifacts(t) {
   await writeFile(join(rootPath, browser.path), browserBytes);
   await writeFile(
     join(rootPath, browser.checksumPath),
-    `${browser.sha256}  studio-browser-${version}.tar\n`,
+    `${browser.sha256}  ${basename(browser.path)}\n`,
   );
   return {
     approved: { browser, kind: 'studio-approved-package-artifacts', packages, release: version },

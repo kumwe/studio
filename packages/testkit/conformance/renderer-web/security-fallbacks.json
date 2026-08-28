@@ -150,6 +150,21 @@
     }
   ],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6320,
+    "cssSha256": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+    "htmlBytes": 1339,
+    "htmlSha256": "f9e941b82644e72291cba1689063aade40b653ee83bf16860af560e8f613bbd3",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-8d4d00dfa489396d.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6320,
+      "budgetBytes": 262144,
+      "contentHash": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+      "integrity": "sha256-jU0A36SJOW3ApCB7PR76IH12WOMlydtLui50uRpgdkk=",
+      "minified": true
+    },
     "htmlContains": [
       "&lt;script&gt;alert(1)&lt;/script&gt;",
       "blob:https://studio.example.test/123e4567-e89b-12d3-a456-426614174000",

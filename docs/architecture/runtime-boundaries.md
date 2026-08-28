@@ -27,8 +27,9 @@ data (`STUDIO-PROD-001`, `STUDIO-PROD-003`, `STUDIO-PROD-007`, and `STUDIO-PROD-
 The host runtime authenticates the actor, resolves the contextual launch target, authorizes operations, owns
 storage and workflows, validates artifacts, resolves resources, processes media, renders previews, and publishes
 revisions. It alone accepts item saves and new or updated reusable-type revisions. The reference Kumwe App host
-uses PHP application services exposed through PHP HTTP endpoints and uses Twig for rendering, but the public
-host contract is transport-neutral
+consumes Studio through one exact, digest-pinned Producer release: Producer realizes the wire/rendering contract
+in PHP, while App-owned PHP application services, PHP HTTP endpoints, and Twig/KIS chrome retain authority and
+storage. Studio remains host-neutral and the public host contract is transport-neutral
 (`STUDIO-PROD-006` and `STUDIO-PROD-010`).
 
 ### Delivery runtime

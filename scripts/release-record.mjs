@@ -61,9 +61,38 @@ export function buildStudioReleaseRecord(inputs) {
     packages: Object.fromEntries(
       STUDIO_RELEASE_PACKAGE_NAMES.map((name) => [name, inputs.packages[name]]),
     ),
+    browserArtifacts: browserArtifactLocators(inputs.packages['@kumwe/studio']),
     protocolVersion: inputs.protocolVersion,
     corpusManifestDigest: inputs.corpusManifestDigest,
     claimedProfiles: [...inputs.claimedProfiles].sort(),
+  };
+}
+
+/**
+ * Stable discovery metadata for the two prebuilt browser surfaces.
+ *
+ * Byte authority deliberately remains in studio-assets.json and the approved
+ * release artifact record. Embedding those digests here would make the
+ * authoring archive (which carries this record) self-referential.
+ */
+export function browserArtifactLocators(version) {
+  assertSemanticVersion(version, 'browser artifact release');
+  return {
+    manifest: {
+      name: 'studio-assets.json',
+      schema: 'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json',
+    },
+    authoringArchive: {
+      archiveStem: `studio-browser-${version}`,
+      assetRole: 'browser-module',
+      loading: 'module',
+    },
+    enhancementRuntime: {
+      assetRole: 'enhancement-runtime',
+      loading: 'defer',
+      package: '@kumwe/studio-renderer-web',
+      packageBasePath: 'dist/browser/',
+    },
   };
 }
 

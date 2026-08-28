@@ -23,7 +23,7 @@ import {
   type QualifiedName,
   type StudioContextualSaveRequestDetail,
   type StudioExtensionAuthoringControl,
-} from '@kumwe/studio/browser-bundle';
+} from '@kumwe/studio-internal/browser-entry';
 
 declare const __STUDIO_STATIC_SESSION__: AuthoringSessionSnapshot;
 

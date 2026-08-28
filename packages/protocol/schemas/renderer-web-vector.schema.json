@@ -74,7 +74,72 @@
     "context": {
       "type": "object",
       "additionalProperties": false,
-      "properties": { "allowBlobMedia": { "type": "boolean" } }
+      "properties": {
+        "allowBlobMedia": { "type": "boolean" },
+        "scopedStyles": {
+          "description": "Trusted structured host style input keyed by the exact Blueprint node ID.",
+          "type": "object",
+          "maxProperties": 100,
+          "propertyNames": { "$ref": "common.schema.json#/$defs/stableId" },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["rules"],
+            "properties": {
+              "rules": {
+                "type": "array",
+                "maxItems": 100,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["target", "declarations"],
+                  "properties": {
+                    "target": {
+                      "enum": ["action", "content", "heading", "media", "self"]
+                    },
+                    "declarations": {
+                      "type": "object",
+                      "maxProperties": 50,
+                      "propertyNames": {
+                        "enum": [
+                          "background-color",
+                          "border-color",
+                          "border-radius",
+                          "border-style",
+                          "border-width",
+                          "color",
+                          "font-family",
+                          "font-size",
+                          "font-style",
+                          "font-weight",
+                          "gap",
+                          "letter-spacing",
+                          "line-height",
+                          "margin-block",
+                          "margin-inline",
+                          "max-inline-size",
+                          "min-block-size",
+                          "opacity",
+                          "padding-block",
+                          "padding-inline",
+                          "text-align",
+                          "text-decoration",
+                          "text-transform"
+                        ]
+                      },
+                      "additionalProperties": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "pattern": "^(?:#[0-9A-Fa-f]{3,8}|-?[0-9]+(?:\\.[0-9]+)?(?:ch|em|rem|%|px)?|[a-z][a-z0-9 -]{0,126}|var\\(--studio-[a-z0-9-]{1,100}\\))$"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "roots": {
       "type": "array",
@@ -117,8 +182,31 @@
     "expect": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["htmlContains", "htmlExcludes", "cssContains", "enhancements"],
+      "required": [
+        "htmlContains",
+        "htmlExcludes",
+        "htmlBytes",
+        "htmlSha256",
+        "cssBytes",
+        "cssContains",
+        "cssSha256",
+        "publicStyleAsset",
+        "enhancements",
+        "activationMarkers"
+      ],
       "properties": {
+        "activationMarkers": {
+          "description": "The complete renderer-emitted data-attribute vocabulary a public enhancement runtime is allowed to discover in this vector.",
+          "type": "array",
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 100,
+            "pattern": "^data-studio-[a-z0-9]+(?:-[a-z0-9]+)*$"
+          }
+        },
         "htmlContains": {
           "type": "array",
           "maxItems": 100,
@@ -129,10 +217,35 @@
           "maxItems": 100,
           "items": { "type": "string", "maxLength": 10000 }
         },
+        "htmlBytes": {
+          "description": "Exact UTF-8 byte length of the canonical renderer HTML, closing activation-marker topology as wire output.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "htmlSha256": {
+          "description": "Lowercase SHA-256 of the exact canonical renderer HTML bytes.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "cssContains": {
           "type": "array",
           "maxItems": 100,
           "items": { "type": "string", "maxLength": 10000 }
+        },
+        "cssBytes": {
+          "description": "Exact UTF-8 byte length of the canonical compact renderer stylesheet.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 262144
+        },
+        "cssSha256": {
+          "description": "Lowercase SHA-256 of the exact canonical renderer stylesheet bytes.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "publicStyleAsset": {
+          "$ref": "studio-browser-assets.schema.json#/$defs/publicStyleAsset"
         },
         "enhancements": {
           "type": "array",

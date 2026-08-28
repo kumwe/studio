@@ -74,8 +74,27 @@ The eight npm packages are one Changesets fixed group and advance to the same se
 repository-root `studio-release.json` is the canonical, generated coordinate record and is copied byte-for-byte
 into `@kumwe/studio-protocol` and `@kumwe/studio-testkit`. Its schema fixes the complete package family and
 records the release version, exact package versions, wire protocol version, corpus-manifest digest, and the
-fixed promotion profile surface. The abandoned `0.1.0-rc.1` metadata records nine withdrawn proposed Version 2
-claims. Beta versioning clears them. A future generated RC restores the fixed intended set only after the
+fixed promotion profile surface. Its required `browserArtifacts` member also fixes how a consumer discovers
+the manifest-backed delivery surfaces: the versioned authoring archive stem and its `browser-module` entry, plus
+the deferred `enhancement-runtime` shipped by `@kumwe/studio-renderer-web`. The locator intentionally contains
+no archive or inner-asset digest. `studio-assets.json` is authoritative for each content-hashed asset's exact
+filename, bytes, SHA-256/SRI, minification status, and size budget; approved release metadata binds the outer
+archive bytes. Putting either digest into the release record carried inside that archive would create a
+self-reference. The external approved-artifact record adds the archive's content-hash suffix and exact digest
+to that logical stem. A consumer therefore verifies the digest-pinned release record, approved archive, and
+manifest/asset chain as one release; a matching filename alone is insufficient.
+
+The artifact boundary is explicit. Every deployable browser JavaScript or CSS file has a content-hashed
+`.min.js`/`.min.css` name plus its own SRI, byte count, and fixed budget. An npm package is governed as the
+content-hashed `.tgz` envelope recorded in `approved-package-integrities.json`: all JavaScript/CSS members are
+deterministically minified and runtime JavaScript/CSS source maps are excluded, while declaration maps and stable internal filenames remain necessary for
+Node/package export resolution. The envelope carries exact SHA-1/SHA-256/SHA-512 integrity, byte size, and a
+fixed package budget, so no unrecorded package byte can leave the gate. Publication performs two isolated clean
+install/build/pack passes and rejects any differing tarball before authentication. This package-envelope rule
+does not weaken the stricter per-file rule for anything served directly to a browser.
+
+The abandoned `0.1.0-rc.1` metadata records nine withdrawn proposed Version 2 claims. Beta versioning clears
+them. A future generated RC restores the fixed intended set only after the
 implementation guard passes, and they become publishable claims only when the passing exact-candidate gate
 supports the identical set. Candidate metadata is never itself conformance evidence.
 
@@ -102,6 +121,25 @@ Qualification evidence associated with the release record additionally records:
 Consumers pin the single Studio release coordinate and verify the bundled record before resolving its exact
 package versions. Broad ranges that can resolve an untested combination are not used in deployable first-party
 builds.
+
+### Browser-artifact consumer migration
+
+The required `browserArtifacts` member is a breaking change for a consumer that pins the release-record or
+schema digest. Producer and other PHP realization layers migrate one complete generation at a time:
+
+1. update the release-record parser and canonical schema closure;
+2. pin the exact new `studio-release.json`, corpus manifest, and conformance-vector bytes;
+3. pin the approved authoring archive and exact `@kumwe/studio-renderer-web` package;
+4. validate `studio-assets.json`, require its release identity to equal the coordinated record, and resolve
+   exactly one `browser-module` plus one `enhancement-runtime` entry; and
+5. verify each resolved entry's filename, byte count, full content hash, SRI digest, minification flag, and
+   budget before making the generation available.
+
+Those pins move atomically. An older release record, schema, corpus, manifest, archive, package, or inner asset
+must not be mixed with the new generation, even when its filename appears compatible. Producer computes the
+public runtime need only from the renderer's existing `enhancements` output intersected with the manifest's
+closed eight-family set; no host-private flag or non-member enhancement can authorize another public behavior
+file.
 
 ## Candidate creation
 

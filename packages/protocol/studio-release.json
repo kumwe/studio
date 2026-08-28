@@ -12,7 +12,24 @@
     "@kumwe/studio": "0.1.0-beta.2",
     "@kumwe/studio-testkit": "0.1.0-beta.2"
   },
+  "browserArtifacts": {
+    "manifest": {
+      "name": "studio-assets.json",
+      "schema": "https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json"
+    },
+    "authoringArchive": {
+      "archiveStem": "studio-browser-0.1.0-beta.2",
+      "assetRole": "browser-module",
+      "loading": "module"
+    },
+    "enhancementRuntime": {
+      "assetRole": "enhancement-runtime",
+      "loading": "defer",
+      "package": "@kumwe/studio-renderer-web",
+      "packageBasePath": "dist/browser/"
+    }
+  },
   "protocolVersion": "0.1.0-draft.2",
-  "corpusManifestDigest": "sha256-/wBbEL/qT1/A/yuEGZITzdSbFUu4JMokOfkhMUqPrAQ=",
+  "corpusManifestDigest": "sha256-PupdZVv+htI0wd7bnFtwVdFzhYVB7DxTXh+viiBClNM=",
   "claimedProfiles": []
 }

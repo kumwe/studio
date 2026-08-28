@@ -1,10 +1,18 @@
 import { createHash } from 'node:crypto';
 import { copyFile, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderStudioWeb } from '@kumwe/studio-renderer-web';
 import { build } from 'vite';
 import { buildStudioBrowserAssets } from './studio-browser-artifacts.mjs';
+import {
+  assertReleaseRuntimeAsset,
+  contentHashedAssetName,
+  minifyReleaseCss,
+  minifyReleaseJavaScript,
+  releaseAssetIdentity,
+  releaseRuntimeAssetRecord,
+} from './release-asset-policy.mjs';
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const exampleRoot = join(repositoryRoot, 'examples', 'standalone-static-host');
@@ -13,9 +21,7 @@ const outputDirectory =
   outputArgument === undefined ? join(exampleRoot, 'dist') : resolve(outputArgument);
 const browserDistribution = await buildStudioBrowserAssets(new URL('../', import.meta.url));
 const browserModulePath = join(browserDistribution.directory, browserDistribution.entryPoint);
-const browserModule = await readFile(browserModulePath);
-const browserFingerprint = createHash('sha256').update(browserModule).digest('hex').slice(0, 16);
-const browserModuleName = `studio-browser-${browserFingerprint}.js`;
+const browserModuleName = browserDistribution.entryPoint;
 const session = JSON.parse(
   await readFile(
     join(repositoryRoot, 'schemas', 'examples', 'authoring-session.example.json'),
@@ -33,13 +39,13 @@ await build({
     minify: true,
     outDir: outputDirectory,
     rolldownOptions: {
-      external: ['@kumwe/studio/browser-bundle'],
+      external: ['@kumwe/studio-internal/browser-entry'],
       output: {
         assetFileNames: 'assets/studio-[name]-[hash][extname]',
         chunkFileNames: 'assets/studio-[name]-[hash].js',
         entryFileNames: 'assets/studio-[name]-[hash].js',
         paths: {
-          '@kumwe/studio/browser-bundle': `./${browserModuleName}`,
+          '@kumwe/studio-internal/browser-entry': `./${basename(browserModuleName)}`,
         },
       },
     },
@@ -52,7 +58,15 @@ await build({
   logLevel: 'warn',
   root: exampleRoot,
 });
-await copyFile(browserModulePath, join(outputDirectory, 'assets', browserModuleName));
+await copyFile(browserModulePath, join(outputDirectory, browserModuleName));
+
+const bundlerManifestPath = join(outputDirectory, 'build-manifest.json');
+const bundlerManifest = JSON.parse(await readFile(bundlerManifestPath, 'utf8'));
+let entry = Object.values(bundlerManifest).find((candidate) => candidate.isEntry === true);
+if (entry === undefined || typeof entry.file !== 'string') {
+  throw new Error('The standalone build did not emit one browser entry point.');
+}
+entry = await normalizeViteRuntimeAssets(outputDirectory, bundlerManifest, entry);
 
 const rendered = await renderStudioWeb(
   {
@@ -87,7 +101,10 @@ const rendered = await renderStudioWeb(
     }),
   },
 );
-await writeFile(join(outputDirectory, 'public.css'), `${rendered.css}\n`, 'utf8');
+const publicCss = Buffer.from(rendered.css, 'utf8');
+const publicStyleSheet = `assets/${contentHashedAssetName('studio-public', publicCss, '.css')}`;
+const publicStyleIdentity = releaseAssetIdentity(publicCss);
+await writeFile(join(outputDirectory, publicStyleSheet), publicCss);
 await writeFile(
   join(outputDirectory, 'public.html'),
   `<!doctype html>
@@ -96,7 +113,7 @@ await writeFile(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Public Studio content rendered before deployment">
-    <link rel="stylesheet" href="./public.css">
+    <link rel="stylesheet" crossorigin="anonymous" integrity="${publicStyleIdentity.integrity}" href="./${publicStyleSheet}">
     <title>Pre-rendered Studio content</title>
   </head>
   <body>
@@ -108,13 +125,6 @@ await writeFile(
   'utf8',
 );
 
-const bundlerManifest = JSON.parse(
-  await readFile(join(outputDirectory, 'build-manifest.json'), 'utf8'),
-);
-const entry = Object.values(bundlerManifest).find((candidate) => candidate.isEntry === true);
-if (entry === undefined || typeof entry.file !== 'string') {
-  throw new Error('The standalone build did not emit one browser entry point.');
-}
 await injectSubresourceIntegrity(outputDirectory, entry, browserModuleName);
 const release = JSON.parse(await readFile(join(repositoryRoot, 'studio-release.json'), 'utf8'));
 const assetPaths = (await filesUnder(outputDirectory))
@@ -125,11 +135,10 @@ const assets = await Promise.all(
   assetPaths.map(async (path) => {
     const content = await readFile(join(outputDirectory, path));
     return {
-      bytes: content.byteLength,
-      integrity: `sha256-${createHash('sha256').update(content).digest('base64')}`,
-      mediaType: mediaType(path),
-      path,
-      role: assetRole(path, entry.file),
+      ...(await staticAssetRecord(content, path, entry.file, {
+        browserModuleName,
+        publicStyleSheet,
+      })),
     };
   }),
 );
@@ -148,7 +157,7 @@ const deploymentManifest = {
   publicRenderer: {
     document: 'public.html',
     requiresJavaScript: false,
-    styleSheet: 'public.css',
+    styleSheet: publicStyleSheet,
   },
   release: {
     corpusManifestDigest: release.corpusManifestDigest,
@@ -183,13 +192,50 @@ async function filesUnder(directory) {
   return result;
 }
 
-function assetRole(path, entryPoint) {
+function assetRole(path, entryPoint, { browserModuleName, publicStyleSheet }) {
+  if (path === browserModuleName) return 'browser-module';
   if (path === entryPoint) return 'authoring-entry';
   if (path === 'index.html') return 'authoring-document';
   if (path === 'public.html') return 'public-document';
-  if (path === 'public.css') return 'public-style';
+  if (path === publicStyleSheet) return 'public-style';
   if (path === 'build-manifest.json') return 'build-map';
-  return extname(path) === '.css' ? 'authoring-style' : 'browser-asset';
+  if (extname(path) === '.css') return 'authoring-style';
+  if (extname(path) === '.js') {
+    throw new Error(`Unclassified static deployment JavaScript asset ${path}.`);
+  }
+  return 'browser-asset';
+}
+
+async function staticAssetRecord(content, path, entryPoint, context) {
+  const role = assetRole(path, entryPoint, context);
+  const policies = {
+    'authoring-entry': { format: 'esm', policy: 'authoring-entry' },
+    'authoring-style': { policy: 'authoring-style' },
+    'browser-module': { format: 'esm', policy: 'authoring-browser-module' },
+    'public-style': { policy: 'public-style' },
+  };
+  const runtime = policies[role];
+  if (runtime !== undefined) {
+    const asset = releaseRuntimeAssetRecord({
+      bytes: content,
+      mediaType: mediaType(path),
+      path,
+      policy: runtime.policy,
+      role,
+    });
+    await assertReleaseRuntimeAsset(asset, content, {
+      format: runtime.format,
+      policy: runtime.policy,
+    });
+    return asset;
+  }
+  return {
+    bytes: content.byteLength,
+    integrity: `sha256-${createHash('sha256').update(content).digest('base64')}`,
+    mediaType: mediaType(path),
+    path,
+    role,
+  };
 }
 
 function mediaType(path) {
@@ -228,7 +274,7 @@ async function injectSubresourceIntegrity(directory, entry, externalModuleName) 
       `<link rel="stylesheet" crossorigin="anonymous" integrity="${styleIntegrity}" href="./${stylePath}">`,
     );
   }
-  const externalPath = `assets/${externalModuleName}`;
+  const externalPath = externalModuleName;
   const externalIntegrity = await integrityFor(externalPath);
   const preload = `    <link rel="modulepreload" crossorigin="anonymous" integrity="${externalIntegrity}" href="./${externalPath}">\n`;
   html = html.replace('    <script type="module"', `${preload}    <script type="module"`);
@@ -239,6 +285,49 @@ async function injectSubresourceIntegrity(directory, entry, externalModuleName) 
     throw new Error('The standalone HTML did not receive complete subresource integrity metadata.');
   }
   await writeFile(indexPath, html, 'utf8');
+}
+
+async function normalizeViteRuntimeAssets(directory, manifest, entry) {
+  const indexPath = join(directory, 'index.html');
+  let html = await readFile(indexPath, 'utf8');
+
+  const originalEntry = entry.file;
+  const entrySource = await readFile(join(directory, originalEntry), 'utf8');
+  const entryBytes = Buffer.from(
+    await minifyReleaseJavaScript(entrySource, {
+      fileName: originalEntry,
+      format: 'esm',
+    }),
+  );
+  const entryPath = `assets/${contentHashedAssetName('studio-authoring', entryBytes, '.js')}`;
+  await writeFile(join(directory, entryPath), entryBytes);
+  if (entryPath !== originalEntry) await rm(join(directory, originalEntry));
+  html = html.replaceAll(originalEntry, entryPath);
+  entry.file = entryPath;
+
+  const styles = [];
+  for (const originalStyle of entry.css ?? []) {
+    const styleBytes = minifyReleaseCss(await readFile(join(directory, originalStyle)), {
+      fileName: originalStyle,
+    });
+    const stylePath = `assets/${contentHashedAssetName(
+      'studio-authoring-style',
+      styleBytes,
+      '.css',
+    )}`;
+    await writeFile(join(directory, stylePath), styleBytes);
+    if (stylePath !== originalStyle) await rm(join(directory, originalStyle));
+    html = html.replaceAll(originalStyle, stylePath);
+    styles.push(stylePath);
+  }
+  entry.css = styles;
+  await writeFile(indexPath, html, 'utf8');
+  await writeFile(
+    join(directory, 'build-manifest.json'),
+    `${JSON.stringify(manifest, null, 2)}\n`,
+    'utf8',
+  );
+  return entry;
 }
 
 function escapeRegExp(value) {

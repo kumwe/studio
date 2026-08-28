@@ -467,6 +467,12 @@ export function createHttpHostAdapter(
         // The host authored a canonical error; transport it verbatim.
         throw new HostPortFailure(parsed);
       }
+      if (claimsHostPortError(parsed)) {
+        // A body that identifies itself as the versioned host-error wire shape
+        // cannot fall through to status-only interpretation when its closed
+        // fields or cross-field semantics are invalid.
+        throw createError(malformedResponse());
+      }
       throw createError(statusFailure(response.status));
     } finally {
       safelyReleaseTimeoutHandle(handle);
@@ -701,6 +707,15 @@ export function createHttpHostAdapter(
       },
     },
   };
+}
+
+function claimsHostPortError(value: unknown): boolean {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    (value as { readonly kind?: unknown }).kind === 'host-error'
+  );
 }
 
 /** Serializable typed values cross the wire as their JSON projections. */

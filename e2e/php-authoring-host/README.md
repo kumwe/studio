@@ -1,7 +1,8 @@
 # Compiled-browser to PHP qualification fixture
 
-This test-only host starts with PHP's built-in HTTP server and serves the already compiled
-`packages/studio-lit/dist/browser/studio-browser.js`. PHP emits three inert deployment documents with the
+This test-only host starts with PHP's built-in HTTP server, reads
+`packages/studio-lit/dist/browser/studio-assets.json`, and serves the exact content-hashed, minified browser
+module named by that manifest. PHP emits three inert deployment documents with the
 reference `StudioDeploymentEmitter`, authenticates the browser's HttpOnly same-origin session plus per-mount
 CSRF token with `SameOriginSessionCsrfVerifier`, and dispatches every authoring request through
 `AuthoringResponder` and `AuthoringApplicationService`.

@@ -29,7 +29,7 @@
     "./studio-release.json": "./studio-release.json"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b && node ../../scripts/minify-package-dist.mjs --package packages/protocol"
   },
   "publishConfig": {
     "access": "public",

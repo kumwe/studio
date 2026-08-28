@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
+import { RELEASE_PACKAGE_BUDGETS } from '../release-asset-policy.mjs';
 import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
 import { collectRegistryFailures } from '../verify-published-release.mjs';
 
@@ -16,13 +17,17 @@ const approvedArtifacts = {
   browser: browserArtifactFromBytes(Buffer.from(`studio-browser@${version}`), version),
   kind: 'studio-approved-package-artifacts',
   packages: Object.fromEntries(
-    STUDIO_RELEASE_PACKAGES.map(({ directory, name }) => [
-      name,
-      {
-        ...artifactFromBytes(Buffer.from(`approved:${name}@${version}`), version),
-        path: `.release-artifacts/packages/${directory}.tgz`,
-      },
-    ]),
+    STUDIO_RELEASE_PACKAGES.map(({ directory, name }) => {
+      const artifact = artifactFromBytes(Buffer.from(`approved:${name}@${version}`), version);
+      return [
+        name,
+        {
+          ...artifact,
+          budgetBytes: RELEASE_PACKAGE_BUDGETS[name],
+          path: `.release-artifacts/packages/${directory}-${artifact.sha256.slice(0, 16)}.tgz`,
+        },
+      ];
+    }),
   ),
   release: version,
 };

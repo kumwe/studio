@@ -16,6 +16,19 @@ import { fileURLToPath } from 'node:url';
 
 import { build } from 'vite';
 
+import {
+  RELEASE_ARCHIVE_BUDGET_BYTES,
+  assertReleaseRuntimeAsset,
+  contentHashedAssetName,
+  minifyReleaseJavaScript,
+  releaseAssetIdentity,
+  releaseRuntimeAssetRecord,
+} from './release-asset-policy.mjs';
+import {
+  buildStudioEnhancementRuntimeAssets,
+  enhancementRuntimeManifest,
+} from './studio-enhancement-artifacts.mjs';
+
 export const BROWSER_ARTIFACT_DIRECTORY = '.release-artifacts/browser';
 
 export const SAME_ORIGIN_BROWSER_CSP = Object.freeze({
@@ -45,8 +58,8 @@ const browserSchemaSeeds = Object.freeze([
 const browserDistributionReadme = `# Kumwe Studio prebuilt browser distribution
 
 This directory is the complete, host-neutral Studio browser delivery. Serve it as immutable static files and
-load the ES module named by \`studio-assets.json\`. Release archives give that module a content fingerprint;
-the npm package's browser directory names the same bytes \`studio-browser.js\`. A production host does not
+load the content-hashed ES module named by \`studio-assets.json\`. The npm package and release archive carry
+that same immutable path and exact bytes. A production host does not
 install or run Node.js, npm, Vite, or a JavaScript application server.
 
 Start with these archive-local resources:
@@ -121,17 +134,38 @@ export async function buildStudioBrowserAssets(
   });
 
   const modulePath = join(destination, 'studio-browser.js');
-  const moduleBytes = await readFile(modulePath);
+  const emittedModule = await readFile(modulePath, 'utf8');
+  const minifiedModule = await minifyReleaseJavaScript(emittedModule, {
+    fileName: 'studio-browser.js',
+    format: 'esm',
+  });
+  await writeFile(modulePath, minifiedModule, 'utf8');
+  const moduleBytes = Buffer.from(minifiedModule);
   const moduleSource = moduleBytes.toString('utf8');
   assertSelfContainedBrowserModule(moduleSource);
+  const entryPoint = `assets/${contentHashedAssetName('studio-browser', moduleBytes, '.js')}`;
+  await mkdir(join(destination, 'assets'), { recursive: true });
+  await rename(modulePath, join(destination, entryPoint));
+
+  const enhancementBuild = join(destination, '.enhancement-runtime-build');
+  try {
+    const enhancement = await buildStudioEnhancementRuntimeAssets(root, enhancementBuild);
+    await mkdir(join(destination, 'assets'), { recursive: true });
+    await cp(
+      join(enhancement.directory, enhancement.entryPoint),
+      join(destination, enhancement.entryPoint),
+    );
+  } finally {
+    await rm(enhancementBuild, { force: true, recursive: true });
+  }
 
   await copyBrowserDistributionSupport(rootPath, destination);
   await assertBrowserDistributionReferences(destination);
 
   const release = JSON.parse(await readFile(join(destination, 'studio-release.json'), 'utf8'));
   assertBrowserModuleReleaseIdentity(moduleSource, release);
-  await writeBrowserAssetManifest(destination, 'studio-browser.js', release);
-  return { directory: destination, entryPoint: 'studio-browser.js', release: release.release };
+  await writeBrowserAssetManifest(destination, entryPoint, release);
+  return { directory: destination, entryPoint, release: release.release };
 }
 
 /** Fail the build if the compiled module and manifest source record can drift. */
@@ -150,8 +184,8 @@ export function assertBrowserModuleReleaseIdentity(moduleSource, releaseRecord) 
 
 /**
  * Build a deterministic, versioned tar archive and detached SHA-256 file for
- * RC/stable release attachment. The npm package receives the same module bytes
- * at `dist/browser/studio-browser.js`; the archive uses a fingerprinted name.
+ * RC/stable release attachment. The npm package and archive retain the same
+ * content-hashed module path and exact bytes.
  */
 export async function buildStudioBrowserReleaseArtifact(
   root = new URL('../', import.meta.url),
@@ -169,25 +203,36 @@ export async function buildStudioBrowserReleaseArtifact(
   try {
     await cp(packageDirectory, stagingRoot, { recursive: true });
     const moduleBytes = await readFile(join(stagingRoot, built.entryPoint));
-    const fingerprint = createHash('sha256').update(moduleBytes).digest('hex').slice(0, 16);
-    const fingerprintedEntry = `assets/studio-browser-${fingerprint}.js`;
-    await mkdir(join(stagingRoot, 'assets'), { recursive: true });
-    await rename(join(stagingRoot, built.entryPoint), join(stagingRoot, fingerprintedEntry));
+    const fingerprintedEntry = `assets/${contentHashedAssetName(
+      'studio-browser',
+      moduleBytes,
+      '.js',
+    )}`;
+    if (built.entryPoint !== fingerprintedEntry) {
+      throw new Error('Studio npm browser module path is not its exact release content hash.');
+    }
     const release = JSON.parse(await readFile(join(stagingRoot, 'studio-release.json'), 'utf8'));
     await writeBrowserAssetManifest(stagingRoot, fingerprintedEntry, release);
 
     await rm(outputDirectory, { force: true, recursive: true });
     await mkdir(outputDirectory, { recursive: true });
-    const archiveName = `${prefix}.tar`;
-    const archivePath = join(outputDirectory, archiveName);
     const archiveBytes = await deterministicTar(stagingRoot, prefix);
+    const sha256 = createHash('sha256').update(archiveBytes).digest('hex');
+    const archiveName = `${prefix}-${sha256.slice(0, 16)}.tar`;
+    const archivePath = join(outputDirectory, archiveName);
     await writeFile(archivePath, archiveBytes);
 
-    const sha256 = createHash('sha256').update(archiveBytes).digest('hex');
     const checksumName = `${archiveName}.sha256`;
     const checksumPath = join(outputDirectory, checksumName);
     await writeFile(checksumPath, `${sha256}  ${archiveName}\n`, 'utf8');
     const manifestBytes = await readFile(join(stagingRoot, 'studio-assets.json'));
+
+    if (archiveBytes.byteLength > RELEASE_ARCHIVE_BUDGET_BYTES) {
+      throw new Error(
+        `Studio browser archive is ${archiveBytes.byteLength} bytes and exceeds its ` +
+          `${RELEASE_ARCHIVE_BUDGET_BYTES}-byte publication budget.`,
+      );
+    }
 
     return browserArtifactFromBytes(archiveBytes, built.release, {
       assetManifestBytes: manifestBytes,
@@ -199,19 +244,17 @@ export async function buildStudioBrowserReleaseArtifact(
   }
 }
 
-export function browserArtifactFromBytes(
-  bytes,
-  version,
-  {
-    assetManifestBytes = bytes,
-    checksumPath = `${BROWSER_ARTIFACT_DIRECTORY}/studio-browser-${version}.tar.sha256`,
-    path = `${BROWSER_ARTIFACT_DIRECTORY}/studio-browser-${version}.tar`,
-  } = {},
-) {
+export function browserArtifactFromBytes(bytes, version, options = {}) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
   const sha512 = createHash('sha512').update(bytes).digest('hex');
+  const path =
+    options.path ??
+    `${BROWSER_ARTIFACT_DIRECTORY}/studio-browser-${version}-${sha256.slice(0, 16)}.tar`;
+  const checksumPath = options.checksumPath ?? `${path}.sha256`;
+  const assetManifestBytes = options.assetManifestBytes ?? bytes;
   return {
     assetManifestSha256: createHash('sha256').update(assetManifestBytes).digest('hex'),
+    budgetBytes: RELEASE_ARCHIVE_BUDGET_BYTES,
     checksumPath,
     integrity: `sha512-${Buffer.from(sha512, 'hex').toString('base64')}`,
     path,
@@ -223,23 +266,24 @@ export function browserArtifactFromBytes(
 }
 
 export function assertApprovedBrowserArtifact(artifact, version) {
-  const archiveName = `studio-browser-${version}.tar`;
-  const expectedPath = `${BROWSER_ARTIFACT_DIRECTORY}/${archiveName}`;
   if (
     artifact === null ||
     typeof artifact !== 'object' ||
     Array.isArray(artifact) ||
     artifact.version !== version ||
-    artifact.path !== expectedPath ||
-    artifact.checksumPath !== `${expectedPath}.sha256` ||
     !/^[a-f0-9]{64}$/u.test(artifact.sha256) ||
     !/^[a-f0-9]{128}$/u.test(artifact.sha512) ||
     !/^[a-f0-9]{64}$/u.test(artifact.assetManifestSha256) ||
     artifact.integrity !== `sha512-${Buffer.from(artifact.sha512, 'hex').toString('base64')}` ||
     !Number.isSafeInteger(artifact.size) ||
     artifact.size <= 0 ||
+    artifact.budgetBytes !== RELEASE_ARCHIVE_BUDGET_BYTES ||
+    artifact.size > artifact.budgetBytes ||
+    artifact.path !==
+      `${BROWSER_ARTIFACT_DIRECTORY}/studio-browser-${version}-${artifact.sha256.slice(0, 16)}.tar` ||
+    artifact.checksumPath !== `${artifact.path}.sha256` ||
     Object.keys(artifact).sort().join('\n') !==
-      'assetManifestSha256\nchecksumPath\nintegrity\npath\nsha256\nsha512\nsize\nversion'
+      'assetManifestSha256\nbudgetBytes\nchecksumPath\nintegrity\npath\nsha256\nsha512\nsize\nversion'
   ) {
     throw new Error(`Approved Studio browser artifact for ${version} is invalid.`);
   }
@@ -317,9 +361,34 @@ async function writeBrowserAssetManifest(directory, entryPoint, release) {
   if (!files.includes(entryPoint)) {
     throw new Error(`Studio browser entry ${entryPoint} is absent from its distribution.`);
   }
+  const enhancementEntries = files.filter((path) =>
+    /^assets\/studio-enhancements-[a-f0-9]{16}\.min\.js$/u.test(path),
+  );
+  if (enhancementEntries.length !== 1) {
+    throw new Error(
+      `Studio browser distribution requires one enhancement runtime; found ${enhancementEntries.length}.`,
+    );
+  }
+  const enhancementEntry = enhancementEntries[0];
   const assets = await Promise.all(
     files.map(async (path) => {
       const bytes = await readFile(join(directory, path));
+      if (path === entryPoint || path === enhancementEntry) {
+        const enhancementRuntime = path === enhancementEntry;
+        const asset = releaseRuntimeAssetRecord({
+          bytes,
+          mediaType: 'text/javascript',
+          path,
+          policy: enhancementRuntime ? 'enhancement-runtime' : 'authoring-browser-module',
+          role: enhancementRuntime ? 'enhancement-runtime' : 'browser-module',
+        });
+        await assertReleaseRuntimeAsset(asset, bytes, {
+          format: enhancementRuntime ? 'iife' : 'esm',
+          policy: enhancementRuntime ? 'enhancement-runtime' : 'authoring-browser-module',
+          requireHashedName: path.startsWith('assets/'),
+        });
+        return asset;
+      }
       return {
         bytes: bytes.byteLength,
         integrity: `sha256-${createHash('sha256').update(bytes).digest('base64')}`,
@@ -332,6 +401,7 @@ async function writeBrowserAssetManifest(directory, entryPoint, release) {
   const document = {
     assets,
     contentSecurityPolicy: SAME_ORIGIN_BROWSER_CSP,
+    enhancementRuntime: enhancementRuntimeManifest(enhancementEntry),
     kind: 'studio-browser-assets',
     module: { entryPoint, exports: [...browserExports], format: 'esm' },
     productionRuntime: {
@@ -339,13 +409,106 @@ async function writeBrowserAssetManifest(directory, entryPoint, release) {
       requires: [],
       servingModel: 'static-files',
     },
+    publicRenderer: {
+      style: {
+        budgetBytes: 262_144,
+        contentHashAlgorithm: 'sha256',
+        fileNameTemplate: 'studio-public-{{CONTENT_HASH_16}}.min.css',
+        integrityAlgorithm: 'sha256',
+        materialization: 'exact-utf8-bytes',
+        mediaType: 'text/css',
+        minified: true,
+        outputSchema:
+          'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json#/$defs/publicStyleAsset',
+        source: 'renderer-web.css',
+      },
+    },
     release: {
       corpusManifestDigest: release.corpusManifestDigest,
       version: release.release,
     },
     schemaVersion: 1,
   };
+  assertBrowserAssetManifestSemantics(document);
   await writeFile(join(directory, 'studio-assets.json'), `${JSON.stringify(document, null, 2)}\n`);
+}
+
+/**
+ * Enforce the cross-member rules JSON Schema cannot express: path uniqueness
+ * and exact entry-point binding to the single role-bearing asset.
+ */
+export function assertBrowserAssetManifestSemantics(document) {
+  if (document === null || typeof document !== 'object' || !Array.isArray(document.assets)) {
+    throw new TypeError('Studio browser asset manifest has no asset inventory.');
+  }
+  const paths = document.assets.map((asset) => asset?.path);
+  if (paths.some((path) => typeof path !== 'string') || new Set(paths).size !== paths.length) {
+    throw new TypeError('Studio browser asset manifest paths must be unique strings.');
+  }
+  for (const asset of document.assets) {
+    if (
+      asset?.mediaType === 'text/javascript' &&
+      asset.role !== 'browser-module' &&
+      asset.role !== 'enhancement-runtime'
+    ) {
+      throw new TypeError(
+        'Studio browser asset manifest cannot disguise executable JavaScript as support material.',
+      );
+    }
+  }
+  const bindings = [
+    ['browser-module', document.module?.entryPoint],
+    ['enhancement-runtime', document.enhancementRuntime?.entryPoint],
+  ];
+  for (const [role, entryPoint] of bindings) {
+    const roleAssets = document.assets.filter((asset) => asset?.role === role);
+    if (
+      roleAssets.length !== 1 ||
+      typeof entryPoint !== 'string' ||
+      roleAssets[0]?.path !== entryPoint
+    ) {
+      throw new TypeError(
+        `Studio browser asset manifest must bind ${role} to its one role-bearing asset.`,
+      );
+    }
+  }
+  return document;
+}
+
+/** Re-verify every manifest-selected byte immediately before packaging or serving it. */
+export async function assertBrowserAssetManifestFiles(directory) {
+  const document = assertBrowserAssetManifestSemantics(
+    JSON.parse(await readFile(join(directory, 'studio-assets.json'), 'utf8')),
+  );
+  const expectedPaths = document.assets.map((asset) => asset.path).sort();
+  const actualPaths = (await filesUnder(directory))
+    .map((path) => repositoryPath(directory, path))
+    .filter((path) => path !== 'studio-assets.json')
+    .sort();
+  if (expectedPaths.join('\n') !== actualPaths.join('\n')) {
+    throw new Error('Studio browser asset manifest does not exactly inventory its distribution.');
+  }
+  for (const asset of document.assets) {
+    const bytes = await readFile(join(directory, asset.path));
+    const identity = releaseAssetIdentity(bytes);
+    for (const member of ['bytes', 'integrity']) {
+      if (asset[member] !== identity[member]) {
+        throw new Error(`Studio browser asset ${asset.path} has incorrect ${member}.`);
+      }
+    }
+    if (asset.role === 'browser-module' || asset.role === 'enhancement-runtime') {
+      const enhancement = asset.role === 'enhancement-runtime';
+      await assertReleaseRuntimeAsset(asset, bytes, {
+        format: enhancement ? 'iife' : 'esm',
+        policy: enhancement ? 'enhancement-runtime' : 'authoring-browser-module',
+      });
+    } else if (asset.mediaType === 'text/javascript' || asset.mediaType === 'text/css') {
+      throw new Error(
+        `Studio browser asset ${asset.path} is executable/style content without a governed runtime role.`,
+      );
+    }
+  }
+  return document;
 }
 
 async function copyBrowserDistributionSupport(rootPath, destination) {
@@ -653,6 +816,9 @@ export function assertSelfContainedBrowserModule(source) {
 
 function browserAssetRole(path, entryPoint) {
   if (path === entryPoint) return 'browser-module';
+  if (/^assets\/studio-enhancements-[a-f0-9]{16}\.min\.js$/u.test(path)) {
+    return 'enhancement-runtime';
+  }
   if (path === 'LICENSE' || path.startsWith('third-party-licenses/')) return 'license';
   if (path === 'THIRD_PARTY_NOTICES.md') return 'notice';
   if (path === 'studio-release.json') return 'release-record';

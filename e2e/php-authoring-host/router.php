@@ -31,8 +31,26 @@ if ($path === '/health') {
 }
 
 if ($path === '/studio-browser.js') {
+    $manifest = json_decode(
+        file_get_contents(
+            $repositoryRoot . '/packages/studio-lit/dist/browser/studio-assets.json'
+        ) ?: '',
+        false,
+        16,
+        JSON_THROW_ON_ERROR,
+    );
+    $entryPoint = $manifest->module->entryPoint ?? null;
+    if (
+        !is_string($entryPoint)
+        || preg_match(
+            '#\Aassets/studio-browser-[a-f0-9]{16}\.min\.js\z#',
+            $entryPoint,
+        ) !== 1
+    ) {
+        throw new RuntimeException('Studio browser manifest entry point is invalid.');
+    }
     serveFile(
-        $repositoryRoot . '/packages/studio-lit/dist/browser/studio-browser.js',
+        $repositoryRoot . '/packages/studio-lit/dist/browser/' . $entryPoint,
         'text/javascript; charset=utf-8',
     );
     return;
