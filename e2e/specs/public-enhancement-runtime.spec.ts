@@ -5,7 +5,7 @@ import {
   renderStudioWeb,
   type RendererWebVector,
   type StudioWebRenderResult,
-} from '../../packages/renderer-web/dist/index.js';
+} from '../../packages/renderer-web/src/index.js';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const vector = JSON.parse(
@@ -46,7 +46,7 @@ if (manifest.enhancementRuntime.contentSecurityPolicy !== runtimePolicy) {
   throw new Error('The built enhancement runtime does not carry the frozen CSP contract.');
 }
 const policy = `${runtimePolicy}; img-src 'self'`;
-const rendered = await renderInteractiveVector(vector);
+const rendered = renderInteractiveVector(vector);
 if (
   rendered.enhancements.map(({ kind }) => kind).join('\n') !==
   ['tabs', 'dialog', 'popover', 'notice', 'slideshow', 'lightbox', 'countdown', 'navigation'].join(
@@ -162,7 +162,7 @@ test('actual server-rendered fallbacks remain complete with JavaScript disabled'
   }
 });
 
-async function renderInteractiveVector(input: RendererWebVector): Promise<StudioWebRenderResult> {
+function renderInteractiveVector(input: RendererWebVector): StudioWebRenderResult {
   const bindings = new Map(
     input.bindings.map(({ nodeId, port, value }) => [`${nodeId}\u0000${port}`, value]),
   );
