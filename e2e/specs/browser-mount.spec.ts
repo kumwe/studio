@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, test, type Locator } from '@playwright/test';
 import { STUDIO_CONTRACT_VERSION } from '@kumwe/studio-protocol';
@@ -11,6 +12,14 @@ const browserModule = resolve(
   'browser',
   'studio-browser.js',
 );
+const browserRelease = (
+  JSON.parse(
+    await readFile(
+      resolve(repositoryRoot, 'packages/studio-lit/dist/browser/studio-assets.json'),
+      'utf8',
+    ),
+  ) as { release: { corpusManifestDigest: string; version: string } }
+).release;
 const policy = [
   "default-src 'none'",
   "script-src 'self'",
@@ -144,18 +153,21 @@ function testDocument(): string {
     instanceId: 'browser-one',
     kind: 'studio-deployment',
     mount: '#mount-one',
+    release: browserRelease,
   });
   const second = JSON.stringify({
     contractVersion: STUDIO_CONTRACT_VERSION,
     instanceId: 'browser-two',
     kind: 'studio-deployment',
     mount: '#mount-two',
+    release: browserRelease,
   });
   const refused = JSON.stringify({
     contractVersion: STUDIO_CONTRACT_VERSION,
     instanceId: 'browser-refused',
     kind: 'studio-deployment',
     mount: '#mount-refused',
+    release: browserRelease,
   });
   return `<!doctype html>
 <html lang="en">
@@ -185,11 +197,11 @@ function harnessModule(): string {
 
 const report = await autoMountStudio({
   runtimeResolver(target, configuration) {
-    if (configuration.instanceId === 'browser-refused') {
+    if (configuration?.instanceId === 'browser-refused') {
       throw Object.assign(new Error('Host refused Studio with HTTP 403.'), { status: 403 });
     }
     const element = document.createElement('section');
-    element.dataset.runtimeInstance = configuration.instanceId ?? configuration.mount ?? 'local';
+    element.dataset.runtimeInstance = configuration?.instanceId ?? configuration?.mount ?? 'local';
     target.append(element);
     return { element, dispose: () => element.remove() };
   },

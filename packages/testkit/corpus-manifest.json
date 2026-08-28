@@ -8,7 +8,7 @@
           "file": "authoring-message-catalog.en.json"
         },
         {
-          "digest": "sha256-EDQMZcJgHpyCjYnjD1Vle+qINt+ii7df8ackhJ0wyl8=",
+          "digest": "sha256-8JYR5mUlMvswled3UGVoc0EhoDm89eFDDqhFMzYg+oo=",
           "file": "authoring-save.plan.example.json"
         },
         {
@@ -120,11 +120,11 @@
           "file": "studio-config.example.json"
         },
         {
-          "digest": "sha256-mAtet+rMXebscDcPRtzHmjDL+46CWljMHWEpd36CqhM=",
+          "digest": "sha256-ng0RLEGil8PQ52ER/iKqKDRjJ9cpi4cla0uoij/r/0Q=",
           "file": "studio-deployment.hosted.example.json"
         },
         {
-          "digest": "sha256-yj0WO6sFU4GCciYUBWjzvvfqrBh869doeOC2Pp5EI1Y=",
+          "digest": "sha256-8KnarP4nAaFJTfm9gjXT7mAo501Oa1NLosajuEyatoE=",
           "file": "studio-deployment.standalone.example.json"
         },
         {
@@ -628,7 +628,7 @@
     {
       "files": [
         {
-          "digest": "sha256-Y6gP3Z83IWvE+NTGPMzgm55/x4ztT8JKDeGdaLRuXlQ=",
+          "digest": "sha256-UjioXieC+7goKt+iLia/4IXh7wxx9KZc/vxPD4ewyfM=",
           "file": "transport-matrix.json"
         }
       ],
@@ -960,8 +960,16 @@
     {
       "files": [
         {
-          "digest": "sha256-K34yORwyTZIhuYALL7OMN3I/yTIfohzvX2j0mmJClDc=",
+          "digest": "sha256-ljTJiEiRDi0K8gevNB0CJbiTk8Elh4Nof6H0vvaeVRk=",
           "file": "authoring-save.plan-missing-coordinates.json"
+        },
+        {
+          "digest": "sha256-KJwtRIuXAwAA5iuNjM59dCCiJdBWGf75AwIM9T7JUrA=",
+          "file": "authoring-save.plan-missing-successor-context.json"
+        },
+        {
+          "digest": "sha256-cm+XIGq1B+jHZ5rnMqP8Ar30sSe7i4mBaL9naAABTGI=",
+          "file": "authoring-save.request-plan-missing-successor-context.json"
         },
         {
           "digest": "sha256-MCJnARlTtq/Bu6cEfE4mgKn+/bF9Ie49nVzjNh1q+ZY=",
@@ -1064,8 +1072,12 @@
           "file": "host-capabilities.invalid-protocol-version.json"
         },
         {
-          "digest": "sha256-CoyJ+RphxFsbq9bpyE71EBQ0R2SErvvIHswUXxR4G1U=",
+          "digest": "sha256-9DF9DTP0FSwJ9P3kj/pOlFOik3p2JtSBsjFBii551WE=",
           "file": "host-error.retry-delay-without-retry.json"
+        },
+        {
+          "digest": "sha256-cjukTWhUZMALqEY0IXBPcIlE4xTRb6n8UA3XiBPJ8/o=",
+          "file": "host-error.retry-delay-wrong-category.json"
         },
         {
           "digest": "sha256-eYNlSGuvJiINWipDkv/F+wcDpFTbdUR7tD6+srZ4bdI=",
@@ -1156,11 +1168,15 @@
           "file": "studio-chart.script-config.json"
         },
         {
-          "digest": "sha256-9SeB6HdFd4q6wbWlhMHwRyGDGJOuNffBg+3ZYbT+FzQ=",
+          "digest": "sha256-NlwsVag8hq4JMb3+OLQ72nJAWio8oyBqsyemCznDdnQ=",
           "file": "studio-deployment.long-lived-token.json"
         },
         {
-          "digest": "sha256-U3//ciedqdA7oXjmj9I6ZjJcNmNZSEKBxHydQMCARHc=",
+          "digest": "sha256-oDXveuLa6aefSSvVeFWJAv6037lqqIcy8Iuczsg8qbA=",
+          "file": "studio-deployment.missing-required.json"
+        },
+        {
+          "digest": "sha256-mp8F0wbXMvjnJbiRunRXnx7H+w+1JyNHxdQP5cnn6Jo=",
           "file": "studio-deployment.unknown-member.json"
         },
         {

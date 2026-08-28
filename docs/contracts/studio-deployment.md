@@ -14,13 +14,18 @@ resource context, and advertised host capabilities needed by the core before the
 
 ## Configuration-first mounting
 
-One deployment is one bounded JSON object associated with one ordinary DOM element. `mount`, when present,
-contains a CSS selector and MUST resolve to exactly one element in the containing document. It MAY be omitted
-when an explicit element argument or the element associated with the JSON script already supplies the mount.
-The config-only/script-only API requires `mount`; a missing target, invalid selector, or selector that resolves
-more than once is an initialization error. Studio MUST NOT guess, append a replacement container, or mount into
-the first match. Several same-class, no-ID elements can each use an explicit or associated empty configuration
-without an ambiguous selector.
+One emitted deployment is one bounded JSON object associated with one ordinary DOM element. Every emitted
+object requires `kind: "studio-deployment"`, `mount`, and `release`. `mount` contains a CSS selector and MUST
+resolve to exactly one element in the containing document; when an explicit element or discovery association
+also supplies the target, the selector MUST identify that same element. A missing target, invalid selector, or
+selector that resolves more than once is an initialization error. Studio MUST NOT guess, append a replacement
+container, or mount into the first match.
+
+Configless standalone mounting is a distinct API state: the caller passes only an explicit target to
+`mountStudio(target)`, or discovery finds a `[data-kumwe-studio]` element whose attribute is empty. In that case
+there is no deployment JSON document. An empty or partial JSON object is malformed host output, never shorthand
+for configless mounting. Several same-class, no-ID elements can therefore mount configlessly without an
+ambiguous selector, while every emitted object remains independently schema-valid.
 
 A host SHOULD emit the object in a non-executable `<script type="application/json">` element and associate that
 script with its intended mount. The browser bootstrap MUST read only explicitly associated configuration
@@ -40,22 +45,45 @@ echo the deployment document, authentication tokens, or session material; target
 phase, safe error, and optional instance correlation are sufficient. An optional `instanceId` is
 correlation data only; reusing or changing it does not join sessions or grant access.
 
-The optional `contractVersion` and `kind: "studio-deployment"` members allow an emitter to state the exact
-contract explicitly. Omitting them selects the current version implemented by the loaded, exactly pinned
-browser asset; it does not negotiate a newer contract.
+The optional `contractVersion` member states the exact contract explicitly. Omitting it selects the contract
+implemented by the loaded, exactly pinned browser asset; it does not negotiate a newer contract. The `kind`
+member is required and frozen as `studio-deployment`.
+
+## Archive release binding
+
+`release` is the exact `{version, corpusManifestDigest}` object copied from the verified
+`studio-assets.json.release` beside the browser module. The build projects that object and the browser module's
+compiled release identity from the same coordinated release record. After schema validation, the bootstrap
+compares both fields before selector resolution, runtime construction, or network access. A cached module and a
+configuration emitted for a different release therefore fail closed instead of crossing contract generations.
+The bootstrap never fetches the manifest in configless mode.
+
+Canonical deployment examples are necessarily illustrative: they participate in the schema corpus whose
+digest produces the release record, so embedding the resulting current corpus digest in those same fixtures
+would be circular. Executable tests overlay the release from the current coordinated record, and real PHP host
+qualification copies the release directly from the built, verified `studio-assets.json`.
 
 ## Minimal standalone defaults
 
-An empty object is a complete valid deployment when the caller or associated element supplies the mount:
+Configless local Studio passes no deployment object:
 
-```json
-{}
+```ts
+await mountStudio(document.querySelector('#studio-page')!);
 ```
 
-The following is the equivalent selector-driven form:
+An emitted standalone document remains complete and release-bound; `locale` is an optional bounded BCP 47
+request for the local interface:
 
 ```json
-{ "mount": "#studio-page" }
+{
+  "kind": "studio-deployment",
+  "mount": "#studio-page",
+  "release": {
+    "version": "0.1.0-beta.2",
+    "corpusManifestDigest": "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+  },
+  "locale": "rw"
+}
 ```
 
 An absent `transport`, or an explicit `{ "kind": "standalone" }`, selects standalone behavior. Studio MUST NOT
@@ -79,6 +107,9 @@ The local context is an isolation and correlation identity, not a server resourc
 forbids `launch`, `session`, and `contributions` because the current local profile has one truthful meaning:
 blank built-in authoring followed by explicit import when desired. Accepted configuration is never ignored, and
 standalone values cannot be mistaken for host-authorized or durable session input.
+The top-level `locale` belongs only to standalone deployment. Hosted deployments continue to obtain their
+requested/resolved locale, direction, fallbacks, and time zone exclusively from `session.locale`; a hosted
+top-level `locale` is invalid.
 
 Standalone keeps work in browser memory. It MUST expose two explicit, non-equivalent interchange operations:
 
@@ -175,8 +206,12 @@ permanent credential cache. The three supported serialized profiles are delibera
 `same-origin-session` uses `credentials: "same-origin"`. The server's authentication session MUST remain in a
 Secure, HttpOnly, appropriately scoped cookie; the cookie value MUST NOT appear in deployment JSON. The
 configuration supplies only the CSRF header name and an unpredictable CSRF token. Studio sends that header on
-every configured host POST. The server verifies the authenticated session, CSRF token, allowed origin or
-same-site request metadata, resource context, and operation permission independently.
+every configured host POST. The server verifies the authenticated session, CSRF token, exact allowed origin,
+request metadata, resource context, and operation permission independently. The Studio AJAX request must carry
+the complete `Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: cors`, and
+`Sec-Fetch-Dest: empty` tuple. A duplicate, partial, or different tuple fails before session-backed work.
+The reference browser boundary also rejects a missing tuple; a host that admits a non-browser or legacy client
+must select and document a different verifier rather than weakening this browser profile.
 
 The endpoint MUST resolve to the document's origin. SameSite cookies and origin checks supplement rather than
 replace the CSRF token. A missing, expired, or rejected token requires a fresh host-issued configuration/session;
@@ -243,7 +278,7 @@ Invalid configuration fails closed before mounting. A host MAY display a safe lo
 but MUST NOT include token values, response bodies, internal URLs, stack traces, or policy details. `read-only`
 disables mutation locally and the server still rejects mutation independently.
 
-Changing mount, resource, target, start source, mode, session state, capability bounds, routing, or
+Changing release, mount, resource, target, start source, mode, session state, capability bounds, routing, or
 authentication requires a new compiled deployment/session. It MUST NOT silently transplant dirty work or
 credentials. Presentation changes within one admitted live session follow the separate continuity contract and
 do not require a new deployment.

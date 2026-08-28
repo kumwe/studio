@@ -6,6 +6,7 @@
     "kind": "authoring-save-plan",
     "id": "save-plans/incomplete",
     "revision": "save-plan-r1",
+    "successorContext": { "key": "returns/incomplete-r2" },
     "sessionId": "sessions/incomplete",
     "outcome": "save-item",
     "affectedArtifacts": ["entry"],

@@ -143,6 +143,10 @@ test('the real contextual shell completes every standalone host-authoring outcom
   expect(itemAccepted.type).toEqual(existing.type);
   expect(itemAccepted.entryValues.title).toBe('Accepted contextual item');
   expect(itemAccepted.dirty).toEqual({ blueprint: false, entry: false, model: false });
+  expect(itemAccepted.returnContext).not.toBe(existing.returnContext);
+  expect(itemAccepted.returnContext).toMatch(
+    /^returns\/reference-content-list\/save-item-[0-9]+$/u,
+  );
 
   // Starting from a reusable type resolves the selected v2 artifacts while
   // deliberately creating an Entry with no copied values.

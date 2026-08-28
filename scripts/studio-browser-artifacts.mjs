@@ -18,6 +18,23 @@ import { build } from 'vite';
 
 export const BROWSER_ARTIFACT_DIRECTORY = '.release-artifacts/browser';
 
+export const SAME_ORIGIN_BROWSER_CSP = Object.freeze({
+  headerTemplate:
+    "default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types lit-html; style-src 'self' 'nonce-{{STYLE_NONCE}}'; img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self'; worker-src 'none'; frame-src 'none'; manifest-src 'none'; object-src 'none'; frame-ancestors 'self'; base-uri 'none'; form-action 'none'",
+  inertConfigurationScript: Object.freeze({
+    element: 'script',
+    mediaType: 'application/json',
+    requiresHash: false,
+    requiresNonce: false,
+  }),
+  profile: 'same-origin-http',
+  styleNonce: Object.freeze({
+    minimumEntropyBits: 128,
+    placeholder: '{{STYLE_NONCE}}',
+    scope: 'response',
+  }),
+});
+
 const MAX_BROWSER_ASSET_COUNT = 500;
 const browserSchemaSeeds = Object.freeze([
   'authoring-http.schema.json',
@@ -47,7 +64,9 @@ implements the authoritative request boundary while the same compiled browser mo
 hosted, and isolated multi-mount operation.
 
 Verify every byte against \`studio-assets.json\` before activation. The detached checksum shipped beside the
-release tar verifies the archive itself; the manifest then verifies each extracted file.
+release tar verifies the archive itself; the manifest then verifies each extracted file. The manifest's
+\`contentSecurityPolicy\` member is the machine-checkable, exact same-origin PHP/HTTP policy template for the
+archive and its inert deployment JSON.
 `;
 
 const browserExports = Object.freeze([
@@ -103,14 +122,30 @@ export async function buildStudioBrowserAssets(
 
   const modulePath = join(destination, 'studio-browser.js');
   const moduleBytes = await readFile(modulePath);
-  assertSelfContainedBrowserModule(moduleBytes.toString('utf8'));
+  const moduleSource = moduleBytes.toString('utf8');
+  assertSelfContainedBrowserModule(moduleSource);
 
   await copyBrowserDistributionSupport(rootPath, destination);
   await assertBrowserDistributionReferences(destination);
 
   const release = JSON.parse(await readFile(join(destination, 'studio-release.json'), 'utf8'));
+  assertBrowserModuleReleaseIdentity(moduleSource, release);
   await writeBrowserAssetManifest(destination, 'studio-browser.js', release);
   return { directory: destination, entryPoint: 'studio-browser.js', release: release.release };
+}
+
+/** Fail the build if the compiled module and manifest source record can drift. */
+export function assertBrowserModuleReleaseIdentity(moduleSource, releaseRecord) {
+  if (
+    typeof releaseRecord?.release !== 'string' ||
+    typeof releaseRecord?.corpusManifestDigest !== 'string' ||
+    !moduleSource.includes(releaseRecord.release) ||
+    !moduleSource.includes(releaseRecord.corpusManifestDigest)
+  ) {
+    throw new TypeError(
+      'The compiled Studio browser module does not carry its coordinated release identity.',
+    );
+  }
 }
 
 /**
@@ -296,6 +331,7 @@ async function writeBrowserAssetManifest(directory, entryPoint, release) {
   );
   const document = {
     assets,
+    contentSecurityPolicy: SAME_ORIGIN_BROWSER_CSP,
     kind: 'studio-browser-assets',
     module: { entryPoint, exports: [...browserExports], format: 'esm' },
     productionRuntime: {

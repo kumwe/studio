@@ -2,7 +2,12 @@
   "schema": "studio-deployment.schema.json",
   "description": "Deployment configuration is closed and rejects inferred backend configuration.",
   "value": {
+    "kind": "studio-deployment",
     "mount": "#studio-page",
+    "release": {
+      "version": "0.1.0-beta.2",
+      "corpusManifestDigest": "sha256-HCQ5pF8NMk9nPOXfU6kVX/E8sjgJjHdyDQ86CTOjGi0="
+    },
     "backend": {
       "url": "/api/studio"
     }

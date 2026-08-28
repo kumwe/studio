@@ -1,0 +1,16 @@
+{
+  "schema": "host-error.schema.json",
+  "description": "A retry delay is present only on a rate-limit or unavailable failure.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "host-error",
+    "category": "forbidden",
+    "correlationId": "requests/invalid-retry-delay-category",
+    "message": {
+      "key": "studio.host/forbidden",
+      "defaultMessage": "The request is forbidden."
+    },
+    "retryable": true,
+    "retryAfterMilliseconds": 1000
+  }
+}

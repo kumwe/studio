@@ -1176,6 +1176,8 @@ export type AuthoringAffectedArtifact = 'blueprint' | 'entry' | 'model' | 'reusa
 export interface AuthoringSavePlanReference {
   id: StableId;
   revision: Revision;
+  /** Exact host-minted return context adopted only after this planned save is accepted. */
+  successorContext: AuthoringReturnContext;
 }
 
 export interface AuthoringSavePlan extends AuthoringSavePlanReference {
@@ -1393,16 +1395,25 @@ export interface StudioDeploymentContributionBundle {
   payloads: readonly StudioDeploymentContributionPayload[];
 }
 
+/** Exact release identity copied from the prebuilt browser asset manifest. */
+export interface StudioDeploymentRelease {
+  corpusManifestDigest: string;
+  version: string;
+}
+
 export interface StudioDeploymentConfigurationBase {
   contractVersion?: StudioContractVersion;
   instanceId?: StableId;
-  kind?: 'studio-deployment';
-  mount?: string;
+  kind: 'studio-deployment';
+  mount: string;
+  release: StudioDeploymentRelease;
 }
 
 export interface StudioStandaloneDeploymentConfiguration extends StudioDeploymentConfigurationBase {
   contributions?: never;
   launch?: never;
+  /** Requested local UI locale. English remains the built-in message fallback. */
+  locale?: string;
   session?: never;
   transport?: StudioDeploymentStandaloneTransport;
 }
@@ -1410,16 +1421,18 @@ export interface StudioStandaloneDeploymentConfiguration extends StudioDeploymen
 export interface StudioHostedDeploymentConfiguration extends StudioDeploymentConfigurationBase {
   contributions?: StudioDeploymentContributionBundle;
   launch: StudioDeploymentLaunch;
+  locale?: never;
   session: StudioConfiguration;
   transport: StudioDeploymentHttpTransport;
 }
 
 /**
  * Bounded JSON emitted by any host into an `application/json` DOM script for
- * one Studio mount. An empty object is valid when the caller or associated DOM
- * element supplies the mount. Omitting `transport` selects the deterministic
- * standalone blank-page profile; HTTP deployments provide an exact launch plus
- * the PHP/host-resolved Studio session configuration.
+ * one Studio mount. Every emitted document is bound to its exact browser asset
+ * release. Omitting the document entirely for an explicit or associated DOM
+ * target selects local defaults; omitting `transport` from a complete document
+ * selects the deterministic standalone blank-page profile. HTTP deployments
+ * provide an exact launch plus the PHP/host-resolved Studio session configuration.
  */
 export type StudioDeploymentConfiguration =
   StudioHostedDeploymentConfiguration | StudioStandaloneDeploymentConfiguration;

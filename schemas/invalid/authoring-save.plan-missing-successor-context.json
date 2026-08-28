@@ -1,0 +1,28 @@
+{
+  "schema": "authoring-save.schema.json",
+  "description": "A save plan must bind the exact host-minted return context that an accepted result will advance to.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-save-plan",
+    "id": "save-plans/missing-successor-context",
+    "revision": "save-plan-r1",
+    "sessionId": "sessions/missing-successor-context",
+    "outcome": "save-item",
+    "expected": {
+      "model": {
+        "id": "models/article",
+        "version": "1.0.0",
+        "revision": "model-r1"
+      },
+      "blueprint": {
+        "id": "blueprints/article",
+        "version": "1.0.0",
+        "revision": "blueprint-r1"
+      },
+      "entry": { "id": "entries/article", "revision": "entry-r1" }
+    },
+    "affectedArtifacts": ["entry"],
+    "consequences": [],
+    "confirmationRequired": false
+  }
+}

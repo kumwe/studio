@@ -1,0 +1,5 @@
+{
+  "schema": "studio-deployment.schema.json",
+  "description": "An emitted deployment must identify its kind, exact mount, and browser archive release.",
+  "value": {}
+}

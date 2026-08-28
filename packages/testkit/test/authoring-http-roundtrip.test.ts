@@ -7,11 +7,13 @@ import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
   type AuthoringPort,
+  type AuthoringReturnContext,
   type AuthoringSaveAsNewTypeRequest,
   type AuthoringSaveIntent,
   type AuthoringSaveItemRequest,
   type AuthoringSaveNewTypeVersionRequest,
   type AuthoringSavePlan,
+  type AuthoringSavePlanReference,
   type AuthoringSaveResult,
   type AuthoringSessionSnapshot,
   type AuthoringStartRequest,
@@ -118,7 +120,11 @@ const saveItemRequest: AuthoringSaveItemRequest = {
   contractVersion: STUDIO_CONTRACT_VERSION,
   draft: { entry: session.state.entry, outcome: 'save-item' },
   kind: 'authoring-save-item-request',
-  plan: { id: itemPlan.id, revision: itemPlan.revision },
+  plan: {
+    id: itemPlan.id,
+    revision: itemPlan.revision,
+    successorContext: itemPlan.successorContext,
+  },
 };
 const saveVersionRequest: AuthoringSaveNewTypeVersionRequest = {
   acceptedConsequences: ['studio.authoring/dependent-entry-migration'],
@@ -129,7 +135,11 @@ const saveVersionRequest: AuthoringSaveNewTypeVersionRequest = {
     outcome: 'save-new-type-version',
   },
   kind: 'authoring-save-new-type-version-request',
-  plan: { id: versionPlan.id, revision: versionPlan.revision },
+  plan: {
+    id: versionPlan.id,
+    revision: versionPlan.revision,
+    successorContext: versionPlan.successorContext,
+  },
 };
 const saveAsTypeRequest: AuthoringSaveAsNewTypeRequest = {
   acceptedConsequences: ['studio.authoring/dependent-entry-migration'],
@@ -142,7 +152,11 @@ const saveAsTypeRequest: AuthoringSaveAsNewTypeRequest = {
     outcome: 'save-as-new-type',
   },
   kind: 'authoring-save-as-new-type-request',
-  plan: { id: newTypePlan.id, revision: newTypePlan.revision },
+  plan: {
+    id: newTypePlan.id,
+    revision: newTypePlan.revision,
+    successorContext: newTypePlan.successorContext,
+  },
 };
 
 describe('contextual authoring HTTP reference binding', () => {
@@ -335,6 +349,36 @@ describe('contextual authoring HTTP reference binding', () => {
     );
   });
 
+  it('publishes portable accepted advancement and mismatched successor-context cases', async () => {
+    const vector = JSON.parse(
+      await readFile(
+        join(process.cwd(), 'schemas/vectors/authoring-http/transport-matrix.json'),
+        'utf8',
+      ),
+    ) as {
+      successorContextCases: {
+        beforeContext: AuthoringReturnContext;
+        expect:
+          | { acceptedContext: AuthoringReturnContext; outcome: 'accepted' }
+          | { code: string; outcome: 'rejected' };
+        id: string;
+        planReference: AuthoringSavePlanReference;
+        resultContext: AuthoringReturnContext;
+      }[];
+    };
+    const accepted = vector.successorContextCases.find(({ id }) => id === 'accepted-advance');
+    const mismatched = vector.successorContextCases.find(({ id }) => id === 'mismatched-result');
+    if (accepted?.expect.outcome !== 'accepted' || mismatched?.expect.outcome !== 'rejected') {
+      throw new Error('The portable successor-context cases are incomplete.');
+    }
+
+    expect(accepted.planReference.successorContext).not.toEqual(accepted.beforeContext);
+    expect(accepted.resultContext).toEqual(accepted.planReference.successorContext);
+    expect(accepted.expect.acceptedContext).toEqual(accepted.planReference.successorContext);
+    expect(mismatched.resultContext).not.toEqual(mismatched.planReference.successorContext);
+    expect(mismatched.expect.code).toBe('studio.host/unexpected-authoring-save-result');
+  });
+
   it('fails closed for malformed base URLs, headers, and invalid exact requests or results', async () => {
     const transport = vi.fn(() =>
       Promise.resolve({
@@ -429,13 +473,21 @@ function createAuthoringPort(calls: string[]): AuthoringPort {
   const saveResult = (
     outcome: AuthoringSaveResult['outcome'],
     plan: AuthoringSavePlan,
-  ): AuthoringSaveResult => ({
-    contractVersion: STUDIO_CONTRACT_VERSION,
-    kind: 'authoring-save-result',
-    outcome,
-    plan: { id: plan.id, revision: plan.revision },
-    session,
-  });
+  ): AuthoringSaveResult => {
+    const acceptedSession = structuredClone(session);
+    acceptedSession.presentation.returnContext = structuredClone(plan.successorContext);
+    return {
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      kind: 'authoring-save-result',
+      outcome,
+      plan: {
+        id: plan.id,
+        revision: plan.revision,
+        successorContext: structuredClone(plan.successorContext),
+      },
+      session: acceptedSession,
+    };
+  };
   return {
     listTypes: () => {
       calls.push('list-types');

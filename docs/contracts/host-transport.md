@@ -64,6 +64,14 @@ Studio route for a declared target. Host navigation may launch the browser works
 does not grant authority and never bypasses `resolve-target`/`start` (`STUDIO-PROD-008`, `STUDIO-PROD-010`,
 `STUDIO-PROD-014`).
 
+For all three saves, the reviewed plan reference is the complete required
+`{ id, revision, successorContext }` object, not only its identity members. `successorContext` is a bounded
+`returnContext` value minted by the host during planning. A successful response MUST echo that exact plan
+reference and MUST put the same value in `session.presentation.returnContext`. The client adopts it only after
+the complete save result passes schema and cross-document validation; a mismatch is a safe non-retryable
+`internal` adapter-contract failure and does not advance the live session. Refused or cancelled saves likewise
+retain the prior context.
+
 ## Configured route and method
 
 Every call uses the exact URL declared by the deployment and this method/media type:
@@ -132,7 +140,8 @@ with its operation-specific result:
 member. `revision` is present for every operation the registry marks `expectsRevision`, carrying the revision
 the host advanced to, so a client never re-reads to learn what it just wrote. Contextual authoring results do
 not carry this single outer `revision`: their exact Model, Blueprint, Entry, reusable-type, plan, and session
-coordinates are reconciled inside the normalized result.
+coordinates are reconciled inside the normalized result. The plan's required successor return context is part
+of that reconciliation, not navigation inferred from an HTTP location or route.
 
 ## Failure response
 
@@ -145,6 +154,13 @@ The optional `revision` is valid only for `conflict` and carries a safe current 
 `retryAfterMilliseconds` is valid only when `retryable` is true and the category is `rate-limited` or
 `unavailable`. Bodies that combine those members with another category are malformed host errors and become a
 safe client-side `internal` failure.
+
+This is a closed compatibility boundary, not an additive annotation rule. The current
+`host-error.schema.json` rejects combinations that an earlier schema digest accepted: any non-`conflict`
+error carrying `revision`, and any retry delay whose category or `retryable` value does not satisfy the rule
+above. A host moving to the current schema/corpus digest MUST migrate all error producers before activation;
+continuing to emit a formerly valid combination is not backward-compatible with a client validating the new
+digest.
 
 When no canonical body is present, the client derives the category from the status:
 
@@ -195,6 +211,11 @@ authentication has three closed profiles:
 
 - `same-origin-session` sends `credentials: same-origin` plus the configured CSRF header. The session identifier
   remains in a secure HttpOnly, appropriately `SameSite` cookie and every endpoint must match the page origin.
+  A modern Studio browser request carries the complete Fetch Metadata tuple `Sec-Fetch-Site: same-origin`,
+  `Sec-Fetch-Mode: cors`, and `Sec-Fetch-Dest: empty`; a duplicate, partial, or different tuple is forbidden
+  before session authentication. The reference browser verifier also rejects a missing tuple. A separately
+  documented non-browser or legacy transport must use a different verifier and still enforce equivalent
+  origin and CSRF integrity.
 - `bearer-token` sends one bearer value with credentials omitted and requires an `issuedAt <= now < expiresAt`
   browser-use window whose positive duration is at most 15 minutes.
 - `header-token` applies that same issuance/expiry window under an admitted non-browser-controlled header name,

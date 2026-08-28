@@ -197,7 +197,8 @@ content area that should be editable, PHP renders the ordinary target element an
 route, actor, permission, content, or persistence assumption.
 
 The configuration is resolved only after Kumwe App's normal session authentication and target/resource policy
-reduction. It supplies the exact launch, complete resolved `StudioConfiguration`, advertised capabilities,
+reduction. It supplies required `kind` and `mount`, copies the exact release object from the verified
+`studio-assets.json`, and supplies the exact launch, complete resolved `StudioConfiguration`, advertised capabilities,
 operation routing, authentication projection, and optional target-admitted declarative contributions. Token
 projections include required `issuedAt`/`expiresAt` instants with a current positive lifetime no greater than
 15 minutes; PHP refuses to emit, and Studio refuses to send, malformed, future, expired, or overlong windows.
@@ -209,8 +210,9 @@ never authority.
 The reference implementation and full PHP construction are in
 [`examples/php-authoring-host`](../../examples/php-authoring-host/README.md#emit-one-browser-deployment-configuration-per-mount).
 Kumwe App replaces the reference services with its own application boundaries but preserves the emitter's
-schema validation, raw-text JSON escaping, body bounds, launch/session context equality, and route/capability
-agreement.
+schema validation, asset-release agreement, raw-text JSON escaping, body bounds, launch/session context equality,
+and route/capability agreement. A stale cached module paired with configuration for a different release fails
+before selector resolution or any App request.
 
 An administrator page can emit several independent Studio pairs, including targets contributed by extensions.
 Each retains its own resource, draft, history, selection, lifecycle, and transport. An inline/maximized
@@ -253,6 +255,12 @@ Model, Blueprint, and Entry coordinate set. The application service rejects a ch
 expired plan, missing accepted consequence, policy reduction, stale runtime generation, or plan/key reuse for a
 different intent. An exact retry returns the original normalized `AuthoringSaveResult` and does not duplicate a
 revision, audit record, event, or webhook.
+
+Each PHP plan also mints the required bounded `successorContext`. Kumwe App persists and compares the complete
+`{ id, revision, successorContext }` plan reference, returns it unchanged after commit, and places that exact
+context in the reconciled session's `presentation.returnContext`. Only that accepted transaction advances the
+host's return pointer; a conflict, authorization refusal, cancellation, or mismatched result keeps the prior
+context and cannot be repaired by browser inference.
 
 ### Supporting Studio ports
 

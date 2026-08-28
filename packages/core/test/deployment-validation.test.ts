@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import hostedDeployment from '../../../schemas/examples/studio-deployment.hosted.example.json' with { type: 'json' };
+import standaloneDeployment from '../../../schemas/examples/studio-deployment.standalone.example.json' with { type: 'json' };
 import {
   assertStudioDeploymentConfiguration,
   parseJsonRejectingDuplicateMembers,
@@ -7,9 +8,29 @@ import {
 } from '../src/index.js';
 
 describe('Studio deployment validation', () => {
-  it('accepts zero-configuration standalone deployment', () => {
-    expect(validateStudioDeploymentConfiguration({})).toBe(true);
-    expect(validateStudioDeploymentConfiguration({ mount: '.studio-page' })).toBe(true);
+  it('requires emitted deployments to identify their kind mount and archive release', () => {
+    expect(validateStudioDeploymentConfiguration({})).toBe(false);
+    expect(validateStudioDeploymentConfiguration({ mount: '.studio-page' })).toBe(false);
+    expect(validateStudioDeploymentConfiguration(standaloneDeployment)).toBe(true);
+  });
+
+  it('admits a bounded standalone locale without admitting hosted session fields', () => {
+    expect(validateStudioDeploymentConfiguration(standaloneDeployment)).toBe(true);
+    expect(
+      validateStudioDeploymentConfiguration({ ...standaloneDeployment, locale: 'x'.repeat(51) }),
+    ).toBe(false);
+    expect(
+      validateStudioDeploymentConfiguration({
+        ...standaloneDeployment,
+        session: hostedDeployment.session,
+      }),
+    ).toBe(false);
+    expect(
+      validateStudioDeploymentConfiguration({
+        ...hostedDeployment,
+        locale: 'rw',
+      }),
+    ).toBe(false);
   });
 
   it('rejects duplicate raw transport and authentication members before parsing', () => {

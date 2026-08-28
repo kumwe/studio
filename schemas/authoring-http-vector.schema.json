@@ -5,7 +5,15 @@
   "description": "A language-neutral matrix for replaying the seven contextual authoring HTTP routes and their transport-security refusal boundaries in any host implementation.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["contractVersion", "kind", "id", "operations", "securityCases", "errorMappings"],
+  "required": [
+    "contractVersion",
+    "kind",
+    "id",
+    "operations",
+    "securityCases",
+    "errorMappings",
+    "successorContextCases"
+  ],
   "properties": {
     "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
     "kind": { "const": "authoring-http-vector" },
@@ -27,6 +35,13 @@
       "minItems": 12,
       "maxItems": 12,
       "items": { "$ref": "#/$defs/errorMapping" }
+    },
+    "successorContextCases": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/successorContextCase" }
     }
   },
   "$defs": {
@@ -139,6 +154,41 @@
       "properties": {
         "category": { "$ref": "#/$defs/errorCategory" },
         "status": { "type": "integer", "minimum": 400, "maximum": 599 }
+      }
+    },
+    "successorContextCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "beforeContext", "planReference", "resultContext", "expect"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/localName" },
+        "beforeContext": { "$ref": "common.schema.json#/$defs/returnContext" },
+        "planReference": {
+          "$ref": "authoring-save.schema.json#/$defs/planReference"
+        },
+        "resultContext": { "$ref": "common.schema.json#/$defs/returnContext" },
+        "expect": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "acceptedContext"],
+              "properties": {
+                "outcome": { "const": "accepted" },
+                "acceptedContext": { "$ref": "common.schema.json#/$defs/returnContext" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "code"],
+              "properties": {
+                "outcome": { "const": "rejected" },
+                "code": { "const": "studio.host/unexpected-authoring-save-result" }
+              }
+            }
+          ]
+        }
       }
     }
   }

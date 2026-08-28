@@ -28,15 +28,42 @@ final class StudioDeploymentEmitter
 
     /** @var Closure(): int */
     private readonly Closure $currentTimeMilliseconds;
+    private readonly stdClass $browserRelease;
 
     /** @param null|callable(): int $currentTimeMilliseconds */
     public function __construct(
         private readonly SchemaValidator $schemas,
+        stdClass $browserRelease,
         ?callable $currentTimeMilliseconds = null,
     ) {
+        self::assertBrowserRelease($browserRelease);
+        $this->browserRelease = clone $browserRelease;
         $this->currentTimeMilliseconds = Closure::fromCallable(
             $currentTimeMilliseconds ?? static fn (): int => (int) floor(microtime(true) * 1000),
         );
+    }
+
+    /** Read the exact deployment release identity from a verified browser asset manifest. */
+    public static function releaseFromAssetManifestFile(string $manifestPath): stdClass
+    {
+        $source = file_get_contents($manifestPath);
+        if (!is_string($source)) {
+            throw new RuntimeException('The Studio browser asset manifest could not be read.');
+        }
+        try {
+            $manifest = json_decode($source, false, 64, JSON_THROW_ON_ERROR);
+        } catch (JsonException $failure) {
+            throw new RuntimeException('The Studio browser asset manifest is not valid JSON.', 0, $failure);
+        }
+        if (!($manifest instanceof stdClass) || ($manifest->kind ?? null) !== 'studio-browser-assets') {
+            throw new RuntimeException('The Studio browser asset manifest has an invalid identity.');
+        }
+        $release = $manifest->release ?? null;
+        if (!($release instanceof stdClass)) {
+            throw new RuntimeException('The Studio browser asset manifest has no release identity.');
+        }
+        self::assertBrowserRelease($release);
+        return clone $release;
     }
 
     public function render(string $mountId, string $configurationElementId, stdClass $configuration): string
@@ -49,6 +76,7 @@ final class StudioDeploymentEmitter
         if (($configuration->mount ?? null) !== '#' . $mountId) {
             throw new InvalidArgumentException('The deployment mount must select the emitted target div.');
         }
+        $this->assertMatchingBrowserRelease($configuration->release ?? null);
 
         try {
             $valid = $this->schemas->validate(self::SCHEMA_ID, $configuration);
@@ -93,6 +121,47 @@ final class StudioDeploymentEmitter
     {
         if (!preg_match('/\A[A-Za-z][A-Za-z0-9_.:-]{0,127}\z/', $value)) {
             throw new InvalidArgumentException($parameter . ' must be a bounded HTML element ID.');
+        }
+    }
+
+    private static function assertBrowserRelease(stdClass $release): void
+    {
+        $members = array_keys(get_object_vars($release));
+        sort($members, SORT_STRING);
+        if (
+            $members !== ['corpusManifestDigest', 'version']
+            || !is_string($release->version ?? null)
+            || preg_match(
+                '/\A(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)'
+                    . '(?:-(?:beta|rc)\.(?:0|[1-9][0-9]*))?\z/',
+                $release->version,
+            ) !== 1
+            || !is_string($release->corpusManifestDigest ?? null)
+            || preg_match(
+                '/\Asha256-[A-Za-z0-9+\/]{42}[AEIMQUYcgkosw048]=\z/',
+                $release->corpusManifestDigest,
+            ) !== 1
+        ) {
+            throw new InvalidArgumentException('The Studio browser release identity is invalid.');
+        }
+    }
+
+    private function assertMatchingBrowserRelease(mixed $release): void
+    {
+        if (!($release instanceof stdClass)) {
+            throw new InvalidArgumentException('The Studio deployment release identity is required.');
+        }
+        self::assertBrowserRelease($release);
+        if (
+            $release->version !== $this->browserRelease->version
+            || !hash_equals(
+                $this->browserRelease->corpusManifestDigest,
+                $release->corpusManifestDigest,
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'The Studio deployment release does not match the browser asset manifest.',
+            );
         }
     }
 

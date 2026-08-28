@@ -21,6 +21,9 @@ export default defineConfig({
       reporter: ['text', 'html'],
     },
     environment: 'happy-dom',
+    // Corpus, fuzz, and DOM suites are CPU-heavy. A bounded worker pool keeps
+    // their per-test safety timeouts meaningful on high-core, quota-limited CI.
+    maxWorkers: 4,
     include: ['packages/*/test/**/*.test.ts', 'examples/*/test/**/*.test.ts'],
   },
 });

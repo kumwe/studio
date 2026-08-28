@@ -4,11 +4,13 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, posix } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import Ajv2020 from 'ajv/dist/2020.js';
+import { Window } from 'happy-dom';
 
 import {
+  SAME_ORIGIN_BROWSER_CSP,
   assertBrowserDistributionReferences,
   assertSelfContainedBrowserModule,
   buildStudioBrowserReleaseArtifact,
@@ -43,6 +45,7 @@ describe('governed Studio browser distribution', () => {
       `${prefix}/docs/integration/prebuilt-browser-assets.md`,
       `${prefix}/examples/php-authoring-host/README.md`,
       `${prefix}/examples/php-authoring-host/src/AuthoringResponder.php`,
+      `${prefix}/examples/php-authoring-host/src/StudioContentSecurityPolicy.php`,
       `${prefix}/examples/php-authoring-host/src/StudioDeploymentEmitter.php`,
       `${prefix}/examples/php-authoring-host/tests/run.php`,
       `${prefix}/schemas/authoring-http.schema.json`,
@@ -60,11 +63,30 @@ describe('governed Studio browser distribution', () => {
     );
 
     const manifest = JSON.parse(entries.get(`${prefix}/studio-assets.json`).toString('utf8'));
+    const releaseRecord = JSON.parse(entries.get(`${prefix}/studio-release.json`).toString('utf8'));
+    assert.deepEqual(manifest.release, {
+      corpusManifestDigest: releaseRecord.corpusManifestDigest,
+      version: releaseRecord.release,
+    });
     const schema = JSON.parse(
       entries.get(`${prefix}/studio-browser-assets.schema.json`).toString('utf8'),
     );
     const validate = new Ajv2020({ strict: true }).compile(schema);
     assert.equal(validate(manifest), true, JSON.stringify(validate.errors));
+    const malformedReleaseDigest = structuredClone(manifest);
+    malformedReleaseDigest.release.corpusManifestDigest = 'sha256-AA==';
+    assert.equal(
+      validate(malformedReleaseDigest),
+      false,
+      'asset schema accepted a release identity that is not an exact SHA-256 digest',
+    );
+    const malformedAssetDigest = structuredClone(manifest);
+    malformedAssetDigest.assets[0].integrity = 'sha256-AA==';
+    assert.equal(
+      validate(malformedAssetDigest),
+      false,
+      'asset schema accepted an asset integrity that is not an exact SHA-256 digest',
+    );
     assert.ok(manifest.assets.length <= 500, 'asset manifest exceeds its governed 500-file bound');
     assert.equal(
       manifest.assets.length,
@@ -104,6 +126,56 @@ describe('governed Studio browser distribution', () => {
       'vite',
       'server-side-javascript',
     ]);
+    assert.deepEqual(manifest.contentSecurityPolicy, SAME_ORIGIN_BROWSER_CSP);
+    assert.equal(
+      occurrences(
+        manifest.contentSecurityPolicy.headerTemplate,
+        manifest.contentSecurityPolicy.styleNonce.placeholder,
+      ),
+      1,
+      'the CSP template must have one unambiguous style nonce substitution',
+    );
+    assert.match(
+      manifest.contentSecurityPolicy.headerTemplate,
+      /(?:^|; )script-src 'self'(?:; |$)/u,
+    );
+    assert.match(
+      manifest.contentSecurityPolicy.headerTemplate,
+      /(?:^|; )style-src 'self' 'nonce-\{\{STYLE_NONCE\}\}'(?:; |$)/u,
+    );
+    assert.match(
+      manifest.contentSecurityPolicy.headerTemplate,
+      /(?:^|; )connect-src 'self'(?:; |$)/u,
+    );
+    assert.doesNotMatch(
+      manifest.contentSecurityPolicy.headerTemplate,
+      /'unsafe-(?:eval|inline)'|\*/u,
+    );
+    assert.deepEqual(manifest.contentSecurityPolicy.inertConfigurationScript, {
+      element: 'script',
+      mediaType: 'application/json',
+      requiresHash: false,
+      requiresNonce: false,
+    });
+    for (const mutation of [
+      (candidate) => {
+        candidate.contentSecurityPolicy.headerTemplate =
+          candidate.contentSecurityPolicy.headerTemplate.replace(
+            "script-src 'self'",
+            'script-src *',
+          );
+      },
+      (candidate) => {
+        candidate.contentSecurityPolicy.inertConfigurationScript.requiresNonce = true;
+      },
+      (candidate) => {
+        delete candidate.contentSecurityPolicy;
+      },
+    ]) {
+      const alteredPolicy = structuredClone(manifest);
+      mutation(alteredPolicy);
+      assert.equal(validate(alteredPolicy), false, 'asset schema accepted CSP contract drift');
+    }
     for (const asset of manifest.assets) {
       const bytes = entries.get(`${prefix}/${asset.path}`);
       assert.ok(bytes, `manifest references absent asset ${asset.path}`);
@@ -137,6 +209,15 @@ describe('governed Studio browser distribution', () => {
 
     const browserModule = entries.get(`${prefix}/${manifest.module.entryPoint}`).toString('utf8');
     assertSelfContainedBrowserModule(browserModule);
+    assert.ok(
+      browserModule.includes(manifest.release.version),
+      'browser module does not carry its asset-manifest release version',
+    );
+    assert.ok(
+      browserModule.includes(manifest.release.corpusManifestDigest),
+      'browser module does not carry its asset-manifest corpus digest',
+    );
+    await assertBundledReleaseGuard(browserModule, manifest.release, temporary);
     for (const bakedHostValue of [
       'sessions/product-trail-backpack',
       'users/static-host-author',
@@ -169,6 +250,79 @@ describe('governed Studio browser distribution', () => {
     await writeFile(manifestSchemaPath, manifestSchema, 'utf8');
   });
 });
+
+async function assertBundledReleaseGuard(browserModule, release, temporary) {
+  const modulePath = join(temporary, 'release-guard-browser-module.mjs');
+  await writeFile(modulePath, browserModule, 'utf8');
+  const browser = new Window({ url: 'https://host.example.test/' });
+  const restoreGlobals = installBrowserGlobals(browser);
+  try {
+    const bundle = await import(`${pathToFileURL(modulePath).href}?release-guard`);
+    const script = browser.document.createElement('script');
+    script.type = 'application/json';
+    script.textContent = JSON.stringify({
+      kind: 'studio-deployment',
+      mount: '#studio',
+      release: {
+        ...release,
+        version: release.version === '0.0.0' ? '0.0.1' : '0.0.0',
+      },
+    });
+    assert.throws(
+      () => bundle.parseStudioDeploymentConfiguration(script),
+      /release does not match the loaded Studio browser asset manifest/u,
+    );
+
+    script.textContent = JSON.stringify({
+      kind: 'studio-deployment',
+      mount: '#studio',
+      release,
+    });
+    assert.deepEqual(bundle.parseStudioDeploymentConfiguration(script).release, release);
+  } finally {
+    restoreGlobals();
+    await browser.close();
+  }
+}
+
+function installBrowserGlobals(browser) {
+  const names = [
+    'window',
+    'document',
+    'customElements',
+    'HTMLElement',
+    'Element',
+    'Node',
+    'Document',
+    'HTMLScriptElement',
+    'Event',
+    'CustomEvent',
+    'ShadowRoot',
+    'MutationObserver',
+    'ResizeObserver',
+    'CSSStyleSheet',
+    'navigator',
+  ];
+  const originals = new Map(
+    names.map((name) => [name, Object.getOwnPropertyDescriptor(globalThis, name)]),
+  );
+  for (const name of names) {
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      value: browser[name],
+    });
+  }
+  return () => {
+    for (const [name, descriptor] of originals) {
+      if (descriptor === undefined) Reflect.deleteProperty(globalThis, name);
+      else Object.defineProperty(globalThis, name, descriptor);
+    }
+  };
+}
+
+function occurrences(source, needle) {
+  return source.split(needle).length - 1;
+}
 
 function assertLocalSchemaClosure(entries, prefix) {
   for (const [archivePath, bytes] of entries) {

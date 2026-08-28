@@ -17,6 +17,7 @@ import {
   type AuthoringSaveNewTypeVersionRequest,
   type AuthoringSaveOutcome,
   type AuthoringSavePlan,
+  type AuthoringSavePlanReference,
   type AuthoringSaveResult,
   type AuthoringSessionSnapshot,
   type AuthoringStartRequest,
@@ -1413,7 +1414,7 @@ function createSaveRequest(
   const common = {
     acceptedConsequences: [...acceptedConsequences],
     contractVersion: intent.contractVersion,
-    plan: { id: plan.id, revision: plan.revision },
+    plan: savePlanReference(plan),
   };
   switch (intent.draft.outcome) {
     case 'save-item':
@@ -1448,7 +1449,7 @@ function assertSaveResult(
   if (
     result.contractVersion !== prior.contractVersion ||
     result.outcome !== plan.outcome ||
-    !equal(result.plan, { id: plan.id, revision: plan.revision }) ||
+    !equal(result.plan, savePlanReference(plan)) ||
     result.session.sessionId !== prior.sessionId ||
     result.session.sessionGeneration !== prior.sessionGeneration ||
     result.session.contractVersion !== prior.contractVersion ||
@@ -1456,8 +1457,9 @@ function assertSaveResult(
     !equal(result.session.resourceContext, prior.resourceContext) ||
     !equal(result.session.start, prior.start) ||
     !equal(result.session.capabilities, prior.capabilities) ||
-    (!equal(result.session.presentation, acceptedBase.presentation) &&
-      !equal(result.session.presentation, prior.presentation)) ||
+    (result.session.presentation.current !== acceptedBase.presentation.current &&
+      result.session.presentation.current !== prior.presentation.current) ||
+    !equal(result.session.presentation.returnContext, plan.successorContext) ||
     result.session.contributionGeneration !== prior.contributionGeneration
   ) {
     throw adapterContractFailure(
@@ -1555,7 +1557,9 @@ function reconcileExcludedDrafts(
   prior: AuthoringSessionSnapshot,
 ): AuthoringSaveResult {
   const reconciled = cloneContractValue(result);
-  reconciled.session.presentation = cloneContractValue(prior.presentation);
+  // Presentation mode is local UI continuity. The return pointer is host
+  // authority and advances only to the exact successor bound into the plan.
+  reconciled.session.presentation.current = prior.presentation.current;
   const dirty = new Set(reconciled.session.state.dirty);
   if (request.kind === 'authoring-save-item-request') {
     reconciled.session.state.model = cloneContractValue(prior.state.model);
@@ -1708,7 +1712,15 @@ function referenceOf(type: ReusableContentTypeDefinition): {
 }
 
 function planKey(plan: AuthoringSavePlan): string {
-  return `${plan.id}\u0000${plan.revision}`;
+  return canonical(savePlanReference(plan));
+}
+
+function savePlanReference(plan: AuthoringSavePlan): AuthoringSavePlanReference {
+  return {
+    id: plan.id,
+    revision: plan.revision,
+    successorContext: cloneContractValue(plan.successorContext),
+  };
 }
 
 function hasDuplicateTypeCoordinates(page: AuthoringTypeListPage): boolean {

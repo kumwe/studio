@@ -80,7 +80,11 @@ describe('contextual authoring protocol', () => {
   });
 
   it('publishes three distinct save request discriminators on the authoring port', () => {
-    const plan = { id: 'plans/save-1', revision: 'plan-r1' };
+    const plan = {
+      id: 'plans/save-1',
+      revision: 'plan-r1',
+      successorContext: { key: 'returns/products/42-r8' },
+    };
     const requests = [
       {
         acceptedConsequences: [],

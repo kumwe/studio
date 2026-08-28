@@ -12,8 +12,8 @@ real host has executed, persisted, rendered, and qualified the complete outcomes
 1. A normal HTML page loads the precompiled Studio browser assets and mounts explicit ordinary target elements
    with zero configuration or associates them with bounded `application/json` deployment configuration. Two
    instances on the same page remain isolated; neither discovers or shares the other's state or authority.
-2. A zero-configuration element, or a configuration containing only `mount`, opens a blank standalone workspace with Studio's built-in blocks and
-   patterns. It performs no network request and exposes canonical, lossless project JSON import/download plus an
+2. A zero-configuration element with no deployment document, or a complete release-bound standalone configuration,
+   opens a blank standalone workspace with Studio's built-in blocks and patterns. It performs no network request and exposes canonical, lossless project JSON import/download plus an
    explicit save-intent JSON download; these local actions do not claim durable host persistence
    (`STUDIO-PROD-011` and `STUDIO-PROD-012`).
 3. A hosted configuration identifies the exact target, resource context, start, initial mode and presentation,

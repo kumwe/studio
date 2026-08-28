@@ -6,6 +6,7 @@ use Kumwe\Studio\PhpAuthoringHost\AuthoringResponder;
 use Kumwe\Studio\PhpAuthoringHost\HttpRequest;
 use Kumwe\Studio\PhpAuthoringHost\HttpResponse;
 use Kumwe\Studio\PhpAuthoringHost\SameOriginSessionCsrfVerifier;
+use Kumwe\Studio\PhpAuthoringHost\StudioContentSecurityPolicy;
 use Kumwe\Studio\PhpAuthoringHost\StudioDeploymentEmitter;
 use Kumwe\Studio\PhpAuthoringHost\TransportSecurityInput;
 use Kumwe\Studio\PhpBrowserQualification\QualificationApplication;
@@ -47,7 +48,7 @@ QualificationState::ensureInitialized($repositoryRoot);
 
 if ($path === '/') {
     QualificationState::reset($repositoryRoot);
-    emitQualificationPage();
+    emitQualificationPage($repositoryRoot);
     return;
 }
 
@@ -104,31 +105,36 @@ function startQualificationSession(): void
     }
 }
 
-function emitQualificationPage(): void
+function emitQualificationPage(string $repositoryRoot): void
 {
     $schemas = new QualificationBoundarySchemaValidator();
-    $emitter = new StudioDeploymentEmitter($schemas);
+    $assetManifestPath = $repositoryRoot . '/packages/studio-lit/dist/browser/studio-assets.json';
+    $browserRelease = StudioDeploymentEmitter::releaseFromAssetManifestFile($assetManifestPath);
+    $emitter = new StudioDeploymentEmitter($schemas, $browserRelease);
+    $styleNonce = base64_encode(random_bytes(32));
+    $contentSecurityPolicy = StudioContentSecurityPolicy::fromAssetManifestFile(
+        $assetManifestPath,
+        $styleNonce,
+    );
     $mounts = [];
     foreach (QualificationState::mounts() as $mount) {
         $mounts[$mount] = $emitter->render(
             'studio-' . $mount,
             'studio-config-' . $mount,
-            QualificationState::deployment($mount),
+            QualificationState::deployment($mount, $browserRelease),
         );
     }
 
     header('Cache-Control: no-store');
-    header(
-        "Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src 'self'; "
-            . "style-src 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; "
-            . "frame-ancestors 'none'",
-    );
+    header('Content-Security-Policy: ' . $contentSecurityPolicy);
     header('Content-Type: text/html; charset=utf-8');
     header('Referrer-Policy: no-referrer');
     header('X-Content-Type-Options: nosniff');
 
     echo '<!doctype html><html lang="en"><head><meta charset="utf-8">';
     echo '<meta name="viewport" content="width=device-width,initial-scale=1">';
+    echo '<style nonce="' . htmlspecialchars($styleNonce, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+    echo '[data-kumwe-studio]{display:block}</style>';
     echo '<title>Studio PHP browser qualification</title></head><body><main>';
     foreach (QualificationState::mounts() as $mount) {
         echo '<section aria-labelledby="heading-' . $mount . '">';

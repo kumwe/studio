@@ -203,5 +203,35 @@
     { "category": "unavailable", "status": 503 },
     { "category": "cancelled", "status": 400 },
     { "category": "internal", "status": 500 }
+  ],
+  "successorContextCases": [
+    {
+      "id": "accepted-advance",
+      "beforeContext": { "key": "returns/articles/entry-r7" },
+      "planReference": {
+        "id": "save-plans/article-entry-r8",
+        "revision": "save-plan-r1",
+        "successorContext": { "key": "returns/articles/entry-r8" }
+      },
+      "resultContext": { "key": "returns/articles/entry-r8" },
+      "expect": {
+        "outcome": "accepted",
+        "acceptedContext": { "key": "returns/articles/entry-r8" }
+      }
+    },
+    {
+      "id": "mismatched-result",
+      "beforeContext": { "key": "returns/articles/entry-r7" },
+      "planReference": {
+        "id": "save-plans/article-entry-r8",
+        "revision": "save-plan-r1",
+        "successorContext": { "key": "returns/articles/entry-r8" }
+      },
+      "resultContext": { "key": "returns/articles/unplanned" },
+      "expect": {
+        "outcome": "rejected",
+        "code": "studio.host/unexpected-authoring-save-result"
+      }
+    }
   ]
 }

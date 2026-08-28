@@ -68,6 +68,32 @@ return new AuthoringResponder(
 Production serves the already-built browser files and lets PHP emit the deployment document below. It does not
 run npm, Vite, or a JavaScript server, and the browser never infers routes from the current page URL.
 
+## Emit the archive-published CSP
+
+After verifying the extracted archive against `studio-assets.json`, generate a fresh nonce for every HTML
+response and render the manifest's exact same-origin policy. The helper rejects a missing/drifted policy and a
+nonce shorter than the published 128-bit minimum:
+
+```php
+<?php
+
+use Kumwe\Studio\PhpAuthoringHost\StudioContentSecurityPolicy;
+
+$styleNonce = base64_encode(random_bytes(32));
+$policy = StudioContentSecurityPolicy::fromAssetManifestFile(
+    __DIR__ . '/studio-browser/studio-assets.json',
+    $styleNonce,
+);
+header('Content-Security-Policy: ' . $policy);
+```
+
+Use `$styleNonce` only on trusted host/renderer `<style>` elements emitted in that same response. The
+`<script type="application/json">` deployment block below is inert and must not receive a script nonce or hash.
+`script-src 'self'` admits only the external start/archive modules, and `connect-src 'self'` admits the exact
+same-origin operation URLs. See the archive-local
+[prebuilt browser guide](../../docs/integration/prebuilt-browser-assets.md#exact-content-security-policy) before
+adding exact cross-origin archive, operation, or media origins; wildcards and `unsafe-*` sources are forbidden.
+
 ## Emit one browser deployment configuration per mount
 
 PHP chooses whether a Studio instance is standalone or host-connected. It emits an inert
@@ -81,6 +107,8 @@ the browser.
 
 `StudioDeploymentEmitter` validates the canonical schema, enforces the browser bootstrap's 2 MiB/depth-16
 limits, checks that `mount` names the emitted target, and JSON-escapes `<`, `>`, `&`, quotes, U+2028, and U+2029.
+It also requires the exact release identity loaded from the already verified browser asset manifest and rejects
+a missing or stale configuration release before schema evaluation.
 The 2 MiB ceiling is deliberately large enough for the schema's 5,000 locked block references and 500
 declarative contribution payloads while remaining a deterministic DOM/bootstrap allocation bound.
 For hosted instances it also requires identical launch/session resource contexts and an operation map that
@@ -93,11 +121,15 @@ executable inline JavaScript:
 use Kumwe\Studio\PhpAuthoringHost\AuthoringEndpointConfiguration;
 use Kumwe\Studio\PhpAuthoringHost\StudioDeploymentEmitter;
 
+$browserRelease = StudioDeploymentEmitter::releaseFromAssetManifestFile(
+    __DIR__ . '/studio-browser/studio-assets.json',
+);
 $configuration = (object) [
     'contractVersion' => '0.1-draft',
     'kind' => 'studio-deployment',
     'instanceId' => 'studio/article-42',
     'mount' => '#article-studio',
+    'release' => $browserRelease,
     'launch' => (object) [
         'targetId' => 'example/article-editor',
         'intent' => 'edit',
@@ -129,7 +161,7 @@ $configuration = (object) [
     ],
 ];
 
-$emitter = new StudioDeploymentEmitter($studioSchemaValidator);
+$emitter = new StudioDeploymentEmitter($studioSchemaValidator, $browserRelease);
 echo $emitter->render('article-studio', 'article-studio-config', $configuration);
 ```
 
@@ -168,11 +200,19 @@ emitter once per pair. For example, the article editor above may coexist with a 
 echo $emitter->render(
     'scratch-studio',
     'scratch-studio-config',
-    (object) ['mount' => '#scratch-studio'],
+    (object) [
+        'kind' => 'studio-deployment',
+        'mount' => '#scratch-studio',
+        'release' => $browserRelease,
+        'locale' => 'rw',
+    ],
 );
 ```
 
-Omitting `transport` selects blank standalone authoring. Nothing is loaded or persisted by a server; JSON
+Configless standalone mounting emits no JSON document at all. When PHP does emit a standalone document, its
+`kind`, `mount`, and manifest-copied `release` remain required; an optional bounded top-level `locale` selects
+the local interface language. Hosted locale remains exclusively in `session.locale`. Omitting `transport`
+selects blank standalone authoring. Nothing is loaded or persisted by a server; JSON
 import/export carries the same portable document shape used at the host boundary. Omitting one optional route
 from a configured operation map disables that server capability. A request failure on a configured route is
 authoritative and never silently falls back to browser-only storage or download.
@@ -213,10 +253,11 @@ service or persisted format.
 
 For the normal same-origin PHP application, keep the established session ID in a `Secure`, `HttpOnly`,
 appropriately `SameSite` cookie. Only the current CSRF token appears in deployment JSON. The browser sends
-`credentials: same-origin` and the configured header on every attempt. The reference verifier resolves the
-exact Origin and Fetch Metadata are rejected before any session or CSRF callback runs. Only then does the
-reference verifier resolve the server-side session and current CSRF value. Production requires an HTTPS
-origin and any explicit non-`same-origin` Fetch Metadata value fails closed:
+`credentials: same-origin` and the configured header on every attempt. The reference verifier requires the
+exact Origin and the complete AJAX Fetch Metadata tuple (`Sec-Fetch-Site: same-origin`,
+`Sec-Fetch-Mode: cors`, and `Sec-Fetch-Dest: empty`) before any session or CSRF callback runs. Duplicate,
+missing, partial, navigation, resource-load, or cross-site metadata fails closed. Only then does the verifier
+resolve the server-side session and current CSRF value. Production requires an HTTPS origin:
 
 ```php
 use Kumwe\Studio\PhpAuthoringHost\SameOriginSessionCsrfVerifier;
@@ -231,8 +272,9 @@ $transportSecurityVerifier = new SameOriginSessionCsrfVerifier(
 
 Local development may opt in to an exact `http://localhost`, `http://127.0.0.1`, or `http://[::1]` origin
 (with an optional port) using `allowHttpLoopbackForDevelopment: true`. The flag defaults to `false`, never
-permits a non-loopback HTTP origin, and is not a production TLS exception. Absence of `Sec-Fetch-Site` remains
-tolerated for older user agents; any supplied value other than `same-origin` is rejected.
+permits a non-loopback HTTP origin, and is not a production TLS exception. A host that deliberately admits a
+non-browser or legacy client must compose a different verifier and document its equivalent request-integrity
+controls; it must not weaken this reference browser boundary.
 
 The callbacks represent the framework/session layer; they are not business authorization. After transport
 admission, every application service still resolves the non-secret resource-context key and independently
@@ -277,10 +319,12 @@ guarantee.
 
 All seven contextual operations forbid the envelope's single `expectedRevision`. The plan and save payloads
 carry the complete reusable-type, Model, Blueprint, Entry, generation, and intent coordinates. `planSave`
-binds those coordinates and visible consequences to a short-lived plan reference. Each save application
-service rechecks the plan, coordinates, policy, generation, digest, accepted consequences, and idempotency key
-inside one transaction. A mismatch maps to a safe `conflict`; no partial type/Blueprint/Model/Entry write is
-allowed.
+binds those coordinates and visible consequences to a short-lived plan reference whose required
+`successorContext` is the exact bounded return context for an accepted transaction. Each save application
+service rechecks the complete `{ id, revision, successorContext }` reference, coordinates, policy, generation,
+digest, accepted consequences, and idempotency key inside one transaction. Its normalized result echoes that
+reference and applies the same successor context to the returned session; a refusal or mismatch does not
+advance it. A mismatch maps to a safe `conflict`; no partial type/Blueprint/Model/Entry write is allowed.
 
 Outbound webhooks are not browser authoring routes. Persist an outbox record with the accepted transaction,
 then deliver asynchronously with host-owned signing, retry, deduplication, tenancy, and disclosure policy.

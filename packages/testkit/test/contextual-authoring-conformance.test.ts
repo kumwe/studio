@@ -352,6 +352,9 @@ describe('contextual authoring first-stride conformance', () => {
     }
     badItem.expectResult.session.type = structuredClone(typeV2);
     badItem.expectResult.session.state.coordinates.type = referenceOf(typeV2);
+    badItem.expectResult.session.presentation.returnContext = {
+      key: 'returns/unplanned-successor',
+    };
     badType.expectResult.session.state.entry.values.title = 'Host lost the unsaved value';
     badType.expectResult.session.state.dirty = [];
     const brokenAdapter: ContextualAuthoringConformanceAdapter = {
@@ -377,6 +380,9 @@ describe('contextual authoring first-stride conformance', () => {
     expect(result.passed).toBe(false);
     expect(result.mismatches).toContain(
       'saves[0] (save-item).result reusable type differs from the vector expectation',
+    );
+    expect(result.mismatches).toContain(
+      'saves[0] (save-item).result successor context differs from the vector expectation',
     );
     expect(result.mismatches).toContain(
       'saves[1] (save-new-type-version).result Entry values differs from the vector expectation',
@@ -710,11 +716,18 @@ function saveAssertion(
     outcome: intent.draft.outcome,
     revision: `${suffix}-plan-r1`,
     sessionId: intent.sessionId,
+    successorContext: { key: `returns/${suffix}-accepted` },
   };
+  const successorSession = structuredClone(acceptedSession);
+  successorSession.presentation.returnContext = structuredClone(plan.successorContext);
   const common = {
     acceptedConsequences: [],
     contractVersion: STUDIO_CONTRACT_VERSION,
-    plan: { id: plan.id, revision: plan.revision },
+    plan: {
+      id: plan.id,
+      revision: plan.revision,
+      successorContext: structuredClone(plan.successorContext),
+    },
   };
   let request: ContextualAuthoringSaveRequest;
   switch (intent.draft.outcome) {
@@ -737,7 +750,7 @@ function saveAssertion(
     kind: 'authoring-save-result',
     outcome: intent.draft.outcome,
     plan: structuredClone(request.plan),
-    session: structuredClone(acceptedSession),
+    session: successorSession,
   };
   return {
     before: structuredClone(before),

@@ -96,7 +96,9 @@ The target host bar presents distinct actions rather than an ambiguous universal
 
 The host may withhold an action according to context and permission, but Studio never substitutes one action
 for another. Before confirmation Studio identifies affected artifacts and consequences; after acceptance it
-reconciles the host-returned revisions. Identity allocation, validation, authorization, persistence,
+reconciles the host-returned revisions and the exact successor return context bound into the confirmed plan.
+It retains the earlier return context after cancellation or refusal and rejects a result whose return context
+does not match that plan. Identity allocation, validation, authorization, persistence,
 revisioning, audit, publication, and failure recovery remain host responsibilities (`STUDIO-PROD-006` and
 `STUDIO-PROD-010`).
 

@@ -69,6 +69,7 @@ export {
   roundTripGeneratedProtocolModel,
 } from './generated/schema-models.js';
 export type * from './generated/schema-models.js';
+export { STUDIO_RELEASE_IDENTITY } from './release.js';
 export {
   STUDIO_CONTRACT_VERSION,
   STUDIO_STALE_SESSION_GENERATION_DIAGNOSTIC_CODE,
@@ -301,6 +302,7 @@ export {
   type StudioDeploymentOperationEndpoints,
   type StudioDeploymentOperationMapRouting,
   type StudioDeploymentOperationRoute,
+  type StudioDeploymentRelease,
   type StudioDeploymentRouting,
   type StudioDeploymentSameOriginSessionAuthentication,
   type StudioDeploymentSingleEndpointRouting,

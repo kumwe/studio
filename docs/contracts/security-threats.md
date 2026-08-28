@@ -56,5 +56,9 @@ lit-html` — completes an authoring pass (insert, select, inspector edit, comma
   validation is interpreted eval-free (`packages/core/src/profile-validator.ts`, with an
   Ajv-agreement suite in `packages/core/test/profile-validator.test.ts`); `lit-html` is the
   only allowed policy (Lit parses its static template strings through it).
+  `e2e/specs/php-csp.spec.ts` additionally reads the schema-closed
+  `studio-assets.json.contentSecurityPolicy` contract, proves that the PHP archive host emits the exact
+  per-response nonce substitution with no `unsafe-*` or wildcard source, completes every inert configured
+  mount without a violation, and verifies that `script[type="application/json"]` carries no nonce or hash.
 - TH-014 is additionally covered by the rich-text structural-mutation and projection fuzz suite
   in `packages/rich-text/test/fuzz.test.ts`.

@@ -33,6 +33,9 @@ Blueprint revision, and authoring policy. Starting from that type creates or loa
 structure and fields but without another entry's values. Starting blank creates an authorized draft context in
 which layout, blocks, fields, bindings, and values may be coordinated. Saving an entry, saving the design as a
 new content type, and creating a new content-type version are distinct, explicit host-authorized outcomes.
+Each host save plan binds its accepted continuation through one required bounded `successorContext`; the
+request and result echo that complete plan reference, and only a validated accepted result advances the
+session's host return context to the exact planned value.
 
 Studio may be embedded in the originating content screen or displayed through a context-preserving full-screen
 route. Inline, minimized, maximized, and full-screen presentations are projections of the same resource-bound
@@ -55,8 +58,9 @@ separate concerns governed by [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md).
 The repository now includes the additive `openContextualStudioSession` coordinator, exact
 blank/from-type/existing snapshots, separate Model/Blueprint/Entry draft state, the current Model-field and
 Entry-value commands, a contextual Lit shell, four presentation states, and plan/submit/reconcile behavior for
-the three explicit save outcomes. The configuration-driven browser runtime binds those components to exact
-host routes, while standalone mounting supplies a blank built-in workspace without a host.
+the three explicit save outcomes, including exact host-successor-context adoption and mismatch refusal. The
+configuration-driven browser runtime binds those components to exact host routes, while standalone mounting
+supplies a blank built-in workspace without a host.
 
 Those components implement the Studio side of this decision; they do not certify a Kumwe App adapter, complete
 Model/Entry authoring breadth, host transaction and rendering behavior, the `authoring-web` profile, or the
@@ -72,6 +76,8 @@ Model/Entry authoring breadth, host transaction and rendering behavior, the `aut
 - Coordinated load/create/save contracts, revisions, idempotency, conflicts, history, recovery, migration, and
   atomicity must continue to preserve separate artifact identities; implementation evidence may not substitute
   for host acceptance.
+- Save continuation is host authority: a refusal cannot advance return context, and Studio cannot replace the
+  plan's bounded successor with a locally inferred route or stale prior result.
 - Product and roadmap documents must identify legacy forms as migration/recovery fallbacks rather than the
   target default editor.
 - Conformance and host acceptance must exercise the complete `STUDIO-PROD-015` journey, including a clean

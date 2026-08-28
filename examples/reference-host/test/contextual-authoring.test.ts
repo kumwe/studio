@@ -129,8 +129,10 @@ describe('reference coordinated saves', () => {
     expect(plan.affectedArtifacts).toEqual(['entry']);
     expect(plan.confirmationRequired).toBe(false);
     expect(plan.consequences).toEqual([]);
+    expect(plan.successorContext).not.toEqual(before.presentation.returnContext);
 
     const accepted = (await opened.save(intent, plan)).value.session;
+    expect(accepted.presentation.returnContext).toEqual(plan.successorContext);
     expect(accepted.state.entry.values.title).toBe('A saved contextual page');
     expect(accepted.state.entry.revision).not.toBe(before.state.entry.revision);
     expect(accepted.state.model).toEqual(before.state.model);
@@ -262,7 +264,11 @@ describe('reference coordinated saves', () => {
       contractVersion: STUDIO_CONTRACT_VERSION,
       draft: { entry: structuredClone(snapshot.state.entry), outcome: 'save-item' },
       kind: 'authoring-save-item-request',
-      plan: { id: plan.id, revision: plan.revision },
+      plan: {
+        id: plan.id,
+        revision: plan.revision,
+        successorContext: structuredClone(plan.successorContext),
+      },
     };
     const saveContext = hostContext('studio.operation/authoring.save-item', resourceContext, {
       idempotencyKey: 'mutations/reference-item-save',

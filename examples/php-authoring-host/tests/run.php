@@ -16,6 +16,7 @@ use Kumwe\Studio\PhpAuthoringHost\HttpResponse;
 use Kumwe\Studio\PhpAuthoringHost\SchemaValidator;
 use Kumwe\Studio\PhpAuthoringHost\SameOriginSessionCsrfVerifier;
 use Kumwe\Studio\PhpAuthoringHost\ShortLivedTokenVerifier;
+use Kumwe\Studio\PhpAuthoringHost\StudioContentSecurityPolicy;
 use Kumwe\Studio\PhpAuthoringHost\StudioDeploymentEmitter;
 use Kumwe\Studio\PhpAuthoringHost\TransportSecurityDecision;
 use Kumwe\Studio\PhpAuthoringHost\TransportSecurityInput;
@@ -223,6 +224,28 @@ function transportMatrix(): stdClass
     return $matrix;
 }
 
+function testBrowserRelease(): stdClass
+{
+    static $release;
+    if ($release instanceof stdClass) {
+        return clone $release;
+    }
+    $path = dirname(__DIR__, 3) . '/studio-release.json';
+    $json = file_get_contents($path);
+    if (!is_string($json)) {
+        throw new RuntimeException('The coordinated Studio release record is unavailable.');
+    }
+    $record = json_decode($json, false, 64, JSON_THROW_ON_ERROR);
+    if (!($record instanceof stdClass)) {
+        throw new RuntimeException('The coordinated Studio release record is invalid.');
+    }
+    $release = (object) [
+        'corpusManifestDigest' => $record->corpusManifestDigest,
+        'version' => $record->release,
+    ];
+    return clone $release;
+}
+
 /** @return array{0: AuthoringResponder, 1: TestApplication, 2: TestSchemas, 3: TestSecurity} */
 function fixture(
     ?TransportSecurityDecision $decision = null,
@@ -289,6 +312,7 @@ function deploymentConfiguration(string $mount = '#studio-a'): stdClass
         'kind' => 'studio-deployment',
         'instanceId' => 'studio/article-42',
         'mount' => $mount,
+        'release' => testBrowserRelease(),
         'launch' => (object) [
             'targetId' => 'kumwe/article-editor',
             'intent' => 'edit',
@@ -448,7 +472,7 @@ test('default endpoint helpers survive emission and round-trip through the respo
     $application = new TestApplication();
     $schemas = new TestSchemas();
     $configuration = deploymentConfiguration();
-    $emitter = new StudioDeploymentEmitter($schemas);
+    $emitter = new StudioDeploymentEmitter($schemas, testBrowserRelease());
     $html = $emitter->render('studio-a', 'studio-config-a', $configuration);
     $matched = preg_match(
         '/<script id="studio-config-a" type="application\/json">(.*)<\/script>\z/s',
@@ -458,6 +482,11 @@ test('default endpoint helpers survive emission and round-trip through the respo
     assertSameValue(1, $matched);
     $emitted = json_decode($matches[1], false, StudioDeploymentEmitter::MAXIMUM_JSON_DEPTH, JSON_THROW_ON_ERROR);
     assertTrueValue($emitted instanceof stdClass, 'Emitted deployment is not an object.');
+    assertSameValue(testBrowserRelease()->version, $emitted->release->version);
+    assertSameValue(
+        testBrowserRelease()->corpusManifestDigest,
+        $emitted->release->corpusManifestDigest,
+    );
 
     $csrf = $emitted->transport->authentication->csrf->token;
     $security = new SameOriginSessionCsrfVerifier(
@@ -485,6 +514,8 @@ test('default endpoint helpers survive emission and round-trip through the respo
             ...$mapped->headers,
             'Origin' => 'https://admin.example.test',
             'Sec-Fetch-Site' => 'same-origin',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Dest' => 'empty',
             $emitted->transport->authentication->csrf->headerName => $csrf,
         ],
         $mapped->body,
@@ -516,6 +547,8 @@ test('default endpoint helpers survive emission and round-trip through the respo
             ...$single->headers,
             'Origin' => 'https://admin.example.test',
             'Sec-Fetch-Site' => 'same-origin',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Dest' => 'empty',
             $singleEmitted->transport->authentication->csrf->headerName => $csrf,
             AuthoringEndpointConfiguration::SINGLE_ENDPOINT_OPERATION_HEADER => $save->route,
         ],
@@ -532,12 +565,59 @@ test('default endpoint helpers survive emission and round-trip through the respo
     }
 });
 
+test('deployment emitter binds every configuration to its browser asset manifest release', function (): void {
+    $manifest = (object) [
+        'kind' => 'studio-browser-assets',
+        'release' => testBrowserRelease(),
+    ];
+    $manifestPath = tempnam(sys_get_temp_dir(), 'studio-assets-');
+    if (!is_string($manifestPath)) {
+        throw new RuntimeException('Could not create the browser asset manifest fixture.');
+    }
+
+    try {
+        file_put_contents($manifestPath, json_encode($manifest, JSON_THROW_ON_ERROR));
+        $release = StudioDeploymentEmitter::releaseFromAssetManifestFile($manifestPath);
+        assertSameValue(testBrowserRelease()->version, $release->version);
+        assertSameValue(
+            testBrowserRelease()->corpusManifestDigest,
+            $release->corpusManifestDigest,
+        );
+        $schemas = new TestSchemas();
+        $emitter = new StudioDeploymentEmitter($schemas, $release);
+
+        foreach (['sha256-AA==', 'sha256-' . str_repeat('A', 44)] as $malformedDigest) {
+            $malformedRelease = clone $release;
+            $malformedRelease->corpusManifestDigest = $malformedDigest;
+            assertThrows(
+                static fn () => new StudioDeploymentEmitter($schemas, $malformedRelease),
+                InvalidArgumentException::class,
+            );
+        }
+
+        foreach (['version', 'corpusManifestDigest'] as $member) {
+            $stale = deploymentConfiguration();
+            $stale->release = clone $stale->release;
+            $stale->release->{$member} = $member === 'version'
+                ? '0.1.0-rc.99'
+                : 'sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
+            assertThrows(
+                static fn () => $emitter->render('studio-a', 'studio-config-a', $stale),
+                InvalidArgumentException::class,
+            );
+        }
+        assertSameValue([], $schemas->references, 'A stale release reached schema validation.');
+    } finally {
+        @unlink($manifestPath);
+    }
+});
+
 test('deployment emitter produces inert XSS-safe JSON for its exact mount', function (): void {
     $schemas = new TestSchemas();
     $configuration = deploymentConfiguration();
     $unsafe = "</script><script>alert('configuration')</script>&\u{2028}\u{2029}";
     $configuration->transport->authentication->csrf->token = $unsafe;
-    $html = (new StudioDeploymentEmitter($schemas))->render(
+    $html = (new StudioDeploymentEmitter($schemas, testBrowserRelease()))->render(
         'studio-a',
         'studio-config-a',
         $configuration,
@@ -563,8 +643,13 @@ test('deployment emitter produces inert XSS-safe JSON for its exact mount', func
     assertSameValue($unsafe, $decoded->transport->authentication->csrf->token);
     assertSameValue([StudioDeploymentEmitter::SCHEMA_ID], $schemas->references);
 
-    $minimal = (object) ['mount' => '#studio-b'];
-    $second = (new StudioDeploymentEmitter(new TestSchemas()))->render(
+    $minimal = (object) [
+        'kind' => 'studio-deployment',
+        'mount' => '#studio-b',
+        'release' => testBrowserRelease(),
+        'locale' => 'rw',
+    ];
+    $second = (new StudioDeploymentEmitter(new TestSchemas(), testBrowserRelease()))->render(
         'studio-b',
         'studio-config-b',
         $minimal,
@@ -572,11 +657,106 @@ test('deployment emitter produces inert XSS-safe JSON for its exact mount', func
     assertTrueValue(str_contains($second, 'data-kumwe-studio="studio-config-b"'), 'Second mount failed.');
 });
 
+test('archive CSP helper renders only the exact fresh-nonce policy', function (): void {
+    $manifest = (object) [
+        'contentSecurityPolicy' => (object) [
+            'profile' => StudioContentSecurityPolicy::PROFILE,
+            'headerTemplate' => StudioContentSecurityPolicy::HEADER_TEMPLATE,
+            'styleNonce' => (object) [
+                'placeholder' => StudioContentSecurityPolicy::STYLE_NONCE_PLACEHOLDER,
+                'minimumEntropyBits' => 128,
+                'scope' => 'response',
+            ],
+            'inertConfigurationScript' => (object) [
+                'element' => 'script',
+                'mediaType' => 'application/json',
+                'requiresHash' => false,
+                'requiresNonce' => false,
+            ],
+        ],
+    ];
+    $manifestPath = tempnam(sys_get_temp_dir(), 'studio-csp-');
+    if (!is_string($manifestPath)) {
+        throw new RuntimeException('Could not create the CSP test manifest.');
+    }
+
+    try {
+        file_put_contents($manifestPath, json_encode($manifest, JSON_THROW_ON_ERROR));
+        $nonce = base64_encode(str_repeat("\x01", 16));
+        $header = StudioContentSecurityPolicy::fromAssetManifestFile($manifestPath, $nonce);
+        assertSameValue(
+            str_replace(
+                StudioContentSecurityPolicy::STYLE_NONCE_PLACEHOLDER,
+                $nonce,
+                StudioContentSecurityPolicy::HEADER_TEMPLATE,
+            ),
+            $header,
+        );
+        assertTrueValue(!str_contains($header, '{{'), 'The emitted CSP retained a placeholder.');
+        assertTrueValue(!str_contains($header, "'unsafe-"), 'The emitted CSP contains an unsafe source.');
+        assertTrueValue(str_contains($header, "script-src 'self'"), 'The script source changed.');
+        assertTrueValue(str_contains($header, "connect-src 'self'"), 'The connect source changed.');
+
+        $manifest->contentSecurityPolicy->inertConfigurationScript->requiresNonce = true;
+        file_put_contents($manifestPath, json_encode($manifest, JSON_THROW_ON_ERROR));
+        assertThrows(
+            static fn () => StudioContentSecurityPolicy::fromAssetManifestFile($manifestPath, $nonce),
+            RuntimeException::class,
+        );
+        assertThrows(
+            static fn () => StudioContentSecurityPolicy::fromAssetManifestFile($manifestPath, 'short'),
+            InvalidArgumentException::class,
+        );
+        foreach (
+            [
+                base64_encode(str_repeat("\x01", 15)),
+                str_repeat('A', 20) . '==',
+                str_repeat('A', 21),
+                str_repeat('A', 22) . '=',
+                str_repeat('A', 23) . '==',
+            ] as $invalidNonce
+        ) {
+            assertThrows(
+                static fn () => StudioContentSecurityPolicy::fromAssetManifestFile(
+                    $manifestPath,
+                    $invalidNonce,
+                ),
+                InvalidArgumentException::class,
+            );
+        }
+        $manifest->contentSecurityPolicy->inertConfigurationScript->requiresNonce = false;
+        file_put_contents($manifestPath, json_encode($manifest, JSON_THROW_ON_ERROR));
+        $unpaddedNonce = rtrim($nonce, '=');
+        assertTrueValue(
+            str_contains(
+                StudioContentSecurityPolicy::fromAssetManifestFile($manifestPath, $unpaddedNonce),
+                "'nonce-" . $unpaddedNonce . "'",
+            ),
+            'An unpadded 128-bit base64 nonce was refused.',
+        );
+        $seventeenByteNonce = base64_encode(str_repeat("\x02", 17));
+        assertTrueValue(
+            str_contains(
+                StudioContentSecurityPolicy::fromAssetManifestFile(
+                    $manifestPath,
+                    $seventeenByteNonce,
+                ),
+                "'nonce-" . $seventeenByteNonce . "'",
+            ),
+            'A canonically padded 136-bit base64 nonce was refused.',
+        );
+    } finally {
+        @unlink($manifestPath);
+    }
+});
+
 test('deployment emitter refuses mismatched mounts invalid schemas and oversized JSON', function (): void {
-    $emitter = new StudioDeploymentEmitter(new TestSchemas());
+    $emitter = new StudioDeploymentEmitter(new TestSchemas(), testBrowserRelease());
     assertSameValue(2_097_152, StudioDeploymentEmitter::MAXIMUM_JSON_BYTES);
     $largerThanLegacyLimit = (object) [
+        'kind' => 'studio-deployment',
         'mount' => '#studio-a',
+        'release' => testBrowserRelease(),
         'padding' => str_repeat('x', 70_000),
     ];
     assertTrueValue(
@@ -584,7 +764,11 @@ test('deployment emitter refuses mismatched mounts invalid schemas and oversized
         'A bounded deployment above the legacy 64 KiB limit was refused.',
     );
     try {
-        $emitter->render('studio-a', 'studio-config-a', (object) ['mount' => '#studio-other']);
+        $emitter->render('studio-a', 'studio-config-a', (object) [
+            'kind' => 'studio-deployment',
+            'mount' => '#studio-other',
+            'release' => testBrowserRelease(),
+        ]);
         throw new RuntimeException('A mismatched deployment mount was accepted.');
     } catch (InvalidArgumentException) {
         // Expected.
@@ -593,10 +777,14 @@ test('deployment emitter refuses mismatched mounts invalid schemas and oversized
     $schemas = new TestSchemas();
     $schemas->rejectReference = StudioDeploymentEmitter::SCHEMA_ID;
     try {
-        (new StudioDeploymentEmitter($schemas))->render(
+        (new StudioDeploymentEmitter($schemas, testBrowserRelease()))->render(
             'studio-a',
             'studio-config-a',
-            (object) ['mount' => '#studio-a'],
+            (object) [
+                'kind' => 'studio-deployment',
+                'mount' => '#studio-a',
+                'release' => testBrowserRelease(),
+            ],
         );
         throw new RuntimeException('An invalid deployment configuration was accepted.');
     } catch (InvalidArgumentException) {
@@ -604,7 +792,9 @@ test('deployment emitter refuses mismatched mounts invalid schemas and oversized
     }
 
     $oversized = (object) [
+        'kind' => 'studio-deployment',
         'mount' => '#studio-a',
+        'release' => testBrowserRelease(),
         'padding' => str_repeat('x', StudioDeploymentEmitter::MAXIMUM_JSON_BYTES),
     ];
     try {
@@ -614,7 +804,11 @@ test('deployment emitter refuses mismatched mounts invalid schemas and oversized
         // Expected.
     }
 
-    $tooDeep = (object) ['mount' => '#studio-a'];
+    $tooDeep = (object) [
+        'kind' => 'studio-deployment',
+        'mount' => '#studio-a',
+        'release' => testBrowserRelease(),
+    ];
     $cursor = $tooDeep;
     for ($depth = 0; $depth < StudioDeploymentEmitter::MAXIMUM_JSON_DEPTH; $depth++) {
         $cursor->nested = (object) [];
@@ -650,7 +844,11 @@ test('deployment emitter refuses mismatched mounts invalid schemas and oversized
 
 test('deployment emitter enforces current fifteen-minute token windows', function (): void {
     $now = strtotime('2029-01-01T00:00:00Z') * 1000;
-    $emitter = new StudioDeploymentEmitter(new TestSchemas(), static fn (): int => $now);
+    $emitter = new StudioDeploymentEmitter(
+        new TestSchemas(),
+        testBrowserRelease(),
+        static fn (): int => $now,
+    );
     assertSameValue(900_000, StudioDeploymentEmitter::MAXIMUM_TOKEN_LIFETIME_MILLISECONDS);
 
     $configuration = deploymentConfiguration();
@@ -709,6 +907,8 @@ test('same-origin session and CSRF verifier observes current server-side state',
     $headers = [
         'Origin' => 'https://admin.example.test',
         'Sec-Fetch-Site' => 'same-origin',
+        'Sec-Fetch-Mode' => 'cors',
+        'Sec-Fetch-Dest' => 'empty',
     ];
     $headers['X-CSRF-Token'] = $expectedToken;
     $input = new TransportSecurityInput(
@@ -736,18 +936,39 @@ test('same-origin session and CSRF verifier observes current server-side state',
     assertSameValue(1, $authenticationCalls, 'Hostile Origin reached session authentication.');
     assertSameValue(1, $csrfCalls, 'Hostile Origin reached server-side CSRF state.');
 
-    $crossSite = new TransportSecurityInput(
-        $input->method,
-        $input->path,
-        [...$input->headers, 'Sec-Fetch-Site' => 'cross-site'],
-        $input->route,
-        $input->capability,
-        $input->mutating,
+    $partialFetchMetadata = $input->headers;
+    unset($partialFetchMetadata['Sec-Fetch-Dest']);
+    $missingFetchMetadata = $input->headers;
+    unset(
+        $missingFetchMetadata['Sec-Fetch-Site'],
+        $missingFetchMetadata['Sec-Fetch-Mode'],
+        $missingFetchMetadata['Sec-Fetch-Dest'],
     );
-    $decision = $verifier->verify($crossSite);
-    assertTrueValue(!$decision->isAllowed() && !$decision->isUnauthenticated(), 'Cross-site request was allowed.');
-    assertSameValue(1, $authenticationCalls, 'Hostile Fetch Metadata reached session authentication.');
-    assertSameValue(1, $csrfCalls, 'Hostile Fetch Metadata reached server-side CSRF state.');
+    $hostileFetchMetadata = [
+        'cross-site request' => [...$input->headers, 'Sec-Fetch-Site' => 'cross-site'],
+        'navigation mode' => [...$input->headers, 'Sec-Fetch-Mode' => 'navigate'],
+        'document destination' => [...$input->headers, 'Sec-Fetch-Dest' => 'document'],
+        'missing tuple' => $missingFetchMetadata,
+        'partial tuple' => $partialFetchMetadata,
+        'ambiguous mode' => [...$input->headers, 'sec-fetch-mode' => 'cors'],
+    ];
+    foreach ($hostileFetchMetadata as $label => $hostileHeaders) {
+        $hostileInput = new TransportSecurityInput(
+            $input->method,
+            $input->path,
+            $hostileHeaders,
+            $input->route,
+            $input->capability,
+            $input->mutating,
+        );
+        $decision = $verifier->verify($hostileInput);
+        assertTrueValue(
+            !$decision->isAllowed() && !$decision->isUnauthenticated(),
+            ucfirst($label) . ' was allowed.',
+        );
+        assertSameValue(1, $authenticationCalls, ucfirst($label) . ' reached session authentication.');
+        assertSameValue(1, $csrfCalls, ucfirst($label) . ' reached server-side CSRF state.');
+    }
 });
 
 test('HTTP loopback origins require an explicit development opt-in', function (): void {
@@ -772,6 +993,8 @@ test('HTTP loopback origins require an explicit development opt-in', function ()
         [
             'Origin' => 'http://127.0.0.1:8080',
             'Sec-Fetch-Site' => 'same-origin',
+            'Sec-Fetch-Mode' => 'cors',
+            'Sec-Fetch-Dest' => 'empty',
             'X-CSRF-Token' => '<test-csrf-token>',
         ],
         'authoring/start',
@@ -827,7 +1050,16 @@ test('short-lived bearer and custom header verifiers delegate authoritative toke
         ],
         $seen,
     );
-    foreach (['X-Studio-Operation', 'aUtHoRiZaTiOn', 'Keep-Alive', 'Sec-Fetch-Site'] as $reservedHeader) {
+    foreach (
+        [
+            'X-Studio-Operation',
+            'aUtHoRiZaTiOn',
+            'Keep-Alive',
+            'Sec-Fetch-Site',
+            'Sec-Fetch-Mode',
+            'Sec-Fetch-Dest',
+        ] as $reservedHeader
+    ) {
         try {
             ShortLivedTokenVerifier::header($authenticate, $reservedHeader);
             throw new RuntimeException('A transport-owned token header was accepted: ' . $reservedHeader);
