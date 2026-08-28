@@ -6,9 +6,11 @@ This contract is subordinate to the [Studio product contract](../product-contrac
 **reusable content type** means one host-owned authoring definition that coordinates exact Content Model and
 Blueprint revisions. It is not a new portable artifact and it never contains an Entry's values.
 
-> **Current implementation:** the shipped headless composition profile persists one Blueprint, the model
-> projection is read-only, and the Lit shell does not hold or persist an Entry. The coordinated contextual
-> behavior below is a required target, not an implementation claim (`STUDIO-PROD-014`).
+> **Implementation relationship:** the legacy headless composition profile still persists one Blueprint and
+> exposes a read-only model projection. The additive contextual coordinator and shell now hold separate exact
+> Model, Blueprint, and Entry drafts, dispatch the current Model-field and Entry-value command slice, and plan
+> all three host save outcomes. That Studio-side behavior does not prove a complete field lifecycle, host
+> transaction, or qualified product journey (`STUDIO-PROD-014`).
 
 ## Content models
 
@@ -103,11 +105,12 @@ The `hybrid` composite coordinates Blueprint and Content mode operations for str
 
 The authorized compositional regions are declared by the Blueprint itself through node authoring policy: hybrid grants Content-mode field commands plus the structure commands — insert, remove, restore, move, duplicate, reorder, and their batches — whose every affected collection is a named slot of a node whose authoring policy mode is `structural`, or a slot the node's per-slot composition marker names ([ADR 0013](../decisions/0013-per-slot-composition-markers.md)). Inserted block types MUST satisfy the governing `allowedBlocks` when declared — the marked slot's own list ahead of the node-level list; subtrees containing a `locked` node are never inserted, removed, moved, or duplicated; document roots are never in bounds; and pattern application together with property, binding, size-role, and inheritance-reset configuration remains Blueprint-mode vocabulary. A structure command outside these bounds fails closed with `mode-forbidden`, leaving document, history, and selection untouched ([ADR 0011](../decisions/0011-editing-modes.md)).
 
-The target product experience coordinates Model, Blueprint, and Entry operations without collapsing their
-artifacts or permission boundaries. An author may see layout, field-definition controls, and actual Entry values
-on one canvas, but every command still targets exactly one declared artifact and every durable effect is accepted
-by the host (`STUDIO-PROD-003`, `STUDIO-PROD-010`). The current Blueprint session's helper reducers for model
-and entry commands do not provide that coordinated state, history, persistence, or UI.
+The product experience coordinates Model, Blueprint, and Entry operations without collapsing their artifacts
+or permission boundaries. An author may see layout, field-definition controls, and actual Entry values on one
+canvas, but every command still targets exactly one declared artifact and every durable effect is accepted by
+the host (`STUDIO-PROD-003`, `STUDIO-PROD-010`). `openContextualStudioSession` and the contextual shell provide
+the current coordinated snapshot, independent state/dirty tracking, UI, and save orchestration. Their bounded
+command slice does not claim the complete Model lifecycle or make browser state durable without host acceptance.
 
 ## Translations
 
@@ -130,5 +133,6 @@ The target contextual profile MUST present three distinct, explicit outcomes (`S
 Changing a field, block, or value locally never implies that any one of those outcomes succeeded. Studio MUST
 show which artifacts are dirty, request the selected host operation, and reconcile every accepted or rejected
 revision without copy-paste or manual cross-screen repair (`STUDIO-PROD-006`, `STUDIO-PROD-012`). The required
-canonical authoring port now defines the planning and three transaction shapes. That protocol foundation does
-not by itself make the legacy Blueprint-only host session or a shell UI a completed multi-artifact journey.
+canonical authoring port now defines the planning and three transaction shapes. The contextual coordinator and
+shell implement that client-side orchestration, but neither the protocol nor those components by themselves
+make a real host integration a completed multi-artifact journey.

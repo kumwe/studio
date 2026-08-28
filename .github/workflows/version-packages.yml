@@ -24,7 +24,7 @@ jobs:
   version:
     name: Maintain beta, publish it, or pause during governed promotion
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,9 +51,6 @@ jobs:
       - name: Set up Studio
         uses: ./.github/actions/setup-studio
 
-      - name: Run quality gate
-        run: npm run check
-
       # Pending changesets mean this run only maintains the generated beta version PR and has
       # no reason to read a registry credential. Once that PR is merged there
       # are no top-level changesets, and the same workflow enters publication.
@@ -75,6 +72,25 @@ jobs:
             [[ "$RELEASE_CHANNEL" == "beta" ]]
             [[ "$RELEASE_PRE_MODE" == "pre" || "$RELEASE_PRE_MODE" == "enter" || "$RELEASE_PRE_MODE" == "reset" ]]
           fi
+
+      - name: Run repository quality for non-publishing beta work
+        if: steps.plan.outputs.operation != 'publish'
+        run: npm run check
+
+      - name: Set up pinned PHP for beta candidate qualification
+        if: steps.plan.outputs.operation == 'publish'
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: Install locked Chromium for beta candidate qualification
+        if: steps.plan.outputs.operation == 'publish'
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Qualify the exact beta publication source
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run qualify:candidate
 
       # Authenticate only on the actual publish path. This lets a missing or
       # rotated token fail publication clearly without blocking creation of the

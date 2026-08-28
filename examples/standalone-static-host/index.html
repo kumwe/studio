@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Framework-neutral deployment proof for prebuilt Kumwe Studio browser assets"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+    <title>Standalone Kumwe Studio deployment</title>
+  </head>
+  <body>
+    <header class="static-host-header">
+      <p class="eyebrow">Independent static host</p>
+      <h1>Contextual Studio from prebuilt browser assets</h1>
+      <p>
+        This page is served as ordinary static files. Node.js, npm, Vite, and a JavaScript
+        application server are absent from the serving process.
+      </p>
+      <p><a href="./public.html">Open the independently rendered public page</a></p>
+      <output id="runtime-status" role="status" aria-live="polite">Loading Studio…</output>
+    </header>
+    <main>
+      <section class="host-boundary extension-lifecycle" aria-labelledby="extension-title">
+        <h2 id="extension-title">Extension-owned contextual authoring target</h2>
+        <p>
+          This live system resolves the target and its block, field adapter, and pattern from one
+          immutable contribution generation. Lifecycle controls demonstrate fail-closed removal
+          while preserving canonical content.
+        </p>
+        <dl>
+          <div>
+            <dt>Lifecycle state</dt>
+            <dd><output id="extension-state">activating</output></dd>
+          </div>
+          <div>
+            <dt>Target resolution</dt>
+            <dd><output id="extension-resolution">pending</output></dd>
+          </div>
+        </dl>
+        <div class="lifecycle-actions" role="group" aria-label="Extension lifecycle">
+          <button id="extension-disable" type="button">Disable extension</button>
+          <button id="extension-reactivate" type="button">Reactivate extension</button>
+          <button id="extension-revoke" type="button">Revoke extension trust</button>
+          <button id="extension-uninstall" type="button">Uninstall extension</button>
+        </div>
+        <pre id="extension-contributions">No admitted contributions.</pre>
+      </section>
+      <kumwe-studio-contextual></kumwe-studio-contextual>
+      <section class="host-boundary" aria-labelledby="host-boundary-title">
+        <h2 id="host-boundary-title">Host authority boundary</h2>
+        <p>
+          This static proof never pretends to persist. A save action emits the exact Studio intent
+          for a real host to send through its authoritative HTTP API.
+        </p>
+        <pre id="save-intent">No save intent requested.</pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

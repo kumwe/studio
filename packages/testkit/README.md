@@ -1,7 +1,8 @@
 # `@kumwe/studio-testkit`
 
-Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. Its conformance helpers
-do not by themselves constitute gate evidence.
+Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
+version is in the workspace `studio-release.json`; these conformance helpers do not by themselves constitute
+gate evidence.
 
 The current candidate combines fixture builders and `assertBlueprintConforms` with deterministic host and HTTP
 testbeds plus executable command, canonical, host, host-sequence, media, preview, property-schema,
@@ -55,8 +56,10 @@ randomness, or timers, so runs are fully reproducible.
 The optional `authoring` fixtures add the canonical contextual target, reusable-type listing, exact start,
 save-plan, and three distinct save operations to that same testbed. Resolve, list, and start reject a body/
 envelope resource-context mismatch; start and the three saves share the deterministic idempotency boundary;
-and `controls.authoringOperations` exposes detached observations for assertions. The injected HTTP adapter maps
-the seven operations to `/ports/authoring/*` without introducing a server-side JavaScript runtime requirement.
+and `controls.authoringOperations` exposes detached observations for assertions. The compatibility HTTP adapter
+reuses `@kumwe/studio-core`'s production transport and maps the seven operations to `/ports/authoring/*` without
+introducing a server-side JavaScript runtime requirement. It preserves the historical `TestbedHostError`
+subclass; production core and browser consumers receive the protocol's canonical `HostPortFailure`.
 `runContextualAuthoringStrideVector(vector, adapter)` is a selector-neutral first-stride runner for exact blank,
 from-type, and existing hydration; separately governed Model, Blueprint, and Entry commands; typed values;
 item-local composition; and host-authoritative save boundaries. Its result always carries
@@ -85,6 +88,12 @@ preview cancellation with late-result discard, and cross-context cancellation is
 TypeScript replay is `test/host-sequence-vectors.test.ts`; other runtimes consume the same JSON and
 schema directly. The exact assertion list and deliberately recorded limits live in
 `docs/contracts/conformance-profiles.md`.
+
+`@kumwe/studio-testkit/vectors/authoring-http/transport-matrix.json` is the language-neutral authoring HTTP
+matrix for PHP and independent hosts. It fixes all seven route/capability/schema bindings, mutation and
+idempotency classification, resource-context equality requirements, success status, every canonical error
+status, and authentication/CSRF/schema/context refusal cases. A host replays this JSON in its own test runner;
+it does not execute TypeScript or require Node.js in production.
 
 The host corpus includes `model.get` and `model.list` exchanges over seeded content models. The testbed
 resolves exact ID/version/revision coordinates and lists detached projections in deterministic coordinate
@@ -124,10 +133,11 @@ block definitions and exact normalized candidate/control/status/diagnostic outpu
 consumes the same JSON directly. The runner and reference projection never mutate vector input.
 
 `@kumwe/studio-testkit/corpus-manifest.json` carries the sha256 digest of every file in the published
-corpus, grouped by the directory it ships in. A host that vendors the corpus verifies its copy against
-this manifest, so a stale or altered fixture is detected before it silently changes what a conformance
-claim means. The schema manifest in `@kumwe/studio-protocol` covers the schemas; this covers everything
-replayed against them.
+corpus, grouped by the directory it ships in. The current generated manifest inventories 297 files across 14
+groups, including positive examples, invalid fixtures, portable vectors, and conformance lanes. A host that
+vendors the corpus verifies its copy against this manifest, so a stale or altered fixture is detected before it
+silently changes what a conformance claim means. The schema manifest in `@kumwe/studio-protocol` covers the
+schemas; this covers everything replayed against them.
 
 `@kumwe/studio-testkit/conformance/authoring-web/<filename>` publishes selector-neutral authoring
 lanes. `runAuthoringWebVector(vector, adapter)` opens a fresh adapter session for every lane, performs
@@ -146,5 +156,5 @@ Gate A requires valid and invalid fixture corpora plus runner-neutral assertions
 plugin, host-port, command, preview, media, compatibility, migration, lifecycle, security,
 accessibility, localization, and the applicable Version 2 TypeScript profile. Eight Version 2 profiles are
 declared executable in the repository; `studio.profile/authoring-web` alone remains a target until its complete
-real-shell assertion set and manual matrix exist. None is claimed by the current release record, and this
-source candidate must not be cited as accepted gate evidence. Dart/Flutter parity belongs to Version 3.
+real-shell assertion set and manual matrix exist. None is claimed by the current release record, and this beta
+development tree must not be cited as accepted gate evidence. Dart/Flutter parity belongs to Version 3.

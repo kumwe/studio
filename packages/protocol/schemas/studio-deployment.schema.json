@@ -1,0 +1,343 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/studio-deployment.schema.json",
+  "title": "Studio browser deployment configuration",
+  "description": "A bounded, declarative browser bootstrap for one Studio mount. An omitted transport selects local standalone authoring; an HTTP transport names exact host routes but never grants server authority.",
+  "$ref": "#/$defs/configuration",
+  "$defs": {
+    "mountSelector": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+(?![\\s\\S])"
+    },
+    "endpointUrl": {
+      "description": "A bounded HTTP(S) URL reference resolved against the containing document URL. Runtime validation rejects non-HTTP(S), credential-bearing, and fragment-bearing URLs.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[^\\u0000-\\u0020\\u007F]+(?![\\s\\S])"
+    },
+    "headerName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[!#$%&'*+.^_`|~0-9A-Za-z-]+(?![\\s\\S])"
+    },
+    "customAuthenticationHeaderName": {
+      "description": "A custom authentication field that cannot impersonate bearer authentication or a transport-, browser-, proxy-, or forwarding-owned field.",
+      "allOf": [
+        { "$ref": "#/$defs/headerName" },
+        {
+          "type": "string",
+          "not": {
+            "anyOf": [
+              { "pattern": "^[Aa][Cc][Cc][Ee][Pp][Tt]$" },
+              { "pattern": "^[Aa][Cc][Cc][Ee][Ss][Ss]-[Cc][Oo][Nn][Tt][Rr][Oo][Ll]-" },
+              { "pattern": "^[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]$" },
+              { "pattern": "^[Cc][Oo][Nn][Nn][Ee][Cc][Tt][Ii][Oo][Nn]$" },
+              { "pattern": "^[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Ll][Ee][Nn][Gg][Tt][Hh]$" },
+              { "pattern": "^[Cc][Oo][Nn][Tt][Ee][Nn][Tt]-[Tt][Yy][Pp][Ee]$" },
+              { "pattern": "^[Cc][Oo][Oo][Kk][Ii][Ee]$" },
+              { "pattern": "^[Dd][Aa][Tt][Ee]$" },
+              { "pattern": "^[Ee][Xx][Pp][Ee][Cc][Tt]$" },
+              { "pattern": "^[Ff][Oo][Rr][Ww][Aa][Rr][Dd][Ee][Dd]$" },
+              { "pattern": "^[Hh][Oo][Ss][Tt]$" },
+              { "pattern": "^[Kk][Ee][Ee][Pp]-[Aa][Ll][Ii][Vv][Ee]$" },
+              { "pattern": "^[Oo][Rr][Ii][Gg][Ii][Nn]$" },
+              { "pattern": "^[Pp][Rr][Oo][Xx][Yy]-" },
+              { "pattern": "^[Rr][Ee][Ff][Ee][Rr][Ee][Rr]$" },
+              { "pattern": "^[Ss][Ee][Cc]-" },
+              { "pattern": "^[Ss][Ee][Tt]-[Cc][Oo][Oo][Kk][Ii][Ee]$" },
+              { "pattern": "^[Tt][Ee]$" },
+              { "pattern": "^[Tt][Rr][Aa][Ii][Ll][Ee][Rr]$" },
+              { "pattern": "^[Tt][Rr][Aa][Nn][Ss][Ff][Ee][Rr]-[Ee][Nn][Cc][Oo][Dd][Ii][Nn][Gg]$" },
+              { "pattern": "^[Uu][Pp][Gg][Rr][Aa][Dd][Ee]$" },
+              { "pattern": "^[Uu][Ss][Ee][Rr]-[Aa][Gg][Ee][Nn][Tt]$" },
+              { "pattern": "^[Vv][Ii][Aa]$" },
+              { "pattern": "^[Xx]-[Ff][Oo][Rr][Ww][Aa][Rr][Dd][Ee][Dd]-" },
+              { "pattern": "^[Xx]-[Ss][Tt][Uu][Dd][Ii][Oo]-[Oo][Pp][Ee][Rr][Aa][Tt][Ii][Oo][Nn]$" }
+            ]
+          }
+        }
+      ]
+    },
+    "csrf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headerName", "token"],
+      "properties": {
+        "headerName": { "$ref": "#/$defs/customAuthenticationHeaderName" },
+        "token": { "type": "string", "minLength": 1, "maxLength": 4096 }
+      }
+    },
+    "sameOriginSessionAuthentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "credentials", "csrf"],
+      "properties": {
+        "kind": { "const": "same-origin-session" },
+        "credentials": { "const": "same-origin" },
+        "csrf": { "$ref": "#/$defs/csrf" }
+      }
+    },
+    "bearerTokenAuthentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "credentials", "token", "issuedAt", "expiresAt"],
+      "properties": {
+        "kind": { "const": "bearer-token" },
+        "credentials": { "const": "omit" },
+        "token": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "issuedAt": { "$ref": "common.schema.json#/$defs/rfc3339Instant" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/rfc3339Instant" }
+      }
+    },
+    "headerTokenAuthentication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "credentials", "headerName", "token", "issuedAt", "expiresAt"],
+      "properties": {
+        "kind": { "const": "header-token" },
+        "credentials": { "const": "omit" },
+        "headerName": { "$ref": "#/$defs/customAuthenticationHeaderName" },
+        "token": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "issuedAt": { "$ref": "common.schema.json#/$defs/rfc3339Instant" },
+        "expiresAt": { "$ref": "common.schema.json#/$defs/rfc3339Instant" }
+      }
+    },
+    "authentication": {
+      "oneOf": [
+        { "$ref": "#/$defs/sameOriginSessionAuthentication" },
+        { "$ref": "#/$defs/bearerTokenAuthentication" },
+        { "$ref": "#/$defs/headerTokenAuthentication" }
+      ]
+    },
+    "singleEndpointRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "endpoint"],
+      "properties": {
+        "kind": { "const": "single-endpoint" },
+        "endpoint": { "$ref": "#/$defs/endpointUrl" }
+      }
+    },
+    "operationEndpoints": {
+      "type": "object",
+      "minProperties": 2,
+      "required": ["authoring/resolve-target", "authoring/start"],
+      "propertyNames": { "$ref": "host-operations.schema.json#/$defs/operationRoute" },
+      "properties": {
+        "authoring/resolve-target": { "$ref": "#/$defs/endpointUrl" },
+        "authoring/start": { "$ref": "#/$defs/endpointUrl" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/endpointUrl" },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/save-item": {} },
+            "required": ["authoring/save-item"]
+          },
+          "then": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/plan-save": {} },
+            "required": ["authoring/plan-save"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/save-new-type-version": {} },
+            "required": ["authoring/save-new-type-version"]
+          },
+          "then": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/plan-save": {} },
+            "required": ["authoring/plan-save"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/save-as-new-type": {} },
+            "required": ["authoring/save-as-new-type"]
+          },
+          "then": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": { "authoring/plan-save": {} },
+            "required": ["authoring/plan-save"]
+          }
+        }
+      ]
+    },
+    "operationMapRouting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "endpoints"],
+      "properties": {
+        "kind": { "const": "operation-map" },
+        "endpoints": { "$ref": "#/$defs/operationEndpoints" }
+      }
+    },
+    "routing": {
+      "oneOf": [
+        { "$ref": "#/$defs/singleEndpointRouting" },
+        { "$ref": "#/$defs/operationMapRouting" }
+      ]
+    },
+    "standaloneTransport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "const": "standalone" }
+      }
+    },
+    "httpTransport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "routing", "authentication"],
+      "properties": {
+        "kind": { "const": "http" },
+        "routing": { "$ref": "#/$defs/routing" },
+        "authentication": { "$ref": "#/$defs/authentication" },
+        "requestTimeoutMilliseconds": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 120000,
+          "default": 10000
+        },
+        "maximumResponseBytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 67108864,
+          "default": 67108864
+        }
+      }
+    },
+    "transport": {
+      "oneOf": [{ "$ref": "#/$defs/standaloneTransport" }, { "$ref": "#/$defs/httpTransport" }]
+    },
+    "contributionPayload": {
+      "oneOf": [
+        { "$ref": "block-definition.schema.json" },
+        { "$ref": "pattern.schema.json" },
+        { "$ref": "field-adapter.schema.json" },
+        { "$ref": "inspector.schema.json" },
+        { "$ref": "design-vocabulary.schema.json" },
+        { "$ref": "migration.schema.json" }
+      ]
+    },
+    "contributionBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "payloads"],
+      "properties": {
+        "generation": { "$ref": "common.schema.json#/$defs/revision" },
+        "payloads": {
+          "type": "array",
+          "maxItems": 500,
+          "items": { "$ref": "#/$defs/contributionPayload" }
+        }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetId", "intent", "resourceContext", "start", "initialPresentation"],
+      "properties": {
+        "targetId": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "intent": { "$ref": "authoring-target.schema.json#/$defs/eligibility" },
+        "resourceContext": { "$ref": "common.schema.json#/$defs/resourceContext" },
+        "start": { "$ref": "authoring-session.schema.json#/$defs/startSource" },
+        "initialPresentation": {
+          "$ref": "authoring-target.schema.json#/$defs/presentationState"
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+        "kind": { "const": "studio-deployment" },
+        "instanceId": { "$ref": "common.schema.json#/$defs/stableId" },
+        "mount": { "$ref": "#/$defs/mountSelector" },
+        "launch": { "$ref": "#/$defs/launch" },
+        "session": { "$ref": "studio-config.schema.json" },
+        "contributions": { "$ref": "#/$defs/contributionBundle" },
+        "transport": { "$ref": "#/$defs/transport" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "type": "object",
+            "propertyNames": {},
+            "required": ["transport"],
+            "properties": {
+              "transport": {
+                "type": "object",
+                "propertyNames": {},
+                "required": ["kind"],
+                "properties": { "kind": { "const": "http" } }
+              }
+            }
+          },
+          "then": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": {
+              "launch": {},
+              "session": {}
+            },
+            "required": ["launch", "session"]
+          }
+        },
+        {
+          "if": {
+            "type": "object",
+            "propertyNames": {},
+            "anyOf": [
+              {
+                "not": {
+                  "type": "object",
+                  "propertyNames": {},
+                  "properties": { "transport": {} },
+                  "required": ["transport"]
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {},
+                "properties": {
+                  "transport": {
+                    "type": "object",
+                    "propertyNames": {},
+                    "required": ["kind"],
+                    "properties": { "kind": { "const": "standalone" } }
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "type": "object",
+            "propertyNames": {},
+            "properties": {
+              "contributions": false,
+              "launch": false,
+              "session": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}

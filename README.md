@@ -10,16 +10,18 @@ or reusable content type and work with layout, fields, bindings, and values in o
 Blueprint, and entry artifacts remain separately versioned and host-authoritative even when the interface
 presents them together.
 
-> **Project status:** the coordinated source candidate is `0.1.0-rc.1`, with the eight-package web family,
-> 45-block/ten-pattern standalone catalog, private Editor.js adapter, semantic renderer, and Blueprint shell
-> present. Its release record lists nine proposed profile claims, but none is accepted gate evidence: Gate A
-> remains not assessed, Gate B remains blocked, and no package or host is production-supported. The
+> **Project status:** Studio is on its governed beta-development lane; the exact coordinated eight-package
+> version is recorded in [`studio-release.json`](studio-release.json). The 45-block/ten-pattern catalog,
+> private Editor.js adapter, semantic renderer, and contextual browser shell are implemented, but the release
+> record deliberately claims no profiles. This is not an RC or production-support claim: Gate A remains not
+> assessed, Gate B remains blocked, and no package or host is production-supported. The
 > [status page](docs/roadmap/STATUS.md) is the only authority for gate progress; delivered increments are
 > recorded in the [changelog](CHANGELOG.md).
 
-The complete contextual create/edit/save-as-type journey in the product contract is a target, not a claim about
-the current integration. A standalone Blueprint canvas, read-only model projection, or compiled shell does not
-by itself satisfy that journey.
+The repository now implements the Studio-side contextual coordinator, Model/Blueprint/Entry browser shell,
+three save intents, configuration-driven hosted transport, blank standalone mounting, and isolated multi-mount
+lifecycle. Those components are still not a claim that Kumwe App or another real host has completed and
+qualified the full journey: only accepted host integration and `STUDIO-PROD-015` evidence can make that claim.
 
 Version 2 qualifies the web integration only. Dart and native Flutter profiles remain Version 3 targets;
 their deferral neither removes them from the architecture nor turns them into Version 2 gate blockers.
@@ -91,7 +93,48 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 5. Choose the [generic host](docs/integration/generic-host.md) or [Kumwe App](docs/integration/kumwe-app.md) integration path.
 6. Follow [contribution requirements](CONTRIBUTING.md) and the repository instructions in [AGENTS.md](AGENTS.md).
 
-## Local development
+## Embed Studio
+
+Studio has one browser-deployment path: serve the prebuilt ES module, identify one or more ordinary HTML
+elements, and call the public mount API. Configuration chooses whether each mount is local or connected to an
+authoritative host; the browser never infers a server route.
+
+The smallest deployment is a backendless page builder:
+
+```html
+<div data-kumwe-studio></div>
+<script type="module" src="/assets/start-studio.js"></script>
+```
+
+```js
+// /assets/start-studio.js
+import { autoMountStudio } from './studio-browser-<fingerprint>.js';
+
+await autoMountStudio();
+```
+
+With no transport configuration, Studio opens a blank in-memory project with the compiled first-party block
+and pattern catalogue. It performs no network request and exposes separate project JSON import/download and
+save-intent download actions. More than one opted-in element creates independent Studio instances.
+
+“No configuration” is distinct from “bad configuration.” An opted-in empty mount, or a valid deployment that
+omits transport (or explicitly selects `standalone`), receives those local defaults. A mount that names a
+missing configuration element, or supplies duplicate-member, malformed, oversized, schema-invalid, ambiguous,
+partial-HTTP, or route/capability-inconsistent configuration, fails initialization. Studio does not reinterpret
+invalid hosted intent as absent configuration and does not open a local workspace as fallback.
+
+For a connected deployment, PHP or another host emits one inert, schema-valid
+`StudioDeploymentConfiguration` beside each mount. That document contains the exact launch and resolved session configuration,
+operation URLs, authentication projection, and optional declarative contributions for that instance. Studio
+uses only those declared URLs; the server remains authoritative for content disclosure, permission,
+validation, persistence, revisions, workflow, rendering, and webhooks. A configured refusal or unavailable
+route never becomes a browser-only save or standalone session.
+
+Follow the [prebuilt browser asset guide](docs/integration/prebuilt-browser-assets.md) for mounting and the
+[generic host guide](docs/integration/generic-host.md) or
+[Kumwe App PHP playbook](docs/integration/kumwe-app.md) for an authoritative integration.
+
+## Contributor development
 
 ### Production runtime boundary
 
@@ -102,11 +145,12 @@ operators and content authors do not install or run Node.js, npm, Vite, or anoth
 Studio.
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) is the authoritative bootstrap and qualification path. Use the pinned
-Node.js 24 baseline and npm 11.9.0, install the locked dependencies and Playwright Chromium, then run the
-environment diagnostic before editing:
+Node.js 24 baseline and npm 11.9.0, PHP CLI 8.1 or newer, the locked dependencies, and Playwright Chromium,
+then run the environment diagnostic before editing:
 
 ```bash
 npm install --global npm@11.9.0
+php --version
 npm ci
 npx playwright install chromium
 npm run doctor

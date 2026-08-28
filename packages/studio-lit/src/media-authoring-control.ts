@@ -13,7 +13,12 @@ import type {
 
 export interface StudioMediaAuthoringServices {
   provider: MediaProvider;
+  /** Allocate one isolated upload lifecycle per mounted media control. */
+  uploadTransportFactory?: () => MediaUploadTransport;
+  /** Advanced direct-composition seam retained for host-neutral controls. */
   uploadTransport?: MediaUploadTransport;
+  /** Explicitly disable byte intake when the host exposes browse-only media. */
+  uploadsEnabled?: boolean;
 }
 
 export function mountStudioMediaReferenceControl(
@@ -37,6 +42,7 @@ class StudioMediaReferenceControl implements StudioAuthoringControlHandle<
   readonly #holder: HTMLElement;
   readonly #onChange: StudioAuthoringControlOptions['onChange'];
   readonly #unsubscribe: () => void;
+  readonly #uploadsEnabled: boolean;
   public readonly readOnly: boolean;
   #error: string | undefined;
   #lastValid: MediaReference | undefined;
@@ -47,30 +53,30 @@ class StudioMediaReferenceControl implements StudioAuthoringControlHandle<
   ) {
     this.#holder = group(options.holder, 'Media picker');
     this.#onChange = options.onChange;
+    this.#uploadsEnabled = services.uploadsEnabled !== false;
     this.#lastValid = optionalReference(options.value);
+    const uploadTransport = services.uploadTransportFactory?.() ?? services.uploadTransport;
     this.#controller = new StudioMediaFieldController({
       ...(options.binding === undefined ? {} : { binding: options.binding }),
       ...(options.mediaTypes === undefined ? {} : { mediaTypes: [...options.mediaTypes] }),
       onChange: (state) => this.#acceptChange(state),
       provider: services.provider,
       ...(options.readOnly === undefined ? {} : { readOnly: options.readOnly }),
-      ...(services.uploadTransport === undefined
-        ? {}
-        : { uploadTransport: services.uploadTransport }),
+      ...(uploadTransport === undefined ? {} : { uploadTransport }),
       usage: options.usage ?? this.#lastValid?.usage ?? 'studio.media/content',
       ...(this.#lastValid === undefined ? {} : { value: this.#lastValid }),
     });
     this.readOnly = this.#controller.state.readOnly;
     this.#holder.addEventListener('dragover', (event) => {
-      if (!this.readOnly) event.preventDefault();
+      if (!this.readOnly && this.#uploadsEnabled) event.preventDefault();
     });
     this.#holder.addEventListener('drop', (event) => {
-      if (this.readOnly || event.dataTransfer === null) return;
+      if (this.readOnly || !this.#uploadsEnabled || event.dataTransfer === null) return;
       event.preventDefault();
       void this.#run(() => this.#controller.drop(event.dataTransfer?.files ?? []));
     });
     this.#holder.addEventListener('paste', (event) => {
-      if (this.readOnly || event.clipboardData === null) return;
+      if (this.readOnly || !this.#uploadsEnabled || event.clipboardData === null) return;
       void this.#run(() => this.#controller.paste(event.clipboardData?.items ?? []));
     });
     this.#unsubscribe = this.#controller.subscribe(() => this.#render());
@@ -140,11 +146,12 @@ class StudioMediaReferenceControl implements StudioAuthoringControlHandle<
     const upload = document.createElement('input');
     upload.type = 'file';
     upload.setAttribute('aria-label', 'Upload media');
-    upload.disabled = this.readOnly;
+    upload.disabled = this.readOnly || !this.#uploadsEnabled;
     if (state.library.query?.mediaTypes !== undefined) {
       upload.accept = state.library.query.mediaTypes.join(',');
     }
     upload.addEventListener('change', () => {
+      if (!this.#uploadsEnabled) return;
       const file = upload.files?.[0];
       if (file !== undefined) void this.#run(() => this.#controller.upload(file));
     });

@@ -1,0 +1,39 @@
+# Compiled-browser to PHP qualification fixture
+
+This test-only host starts with PHP's built-in HTTP server and serves the already compiled
+`packages/studio-lit/dist/browser/studio-browser.js`. PHP emits three inert deployment documents with the
+reference `StudioDeploymentEmitter`, authenticates the browser's HttpOnly same-origin session plus per-mount
+CSRF token with `SameOriginSessionCsrfVerifier`, and dispatches every authoring request through
+`AuthoringResponder` and `AuthoringApplicationService`.
+
+The fixture intentionally has no Node.js server and no PHP-to-Node bridge. Playwright is only the test driver;
+PHP remains the server authority and owns accepted state across reopen.
+
+`QualificationBoundarySchemaValidator` is a narrow test double. It proves that the responder selects the
+expected canonical schema references and rejects unknown references, but it is **not** a JSON Schema draft
+2020-12 validator and is not conformance evidence. The compiled Studio browser applies the bundled canonical
+schemas to the emitted deployments and all returned documents. A real PHP integration must supply a complete,
+fail-closed draft 2020-12 validator backed by its locally vendored Studio schema tree, as required by the
+framework-neutral PHP reference contract.
+
+The fixture also configures deliberately hostile PHP response mounts. Those mounts alter a validated
+resolve-target response after the reference responder has performed request security and dispatch, allowing the
+compiled browser to prove fail-closed handling for a missing response Content-Type, a wrong Content-Type,
+duplicate JSON members, and an over-limit response. A separate application mount returns a canonical conflict
+with its authoritative revision. This is HTTP application-boundary coverage from PHP's built-in server; it does
+**not** claim actual reverse-proxy behavior or duplicate-header qualification.
+
+The Playwright journey covers:
+
+- two simultaneous hosted mounts with distinct instances, sessions, resource contexts, CSRF material, and
+  endpoint maps;
+- cookie/Origin/Fetch-Metadata/CSRF acceptance by the real reference verifier;
+- resolve, start, plan-save, save-item, accepted revision reconciliation, disposal, and reopen;
+- a PHP-authored `403` that remains visible and never becomes a standalone workspace; and
+- direct request-integrity refusals for missing or wrong CSRF, wrong Origin, and cross-site Fetch Metadata;
+- canonical surfacing of host conflict plus fail-closed malformed/oversized response mounts, without standalone
+  fallback or damage to valid siblings; and
+- sibling survival plus independent disposal.
+
+The root `npm run check:a11y` command builds the browser asset, starts this PHP server through the Playwright
+configuration, and executes the journey with the rest of the production-browser lane.

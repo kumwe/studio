@@ -7,7 +7,12 @@ import {
   type PropertyValues,
   type TemplateResult,
 } from 'lit';
-import { permittedCommandTypes, StudioCommandError, StudioSession } from '@kumwe/studio-core';
+import {
+  permittedCommandTypes,
+  StudioCommandError,
+  StudioSession,
+  type StudioContextualSession,
+} from '@kumwe/studio-core';
 import type {
   AddModelFieldCommand,
   AuthoringSaveDraft,
@@ -15,15 +20,20 @@ import type {
   AuthoringSaveOutcome,
   AuthoringSessionSnapshot,
   AuthoringPresentationState,
+  BlockDefinition,
   BlueprintDocument,
   ContentFieldKind,
   ContentModelDocument,
+  DesignVocabulary,
   EntryDocument,
   ExperimentalShellConfiguration,
   FieldDefinition,
+  FieldAdapterContribution,
+  InspectorContribution,
   JsonValue,
   LocalName,
   MessageReference,
+  MigrationDeclaration,
   PatternDocument,
   QualifiedName,
   Revision,
@@ -39,9 +49,9 @@ import {
   STUDIO_AUTHORING_CONTROL_IDS,
   StudioAuthoringControlRegistry,
   type StudioAuthoringControlHandle,
-  type StudioAuthoringControlId,
 } from './authoring-controls.js';
 import type { KumweStudioElement, StudioDocumentChangeDetail } from './kumwe-studio.js';
+import { dispatchStudioContextualReturnRequest } from './hosted-return.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 import type { StudioPreviewBinding } from './preview-surface.js';
 import type { StudioResourceSearchService } from './resource-authoring-control.js';
@@ -104,6 +114,20 @@ export interface StudioContextualSaveRequestDetail {
   snapshot: AuthoringSessionSnapshot;
 }
 
+/**
+ * Safe data admitted for this target. Executable field controls remain in the
+ * separate precompiled `authoringControlRegistry`; inspector and migration
+ * declarations are retained as data and are never executed by mounting.
+ */
+export interface StudioContextualAdmittedContributions {
+  readonly blockDefinitions: readonly BlockDefinition[];
+  readonly designVocabularies: readonly DesignVocabulary[];
+  readonly fieldAdapters: readonly FieldAdapterContribution[];
+  readonly inspectors: readonly InspectorContribution[];
+  readonly migrations: readonly MigrationDeclaration[];
+  readonly patterns: readonly PatternDocument[];
+}
+
 interface MountedEntryControl {
   handle: StudioAuthoringControlHandle;
   holder: HTMLElement;
@@ -111,7 +135,7 @@ interface MountedEntryControl {
 }
 
 interface EntryFieldTarget {
-  control: StudioAuthoringControlId;
+  control: QualifiedName;
   field: FieldDefinition;
   key: string;
   path: LocalName[];
@@ -149,8 +173,6 @@ const BUILT_IN_FIELD_KINDS = Object.freeze([
   'object',
   'collection',
 ] as const satisfies readonly ContentFieldKind[]);
-const ADVANCED_CONTROLS: ReadonlySet<string> = new Set(Object.values(STUDIO_AUTHORING_CONTROL_IDS));
-
 /**
  * The composed contextual shell. It keeps the existing Blueprint shell alive
  * as its canvas implementation while Model and Content modes use the same
@@ -158,8 +180,10 @@ const ADVANCED_CONTROLS: ReadonlySet<string> = new Set(Object.values(STUDIO_AUTH
  */
 export class KumweStudioContextualElement extends LitElement {
   public static override properties = {
+    admittedContributions: { attribute: false },
     authoringControlRegistry: { attribute: false },
     configuration: { attribute: false },
+    contextualSession: { attribute: false },
     designControls: { attribute: false },
     messages: { attribute: false },
     mode: { attribute: false, state: true },
@@ -420,8 +444,14 @@ export class KumweStudioContextualElement extends LitElement {
     }
   `;
 
+  declare public admittedContributions: StudioContextualAdmittedContributions | undefined;
   declare public authoringControlRegistry: StudioAuthoringControlRegistry | undefined;
   declare public configuration: ExperimentalShellConfiguration | undefined;
+  /**
+   * The optional core-owned contextual draft used by a hosted composition.
+   * Standalone/manual mounts may omit it and retain the shell-owned draft.
+   */
+  declare public contextualSession: StudioContextualSession | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public messages: StudioMessageOverrides | undefined;
   declare public patterns: PatternDocument[] | undefined;
@@ -479,6 +509,9 @@ export class KumweStudioContextualElement extends LitElement {
   }
 
   public get dirtyState(): StudioContextualDirtyState {
+    if (this.contextualSession !== undefined) {
+      return { ...this.contextualSession.dirty };
+    }
     return {
       blueprint: this.#initialDirty.has('blueprint') || (this.blueprintElement?.dirty ?? false),
       entry:
@@ -496,6 +529,9 @@ export class KumweStudioContextualElement extends LitElement {
   }
 
   public get snapshot(): AuthoringSessionSnapshot | undefined {
+    if (this.contextualSession !== undefined) {
+      return this.contextualSession.snapshot;
+    }
     const session = this.session;
     const draft = this.#draft;
     const blueprint =
@@ -520,19 +556,33 @@ export class KumweStudioContextualElement extends LitElement {
   /** Add one fully typed field through the core Model command path. */
   public addField(field: FieldDefinition, position?: number): ContentModelDocument {
     const draft = this.#requireDraft();
-    const session = this.#requireExecutor(this.#modelExecutor, 'Model');
+    const contextualSession = this.contextualSession;
+    const session =
+      contextualSession === undefined
+        ? this.#requireExecutor(this.#modelExecutor, 'Model')
+        : undefined;
     const command: AddModelFieldCommand = {
-      ...this.#commandEnvelope(draft.model.id, draft.modelVersion),
+      ...this.#commandEnvelope(
+        draft.model.id,
+        contextualSession?.stateVersions.model ?? draft.modelVersion,
+      ),
       payload: { field: structuredClone(field), ...(position === undefined ? {} : { position }) },
       type: 'studio.command/add-model-field',
     };
     try {
-      draft.model = session.executeModelCommand(draft.model, command);
+      if (contextualSession === undefined) {
+        draft.model = this.#requireExecutor(session, 'Model').executeModelCommand(
+          draft.model,
+          command,
+        );
+      } else {
+        draft.model = contextualSession.executeModel(command);
+      }
     } catch (error) {
       this.#announceCommandFailure(error);
       throw error;
     }
-    draft.modelVersion += 1;
+    draft.modelVersion = contextualSession?.stateVersions.model ?? draft.modelVersion + 1;
     this.#emitChange('model', command, 'command');
     this.requestUpdate();
     return structuredClone(draft.model);
@@ -541,9 +591,16 @@ export class KumweStudioContextualElement extends LitElement {
   /** Set one actual Entry value through the core Content command path. */
   public setEntryValue(fieldPath: readonly LocalName[], value: JsonValue): EntryDocument {
     const draft = this.#requireDraft();
-    const session = this.#requireExecutor(this.#entryExecutor, 'Content');
+    const contextualSession = this.contextualSession;
+    const session =
+      contextualSession === undefined
+        ? this.#requireExecutor(this.#entryExecutor, 'Content')
+        : undefined;
     const command: SetFieldValueCommand = {
-      ...this.#commandEnvelope(draft.entry.id, draft.entryVersion),
+      ...this.#commandEnvelope(
+        draft.entry.id,
+        contextualSession?.stateVersions.entry ?? draft.entryVersion,
+      ),
       payload: {
         fieldPath: [...fieldPath],
         ...(draft.entry.locale === undefined ? {} : { locale: draft.entry.locale }),
@@ -552,12 +609,19 @@ export class KumweStudioContextualElement extends LitElement {
       type: 'studio.command/set-field-value',
     };
     try {
-      draft.entry = session.executeEntryCommand(draft.entry, command);
+      if (contextualSession === undefined) {
+        draft.entry = this.#requireExecutor(session, 'Content').executeEntryCommand(
+          draft.entry,
+          command,
+        );
+      } else {
+        draft.entry = contextualSession.executeEntry(command);
+      }
     } catch (error) {
       this.#announceCommandFailure(error);
       throw error;
     }
-    draft.entryVersion += 1;
+    draft.entryVersion = contextualSession?.stateVersions.entry ?? draft.entryVersion + 1;
     this.#emitChange('entry', command, 'command');
     this.requestUpdate();
     return structuredClone(draft.entry);
@@ -592,6 +656,7 @@ export class KumweStudioContextualElement extends LitElement {
     }
     if (presentation === this.presentation) return;
     const previousPresentation = this.presentation;
+    this.contextualSession?.setPresentation(presentation);
     this.presentation = presentation;
     this.#announcement = this.#text('studio.contextual/announce-presentation', {
       presentation: this.#presentationLabel(presentation),
@@ -632,16 +697,11 @@ export class KumweStudioContextualElement extends LitElement {
         'A read-only contextual session cannot request a durable save.',
       );
     }
-    const intent: AuthoringSaveIntent = {
-      contractVersion: snapshot.contractVersion,
-      draft: saveDraft(outcome, snapshot),
-      expected: structuredClone(snapshot.state.coordinates),
-      kind: 'authoring-save-intent',
-      sessionId: snapshot.sessionId,
-    };
+    const intent = this.#createSaveIntent(outcome, snapshot);
     this.dispatchEvent(
       new CustomEvent<StudioContextualSaveRequestDetail>('studio-contextual-save-request', {
         bubbles: true,
+        cancelable: true,
         composed: true,
         detail: {
           intent,
@@ -655,13 +715,26 @@ export class KumweStudioContextualElement extends LitElement {
     this.requestUpdate();
   }
 
+  /** Ask the embedding host to return using only its opaque resolved context. */
+  public requestReturn(): boolean {
+    const returnContext = this.session?.presentation.returnContext;
+    if (returnContext === undefined) {
+      throw new RangeError('This contextual Studio session has no host return context.');
+    }
+    return dispatchStudioContextualReturnRequest(this, returnContext);
+  }
+
   public override disconnectedCallback(): void {
     this.#destroyEntryControls();
     super.disconnectedCallback();
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('session') || changed.has('configuration')) {
+    if (
+      changed.has('session') ||
+      changed.has('configuration') ||
+      changed.has('contextualSession')
+    ) {
       this.#rebuildDraft();
     }
     if (changed.has('authoringControlRegistry')) {
@@ -703,6 +776,21 @@ export class KumweStudioContextualElement extends LitElement {
             </p>
           </div>
           <div class="contextual-actions">
+            ${
+              session.presentation.returnContext === undefined
+                ? nothing
+                : html`<button
+                    type="button"
+                    class="contextual-return-button"
+                    @click=${(): boolean => this.requestReturn()}
+                  >
+                    ${this.#text('studio.contextual/return', {
+                      destination:
+                        referenceText(session.presentation.returnContext.label) ??
+                        this.#text('studio.contextual/return-destination'),
+                    })}
+                  </button>`
+            }
             <div
               class="contextual-presentations"
               role="group"
@@ -781,6 +869,7 @@ export class KumweStudioContextualElement extends LitElement {
           >
             <kumwe-studio
               .authoringControlRegistry=${this.authoringControlRegistry}
+              .commandSession=${this.contextualSession?.blueprintSession}
               .configuration=${this.#blueprintSessionConfiguration}
               .contentModel=${draft.model}
               .designControls=${this.designControls}
@@ -1023,7 +1112,10 @@ export class KumweStudioContextualElement extends LitElement {
   ): TemplateResult {
     const pathText = path.join('.');
     const label = referenceText(field.label) ?? field.id;
-    const advanced = entryControlFor(field);
+    const advanced = entryControlFor(
+      field,
+      this.authoringControlRegistry ?? this.#defaultAuthoringControlRegistry,
+    );
     if (advanced !== undefined) {
       const value = current ?? defaultAdvancedValue(advanced, field);
       if (value === undefined) {
@@ -1240,6 +1332,37 @@ export class KumweStudioContextualElement extends LitElement {
       kind: 'command' as const,
       sessionGeneration: configuration.sessionGeneration,
     };
+  }
+
+  #createSaveIntent(
+    outcome: AuthoringSaveOutcome,
+    snapshot: AuthoringSessionSnapshot,
+  ): AuthoringSaveIntent {
+    const session = this.contextualSession;
+    if (session === undefined) {
+      return createStudioAuthoringSaveIntent(outcome, snapshot);
+    }
+    if (outcome === 'save-item') {
+      return session.createSaveIntent({
+        includeItemBlueprint:
+          snapshot.type?.authoringPolicy.itemComposition === 'overrides' &&
+          snapshot.state.dirty.includes('blueprint'),
+        outcome,
+      });
+    }
+    if (outcome === 'save-new-type-version') {
+      return session.createSaveIntent({ outcome });
+    }
+    return session.createSaveIntent({
+      authoringPolicy: structuredClone(
+        snapshot.type?.authoringPolicy ?? {
+          itemComposition: 'denied',
+          modes: snapshot.capabilities.modes,
+        },
+      ),
+      label: structuredClone(snapshot.type?.label ?? snapshot.state.model.label),
+      outcome,
+    });
   }
 
   #destroyEntryControls(): void {
@@ -1479,6 +1602,7 @@ export class KumweStudioContextualElement extends LitElement {
       draft.model,
       draft.entry,
       this.configuration?.session.sessionState === 'read-only',
+      registry,
     );
     const expected = new Set(targets.map((target) => target.key));
     for (const [key, mounted] of this.#entryControls) {
@@ -1531,7 +1655,7 @@ function artifactReference(document: BlueprintDocument | ContentModelDocument) {
 }
 
 function defaultAdvancedValue(
-  control: StudioAuthoringControlId,
+  control: QualifiedName,
   field: FieldDefinition,
 ): JsonValue | undefined {
   if (control === STUDIO_AUTHORING_CONTROL_IDS.richText) return { content: [], type: 'doc' };
@@ -1556,21 +1680,25 @@ function defaultFieldControl(
   return undefined;
 }
 
-function entryControlFor(field: FieldDefinition): StudioAuthoringControlId | undefined {
+function entryControlFor(
+  field: FieldDefinition,
+  registry: StudioAuthoringControlRegistry,
+): QualifiedName | undefined {
   const declared = field.authoring?.control;
-  if (declared !== undefined && ADVANCED_CONTROLS.has(declared)) {
-    return declared as StudioAuthoringControlId;
+  if (declared !== undefined && registry.supports(declared)) {
+    return declared;
   }
-  return defaultFieldControl(field.kind, field.cardinality) as StudioAuthoringControlId | undefined;
+  return defaultFieldControl(field.kind, field.cardinality);
 }
 
 function entryFieldTargets(
   model: ContentModelDocument,
   entry: EntryDocument,
   readOnly: boolean,
+  registry: StudioAuthoringControlRegistry,
 ): EntryFieldTarget[] {
   return visibleFields(model.fields).flatMap(({ field, path }) => {
-    const control = entryControlFor(field);
+    const control = entryControlFor(field, registry);
     if (control === undefined) return [];
     const value = entryValueAtPath(entry, path) ?? defaultAdvancedValue(control, field);
     if (value === undefined) return [];
@@ -1612,6 +1740,24 @@ function primitiveInputValue(value: JsonValue | undefined): string {
 
 function referenceText(reference: MessageReference | undefined): string | undefined {
   return reference?.defaultMessage ?? reference?.key;
+}
+
+/**
+ * Create the exact detached dataset emitted to a host for one explicit save
+ * outcome. This is pure serialization intent: it performs no persistence,
+ * authorization, revision allocation, or publication.
+ */
+export function createStudioAuthoringSaveIntent(
+  outcome: AuthoringSaveOutcome,
+  snapshot: AuthoringSessionSnapshot,
+): AuthoringSaveIntent {
+  return {
+    contractVersion: snapshot.contractVersion,
+    draft: saveDraft(outcome, snapshot),
+    expected: structuredClone(snapshot.state.coordinates),
+    kind: 'authoring-save-intent',
+    sessionId: snapshot.sessionId,
+  };
 }
 
 function saveDraft(

@@ -277,7 +277,10 @@ class StudioResourceBindingControl implements StudioResourceBindingControlHandle
     this.#status.textContent = append ? 'Loading more authorized resources…' : 'Searching…';
     this.#setBusy(true);
     try {
-      const page = parseResourcePage(await this.#service.search(query, controller.signal), query);
+      const page = parseStudioResourceSearchPage(
+        await this.#service.search(query, controller.signal),
+        query,
+      );
       if (controller.signal.aborted || this.#destroyed || sequence !== this.#requestSequence)
         return;
       this.#items = append ? appendPage(this.#items, page.items) : page.items;
@@ -363,7 +366,8 @@ function nonResourceBinding(binding: FieldBinding | undefined): boolean {
   return binding !== undefined && binding.source.kind !== 'resource-reference';
 }
 
-function parseResourcePage(
+/** Validate and detach one host resource page before it enters a control. */
+export function parseStudioResourceSearchPage(
   page: ResourceSearchPage,
   query: Readonly<ResourceSearchQuery>,
 ): ResourceSearchPage {

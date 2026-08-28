@@ -4,6 +4,7 @@ import {
   STUDIO_CONTRACT_VERSION,
 } from '@kumwe/studio-protocol';
 import type {
+  AuthoringTargetDeclaration,
   BlockDefinition,
   DesignVocabulary,
   ExtensionLifecycleState,
@@ -32,11 +33,12 @@ import { compileProfileSchema, type CompiledSchemaValidator } from './profile-va
 
 /**
  * One authored Studio plugin: the declarative manifest plus the concrete
- * canonical composition payloads the manifest declares. All six payload
- * families are validated and activated transactionally; other manifest kinds
- * remain resource-backed host declarations.
+ * canonical payloads the manifest declares. Contextual targets and all six
+ * composition families are validated and activated transactionally; other
+ * manifest kinds remain resource-backed host declarations.
  */
 export interface StudioPluginDefinition {
+  authoringTargets?: readonly AuthoringTargetDeclaration[];
   blocks?: readonly BlockDefinition[];
   designVocabularies?: readonly DesignVocabulary[];
   fieldAdapters?: readonly FieldAdapterContribution[];
@@ -51,6 +53,7 @@ const validateManifestSchema: CompiledSchemaValidator = compileProfileSchema(plu
 });
 
 const canonicalContributionKinds: ReadonlySet<PluginContributionKind> = new Set([
+  'authoring-target',
   'block',
   'design-vocabulary',
   'field-adapter',
@@ -100,8 +103,8 @@ export function activateStudioPlugin(
 
 /**
  * The portable unresolved-contribution documents for declared, non-block
- * contribution references (field adapters, patterns, transforms, renderer
- * capabilities, and the other manifest kinds). This mirrors the reason
+ * contribution references (authoring targets, field adapters, patterns,
+ * transforms, renderer capabilities, and the other manifest kinds). This mirrors the reason
  * mapping the runtime applies to Blueprint block nodes, lifted from
  * registered block versions to manifest declarations: an unknown id is
  * `not-installed`, an undeclared version is `incompatible`, a trust-revoked
@@ -307,6 +310,12 @@ function definitionContributionEntries(
   definition: StudioPluginDefinition,
 ): DefinitionContributionEntry[] {
   return [
+    ...(definition.authoringTargets ?? []).map((payload) => ({
+      id: payload.id,
+      kind: 'authoring-target' as const,
+      requiredCapabilities: payload.requiredCapabilities.map((requirement) => requirement.id),
+      version: payload.owner.version,
+    })),
     ...(definition.blocks ?? []).map((payload) => ({
       id: payload.type,
       kind: 'block' as const,
@@ -352,6 +361,7 @@ function definitionContributionEntries(
 
 function mutableContributions(definition: StudioPluginDefinition): ExtensionContributions {
   return {
+    authoringTargets: [...(definition.authoringTargets ?? [])],
     blocks: [...(definition.blocks ?? [])],
     designVocabularies: [...(definition.designVocabularies ?? [])],
     fieldAdapters: [...(definition.fieldAdapters ?? [])],

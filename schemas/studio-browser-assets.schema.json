@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json",
+  "title": "Studio prebuilt browser asset manifest",
+  "description": "Integrity and runtime metadata for the host-neutral, self-contained Studio browser ESM distribution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "schemaVersion", "assets", "module", "productionRuntime", "release"],
+  "properties": {
+    "kind": { "const": "studio-browser-assets" },
+    "schemaVersion": { "const": 1 },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/asset" }
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryPoint", "format", "exports"],
+      "properties": {
+        "entryPoint": { "$ref": "#/$defs/path" },
+        "format": { "const": "esm" },
+        "exports": {
+          "type": "array",
+          "minItems": 16,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "prefixItems": [
+            { "const": "mountStudio" },
+            { "const": "mountStudioFromConfigElement" },
+            { "const": "autoMountStudio" },
+            { "const": "parseStudioDeploymentConfiguration" },
+            { "const": "resolveStudioDeploymentRuntime" },
+            { "const": "createBrowserHttpHostAdapter" },
+            { "const": "createCoreProductionBlockDefinitions" },
+            { "const": "createCoreProductionPatterns" },
+            { "const": "createStudioStandaloneRuntime" },
+            { "const": "defineKumweStudio" },
+            { "const": "defineKumweStudioContextual" },
+            { "const": "defineKumweStudioStandalone" },
+            { "const": "defineStudioBrowserElements" },
+            { "const": "mountStudioHosted" },
+            { "const": "mountStudioStandalone" },
+            { "const": "openContextualStudioSession" }
+          ],
+          "items": false
+        }
+      }
+    },
+    "productionRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["servingModel", "requires", "forbidden"],
+      "properties": {
+        "servingModel": { "const": "static-files" },
+        "requires": {
+          "type": "array",
+          "maxItems": 0,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        },
+        "forbidden": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "corpusManifestDigest"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-(?:beta|rc)\\.(?:0|[1-9][0-9]*))?$"
+        },
+        "corpusManifestDigest": {
+          "type": "string",
+          "pattern": "^sha256-[A-Za-z0-9+/]+={0,2}$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\?#])[A-Za-z0-9._/-]+$"
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "mediaType", "bytes", "integrity"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "role": {
+          "enum": [
+            "browser-module",
+            "license",
+            "notice",
+            "release-record",
+            "documentation",
+            "schema"
+          ]
+        },
+        "mediaType": {
+          "enum": ["text/javascript", "text/plain", "text/markdown", "application/json"]
+        },
+        "bytes": { "type": "integer", "minimum": 1, "maximum": 1073741824 },
+        "integrity": { "type": "string", "pattern": "^sha256-[A-Za-z0-9+/]+={0,2}$" }
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@
     {
       "files": [
         {
-          "digest": "sha256-shuLbwzYl6dZoch+oQJxTswJ+O1tMsCRUIfpP1+cZzY=",
+          "digest": "sha256-YuNbHhSY0b4oz/98G3cHYkhNguXAFniLaGjp8dLbrQM=",
           "file": "authoring-message-catalog.en.json"
         },
         {
@@ -96,7 +96,7 @@
           "file": "pattern.example.json"
         },
         {
-          "digest": "sha256-RhghT+jsQKZY8AddDzLrzeC92FBj00MT3rlsJm6eXog=",
+          "digest": "sha256-gjrUSkrEuT9RaaYLt7cqYg9CDa/0xoJpdez/f2fdzbc=",
           "file": "plugin.example.json"
         },
         {
@@ -118,6 +118,14 @@
         {
           "digest": "sha256-FzjalpM4jDkbkK8rGnmH6HSFxU9PhMp0vI9aPTCyEJE=",
           "file": "studio-config.example.json"
+        },
+        {
+          "digest": "sha256-O7sP5vJlqRSHvTxH1v485A1y3/K2k6/IhTMPUTNMjtQ=",
+          "file": "studio-deployment.hosted.example.json"
+        },
+        {
+          "digest": "sha256-yj0WO6sFU4GCciYUBWjzvvfqrBh869doeOC2Pp5EI1Y=",
+          "file": "studio-deployment.standalone.example.json"
         },
         {
           "digest": "sha256-fuMTN0/YCVdx5cpXDzT72aoDKe7iKUeOTSGRm3Axq6k=",
@@ -620,6 +628,16 @@
     {
       "files": [
         {
+          "digest": "sha256-Y6gP3Z83IWvE+NTGPMzgm55/x4ztT8JKDeGdaLRuXlQ=",
+          "file": "transport-matrix.json"
+        }
+      ],
+      "group": "authoring-http-vectors",
+      "path": "vectors/authoring-http"
+    },
+    {
+      "files": [
+        {
           "digest": "sha256-6+FxAWx+Ml5Gj5bwlFIo68XVPGwi2sPBf64g5WVjH3U=",
           "file": "canonical-preorder.json"
         },
@@ -1046,6 +1064,14 @@
           "file": "host-capabilities.invalid-protocol-version.json"
         },
         {
+          "digest": "sha256-CoyJ+RphxFsbq9bpyE71EBQ0R2SErvvIHswUXxR4G1U=",
+          "file": "host-error.retry-delay-without-retry.json"
+        },
+        {
+          "digest": "sha256-eYNlSGuvJiINWipDkv/F+wcDpFTbdUR7tD6+srZ4bdI=",
+          "file": "host-error.revision-without-conflict.json"
+        },
+        {
           "digest": "sha256-TbyqAfnspj0axcP3sJNAj+Sqqg0XaOpCmYy6l6MEF2Y=",
           "file": "host-sequence.pending-expectation.json"
         },
@@ -1128,6 +1154,14 @@
         {
           "digest": "sha256-w3ZWv4DbsOsPn/99raEr4O1LHinoK5V2AePlIpHtqr8=",
           "file": "studio-chart.script-config.json"
+        },
+        {
+          "digest": "sha256-jwb4PmLpOmXE3s2T3TYQ7EEfwNsjR/HpevXAOgjhh3I=",
+          "file": "studio-deployment.long-lived-token.json"
+        },
+        {
+          "digest": "sha256-U3//ciedqdA7oXjmj9I6ZjJcNmNZSEKBxHydQMCARHc=",
+          "file": "studio-deployment.unknown-member.json"
         },
         {
           "digest": "sha256-m1+/TT3sDNebrcKQjKgnD3VMBZuu0gA5IpPtnvD4N94=",

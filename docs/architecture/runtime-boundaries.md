@@ -2,25 +2,25 @@
 
 ## Three runtimes
 
-Studio has three distinct runtimes that must not be collapsed.
-The required contextual product behavior is defined in the [product contract](../product-contract.md); this
-document distinguishes that target from the current shipped shell (`STUDIO-PROD-014`).
+Studio has three distinct runtimes that must not be collapsed. The required contextual product behavior is
+defined in the [product contract](../product-contract.md); this document distinguishes implemented
+Studio-side mechanics from an integrated and qualified host product (`STUDIO-PROD-014`).
 
 ### Authoring runtime
 
-The authoring runtime is a browser application composed of the DOM-free core, Lit UI, trusted plugins, and a
-host adapter. The currently shipped composition owns a local Blueprint `StudioSession` and a host-session handle
-that coordinates negotiated Blueprint load/save, an optional read-only model projection, optional raw recovery
-access, invalidation, and local disposal. It may maintain unsaved state, selection, overlays, panels, history,
-and preview coordination. It has no direct authority over persisted or published data.
+The authoring runtime is a browser application composed of the DOM-free core, Lit UI, trusted precompiled
+controls, declarative contributions, and an optional host adapter. `openContextualStudioSession` resolves one
+eligible core or extension target and coordinates separate Model, Blueprint, and Entry drafts, independent
+dirty/state versions, presentation state, save planning, and all three save outcomes. The contextual Lit shell
+projects that same resource-bound session through Model, Blueprint, and Content modes. The legacy
+`openStudioSession` handle remains available for bounded Blueprint-only composition, read-only model
+projection, recovery access, and compatibility use.
 
-The required target extends that browser experience into one contextual session launched from any eligible
-core or extension-declared host target. Blocks, typed fields, and Entry values share the canvas while Model,
-Blueprint, and Entry state remains separately identified. Changing between inline, minimized, maximized, and
-fullscreen presentation preserves context, selection, unsaved changes, and history; it is presentation
-continuity rather than an export/import or a second editor (`STUDIO-PROD-001`, `STUDIO-PROD-003`,
-`STUDIO-PROD-007`, and
-`STUDIO-PROD-008`). No current host-session or shell API is claimed to provide that target yet.
+With no transport, the browser mount creates a blank in-memory contextual project with the built-in catalog
+and JSON interchange. With configured HTTP transport, every load and durable effect uses only the declared
+host operations, and a refusal never becomes local success. In either mode the runtime may maintain selection,
+overlays, panels, history, and preview coordination, but it has no direct authority over persisted or published
+data (`STUDIO-PROD-001`, `STUDIO-PROD-003`, `STUDIO-PROD-007`, and `STUDIO-PROD-008`).
 
 ### Host runtime
 
@@ -54,7 +54,13 @@ Production output need not contain preview markers.
 
 ## Network boundary
 
-Studio core performs no network calls. The headless handle invokes typed host ports through the injected adapter; the adapter alone may use HTTP, postMessage, an in-process API, or a native bridge. It must preserve request IDs, selected wire version, session generation, verified resource context, cancellation, timeouts, structured errors, and capability checks. Authenticated actor evidence remains transport-owned rather than browser-authored configuration.
+Studio's deterministic reducers and headless session coordinator perform no ambient network calls. They invoke
+typed host ports through an injected adapter. The core package's optional DOM- and Node-free HTTP client is one
+such adapter: it may call only the fetch-like function supplied by its caller, against exact configured routes.
+Other adapters may use `postMessage`, an in-process API, or a native bridge. Every adapter must preserve request
+IDs, selected wire version, session generation, verified resource context, cancellation, deadlines, bounded
+responses, structured errors, and capability checks. Authenticated actor evidence remains transport-owned
+rather than browser-authored configuration; the client adapter is not a persistence or authorization runtime.
 
 JavaScript port rejections cross this boundary as `HostPortFailure`, carrying one canonical and safe
 `HostPortError`. A private transport exception is not a protocol value. Request-ID and idempotency-key
@@ -95,9 +101,9 @@ handle and releases local coordination state, but it does not log out the actor,
 dispose preview state, release a host lease, or invoke a host teardown endpoint. Those effects require
 separately declared and authorized port operations; none is inferred from local disposal.
 
-For the target contextual product, host chrome may present the authoring session inline, minimized, maximized,
-or fullscreen without turning those views into separate drafts. A presentation transition must retain the
-same authorized context and preserve selection, focus recovery, dirty state, and undo/redo continuity. Closing
-or abandoning the authoring context remains a distinct, explicit host-governed lifecycle decision. The current
-shipped handle does not define these presentation transitions or a host handoff protocol; those remain required
-planned work (`STUDIO-PROD-007`, `STUDIO-PROD-013`, and `STUDIO-PROD-014`).
+The contextual session and shell implement inline, minimized, maximized, and fullscreen as state changes on the
+same authorized drafts; they do not create a second session or persistence workflow. Closing or abandoning the
+authoring context remains a distinct, explicit host-governed lifecycle decision. A host that moves Studio to a
+different route or frame must preserve and prove target coordinates, selection/focus recovery, dirty state,
+history, authority, and return context; local component state alone is not that integrated handoff evidence
+(`STUDIO-PROD-007`, `STUDIO-PROD-013`, and `STUDIO-PROD-014`).

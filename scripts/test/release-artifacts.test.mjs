@@ -6,12 +6,14 @@ import {
   buildApprovedReleaseArtifacts,
   inspectExistingRegistryArtifacts,
 } from '../release-artifacts.mjs';
+import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
 
 const repositoryRoot = new URL('../../', import.meta.url);
 
 describe('approved npm package artifacts', () => {
   it('builds one deterministic digest record for the fixed eight-package family', async () => {
     const approved = await buildApprovedReleaseArtifacts(repositoryRoot, {
+      buildBrowserArtifact: fakeBrowserBuilder,
       packPackage: async ({ name, version }) =>
         artifactFromBytes(Buffer.from(`${name}@${version}`), version),
     });
@@ -21,6 +23,7 @@ describe('approved npm package artifacts', () => {
         (artifact) => artifact.integrity.startsWith('sha512-') && artifact.shasum.length === 40,
       ),
     );
+    assert.match(approved.browser.integrity, /^sha512-/u);
   });
 
   it('allows only missing packages or byte-identical provenance-bearing recovery', async () => {
@@ -30,6 +33,7 @@ describe('approved npm package artifacts', () => {
       ),
     );
     const approved = await buildApprovedReleaseArtifacts(repositoryRoot, {
+      buildBrowserArtifact: fakeBrowserBuilder,
       packPackage: async ({ name, version }) =>
         artifactFromBytes(Buffer.from(`${name}@${version}`), version),
     });
@@ -65,3 +69,12 @@ describe('approved npm package artifacts', () => {
     assert.equal(adversarial.failures.length, 14);
   });
 });
+
+async function fakeBrowserBuilder(root) {
+  const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
+  return browserArtifactFromBytes(Buffer.from(`studio-browser@${record.release}`), record.release);
+}
+
+async function readFile(...arguments_) {
+  return import('node:fs/promises').then((module) => module.readFile(...arguments_));
+}

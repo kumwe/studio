@@ -14,8 +14,10 @@ semantics and canonical fixtures outrank generated types and runtime-specific co
 
 ## Runtime boundaries
 
-- `@kumwe/studio-protocol` and the headless core do not import DOM, Lit, HTTP, storage, Node-only APIs, Kumwe App,
-  Twig, Flutter, or a host framework.
+- `@kumwe/studio-protocol` imports no DOM, Lit, HTTP, storage, Node-only API, Kumwe App, Twig, Flutter, or host
+  framework. The headless core imports no DOM, Lit, storage, Node-only API, or concrete host implementation; its
+  optional HTTP client receives a fetch-like function and exact transport configuration from the caller rather
+  than importing ambient networking authority.
 - Browser packages use standards-based ES modules and Web Components. Node is a build/test/release tool, not
   a required production server.
 - Hosts may use PHP/Twig, another server language, static generation, Web Components, or native renderers.
@@ -43,7 +45,7 @@ Cross-language documents and messages follow one canonical profile:
 Generated SDKs record the schema epoch, document contract revision, supported wire-protocol range, schema
 digest, and generator version. Hand-edited generated files are not release inputs.
 
-The Version 2 TypeScript projection is generated into `@kumwe/studio-protocol` from all 47 files in
+The Version 2 TypeScript projection is generated into `@kumwe/studio-protocol` from all 55 root schemas in
 `schemas/`. `GeneratedProtocolModelMap` supplies the filename-to-root-type mapping, while
 `GENERATED_TYPESCRIPT_MODEL_METADATA` binds it to the exact schema-manifest bytes. The contract sync path
 regenerates it; `contracts:check` performs a clean byte comparison and confirms the runtime schema registry
@@ -56,11 +58,12 @@ must still apply the matching published schema and the normative behavior contra
 that cannot soundly represent a refinement deliberately remains broader rather than falsely excluding valid
 JSON; no generated root degenerates to an `any`/`unknown` placeholder.
 
-The compiler phase also synthesizes direct filename-to-root assignments for 238 of the 240 corpus literals.
+The compiler phase also synthesizes direct filename-to-root assignments for every applicable positive corpus
+literal named by the canonical corpus manifest, except the two explicit compiler-depth boundaries below.
 The two maximum-JSON-depth schema-profile vectors deliberately reach a TypeScript 6 recursive-comparison
 limit; their named boundary test must produce `TS2321` until the compiler can compare them, while both remain
-inside the all-document runtime schema and JSON-round-trip lane. This boundary is explicit and cannot silently
-turn into a cast or placeholder.
+inside the manifest-derived runtime schema and JSON-round-trip lane. This boundary is explicit and cannot
+silently turn into a cast or placeholder.
 
 ## Capability negotiation
 

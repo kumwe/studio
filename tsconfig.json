@@ -9,6 +9,7 @@
     { "path": "./packages/media" },
     { "path": "./packages/studio-lit" },
     { "path": "./packages/testkit" },
-    { "path": "./examples/reference-host" }
+    { "path": "./examples/reference-host" },
+    { "path": "./examples/standalone-static-host" }
   ]
 }

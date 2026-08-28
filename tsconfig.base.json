@@ -27,7 +27,8 @@
       "@kumwe/studio-renderer-web": ["./packages/renderer-web/src/index.ts"],
       "@kumwe/studio-rich-text": ["./packages/rich-text/src/index.ts"],
       "@kumwe/studio-testkit": ["./packages/testkit/src/index.ts"],
-      "@kumwe/studio": ["./packages/studio-lit/src/index.ts"]
+      "@kumwe/studio": ["./packages/studio-lit/src/index.ts"],
+      "@kumwe/studio/browser-bundle": ["./packages/studio-lit/src/browser-entry.ts"]
     },
     "skipLibCheck": true,
     "sourceMap": true,

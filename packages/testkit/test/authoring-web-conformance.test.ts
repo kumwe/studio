@@ -29,6 +29,9 @@ describe('authoring-web conformance runner', () => {
     });
 
     expect(result.passed).toBe(true);
+    expect(result.completeProfile).toBe(false);
+    expect(result.mismatches).toEqual([]);
+    expect(result.requirements).toEqual(vector.requirements);
     expect(result.lanes.map((lane) => [lane.name, lane.surface, lane.passed])).toEqual([
       ['keyboard-move-down', 'keyboard', true],
       ['explicit-move-control', 'structural-control', true],
@@ -48,6 +51,47 @@ describe('authoring-web conformance runner', () => {
     expect(result.passed).toBe(false);
     expect(result.lanes[0]?.mismatches).toContain('document differs from the vector expectation');
     expect(result.lanes[0]?.mismatches).toContain('dirty differs from the vector expectation');
+  });
+
+  it('refuses interaction-equivalence vectors that omit a required surface', async () => {
+    const incomplete: AuthoringWebVector = {
+      ...structuredClone(vector),
+      lanes: vector.lanes.filter(({ surface }) => surface !== 'pointer'),
+    };
+    const result = await runAuthoringWebVector(incomplete, {
+      open(given) {
+        return createMoveSession(given);
+      },
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.mismatches).toEqual(['missing pointer interaction lane']);
+    expect(result.lanes.every(({ passed }) => passed)).toBe(true);
+    expect(result.completeProfile).toBe(false);
+  });
+
+  it.each([
+    ['right-to-left', { direction: 'rtl' as const }],
+    ['400 percent zoom reflow', { viewport: { height: 256, width: 320, zoomPercent: 400 } }],
+    ['reduced motion', { reducedMotion: true }],
+  ])('keeps all three semantic lanes equivalent under %s', async (_label, override) => {
+    const accessible: AuthoringWebVector = {
+      ...structuredClone(vector),
+      given: { ...structuredClone(vector.given), ...override },
+    };
+    const opened: AuthoringWebGiven[] = [];
+    const result = await runAuthoringWebVector(accessible, {
+      open(given) {
+        opened.push(structuredClone(given));
+        return createMoveSession(given);
+      },
+    });
+
+    expect(result.passed).toBe(true);
+    expect(opened).toHaveLength(3);
+    expect(
+      opened.every((given) => JSON.stringify(given) === JSON.stringify(accessible.given)),
+    ).toBe(true);
   });
 });
 

@@ -1,7 +1,9 @@
 # `@kumwe/studio`
 
-Status: `0.1.0-rc.1` source candidate. The standalone Blueprint-building runtime is implemented; contextual
-Model/Blueprint/Entry authoring, profile evidence, host integration, and release qualification remain open.
+Status: governed beta development, not an RC or production-supported release. The contextual
+Model/Blueprint/Entry runtime and standalone browser distribution are implemented; complete host integration,
+profile evidence, and release qualification remain open. The exact coordinated version is in the workspace
+`studio-release.json`.
 
 The Lit Web Component authoring shell for Studio. It renders a block/pattern palette, measured visual
 canvas with a structural fallback, semantic outline, selection inspector, command history, and a
@@ -20,16 +22,160 @@ block recipes from one immutable source. Recipes dispatch as canonical atomic ba
 layout definitions insert structural nodes with their declared slots and bounded defaults; responsive
 token edits state whether their value is base, inherited, or overridden for the active viewport.
 
-Importing the package has no registration side effect. Call `defineKumweStudio()` once, then use the
-`<kumwe-studio>` custom element or register the class under a host-specific tag.
+Importing the package has no registration or mounting side effect. Normal integrations use `mountStudio()` or
+the explicit `autoMountStudio()` scan described below. Direct custom-element registration and coordinator
+wiring remain advanced composition APIs for applications that already own a live Studio session.
 
-Studio owns its production catalog. Omit both `configuration.blockDefinitions` and `patterns` to use the
-complete first-party definitions and compatible starter patterns. An explicit array replaces the corresponding
-default; an explicitly replaced catalog does not implicitly receive incompatible first-party patterns.
-Embedding applications that extend Studio should call `createStudioStandaloneSetup(session,
-extensions)`; it places first-party entries first, appends host contributions, and rejects duplicate
-type/version or pattern/version identities. The host therefore contributes its dynamic entity blocks
-without rebuilding or privately copying Studio's page-building catalog.
+## One browser deployment path
+
+Every normal browser integration starts with the same public API:
+
+- `mountStudio(target)` mounts local Studio into one exact element or selector;
+- `mountStudio(target, configuration)` mounts one canonical local or hosted deployment into that target;
+- `mountStudio(configuration)` resolves the configuration's unique `mount` selector; and
+- `autoMountStudio()` explicitly discovers opted-in `[data-kumwe-studio]` elements and returns successful
+  handles plus per-target failures.
+
+Each explicit mount call creates an independent runtime and returns a handle whose idempotent `dispose()`
+affects only that mount. The auto-mount report can dispose all of its successful handles together. A page may
+therefore run several local and hosted instances at once without shared draft, history, selection,
+authentication, or transport state; a failed mount is reported without rolling back its siblings.
+Failure records expose only the target, configuration-element ID, safe instance correlation, phase, and error;
+they never copy the deployment document or its authentication material.
+
+### Backendless local workspace
+
+`mountStudioStandalone(target)` opens the same contextual Model/Blueprint/Entry builder with the complete
+first-party block and pattern catalog but no `HostAdapter`, endpoint, authentication claim, or persistence.
+Each mount owns isolated in-element state and loses that state when the page reloads or closes. Its accessible
+toolbar imports/downloads a lossless canonical `AuthoringSessionSnapshot` project separately from the exact,
+outcome-specific `AuthoringSaveIntent` dataset that host mode would submit. Downloading an intent does not save,
+authorize, version, or publish it. See the [standalone local integration guide](../../docs/integration/standalone-local.md).
+
+### Configuration-driven browser mounting
+
+`mountStudio(target)` opens blank standalone Studio in an ordinary element or exact selector. Pass a canonical
+`StudioDeploymentConfiguration` as the second argument to add declared launch/transport behavior; if that
+configuration also carries `mount`, it must resolve to the same target. The configuration-only overload uses
+its `mount` selector. Every call returns an isolated handle whose idempotent `dispose()` removes only its own
+runtime.
+
+For server-rendered HTML, an empty `<div data-kumwe-studio></div>` is an explicitly opted-in local mount. A
+non-empty value names one inert `<script type="application/json" id="…">` configuration block associated with
+that target. Every non-empty configuration ID must be unique in the discovery scope and referenced by exactly
+one target. `autoMountStudio()` performs the scan only when called; package import has no DOM side effect.
+`mountStudioFromConfigElement()` handles a single script whose configuration supplies `mount`.
+
+The bounded strict JSON parser rejects duplicate members before native parsing, never uses string-to-code
+compilation, and rejects executable/external script elements, invalid canonical configuration, more than
+2,097,152 UTF-8 bytes, JSON depth above 16, and missing or ambiguous selectors before starting any runtime. No
+transport means no fetch and a local blank project. A configured HTTP refusal is propagated and never
+converted to local work. See the
+[deployment contract](../../docs/contracts/studio-deployment.md) and
+[prebuilt asset guide](../../docs/integration/prebuilt-browser-assets.md).
+
+### Configuration-driven HTTP host binding
+
+For hosted mode, the canonical `StudioDeploymentConfiguration` supplies a complete PHP/host-resolved
+`session`, exact launch values, and an HTTP transport. Routing is either a closed per-operation URL map or one
+configured dispatcher URL with the fixed `X-Studio-Operation` discriminator. Authentication is one declared
+profile: same-origin HttpOnly session cookie plus CSRF header, short-lived bearer token, or short-lived custom
+header token. Both token profiles require an exact `issuedAt <= now < expiresAt` window with positive duration
+no greater than 15 minutes; invalid windows fail before fetch. Studio never derives a base URL, probes a
+conventional path, or invents a missing operation.
+
+The shipped mount runtime validates the deployment before any request, constructs the browser adapter, and
+resolves the contextual target. Existing/edit launches start directly. Create launches render the authorized
+blank/reusable-type choice in the same mount, using the configured `authoring/list-types` route for exact type
+search and pagination before one exact start. The contextual shell replaces the chooser in place; no detached
+page, pre-creation, copy/paste handoff, or local fallback exists. Its Return control emits
+`studio-contextual-return-request` with exactly the host-issued `{ returnContext }`; the host owns dirty-work
+confirmation and navigation. PHP or another backend validates and reauthorizes every operation and owns
+disclosure, persistence, revisions, transactions, audit, workflow, rendering, and webhooks. A configured 401,
+403, conflict, timeout, malformed response, or unavailable operation is authoritative and never activates the
+local profile.
+
+The ordinary mount API also accepts bounded trusted browser-only seams without replacing Studio's runtime
+resolver. Routes, static authentication, session data, permissions, and capabilities still come exclusively
+from the inert deployment JSON:
+
+```ts
+await mountStudio(deployment, {
+  hosted: {
+    adapter: { resolveAuthentication: refreshShortLivedAuthentication },
+    authoringControlRegistry: precompiledFieldControls,
+    mediaGrantTransfer: { transfer: transferChunkToIssuedGrant },
+    saveConfirmationHandler: confirmServerConsequences,
+  },
+});
+```
+
+`autoMountStudio({ hosted: (target, deployment) => … })` allocates live seams per discovered mount; using the
+factory form prevents one stateful browser object from being shared between instances. Every instance keeps
+its own configured routes, static authentication, session, and state. Resource search is automatically bound
+when `studio.port/resource` advertises `resource.search`; the allowed type inventory comes from the resolved
+target. Media `get` plus `list` automatically backs first-party browse/select controls, and a browse-only media
+host leaves file, paste, and drop intake disabled. For upload, Studio always calls the configured adapter's
+`authorize-upload`, `complete-upload`, and `abort-upload` routes. The optional precompiled seam receives only
+the validated short-lived host-issued grant plus bytes and grant-relative offset; local Studio session identity
+never crosses that seam. Both the requested size and grant plan are bounded by the exact resolved
+`limits.maxMediaUploadBytes`. Grant receipt is its browser-visible issuance point and `issuedAt <= now <
+expiresAt` is enforced with a maximum 15-minute lifetime. Transfer headers retain the schema's 20-header,
+100-character name, and 2,000-character value bounds. Terminal transfer/completion failure best-effort aborts
+the host grant, clears local authority, and requires retry to obtain a fresh grant. Until a separate file-upload
+feature flag is standardized, resolved `clipboardMediaUpload` gates all file, paste, and drop byte intake.
+External import is not exposed unless `externalMediaImport` is enabled, and the current first-party control
+does not yet provide an external-URL authoring surface.
+
+Normal configured HTTP mounting currently refuses enabled preview. The present preview port can render and
+cancel an already staged digest but has no operation that accepts and authorizes the complete draft, so an
+opaque `StudioPreviewBinding.stage()` would create an unconfigured endpoint track. The advanced direct element
+API remains available to hosts that already own and prove that complete live binding. Incomplete service
+claims, unsupported enabled preview, or an advertised operation missing from an operation-map route fail the
+mount before authoring is exposed. The active Model is already returned and validated by `authoring/start`;
+Studio does not invent a second Model request.
+
+The normal contextual mount currently consumes the complete authoring route family, `resource/search`, media
+`get`/`list`, and the three upload lifecycle routes above. Media `upload-status` and `import-external`, plus
+artifact, localization, model-discovery, permission, recovery, and telemetry ports, remain lower-level
+`HostAdapter` operations until a first-party contextual surface adopts them; advertising them does not make
+Studio call them. This boundary is explicit so a PHP integration does not mistake protocol availability for a
+finished browser workflow.
+
+See the [deployment contract](../../docs/contracts/studio-deployment.md),
+[transport contract](../../docs/contracts/host-transport.md), and
+[generic host guide](../../docs/integration/generic-host.md) for the exact documents and round trip. The
+backend implements those language-neutral schemas in PHP or another host language; Node.js/npm is a build-time
+concern only.
+
+### Advanced direct adapter API
+
+Applications that deliberately compose a live session themselves may call
+`createBrowserHttpHostAdapter(httpTransportConfiguration, options)` from `@kumwe/studio/http`, then use the
+headless contextual coordinator and custom elements. This lower-level API accepts the same explicit routing
+and authentication document as the normal deployment path. Production adapters do not accept a base URL or
+infer routes; conventional path expansion is a testkit-only fixture helper. Direct integrations must not
+manually assign element session properties in place of `mountStudio()`.
+
+### Built-in and host-contributed tools
+
+Local mode always opens with Studio's compiled first-party definitions and compatible starter patterns. A
+hosted deployment does not inherit that complete local catalog. It exposes exactly the block type/version/
+revision locks in the resolved Studio session: a lock may resolve to a compiled first-party definition, or to an
+extension block that the resolved target also admits in the immutable contribution generation returned by
+`authoring/start`. Target-admitted patterns are available only when every exact block dependency matches a
+session lock. The opened Blueprint's dependency locks must be an exact subset of that session catalog, and
+every node must use a session-locked type/version. Missing, duplicate, stale, or mismatched locks fail the
+mount; neither the full catalog nor default patterns become a hosted fallback. The other declarative
+contribution families remain limited to the resolved target's admitted generation. Dynamic entity blocks
+declare typed resource/query ports; their data still comes from separately configured, server-authorized
+operations.
+
+Applications using the advanced backendless composition API may call
+`createStudioStandaloneSetup(session, extensions)` for the deterministic local catalogue assembly. It is not a
+hosted-policy shortcut. Hosted integrations use `mountStudio()` so the shipped resolver can enforce the exact
+session locks and target admission; hosts must not rebuild, privately copy, or replace Studio's first-party
+page-building catalogue.
 
 ## Advanced authoring controls
 
@@ -107,7 +253,7 @@ translated labels in Studio documents. Each catalog entry declares the named par
 uses; the default formatter implements deterministic named interpolation and leaves missing values
 visible.
 
-## Preview surface
+## Preview surface (advanced direct composition)
 
 Preview is deny-by-default. The resolved configuration must enable preview and advertise the canonical
 preview port with render and cancel operations. The host then assigns a session-bound binding and supplies

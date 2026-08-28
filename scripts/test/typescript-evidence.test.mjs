@@ -14,11 +14,20 @@ const corpusManifest = JSON.parse(
   await readFile(`${repositoryRoot}/packages/testkit/corpus-manifest.json`, 'utf8'),
 );
 const inventory = buildExpectedTypeScriptRuntimeInventory(corpusManifest);
+const transportMatrixPath = 'schemas/vectors/authoring-http/transport-matrix.json';
 
 test('TypeScript runtime inventory is derived from the exact positive corpus', () => {
-  assert.equal(inventory.length, 240);
+  const manifestDocumentCount = corpusManifest.groups
+    .filter(({ path }) => path !== 'invalid')
+    .reduce((count, { files }) => count + files.length, 0);
+  assert.equal(inventory.length, manifestDocumentCount + 2);
+  assert.ok(inventory.includes(transportMatrixPath));
   const report = validReport();
   assert.deepEqual(inspectTypeScriptRuntimeReport(report, inventory), []);
+  assert.deepEqual(
+    report.exercisedDocuments.find(({ path }) => path === transportMatrixPath),
+    { classification: 'assignable', path: transportMatrixPath },
+  );
   assert.deepEqual(
     report.exercisedDocuments
       .filter(({ classification }) => classification === 'compiler-depth-boundary')

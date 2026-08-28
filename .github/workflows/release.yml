@@ -89,7 +89,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.operation == 'prepare' || needs.plan.outputs.operation == 'correct'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     environment: studio-${{ inputs.channel }}
     permissions:
       contents: write
@@ -130,8 +130,16 @@ jobs:
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
           git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
 
-      - name: Set up Studio
+      - name: Set up pinned PHP for generated-candidate qualification
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: Set up Studio with locked Chromium
         uses: ./.github/actions/setup-studio
+        with:
+          install-playwright: 'true'
 
       - name: Verify Gate B before preparing stable metadata
         if: inputs.channel == 'stable'
@@ -155,8 +163,8 @@ jobs:
           PROMOTION_GATE_RECORD_SHA: ${{ inputs.gate_record_sha }}
           PROMOTION_PROFILES: ${{ inputs.profiles }}
 
-      - name: Verify generated promotion tree
-        run: npm run check
+      - name: Qualify generated promotion tree after metadata mutation
+        run: npm run qualify:candidate
 
       - name: Create or recover the promotion pull request
         shell: bash
@@ -210,7 +218,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.operation == 'stage'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment: studio-rc
     permissions:
       contents: read
@@ -233,11 +241,19 @@ jobs:
           remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
 
-      - name: Set up Studio
-        uses: ./.github/actions/setup-studio
+      - name: Set up pinned PHP for RC candidate qualification
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.1'
+          coverage: none
 
-      - name: Re-run the repository quality gate after approval
-        run: npm run check
+      - name: Set up Studio with locked Chromium
+        uses: ./.github/actions/setup-studio
+        with:
+          install-playwright: 'true'
+
+      - name: Qualify the exact RC quarantine source after approval
+        run: npm run qualify:candidate
 
       - name: Generate approved local package tarball digests
         run: npm run release:artifacts
@@ -269,7 +285,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.operation == 'publish'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     environment: studio-${{ inputs.channel }}
     permissions:
       contents: write
@@ -318,15 +334,24 @@ jobs:
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
           git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
 
-      - name: Set up stable publication source
+      - name: Set up pinned PHP for publication-source qualification
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.1'
+          coverage: none
+
+      - name: Set up stable publication source with locked Chromium
         if: inputs.channel == 'stable'
         uses: ./.github/actions/setup-studio
+        with:
+          install-playwright: 'true'
 
-      - name: Set up RC publication source from the current controller
+      - name: Set up RC publication source with locked Chromium from the current controller
         if: inputs.channel == 'rc'
         uses: ./.release-controller/.github/actions/setup-studio
         with:
           working-directory: '.'
+          install-playwright: 'true'
 
       - name: Set up current-main release controller
         if: inputs.channel == 'rc'
@@ -364,9 +389,9 @@ jobs:
           STUDIO_RELEASE_CHANNEL: rc
           STUDIO_REVIEWER_AUTHORITY_SHA256: ${{ vars.STUDIO_REVIEWER_AUTHORITY_SHA256 }}
 
-      - name: Re-run the immutable RC quality gate
+      - name: Qualify the exact immutable RC publication source
         if: inputs.channel == 'rc'
-        run: npm run check
+        run: npm run qualify:candidate
 
       - name: Generate approved local package tarball digests
         run: npm run release:artifacts
@@ -448,6 +473,17 @@ jobs:
           [[ "$remote_main" =~ ^[a-f0-9]{40}$ ]]
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
           tag="studio-v${VERSION}"
+          mapfile -t release_assets < <(node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const approved = JSON.parse(readFileSync(".release-artifacts/approved-package-integrities.json", "utf8"));
+            console.log(approved.browser.path);
+            console.log(approved.browser.checksumPath);
+          ')
+          [[ "${#release_assets[@]}" -eq 2 ]]
+          archive="${release_assets[0]}"
+          checksum="${release_assets[1]}"
+          [[ -f "$archive" && -f "$checksum" ]]
+          (cd "$(dirname "$archive")" && sha256sum --check "$(basename "$checksum")")
           if ! gh release view "$tag" >/dev/null 2>&1; then
             release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md)
             if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
@@ -460,11 +496,38 @@ jobs:
             if [[ "$CHANNEL" == "rc" ]]; then
               release_args+=(--prerelease)
             fi
-            gh release create "${release_args[@]}"
+            gh release create "${release_args[@]}" "$archive" "$checksum"
+          else
+            gh release view "$tag" --json body,isDraft,isPrerelease,name,tagName \
+              > .release-artifacts/github-release.json
+            GITHUB_RELEASE_REQUIRE_ASSETS=false node scripts/verify-github-release.mjs
+            recovery_dir="$RUNNER_TEMP/studio-release-recovery"
+            mkdir -p "$recovery_dir"
+            for asset in "$archive" "$checksum"; do
+              asset_name="$(basename "$asset")"
+              count="$(gh release view "$tag" --json assets --jq \
+                "[.assets[] | select(.name == \"$asset_name\")] | length")"
+              if [[ "$count" == "0" ]]; then
+                gh release upload "$tag" "$asset"
+              elif [[ "$count" == "1" ]]; then
+                gh release download "$tag" --pattern "$asset_name" --dir "$recovery_dir"
+                cmp --silent "$asset" "$recovery_dir/$asset_name"
+              else
+                echo "::error::GitHub release contains duplicate asset name $asset_name"
+                exit 1
+              fi
+            done
           fi
-          gh release view "$tag" --json body,isDraft,isPrerelease,name,tagName \
+          gh release view "$tag" --json assets,body,isDraft,isPrerelease,name,tagName \
             > .release-artifacts/github-release.json
           node scripts/verify-github-release.mjs
+          verification_dir="$RUNNER_TEMP/studio-release-verification"
+          mkdir -p "$verification_dir"
+          for asset in "$archive" "$checksum"; do
+            asset_name="$(basename "$asset")"
+            gh release download "$tag" --pattern "$asset_name" --dir "$verification_dir"
+            cmp --silent "$asset" "$verification_dir/$asset_name"
+          done
           git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
           [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
 

@@ -51,6 +51,10 @@ const exampleSchemas = new Map<GeneratedProtocolSchemaFile, readonly string[]>([
   ['rich-text.schema.json', ['rich-text.example.json']],
   ['reusable-content-type.schema.json', ['reusable-content-type.example.json']],
   ['studio-config.schema.json', ['studio-config.example.json']],
+  [
+    'studio-deployment.schema.json',
+    ['studio-deployment.hosted.example.json', 'studio-deployment.standalone.example.json'],
+  ],
   ['theme.schema.json', ['theme.example.json']],
   ['unresolved-contribution.schema.json', ['unresolved-contribution.example.json']],
 ]);
@@ -59,6 +63,10 @@ const corpusGroups: readonly {
   directory: string;
   schemaFile: GeneratedProtocolSchemaFile;
 }[] = [
+  {
+    directory: join(schemaDirectory, 'vectors/authoring-http'),
+    schemaFile: 'authoring-http-vector.schema.json',
+  },
   {
     directory: join(schemaDirectory, 'vectors/binding-projection'),
     schemaFile: 'binding-projection-vector.schema.json',

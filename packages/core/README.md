@@ -1,7 +1,8 @@
 # `@kumwe/studio-core`
 
-Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. The implemented kernel
-does not claim product or host-integration completeness.
+Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
+version is in the workspace `studio-release.json`; the implemented kernel does not claim product or
+host-integration completeness.
 
 The framework-neutral state engine for Studio. It registers versioned blocks, validates blueprint
 documents, applies typed commands without mutating caller-owned data, and maintains bounded
@@ -19,6 +20,12 @@ The implemented surface covers:
 - `openStudioSession` — capability-negotiated Blueprint loading and a headless host-session handle for
   serialized optimistic saves, raw optional recovery-port access, read-only model `list`/`get`, bounded
   resource search, stale-generation invalidation, and local idempotent disposal;
+- `openContextualStudioSession` — the additive resource-bound coordinator for exact target resolution and
+  blank/from-type/existing starts, separate Model/Blueprint/Entry draft state, presentation state, save
+  planning, all three explicit save outcomes, revision reconciliation, and authoritative failure handling;
+- `preflightContextualStudioSession` — the same coordinator split at its in-context create boundary: resolve
+  target authority, optionally page through authorized exact reusable types, then transfer into one exact
+  session without another route vocabulary or local fallback;
 - `projectBlueprintFieldBindings` — an immutable exact-model projection of compatible block-port field
   candidates, declared authoring controls and stable invalid-binding diagnostics;
 - `ContributionRuntime` — owner-aware, transactional, schema-validated activation of block,
@@ -43,9 +50,25 @@ The implemented surface covers:
 - `compileStudioPropertySchema` / `assertStudioPropertySchema` — eval-free admission and validation
   for the closed, local-only `studio.profile/schema-property` surface, with stable
   `StudioSchemaProfileError` codes and schema pointers.
+- `validateStudioDeploymentConfiguration` / `assertStudioDeploymentConfiguration` — canonical deployment
+  validation plus hosted launch/session resource-context and route/capability agreement before transport use.
 
 The package has no DOM dependency. Web Components, Flutter clients, command-line tools, and server
 adapters can therefore share the same command and validation semantics through the protocol.
+
+## Advanced HTTP HostAdapter
+
+Normal browser integrations pass a canonical `StudioDeploymentConfiguration` to `mountStudio()`; the mounted
+runtime constructs this adapter automatically. `createHttpHostAdapter(httpTransportConfiguration, options)` is
+the lower-level DOM- and Node-free client for applications that intentionally own composition. The caller
+supplies exact per-operation URLs or one exact dispatcher URL, a closed authentication profile, a fetch-like
+transport, and optional deadline/credential-refresh factories. The adapter never derives or probes a URL.
+
+It supplies canonical envelopes, bounded response reading, schema-validation hooks, safe status
+classification, and canonical `HostPortFailure` rejections. Contextual authoring uses the operation-specific
+`authoring-http.schema.json` definitions. Conventional base-path expansion is available only from testkit
+fixtures and must not define a host integration. This is client code after compilation, not a server runtime;
+PHP hosts implement the documented JSON endpoints and own every authoritative effect.
 
 ## Blueprint host-session composition
 
@@ -55,8 +78,8 @@ adapters can therefore share the same command and validation semantics through t
 `mode: blueprint`, `composite: single`, either session state, and the configured Blueprint reference;
 it passes the resolved Blueprint/read-only mode, session generation, resource context, locale,
 protocol, and history limit through the headless lifecycle. It does not perform the host handshake,
-automatically load model/theme dependencies, fabricate an artifact for model/content/hybrid
-configuration, or provide a transport.
+automatically load model/theme dependencies or fabricate an artifact for model/content/hybrid configuration.
+Callers may inject any conforming `HostAdapter`, including the separately exported HTTP adapter.
 
 The returned handle serializes saves against the latest accepted host revision and coalesces matching
 concurrent intents. An exact retry after failure retains its idempotency key. If the document changes

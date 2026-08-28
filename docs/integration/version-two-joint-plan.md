@@ -33,31 +33,29 @@ no Node.js, npm, Vite, or server-side JavaScript process. These outcomes are gov
 
 ## Current coordinated checkpoint
 
-| Area                  | Current truth                                                                                                                                | Required next state                                                                                           |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Studio source         | Active beta development; checked-in `0.1.0-rc.1` is immutable abandoned-candidate provenance from `829694efb25374d3b498f2d46856d2c39650728a` | Generate one coordinated beta successor through Changesets; never stage or publish the abandoned coordinate   |
-| Release record        | The abandoned record preserves nine withdrawn proposed profile claims                                                                        | Beta clears claims; a new RC may restore the fixed set only after all 15 requirements are repository-verified |
-| Composed host session | Loads and saves one Blueprint                                                                                                                | Coordinate exact Model, Blueprint, and Entry context plus the explicit save transactions                      |
-| Lit authoring shell   | Separate Blueprint-oriented surface with measured canvas, broad catalog, preview, media/resource controls, and read-only model projection    | Make it the contextual resource surface with fields and values, exact hydration, and presentation continuity  |
-| Contributions         | Six canonical contribution kinds compile into an immutable owner-aware generation                                                            | Add the canonical extension-declared host target and prove block/field-adapter lifecycle in that target       |
-| Kumwe App             | Host mapping and additive integration work remain candidates                                                                                 | Prove the PHP-authoritative adapters, persistence, Twig delivery, extension target, and exact browser journey |
-| Gates                 | Gate A **Not assessed**; Gate B **Blocked**                                                                                                  | Accept independently reproduced evidence before official `rc`, stable, or production-support claims           |
-
-The checked-in `0.1.0-rc.1` metadata is not the current maturity, MUST NOT be staged or published, and proves
-neither npm availability nor host support.
+| Area                  | Current truth                                                                                                                                                                                    | Required next state                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Studio source         | Governed beta development with contextual target/session/save contracts, headless coordinator, browser shell, extension-generation integration, HTTP reference binding, and static-host artifact | Finish repository verification and candidate-bound qualification without promoting unfinished work                        |
+| Release record        | One coordinated beta family with no accepted profile claims                                                                                                                                      | Version the completed increment through Changesets; restore RC claims only through the governed evidence path             |
+| Composed host session | Coordinates exact Model, Blueprint, Entry, reusable type, presentation, plan, and all three save outcomes                                                                                        | Replay through real persistent hosts and close selector-neutral/manual qualification                                      |
+| Browser shell         | Contextual Model/Blueprint/Content surface with fields, values, canvas, controls, and presentation continuity                                                                                    | Complete supported browser/accessibility/security evidence against the exact candidate                                    |
+| Contributions         | Canonical target plus six payload families activate atomically in an immutable owner-aware generation                                                                                            | Prove target/block/field-adapter disable, revoke, reactivation, upgrade, unresolved, and preservation lifecycle           |
+| Static delivery       | Reproducible contextual/public static-host artifact with fingerprint/integrity/runtime manifests and no production start command                                                                 | Prove clean PHP/static deployment, CSP, rollback, and zero production Node/npm                                            |
+| Kumwe App             | Complete public integration playbook and PHP endpoint/service boundary; runtime integration remains downstream                                                                                   | Implement and prove PHP authority, persistence, media, preview, workflow/outbox, Twig delivery, and exact browser journey |
+| Gates                 | Status and evidence remain authoritative in `docs/roadmap/STATUS.md`                                                                                                                             | Accept independent candidate-bound evidence before official `rc`, stable, or production-support claims                    |
 
 ## Ownership split
 
 | Studio owns                                                                                                                              | Kumwe App owns                                                                                                                                        |
 | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Contextual authoring interaction, canvas, outline, inspector, fields/value presentation, accessibility, and deterministic local commands | Resource launch, identity, authorization, policy, exact artifact references, persistence, workflow, audit, publication, and recovery                  |
-| Portable Model, Blueprint, Entry, binding, block, pattern, field-adapter, and target contracts as they are added                         | PHP application services and PHP HTTP adapters implementing every authoritative operation                                                             |
+| Portable Model, Blueprint, Entry, binding, block, pattern, field-adapter, and target contracts                                           | PHP application services and PHP HTTP adapters implementing every authoritative operation                                                             |
 | Capability negotiation, host-port semantics, canonical vectors, compiled browser package, and conformance assertions                     | Extension trust/install lifecycle, immutable generation admission, media custody, Twig/KIS rendering, database transactions, and operational rollback |
 | No-JavaScript delivery semantics and public renderer corpus                                                                              | Production asset serving and public/portal/admin rendering with no Node.js/npm runtime                                                                |
 
 Neither repository may fill a missing public contract with a private shape and then call that shape conformant.
-Until Studio publishes the contextual target and coordinated transaction surfaces, Kumwe App may build an
-explicitly provisional adapter but must keep it isolated and replaceable.
+Kumwe App implements the published contextual and host-transport shapes exactly and keeps host-only workflow,
+renderer, binding, and webhook metadata outside portable Studio artifacts.
 
 ## Dependency-ordered landing sequence
 
@@ -69,18 +67,18 @@ explicitly provisional adapter but must keep it isolated and replaceable.
 - Add or change public APIs only through the contract/schema/ADR workflow; documentation does not invent shipped
   operations.
 
-### 2. Complete the Studio contextual surface
+### 2. Complete and qualify the Studio contextual surface
 
-- Add extension-declared authoring-target resolution and exact resource launch.
-- Compose separate Model, Blueprint, and Entry state in one session with exact reusable-type hydration.
-- Put layout, field definition/binding, and entry values on the same canvas/inspector surface.
-- Add explicit item-save, save-as-new-type, and update-type-version transactions.
-- Preserve resource identity, selection, authority, unsaved state, locale, and return path across in-context and
+- Maintain extension-declared target resolution and exact resource launch through the immutable generation.
+- Maintain separate Model, Blueprint, and Entry state in one session with exact reusable-type hydration.
+- Qualify layout, field definition/binding, and Entry values on the same canvas/inspector surface.
+- Qualify explicit item-save, save-as-new-type, and update-type-version transactions.
+- Prove resource identity, selection, authority, unsaved state, locale, and return path across in-context and
   expanded presentation.
-- Keep every operation available through pointer, keyboard, and explicit controls.
+- Prove every operation through pointer, keyboard, and explicit controls.
 
-This work closes the gaps tracked by `STUDIO-PROD-001`–`009`, `012`, and `013`; the current Blueprint shell does
-not satisfy them by composition alone.
+Repository implementation addresses `STUDIO-PROD-001`–`009`, `012`, and `013`; only the evidence and status
+authorities may record those requirements as repository-verified or accepted.
 
 ### 3. Bind Kumwe App authority
 
@@ -91,7 +89,7 @@ not satisfy them by composition alone.
 - Admit canonical target, block, pattern, and field-adapter declarations atomically with the owner-aware
   generation; disable/revoke without deleting stored artifacts.
 - Render preview and public output through authenticated PHP/Twig/KIS paths and trusted focused enhancements.
-- Install and serve the compiled Studio browser assets without production Node.js/npm.
+- Copy and serve the compiled Studio browser assets without a production install step or Node.js/npm.
 
 This is the host proof for `STUDIO-PROD-008`–`011`; TypeScript testbed behavior cannot substitute for it.
 
@@ -118,7 +116,7 @@ The coordinated product remains unqualified until `STUDIO-PROD-015` passes again
 host, the profile assertions are independently reproduced, Gate A is accepted, and Gate B qualification later
 supports stable/production claims. Until then:
 
-- call the active source beta development and the checked-in `0.1.0-rc.1` metadata abandoned provenance;
-- call the current UI a Blueprint composition shell, not completed contextual content authoring;
+- call the active source and package family beta development until the governed promotion requirements pass;
+- call the current UI a contextual Studio implementation, but do not call a host supported before real-host proof;
 - call the reference host a harness, not a production host; and
 - retain existing Kumwe App editors as explicit transitional fallback rather than redefining the target default.

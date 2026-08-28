@@ -1,0 +1,75 @@
+:root {
+  color: #18202a;
+  font:
+    400 1rem/1.55 system-ui,
+    sans-serif;
+}
+
+body {
+  background: #f4f6f9;
+  margin: 0;
+}
+
+.static-host-header,
+main {
+  margin-inline: auto;
+  max-inline-size: 90rem;
+  padding: 1.25rem;
+}
+
+.static-host-header {
+  background: #102043;
+  color: white;
+}
+
+.static-host-header a {
+  color: #bcd2ff;
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+kumwe-studio-contextual,
+.host-boundary {
+  background: white;
+  display: block;
+  margin-block-end: 1rem;
+}
+
+.host-boundary {
+  border: 1px solid #d7dce2;
+  padding: 1rem;
+}
+
+.extension-lifecycle dl,
+.extension-lifecycle dl div,
+.lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+}
+
+.extension-lifecycle dl div {
+  gap: 0.5rem;
+}
+
+.extension-lifecycle dt {
+  font-weight: 700;
+}
+
+.lifecycle-actions button {
+  font: inherit;
+  min-block-size: 2.75rem;
+}
+
+pre {
+  background: #eef2f8;
+  max-block-size: 20rem;
+  overflow: auto;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+}

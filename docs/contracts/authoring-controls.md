@@ -59,13 +59,24 @@ node ID and structured sheet. The host may place that sheet in trusted renderer
 context; the shell never dispatches `set-property` for it and never stores it in
 the Blueprint.
 
-When the experimental shell configuration omits `blockDefinitions`, the shell
+When a directly composed backendless/local shell omits `blockDefinitions`, it
 uses Studio's full first-party production catalog. When `patterns` is also
 absent, it uses the compatible first-party starter patterns. Explicit arrays
 are exact overrides, and an explicit catalog does not implicitly acquire
 first-party patterns. `createStudioStandaloneSetup` is the supported additive
-bootstrap for hosts: first-party entries lead, host contributions append, and
-duplicate identities fail closed.
+bootstrap for this standalone composition path.
+
+Those defaults do not apply to a configured hosted mount. Hosted Studio receives
+exact block type/version/revision locks in the resolved session. A lock must
+resolve to a matching compiled first-party definition or to a block both
+target-admitted and exact-lock-matched in the active contribution generation.
+Hosted patterns must be target-admitted and every exact block dependency must
+match a session lock. The opened Blueprint's dependency locks must be an exact
+subset of that catalog, and every node must use a session-locked type/version.
+Missing, duplicate, stale, or mismatched locks fail closed; the runtime never
+repairs hosted policy by exposing the full catalog or default patterns. Normal
+hosts use `mountStudio()` so this policy is applied before the control registry
+or shell is exposed.
 
 ## Implemented guided controls
 

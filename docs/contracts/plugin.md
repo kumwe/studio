@@ -2,7 +2,10 @@
 
 ## Purpose
 
-Plugins extend Studio through explicit, namespaced contribution points. A plugin may contribute block definitions, patterns, design vocabulary, migrations, inspectors, commands, panels, field adapters, transforms, render capability metadata, locales, or test fixtures. A plugin never receives ambient host authority.
+Plugins extend Studio through explicit, namespaced contribution points. A plugin may contribute contextual
+authoring targets, block definitions, patterns, design vocabulary, migrations, inspectors, commands, panels,
+field adapters, transforms, render capability metadata, locales, or test fixtures. A plugin never receives
+ambient host authority.
 
 Plugin manifests conform to [`plugin-manifest.schema.json`](../../schemas/plugin-manifest.schema.json).
 
@@ -19,6 +22,19 @@ Per-plugin requested resource limits and explicit lifecycle-compatibility declar
 A manifest does not make code trusted. The host separately verifies package provenance, signature or integrity, owner, allowlist policy, dependencies, and deployment generation.
 
 Entry modules and contribution resources use the same restricted package-relative path primitive as bundled block icon assets and require canonical integrity digests. They are resolved only inside the verified owning package; they are never author-controlled URLs or filesystem traversal instructions.
+
+## Contextual authoring target payload
+
+The `authoring-target` manifest kind carries the canonical
+[`AuthoringTargetDeclaration`](../../schemas/authoring-target.schema.json) as a declarative payload. It enters
+the same immutable owner-aware generation as the six composition families below, but is not itself a
+composition contribution. The manifest declaration version is the exact owner release version because the
+target is discovery metadata rather than a separately versioned artifact.
+
+Target resolution matches its surface, resource type, create/edit intent, requested presentation, optional
+mode and required capabilities. Its contribution dependencies then admit only the matching active versions of
+the six composition families. Discovery never grants authority; the host independently authenticates,
+authorizes and mints the resource context through the authoring port.
 
 ## Declarative composition payloads
 
@@ -78,9 +94,9 @@ The registrar exposes only the contribution kinds declared and permitted for tha
 ## Authoring SDK
 
 `@kumwe/studio-core` exports `defineStudioPlugin` as the typed authoring surface for plugin packages.
-At compile time it is an identity function over the closed manifest and all six canonical payload
-types, so a misspelled or missing field is an editor error. At runtime it front-loads activation and
-nothing else. It checks:
+At compile time it is an identity function over the closed manifest, contextual target payloads and all six
+canonical composition payload types, so a misspelled or missing field is an editor error. At runtime it
+front-loads activation and nothing else. It checks:
 
 - the manifest against the canonical `plugin-manifest.schema.json`;
 - namespace ownership: every contribution ID sits in the plugin's namespace or a dotted sub-namespace of it;
@@ -88,7 +104,7 @@ nothing else. It checks:
   different kinds do not collide;
 - declaration coverage: every canonical payload has one matching declaration, including the
   explicit `block` to `block-definition` mapping, and every canonical declaration has its payload;
-- capability coverage: every renderer, inspector, or field-adapter capability the payload requires
+- capability coverage: every target, renderer, inspector, or field-adapter capability the payload requires
   appears among the declared required or optional capabilities, and a contribution marked
   `executable` requires the manifest to declare `executable` activation;
 - the contribution runtime's own activation transaction, applied as a dry run — canonical payload
@@ -101,11 +117,20 @@ The SDK is a front-loaded mirror of activation and adds no invariant of its own:
 import { defineStudioPlugin } from '@kumwe/studio-core';
 
 export default defineStudioPlugin({
+  authoringTargets: [productContentTarget],
   blocks: [priceBlockDefinition],
   manifest: {
     activation: 'declarative',
     contractVersion: '0.1-draft',
     contributions: [
+      {
+        executable: false,
+        id: 'org.example.catalog/product-content',
+        integrity: 'sha256-…',
+        kind: 'authoring-target',
+        resource: 'authoring/product-content.json',
+        version: '1.0.0',
+      },
       {
         executable: false,
         id: 'org.example.catalog/price',
@@ -129,7 +154,13 @@ export default defineStudioPlugin({
 });
 ```
 
-Two companions keep hosts on the same single authority: `activateStudioPlugin` runs the same coherence checks and then hands the definition to the contribution runtime's transactional activation, and `unresolvedDeclaredContributions` projects the runtime's unresolved-reason vocabulary (`not-installed`, `incompatible`, `owner-disabled`, `owner-revoked`) onto declared non-block contributions so inactive-owner surfaces stay diagnosable without executing plugin code.
+Three runtime surfaces keep hosts on the same single authority: `activateStudioPlugin` runs the same coherence
+checks and hands the definition to transactional activation; `RegistryGeneration.resolveAuthoringTarget`
+resolves core and extension targets plus only their admitted dependencies; and
+`unresolvedDeclaredContributions` projects the unresolved-reason vocabulary (`not-installed`, `incompatible`,
+`owner-disabled`, `owner-revoked`) onto declared non-block contributions so inactive-owner surfaces stay
+diagnosable without executing plugin code. `ContributionRuntime.uninstall` withdraws resolution while retaining
+the owner's payload inventory for diagnosis and migration; restoration requires a fresh verified activation.
 
 ## Dependencies
 

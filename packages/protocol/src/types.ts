@@ -497,6 +497,7 @@ export interface PluginEntryModule {
 }
 
 export type PluginContributionKind =
+  | 'authoring-target'
   | 'block'
   | 'command'
   | 'design-vocabulary'
@@ -1270,6 +1271,158 @@ export interface StudioLimits {
   maxRichTextDepth: number;
   maxSlotsPerNode: number;
 }
+
+export interface StudioDeploymentLaunch {
+  initialPresentation: AuthoringPresentationState;
+  intent: AuthoringTargetEligibility;
+  resourceContext: StudioResourceContext;
+  start: AuthoringStartSource;
+  targetId: QualifiedName;
+}
+
+export type StudioDeploymentOperationRoute =
+  | 'artifact/dependencies'
+  | 'artifact/load'
+  | 'artifact/publish'
+  | 'artifact/save'
+  | 'artifact/unpublish'
+  | 'authoring/list-types'
+  | 'authoring/plan-save'
+  | 'authoring/resolve-target'
+  | 'authoring/save-as-new-type'
+  | 'authoring/save-item'
+  | 'authoring/save-new-type-version'
+  | 'authoring/start'
+  | 'localization/messages'
+  | 'media/abort-upload'
+  | 'media/authorize-upload'
+  | 'media/complete-upload'
+  | 'media/get'
+  | 'media/import-external'
+  | 'media/list'
+  | 'media/upload-status'
+  | 'model/get'
+  | 'model/list'
+  | 'permission/explain'
+  | 'permission/refresh'
+  | 'preview/cancel'
+  | 'preview/render'
+  | 'recovery/discard'
+  | 'recovery/load'
+  | 'recovery/store'
+  | 'resource/search'
+  | 'telemetry/emit';
+
+export type StudioDeploymentOperationEndpoints = Readonly<
+  Partial<Record<StudioDeploymentOperationRoute, string>>
+> & {
+  readonly 'authoring/resolve-target': string;
+  readonly 'authoring/start': string;
+};
+
+export interface StudioDeploymentSingleEndpointRouting {
+  endpoint: string;
+  kind: 'single-endpoint';
+}
+
+export interface StudioDeploymentOperationMapRouting {
+  endpoints: StudioDeploymentOperationEndpoints;
+  kind: 'operation-map';
+}
+
+export type StudioDeploymentRouting =
+  StudioDeploymentOperationMapRouting | StudioDeploymentSingleEndpointRouting;
+
+export interface StudioDeploymentSameOriginSessionAuthentication {
+  credentials: 'same-origin';
+  csrf: {
+    headerName: string;
+    token: string;
+  };
+  kind: 'same-origin-session';
+}
+
+export interface StudioDeploymentBearerTokenAuthentication {
+  credentials: 'omit';
+  expiresAt: string;
+  issuedAt: string;
+  kind: 'bearer-token';
+  token: string;
+}
+
+export interface StudioDeploymentHeaderTokenAuthentication {
+  credentials: 'omit';
+  expiresAt: string;
+  headerName: string;
+  issuedAt: string;
+  kind: 'header-token';
+  token: string;
+}
+
+export type StudioDeploymentAuthentication =
+  | StudioDeploymentBearerTokenAuthentication
+  | StudioDeploymentHeaderTokenAuthentication
+  | StudioDeploymentSameOriginSessionAuthentication;
+
+export interface StudioDeploymentStandaloneTransport {
+  kind: 'standalone';
+}
+
+export interface StudioDeploymentHttpTransport {
+  authentication: StudioDeploymentAuthentication;
+  kind: 'http';
+  maximumResponseBytes?: number;
+  requestTimeoutMilliseconds?: number;
+  routing: StudioDeploymentRouting;
+}
+
+export type StudioDeploymentTransport =
+  StudioDeploymentHttpTransport | StudioDeploymentStandaloneTransport;
+
+/** Safe declarative contributions; executable controls remain precompiled registry entries. */
+export type StudioDeploymentContributionPayload =
+  | BlockDefinition
+  | DesignVocabulary
+  | FieldAdapterContribution
+  | InspectorContribution
+  | MigrationDeclaration
+  | PatternDocument;
+
+export interface StudioDeploymentContributionBundle {
+  generation: Revision;
+  payloads: readonly StudioDeploymentContributionPayload[];
+}
+
+export interface StudioDeploymentConfigurationBase {
+  contractVersion?: StudioContractVersion;
+  instanceId?: StableId;
+  kind?: 'studio-deployment';
+  mount?: string;
+}
+
+export interface StudioStandaloneDeploymentConfiguration extends StudioDeploymentConfigurationBase {
+  contributions?: never;
+  launch?: never;
+  session?: never;
+  transport?: StudioDeploymentStandaloneTransport;
+}
+
+export interface StudioHostedDeploymentConfiguration extends StudioDeploymentConfigurationBase {
+  contributions?: StudioDeploymentContributionBundle;
+  launch: StudioDeploymentLaunch;
+  session: StudioConfiguration;
+  transport: StudioDeploymentHttpTransport;
+}
+
+/**
+ * Bounded JSON emitted by any host into an `application/json` DOM script for
+ * one Studio mount. An empty object is valid when the caller or associated DOM
+ * element supplies the mount. Omitting `transport` selects the deterministic
+ * standalone blank-page profile; HTTP deployments provide an exact launch plus
+ * the PHP/host-resolved Studio session configuration.
+ */
+export type StudioDeploymentConfiguration =
+  StudioHostedDeploymentConfiguration | StudioStandaloneDeploymentConfiguration;
 
 export interface StudioConfiguration {
   actor: { displayName: string; id: StableId };

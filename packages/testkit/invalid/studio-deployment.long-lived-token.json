@@ -1,0 +1,19 @@
+{
+  "schema": "studio-deployment.schema.json",
+  "description": "Serialized bearer authentication without required issuance and expiry metadata cannot represent a bounded lifetime.",
+  "value": {
+    "mount": "#studio-page",
+    "transport": {
+      "kind": "http",
+      "routing": {
+        "kind": "single-endpoint",
+        "endpoint": "/api/studio"
+      },
+      "authentication": {
+        "kind": "bearer-token",
+        "credentials": "omit",
+        "token": "durable-api-key-is-not-admitted"
+      }
+    }
+  }
+}

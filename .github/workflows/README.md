@@ -53,6 +53,20 @@ Actions-screen synopsis.
     workflow reports `inactive` and succeeds. A patch after `0.1.0` opens `0.1.1-beta.0`; subsequent version
     PRs increment the numeric beta counter while Changeset intent controls the next semantic base.
 
+Every source that can reach a registry runs the same `npm run qualify:candidate` gate: the complete repository
+check, PHP 8.1+ reference lint/unit suite, and locked-Chromium Playwright suite. The beta train installs PHP and
+Chromium and runs this gate only after its plan selects `publish`, before artifacts or credentials. Governed
+promotion runs it after generated metadata mutations, after protected approval on the exact RC quarantine
+source, and again on the exact official publication source before artifacts or credentials. RC publication
+uses the current `main` checkout only as the release controller and Gate A verifier; dependency setup and the
+candidate gate run in the immutable candidate checkout. Stable publication runs the gate in the merged stable
+metadata source.
+
+Stable promotion has a deliberate evidence boundary: the full repository/browser/PHP gate is rerun against
+the exact stable publication tree, while accepted manual, external, target-host, and matrix evidence remains
+bound to the immutable RC candidate in `.qualified-candidate`. The gate verifier must authorize the stable
+metadata-only transform. The rerun neither manufactures nor replaces that independently reviewed evidence.
+
 The beta workflow reads `NPM_TOKEN` from a repository Actions secret or an organization Actions secret whose
 access includes `kumwe/studio`; it has no environment boundary, so an environment-only secret cannot reach it.
 The protected RC/stable stage and official-publish jobs instead read the secret from `studio-rc` or

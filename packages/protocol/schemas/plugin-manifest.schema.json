@@ -52,6 +52,7 @@
         "properties": {
           "kind": {
             "enum": [
+              "authoring-target",
               "block",
               "command",
               "design-vocabulary",

@@ -5,12 +5,17 @@ logical session inline, minimized, maximized, or fullscreen within its own navig
 protocol meaning or remove required recovery and accessibility operations (`STUDIO-PROD-007` and
 `STUDIO-PROD-013`). See the sole normative [product contract](../product-contract.md).
 
-### Current shipped shell boundary
+### Current Studio-side implementation boundary
 
-The currently shipped shell surface is an integration candidate for existing Blueprint composition with a
-read-only host-model binding projection. It does not yet provide the coordinated blank/type lifecycle, Entry
-value persistence, save-choice semantics, or cross-presentation host handoff described below. Those are target
-requirements, not implementation claims (`STUDIO-PROD-014`).
+The contextual shell implements the coordinated Model/Blueprint/Entry snapshot, blank/from-type/existing
+starts supplied by its runtime, Entry value editing, the current additive Model-field control, all three save
+choices, and inline/minimized/maximized/fullscreen state on one mounted session. Its hosted runtime sends save
+plans and accepted choices through the configured authoritative adapter; its standalone runtime downloads the
+same bounded intent without claiming persistence.
+
+The complete region and interaction specification below remains the product and qualification boundary.
+Implementing a component state is not proof of host navigation continuity, complete field tooling, manual
+accessibility, or the integrated `STUDIO-PROD-015` journey (`STUDIO-PROD-014`).
 
 ## Target large-screen composition
 
@@ -49,8 +54,9 @@ mode, pending field input, unsaved state, history, diagnostics, and preview iden
 to host chrome is an explicit navigation action; it does not imply save, discard, publish, or session disposal
 (`STUDIO-PROD-001`, `STUDIO-PROD-007`, and `STUDIO-PROD-012`).
 
-The current shipped shell exposes none of those presentation-transition semantics as a complete host handoff
-contract. Hosts must not infer target compliance from ordinary custom-element embedding.
+The contextual shell preserves the same drafts and local state while its presentation value changes. A host
+still must prove focus recovery, route/frame handoff, dirty-navigation policy, authority, and deterministic
+return context; ordinary custom-element embedding is not complete host-continuity evidence.
 
 ## Canvas semantics
 

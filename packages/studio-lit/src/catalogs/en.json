@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.5.0",
+  "catalogVersion": "1.7.0",
   "locale": "en",
   "messages": {
     "studio.contextual/add-field": {
@@ -67,6 +67,10 @@
     },
     "studio.contextual/cardinality-one": {
       "defaultMessage": "One value",
+      "parameters": []
+    },
+    "studio.contextual/choose-start": {
+      "defaultMessage": "Choose how to start",
       "parameters": []
     },
     "studio.contextual/choose-value": {
@@ -197,6 +201,10 @@
       "defaultMessage": "Canonical JSON value",
       "parameters": []
     },
+    "studio.contextual/load-more-types": {
+      "defaultMessage": "Load more types",
+      "parameters": []
+    },
     "studio.contextual/localized": {
       "defaultMessage": "Localized",
       "parameters": []
@@ -261,6 +269,14 @@
       "defaultMessage": "Required",
       "parameters": []
     },
+    "studio.contextual/return": {
+      "defaultMessage": "Return to {destination}",
+      "parameters": ["destination"]
+    },
+    "studio.contextual/return-destination": {
+      "defaultMessage": "the host",
+      "parameters": []
+    },
     "studio.contextual/save-as-new-type": {
       "defaultMessage": "Save as new type",
       "parameters": []
@@ -281,12 +297,24 @@
       "defaultMessage": "The authoritative host will plan and show affected artifacts and consequences before confirmation.",
       "parameters": []
     },
+    "studio.contextual/search": {
+      "defaultMessage": "Search",
+      "parameters": []
+    },
     "studio.contextual/session-generation-missing": {
       "defaultMessage": "The contextual session has no authoritative generation.",
       "parameters": []
     },
+    "studio.contextual/start": {
+      "defaultMessage": "Start Studio",
+      "parameters": []
+    },
     "studio.contextual/start-blank": {
       "defaultMessage": "Blank start",
+      "parameters": []
+    },
+    "studio.contextual/start-blank-help": {
+      "defaultMessage": "Create a new layout and content structure for this resource.",
       "parameters": []
     },
     "studio.contextual/start-existing": {
@@ -296,6 +324,14 @@
     "studio.contextual/start-from-type": {
       "defaultMessage": "Reusable type · {type}",
       "parameters": ["type"]
+    },
+    "studio.contextual/start-source": {
+      "defaultMessage": "Starting point",
+      "parameters": []
+    },
+    "studio.contextual/starting": {
+      "defaultMessage": "Starting…",
+      "parameters": []
     },
     "studio.contextual/state-changed": {
       "defaultMessage": "changed",
@@ -315,6 +351,18 @@
     },
     "studio.contextual/type-model-mismatch": {
       "defaultMessage": "The reusable type does not identify the supplied exact Model revision.",
+      "parameters": []
+    },
+    "studio.contextual/type-search": {
+      "defaultMessage": "Find a reusable type",
+      "parameters": []
+    },
+    "studio.contextual/types-empty": {
+      "defaultMessage": "No authorized reusable types match this search.",
+      "parameters": []
+    },
+    "studio.contextual/types-loading": {
+      "defaultMessage": "Loading authorized reusable types…",
       "parameters": []
     },
     "studio.contextual/unavailable": {
@@ -976,6 +1024,70 @@
     "studio.shell/visual-drop-target": {
       "defaultMessage": "Moving {label} to {destination}",
       "parameters": ["destination", "label"]
+    },
+    "studio.standalone/change-local": {
+      "defaultMessage": "{artifact} changed in this browser session only.",
+      "parameters": ["artifact"]
+    },
+    "studio.standalone/current-in-memory-draft": {
+      "defaultMessage": "Current in-memory draft",
+      "parameters": []
+    },
+    "studio.standalone/download-project": {
+      "defaultMessage": "Download project JSON",
+      "parameters": []
+    },
+    "studio.standalone/download-save-intent": {
+      "defaultMessage": "Download save-intent JSON",
+      "parameters": []
+    },
+    "studio.standalone/heading": {
+      "defaultMessage": "Local Studio workspace",
+      "parameters": []
+    },
+    "studio.standalone/import-failed": {
+      "defaultMessage": "Project import failed: {message}",
+      "parameters": ["message"]
+    },
+    "studio.standalone/import-project": {
+      "defaultMessage": "Import project JSON",
+      "parameters": []
+    },
+    "studio.standalone/imported": {
+      "defaultMessage": "Project imported into this browser session.",
+      "parameters": []
+    },
+    "studio.standalone/json-actions": {
+      "defaultMessage": "Local project import and download actions",
+      "parameters": []
+    },
+    "studio.standalone/no-in-memory-edits": {
+      "defaultMessage": "No in-memory edits",
+      "parameters": []
+    },
+    "studio.standalone/no-persistence": {
+      "defaultMessage": "Nothing is sent to or saved by a server. Changes live only in this page and are lost when it closes or reloads unless you download project JSON.",
+      "parameters": []
+    },
+    "studio.standalone/project-downloaded": {
+      "defaultMessage": "The complete Studio project JSON was downloaded.",
+      "parameters": []
+    },
+    "studio.standalone/save-button-announcement": {
+      "defaultMessage": "{outcome} intent downloaded. No save occurred.",
+      "parameters": ["outcome"]
+    },
+    "studio.standalone/save-button-help": {
+      "defaultMessage": "Downloads the selected host save-intent JSON. Nothing is sent or saved.",
+      "parameters": []
+    },
+    "studio.standalone/save-intent-downloaded": {
+      "defaultMessage": "The {outcome} host save-intent JSON was downloaded. No save occurred.",
+      "parameters": ["outcome"]
+    },
+    "studio.standalone/save-intent-outcome": {
+      "defaultMessage": "Save-intent outcome",
+      "parameters": []
     }
   }
 }

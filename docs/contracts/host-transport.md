@@ -12,10 +12,20 @@ the server side — routes, bodies, status codes — without reading any Studio 
 implement a different transport (a native bridge, an in-process adapter); this binding is the one that
 is normative when a host says it speaks Studio over HTTP.
 
+The browser receives exact HTTP routing and authentication through one
+[`StudioDeploymentConfiguration`](studio-deployment.md). This contract does not reserve an application URL
+prefix or authorize route discovery. A missing transport selects the separate local profile and causes no
+network call; once HTTP is configured, every response or refusal remains authoritative and never falls back to
+local persistence.
+
 The shapes are canonical: [`host-request.schema.json`](../../schemas/host-request.schema.json) for the
-call body, [`host-result.schema.json`](../../schemas/host-result.schema.json) for a success body, and
-[`host-error.schema.json`](../../schemas/host-error.schema.json) for a failure body. The operation
-vocabulary is closed by [`host-operations.schema.json`](../../schemas/host-operations.schema.json).
+generic call body, [`host-result.schema.json`](../../schemas/host-result.schema.json) for a success body, and
+[`host-error.schema.json`](../../schemas/host-error.schema.json) for a failure body. The operation vocabulary
+is closed by [`host-operations.schema.json`](../../schemas/host-operations.schema.json). Contextual authoring
+has the stricter, operation-specific
+[`authoring-http.schema.json`](../../schemas/authoring-http.schema.json), which binds each of its seven routes
+to the exact argument, capability, idempotency rule, and result. A PHP, Java, Go, or other host validates those
+same JSON Schemas; no server-side TypeScript or Node.js implementation is implied.
 
 ## The three names of an operation
 
@@ -33,33 +43,48 @@ wire. The registry also records, per operation, whether it mutates host state, w
 concurrency-protected through `expectedRevision`, and whether its port is required for an editable
 session.
 
-## Current binding versus target operations
+## Contextual authoring operations
 
-The current closed registry transports the existing operations, and each artifact mutation addresses one
-artifact at a time. It does **not** define a generic Studio target declaration, contextual session launch,
-presentation handoff, model-definition write, coordinated Model/Blueprint/Entry transaction, **save new type
-version**, or **save as new type** operation.
-Those are required product outcomes, but they are not shipped transport capabilities (`STUDIO-PROD-006`
-through `STUDIO-PROD-008`, `STUDIO-PROD-014`).
+The registry and operation schema now close the complete contextual authoring transport vocabulary. Each
+route accepts one exact request definition and returns one exact result definition:
 
-Before the target profile can claim HTTP support, reviewed additive contract work MUST define every new typed
-method, route segment, capability identifier, argument, revision behavior, idempotency scope, response,
-failure, and conformance vector. Until then, a client and host MUST NOT invent private Studio-port routes,
-overload `artifact.save`, or treat a sequence of independent artifact requests as an atomic reusable-type save.
-Normal host application navigation may launch the browser workspace, but it does not become a Studio port or
-authority shortcut merely because a core surface or extension declares a Studio target
-(`STUDIO-PROD-008`, `STUDIO-PROD-010`).
+| Route                             | Request definition          | Result definition          | State effect                                 |
+| --------------------------------- | --------------------------- | -------------------------- | -------------------------------------------- |
+| `authoring/resolve-target`        | `resolveTargetRequest`      | `resolveTargetResult`      | Read-only target authorization and discovery |
+| `authoring/list-types`            | `listTypesRequest`          | `listTypesResult`          | Read-only authorized reusable-type listing   |
+| `authoring/start`                 | `startRequest`              | `startResult`              | Idempotent contextual session creation       |
+| `authoring/plan-save`             | `planSaveRequest`           | `planSaveResult`           | Read-only consequence and transaction plan   |
+| `authoring/save-item`             | `saveItemRequest`           | `saveItemResult`           | Atomic Entry/item-composition transaction    |
+| `authoring/save-new-type-version` | `saveNewTypeVersionRequest` | `saveNewTypeVersionResult` | Atomic coordinated successor transaction     |
+| `authoring/save-as-new-type`      | `saveAsNewTypeRequest`      | `saveAsNewTypeResult`      | Atomic new reusable-type transaction         |
 
-## Route and method
+These operations are additive to the legacy single-artifact routes. A client or host MUST NOT overload
+`artifact.save`, sequence independent artifact writes as if they were one transaction, or invent a private
+Studio route for a declared target. Host navigation may launch the browser workspace, but target discovery
+does not grant authority and never bypasses `resolve-target`/`start` (`STUDIO-PROD-008`, `STUDIO-PROD-010`,
+`STUDIO-PROD-014`).
 
-```
-POST {baseUrl}/ports/{port}/{operation}
+## Configured route and method
+
+Every call uses the exact URL declared by the deployment and this method/media type:
+
+```text
+POST <configured operation or dispatcher URL>
 Content-Type: application/json
+Accept: application/json
 ```
 
-The path segments are the registry's `route` value. Every operation is a `POST`, including reads: the
-request envelope is a body, never a query string, because a resource-context key in a URL leaks into
-logs, referrers and caches. A transport MUST NOT invent additional routes for Studio ports.
+An `operation-map` binds each advertised registry route (`artifact/load`, `authoring/start`,
+`resource/search`, and so on) to an exact URL. A `single-endpoint` binds all advertised operations to one URL
+and sends the selected registry route in `X-Studio-Operation`. The header is a closed dispatcher discriminator,
+not authentication and not another argument member. The server rejects an unknown/mismatched discriminator
+before application dispatch.
+
+The operation-map keys and capability identifiers remain registry-defined; the URL paths are host-defined.
+`/ports/{port}/{operation}` is a useful reference implementation layout, not an inferred or mandatory path.
+Every operation is a `POST`, including reads: the request envelope is a body, never a query string, because a
+resource-context key in a URL leaks into logs, referrers and caches. A transport MUST NOT probe, derive, or
+invent a URL for a missing operation.
 
 ## Request body
 
@@ -78,25 +103,36 @@ The body conforms to `host-request.schema.json`:
 }
 ```
 
-`arguments` is absent for operations that take only the envelope. The host validates the envelope
-before dispatching: a structurally invalid envelope, an unsupported `protocolVersion`, or a superseded
-`sessionGeneration` is refused before the operation runs.
+`arguments` is absent for operations that take only the envelope. Contextual authoring always carries its
+operation-specific argument wrapper. The host validates the exact operation schema before dispatching: a
+structurally invalid envelope, the wrong `operationId`, an unsupported `protocolVersion`, a superseded
+`sessionGeneration`, or an unexpected member is refused before the operation runs.
 
-Actor identity and authorization evidence are attached by the trusted transport — a session cookie, a
-signed header, a service credential — and never appear in the body. A client-supplied actor value is
-display context and MUST NOT authenticate a request.
+`resolve-target`, `list-types`, and `start` carry a complete `resourceContext` in their argument. Its `key`
+MUST equal `context.resourceContextKey`; mismatch is `invalid-request` before resource lookup. The key is not a
+credential. The host resolves it against the authenticated actor, target, surface, session generation, and
+policy, then authorizes the exact resource without revealing whether an unauthorized resource exists.
+
+Actor identity and authorization evidence are attached by the trusted transport — a session cookie, an
+`Authorization` header, or a signed service credential — and never appear in the body. A client-supplied actor
+value is display context and MUST NOT authenticate a request. Authentication and request-integrity checks run
+before JSON dispatch; resource authorization, revision checks, and audit remain mandatory inside the invoked
+host application service.
 
 ## Success response
 
-A `2xx` response carries a `host-result.schema.json` body:
+A generic `2xx` response carries a `host-result.schema.json` body. Contextual authoring returns HTTP `200`
+with its operation-specific result:
 
 ```json
 { "revision": "blueprints/landing-r8", "value": null }
 ```
 
-`value` is always present; an operation that answers with nothing returns `null` rather than omitting
-the member. `revision` is present for every operation the registry marks `expectsRevision`, carrying
-the revision the host advanced to, so a client never re-reads to learn what it just wrote.
+`value` is always present; an operation that answers with nothing returns `null` rather than omitting the
+member. `revision` is present for every operation the registry marks `expectsRevision`, carrying the revision
+the host advanced to, so a client never re-reads to learn what it just wrote. Contextual authoring results do
+not carry this single outer `revision`: their exact Model, Blueprint, Entry, reusable-type, plan, and session
+coordinates are reconciled inside the normalized result.
 
 ## Failure response
 
@@ -104,6 +140,11 @@ A non-`2xx` response SHOULD carry a `host-error.schema.json` body. When it does,
 that error unchanged — this is how a host-authored category, its retry classification, and the safe
 current revision on a conflict cross the transport intact. A client MUST NOT infer a category from the
 status code when a canonical error body is present.
+
+The optional `revision` is valid only for `conflict` and carries a safe current revision. The optional
+`retryAfterMilliseconds` is valid only when `retryable` is true and the category is `rate-limited` or
+`unavailable`. Bodies that combine those members with another category are malformed host errors and become a
+safe client-side `internal` failure.
 
 When no canonical body is present, the client derives the category from the status:
 
@@ -138,27 +179,70 @@ Every operation the registry marks `expectsRevision` requires `context.expectedR
 not match the stored revision the host returns `conflict` **with the safe current revision** on the
 error document, so the client resolves without a second read.
 
-Every mutating operation that a client may retry carries `context.idempotencyKey`. A host that has
-already accepted a key for that operation returns the original outcome rather than applying the
-mutation twice. A retry after a transport failure is expected and MUST NOT double-apply.
+Every mutating operation that a client may retry carries `context.idempotencyKey`. For contextual authoring it
+is REQUIRED on `start` and all three save routes, and forbidden on the three read-only routes. The coordinated
+save routes forbid the envelope's single `expectedRevision`: their plan and request bodies carry all exact
+type, Model, Blueprint, and Entry coordinates. A host that has already accepted a key for that operation
+returns the original outcome rather than applying the mutation twice. A retry after a transport failure is
+expected and MUST NOT double-apply. Key scope, canonical intent preimage, in-flight coalescing, changed-intent
+refusal, and failed-attempt removal remain exactly as defined by the host-adapter contract.
 
-## Cross-origin and browser transports
+## Authentication, CSRF, and browser transports
 
-A browser transport applies CSRF or equivalent same-origin protection, and the preview surface follows
-the separate origin-pinned rules in the [preview contract](preview.md). The transport never places the
-resource-context key, an idempotency key, or a revision in a URL.
+Production HTTP is protected by TLS. Browser clients send JSON with `Accept: application/json` and
+`Content-Type: application/json`; authentication and CSRF material stays in headers/cookies. Deployment
+authentication has three closed profiles:
+
+- `same-origin-session` sends `credentials: same-origin` plus the configured CSRF header. The session identifier
+  remains in a secure HttpOnly, appropriately `SameSite` cookie and every endpoint must match the page origin.
+- `bearer-token` sends one bearer value with credentials omitted and requires an `issuedAt <= now < expiresAt`
+  browser-use window whose positive duration is at most 15 minutes.
+- `header-token` applies that same issuance/expiry window under an admitted non-browser-controlled header name,
+  also with credentials omitted.
+
+The token profiles are for narrow session credentials, never durable API keys or refresh tokens. Browser
+Studio refuses malformed, future-issued, expired, zero-length, or overlong windows before network I/O; the
+server independently verifies protected issuance/expiry claims, audience, purpose, actor,
+resource, generation, revocation, and permission. A non-serialized runtime resolver may refresh short-lived
+material for an advanced integration, but every result obeys the same bound. Missing authentication is `unauthenticated`; failed
+CSRF/origin/service-integrity verification is `forbidden`. Neither failure reaches the port implementation.
+
+Cross-origin credential use is opt-in, origin-allowlisted, and never combined with wildcard CORS. Preflight
+handling is host infrastructure, not another Studio operation. The preview surface follows the separate
+origin-pinned rules in the [preview contract](preview.md). The transport never places a resource-context key,
+idempotency key, revision, credential, CSRF value, or authored document in a URL. Responses use JSON,
+`Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`; hosts enforce a bounded request size before
+schema validation.
 
 For Kumwe App, these routes terminate in PHP application services. The Studio client is compiled browser code;
 serving it and accepting these HTTP calls requires no production Node/npm process or package installation
-(`STUDIO-PROD-010`, `STUDIO-PROD-011`).
+(`STUDIO-PROD-010`, `STUDIO-PROD-011`). `@kumwe/studio-core` publishes the platform-neutral production
+adapter, `@kumwe/studio` supplies its compiled-browser binding, and `@kumwe/studio-testkit` publishes the
+reference responder and compatibility facade for conformance. A PHP host implements the same schemas and
+semantics directly rather than running that responder in production.
+
+Workflow transitions, public rendering, and outbound webhooks are host-owned application seams. They are not
+browser authoring ports and this binding does not invent routes for them. Studio may save content that the host
+later publishes or announces, but it never bypasses host workflow authority (`STUDIO-PROD-012`).
 
 ## Proving the binding
 
 A host proves this binding by claiming
 [`studio.profile/host-baseline`](conformance-profiles.md): the corpus fixes the envelope guards, the
 revision behaviour, and the error categories the table above transports. The binding itself adds route
-and status obligations that the reference HTTP client in `@kumwe/studio-testkit` exercises.
+and status obligations that the core HTTP client exercises against the testkit reference responder.
 
-That proof does not yet cover the contextual authoring operations now registered under `authoring/*` or the
-complete product journey. Those outcomes require their additive vectors and the executable end-to-end evidence
-required by `STUDIO-PROD-015`.
+The normal prebuilt-browser mount consumes the deployment and constructs the configured HTTP adapter. The
+lower-level `createHttpHostAdapter`, `createBrowserHttpHostAdapter`, and `createAuthoringHttpResponder` exports
+in `@kumwe/studio-core`, `@kumwe/studio`, and `@kumwe/studio-testkit` exercise the exact contextual
+request/result schema references, routing, security admission, resource-context equality, status mapping, safe
+failures, and all seven authoring dispatches. Direct adapter/coordinator use is an advanced composition seam;
+production adapters accept explicit routing configuration only. Conventional base-path expansion belongs to
+testkit fixtures and must not define a host integration.
+
+These are executable reference/client bindings, not a requirement to deploy JavaScript on a server and not by
+themselves a complete `authoring-web` or product claim. Complete qualification still requires an independent
+host replay and the end-to-end evidence required by `STUDIO-PROD-015`.
+
+Adapter-authored safe diagnostics use the stable `studio.transport/http-*` message-key namespace. They never
+include a URL, response body, credential, stack, or private transport reason.

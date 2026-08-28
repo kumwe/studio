@@ -1,20 +1,30 @@
 import type { BlueprintCommand, BlueprintDocument, Revision } from '@kumwe/studio-protocol';
 import { applyCommand, StudioCommandError } from './commands.js';
 import { cloneContractValue } from './clone.js';
+import {
+  assertBlueprintCommandPolicy,
+  type ResolvedStudioSessionPolicy,
+} from './session-policy.js';
 
 export class StudioHistory {
   readonly #maximumEntries: number;
+  readonly #policy: Readonly<ResolvedStudioSessionPolicy> | undefined;
   #current: BlueprintDocument;
   #future: BlueprintDocument[] = [];
   #past: BlueprintDocument[] = [];
   #stateVersion = 0;
 
-  public constructor(document: BlueprintDocument, maximumEntries = 100) {
+  public constructor(
+    document: BlueprintDocument,
+    maximumEntries = 100,
+    policy?: Readonly<ResolvedStudioSessionPolicy>,
+  ) {
     if (!Number.isInteger(maximumEntries) || maximumEntries < 1) {
       throw new RangeError('History maximum must be a positive integer.');
     }
     this.#current = cloneContractValue(document);
     this.#maximumEntries = maximumEntries;
+    this.#policy = policy;
   }
 
   public get canRedo(): boolean {
@@ -60,6 +70,9 @@ export class StudioHistory {
       );
     }
     const next = applyCommand(this.#current, command);
+    if (this.#policy !== undefined) {
+      assertBlueprintCommandPolicy(this.#current, command, next, this.#policy);
+    }
     this.#past.push(this.#current);
     if (this.#past.length > this.#maximumEntries) {
       this.#past.shift();

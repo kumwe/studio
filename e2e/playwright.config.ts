@@ -2,13 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * The automated accessibility lane (roadmap M1-06). It drives the built
- * reference host — the Vite app mounting the <kumwe-studio> shell with a demo
- * session — in headless Chromium and holds the chrome to SR-019, SR-020, and
- * SR-025, plus the TH-013 CSP lane: the preview server serves the pinned
- * Content-Security-Policy from examples/reference-host/vite.config.ts, so
- * every spec here runs under it. Run the lane with `npm run check:a11y`,
- * which builds the reference host first; it is intentionally not part of the
- * browser-free `npm run check`.
+ * reference host and the PHP-authoritative compiled-browser fixture in
+ * headless Chromium. The Vite preview holds the chrome to SR-019, SR-020, and
+ * SR-025 plus the TH-013 CSP lane. The independent PHP built-in test server
+ * emits inert configuration and serves the already-built browser module; it
+ * does not introduce a production Node/PHP bridge. Run the lane with
+ * `npm run check:a11y`, which builds the browser assets first; it is
+ * intentionally not part of the browser-free `npm run check`.
  */
 export default defineConfig({
   forbidOnly: process.env.CI !== undefined,
@@ -25,11 +25,19 @@ export default defineConfig({
     headless: true,
     trace: 'on-first-retry',
   },
-  webServer: {
-    command:
-      'npm run preview --workspace @kumwe/studio-reference-host -- --host 127.0.0.1 --port 4173 --strictPort',
-    cwd: '..',
-    reuseExistingServer: process.env.CI === undefined,
-    url: 'http://127.0.0.1:4173',
-  },
+  webServer: [
+    {
+      command:
+        'npm run preview --workspace @kumwe/studio-reference-host -- --host 127.0.0.1 --port 4173 --strictPort',
+      cwd: '..',
+      reuseExistingServer: process.env.CI === undefined,
+      url: 'http://127.0.0.1:4173',
+    },
+    {
+      command: 'php -S 127.0.0.1:4174 e2e/php-authoring-host/router.php',
+      cwd: '..',
+      reuseExistingServer: process.env.CI === undefined,
+      url: 'http://127.0.0.1:4174/health',
+    },
+  ],
 });

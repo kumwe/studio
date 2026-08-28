@@ -24,7 +24,7 @@ portable assertions, documentation, release intent, and verification agree.
 | Step | Required action                                                                                                                                                                                 | Completion signal                                                  |
 | ---: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 |    1 | Read `AGENTS.md`, this file, and `docs/roadmap/STATUS.md`. Identify the affected contract, trust boundary, profile, and release impact.                                                         | Scope names the authoritative files and tests.                     |
-|    2 | Bootstrap from a full clone with the pinned Node/npm toolchain and Playwright Chromium.                                                                                                         | `npm run doctor` passes.                                           |
+|    2 | Bootstrap from a full clone with the pinned Node/npm toolchain, PHP 8.1+, and Playwright Chromium.                                                                                              | `npm run doctor` passes.                                           |
 |    3 | Run `npm run verify` before editing when practical. If the baseline is red, record the exact pre-existing failure.                                                                              | Baseline is known rather than assumed.                             |
 |    4 | Change the normative contract/schema/ADR first when public shape or behavior changes, then implementation and portable fixtures.                                                                | Code and authority agree.                                          |
 |    5 | Add focused unit/integration/browser coverage and a Changeset for every publishable package change.                                                                                             | The changed behavior is measurable and version intent is explicit. |
@@ -34,13 +34,16 @@ portable assertions, documentation, release intent, and verification agree.
 
 ## Environment setup
 
-The supported contributor baseline matches CI: Node 24, npm 11.9.0, a non-shallow Git clone, locked npm
-dependencies, and Playwright Chromium.
+The supported contributor baseline matches CI: Node 24, npm 11.9.0, PHP 8.1 or newer, a non-shallow Git clone,
+locked npm dependencies, and Playwright Chromium. PHP is a development and qualification tool for the real-host
+browser lane only. The shipped browser artifacts do not start PHP or Node, and Node/npm are never production
+server dependencies.
 
 ```bash
 git clone https://github.com/kumwe/studio.git
 cd studio
 npm install --global npm@11.9.0
+php --version
 npm ci
 npx playwright install chromium
 npm run doctor
@@ -51,7 +54,8 @@ the privileges appropriate to that machine. CI always uses `--with-deps`. Do not
 manager or regenerate `package-lock.json` with an unpinned npm version.
 
 Every GitHub workflow uses the same `.github/actions/setup-studio` action for Node, npm, the lockfile install,
-registry configuration, and optional Chromium setup. A workflow must not duplicate or bypass that environment.
+registry configuration, and optional Chromium setup. Workflows that run the browser/PHP qualification lane pin
+PHP separately. A workflow must not duplicate or bypass the shared Studio environment.
 
 ## Change map
 
@@ -68,17 +72,19 @@ registry configuration, and optional Chromium setup. A workflow must not duplica
 
 ## Quality and tests
 
-`npm run verify` is the contributor gate. It runs the repository check followed by the Chromium accessibility
-and production-browser lane.
+`npm run qualify:candidate` is the one exact-source candidate gate. `npm run verify` is an exact alias for that
+gate so contributors and release workflows cannot accidentally select different qualification subsets.
 
-| Command                          | What it proves                                                                                                                                 |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run doctor`                 | Toolchain, full Git history, locked install, and browser availability                                                                          |
-| `npm run check`                  | Formatting, lint, TypeScript, boundaries/contracts/evidence/security/release drift, unit/property/Node tests, and production build             |
-| `npm run check:a11y`             | CSP, production page, preview/render, responsive layout, measured canvas, keyboard parity, RTL/touch, reduced motion, reflow, and axe journeys |
-| `npm run verify`                 | The complete local contributor gate: `check` plus `check:a11y`                                                                                 |
-| `npm run release:plan`           | Whether beta will version, publish, reset the abandoned RC state, pause for a product-complete RC, or remain idle                              |
-| `npm run release:promotion-plan` | Validates and classifies the manual RC/stable operation selected through `PROMOTION_*` environment inputs                                      |
+| Command                          | What it proves                                                                                                                                                        |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run doctor`                 | Development toolchain (including PHP 8.1+), full Git history, locked install, and browser availability                                                                |
+| `npm run check`                  | Formatting, lint, TypeScript, boundaries/contracts/evidence/security/release drift, unit/property/Node tests, and production build                                    |
+| `npm run check:php-reference`    | PHP 8.1+ availability, syntax of the reference and browser-host PHP sources, and the dependency-free PHP reference unit suite                                         |
+| `npm run check:a11y`             | Chromium Playwright against the built static and real PHP-host lanes: CSP, deployment, responsive layout, keyboard parity, RTL/touch, reduced motion, reflow, and axe |
+| `npm run qualify:candidate`      | The exact candidate gate: `check`, `check:php-reference`, and `check:a11y`                                                                                            |
+| `npm run verify`                 | Exact contributor alias for `qualify:candidate`                                                                                                                       |
+| `npm run release:plan`           | Whether beta will version, publish, reset the abandoned RC state, pause for a product-complete RC, or remain idle                                                     |
+| `npm run release:promotion-plan` | Validates and classifies the manual RC/stable operation selected through `PROMOTION_*` environment inputs                                                             |
 
 Canonical schema changes use `npm run contracts:sync`; this also refreshes the package copies, manifest,
 generated TypeScript models, corpus manifest, and release record. Do not edit generated models directly.

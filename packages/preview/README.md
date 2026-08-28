@@ -1,7 +1,8 @@
 # `@kumwe/studio-preview`
 
-Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. The channel is an
-executable contract implementation, not a qualified host adapter.
+Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
+version is in the workspace `studio-release.json`; this channel is an executable contract implementation,
+not a qualified host adapter.
 
 An exact-origin, typed request channel between Studio and a host-rendered preview surface. A host can
 render Twig, Liquid, JSX, or another server template without teaching the canvas to reproduce its

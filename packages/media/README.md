@@ -1,7 +1,8 @@
 # `@kumwe/studio-media`
 
-Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. It supplies orchestration
-primitives, not a production media backend.
+Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
+version is in the workspace `studio-release.json`; this package supplies orchestration primitives, not a
+production media backend.
 
 Host-neutral media orchestration. Hosts provide authentication, storage, upload, processing, and
 authorization through this package's runtime `MediaProvider`; the package supplies cancellation-safe

@@ -8,6 +8,11 @@ import { promisify } from 'node:util';
 
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
+import {
+  assertApprovedBrowserArtifact,
+  assertApprovedBrowserArtifactFiles,
+  buildStudioBrowserReleaseArtifact,
+} from './studio-browser-artifacts.mjs';
 
 const execFileAsync = promisify(execFile);
 const repositoryRoot = new URL('../', import.meta.url);
@@ -16,10 +21,16 @@ export const APPROVED_ARTIFACT_DIRECTORY = '.release-artifacts/packages';
 
 export async function buildApprovedReleaseArtifacts(
   root = repositoryRoot,
-  { packPackage = packPackageWithNpm } = {},
+  {
+    buildBrowserArtifact = buildStudioBrowserReleaseArtifact,
+    packPackage = packPackageWithNpm,
+  } = {},
 ) {
   const record = JSON.parse(await readFile(new URL('studio-release.json', root), 'utf8'));
   assertCoordinatedRelease(record);
+  // Build first: the exact same self-contained browser module is then present
+  // in @kumwe/studio's tarball and in the non-npm release archive.
+  const browser = assertApprovedBrowserArtifact(await buildBrowserArtifact(root), record.release);
   const packages = {};
   for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {
     const path = approvedArtifactPath(directory);
@@ -32,6 +43,7 @@ export async function buildApprovedReleaseArtifacts(
     packages[name] = normalizeArtifact({ ...artifact, path }, name, record.release, path);
   }
   return {
+    browser,
     kind: 'studio-approved-package-artifacts',
     packages,
     release: record.release,
@@ -45,11 +57,14 @@ export function assertApprovedReleaseArtifacts(document, record) {
     typeof document !== 'object' ||
     Array.isArray(document) ||
     document.kind !== 'studio-approved-package-artifacts' ||
+    document.browser === null ||
+    typeof document.browser !== 'object' ||
+    Array.isArray(document.browser) ||
     document.release !== record.release ||
     document.packages === null ||
     typeof document.packages !== 'object' ||
     Array.isArray(document.packages) ||
-    Object.keys(document).sort().join('\n') !== 'kind\npackages\nrelease' ||
+    Object.keys(document).sort().join('\n') !== 'browser\nkind\npackages\nrelease' ||
     Object.keys(document.packages).sort().join('\n') !==
       STUDIO_RELEASE_PACKAGES.map(({ name }) => name)
         .sort()
@@ -57,6 +72,7 @@ export function assertApprovedReleaseArtifacts(document, record) {
   ) {
     throw new Error('Approved package artifact manifest does not match the release family.');
   }
+  assertApprovedBrowserArtifact(document.browser, record.release);
   for (const { name } of STUDIO_RELEASE_PACKAGES) {
     const { directory } = STUDIO_RELEASE_PACKAGES.find((entry) => entry.name === name);
     normalizeArtifact(
@@ -70,6 +86,7 @@ export function assertApprovedReleaseArtifacts(document, record) {
 
 export async function assertApprovedReleaseArtifactFiles(document, record, root = repositoryRoot) {
   assertApprovedReleaseArtifacts(document, record);
+  await assertApprovedBrowserArtifactFiles(document.browser, record.release, root);
   for (const { name } of STUDIO_RELEASE_PACKAGES) {
     await assertApprovedReleaseArtifactFile(document.packages[name], name, root);
   }

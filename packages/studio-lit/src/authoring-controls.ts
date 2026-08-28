@@ -6,6 +6,7 @@ import {
 } from '@kumwe/studio-core';
 import type {
   FieldBinding,
+  QualifiedName,
   StudioChartSpec,
   StudioDrawingDocument,
   StudioDrawingPoint,
@@ -109,11 +110,24 @@ export interface StudioCodeFieldAdapter {
 
 export interface StudioAuthoringControlServices {
   codeField?: StudioCodeFieldAdapter;
+  /**
+   * Active, host-resolved extension controls. The host supplies only adapters
+   * admitted by the immutable contribution generation for this session.
+   */
+  extensionControls?: readonly StudioExtensionAuthoringControl[];
   media?: StudioMediaAuthoringServices;
   richTextFactory?: StudioRichTextEditorFactory;
   sourcePreview?: StudioSourcePreviewAdapter;
   /** Use Studio's sink-free rich-text surface under strict style CSP and Trusted Types. */
   strictContentSecurityPolicy?: boolean;
+}
+
+/** Browser implementation paired with one admitted field-adapter control id. */
+export interface StudioExtensionAuthoringControl {
+  control: QualifiedName;
+  mount(
+    options: StudioAuthoringControlOptions,
+  ): Promise<StudioAuthoringControlHandle> | StudioAuthoringControlHandle;
 }
 
 /**
@@ -123,6 +137,7 @@ export interface StudioAuthoringControlServices {
  */
 export class StudioAuthoringControlRegistry {
   readonly #codeField: StudioCodeFieldAdapter;
+  readonly #extensionControls: ReadonlyMap<QualifiedName, StudioExtensionAuthoringControl>;
   readonly #media: StudioMediaAuthoringServices | undefined;
   readonly #richTextFactory: StudioRichTextEditorFactory;
   readonly #sourcePreview: StudioSourcePreviewAdapter | undefined;
@@ -138,12 +153,67 @@ export class StudioAuthoringControlRegistry {
           : undefined,
       );
     this.#sourcePreview = services.sourcePreview;
+    const extensionControls = new Map<QualifiedName, StudioExtensionAuthoringControl>();
+    for (const extension of services.extensionControls ?? []) {
+      if (isStudioAuthoringControlId(extension.control)) {
+        throw new TypeError(
+          `Extension control ${extension.control} cannot replace a first-party Studio control.`,
+        );
+      }
+      if (extensionControls.has(extension.control)) {
+        throw new TypeError(`Extension control ${extension.control} is registered more than once.`);
+      }
+      extensionControls.set(extension.control, extension);
+    }
+    this.#extensionControls = extensionControls;
+  }
+
+  /** True only for first-party controls or adapters admitted to this registry. */
+  public supports(control: QualifiedName): boolean {
+    return isStudioAuthoringControlId(control) || this.#extensionControls.has(control);
+  }
+
+  /**
+   * Create a registry view containing first-party controls plus only the
+   * precompiled extension controls admitted for one resolved target. Control
+   * implementations are retained from this registry; declaration JSON never
+   * becomes executable code.
+   */
+  public forAdmittedExtensionControls(
+    controls: readonly QualifiedName[],
+  ): StudioAuthoringControlRegistry {
+    const admitted = new Set(controls);
+    return new StudioAuthoringControlRegistry({
+      codeField: this.#codeField,
+      extensionControls: [...this.#extensionControls.values()].filter((entry) =>
+        admitted.has(entry.control),
+      ),
+      ...(this.#media === undefined ? {} : { media: this.#media }),
+      richTextFactory: this.#richTextFactory,
+      ...(this.#sourcePreview === undefined ? {} : { sourcePreview: this.#sourcePreview }),
+    });
+  }
+
+  /**
+   * Bind one resolved host media service without replacing the host's
+   * precompiled field controls, rich-text engine, or trusted preview seams.
+   */
+  public withMediaServices(media: StudioMediaAuthoringServices): StudioAuthoringControlRegistry {
+    return new StudioAuthoringControlRegistry({
+      codeField: this.#codeField,
+      extensionControls: [...this.#extensionControls.values()],
+      media,
+      richTextFactory: this.#richTextFactory,
+      ...(this.#sourcePreview === undefined ? {} : { sourcePreview: this.#sourcePreview }),
+    });
   }
 
   public async mount(
-    control: StudioAuthoringControlId,
+    control: QualifiedName,
     options: StudioAuthoringControlOptions,
   ): Promise<StudioAuthoringControlHandle> {
+    const extension = this.#extensionControls.get(control);
+    if (extension !== undefined) return extension.mount(options);
     switch (control) {
       case 'studio.control/rich-text':
         return this.#mountRichText(options);
@@ -164,7 +234,7 @@ export class StudioAuthoringControlRegistry {
       case 'studio.control/table':
         return new StudioTableControl(options);
       default:
-        throw new Error(`Unknown Studio authoring control ${String(control)}.`);
+        throw new Error(`Unknown Studio authoring control ${control}.`);
     }
   }
 
@@ -202,6 +272,10 @@ export class StudioAuthoringControlRegistry {
     }
     return this.#media;
   }
+}
+
+function isStudioAuthoringControlId(control: string): control is StudioAuthoringControlId {
+  return Object.values(STUDIO_AUTHORING_CONTROL_IDS).some((candidate) => candidate === control);
 }
 
 class TextareaCodeFieldAdapter implements StudioCodeFieldAdapter {

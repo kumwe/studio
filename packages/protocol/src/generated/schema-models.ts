@@ -28,11 +28,430 @@ export const GENERATED_TYPESCRIPT_MODEL_METADATA: GeneratedTypeScriptModelMetada
     name: '@kumwe/studio/typescript-model-generator',
     version: '1.0.0',
   }),
-  schemaCount: 51,
+  schemaCount: 55,
   schemaEpoch: 'https://schemas.kumwe.org/studio/v1/',
-  schemaManifestDigest: 'sha256-S8c0ClVh0fkDfljdRhqNRbZPak7gzlHuXpUOPqZ3250=',
+  schemaManifestDigest: 'sha256-+gWHkLQRl+dc8zTrelE/L3CRfodxige0UQZyz5cPurc=',
   supportedWireProtocolRange: '0.1.0-draft.2',
 });
+
+/** Studio contextual authoring HTTP conformance vector */
+export type GeneratedAuthoringHttpVector = {
+  contractVersion: GeneratedCommonContractVersion;
+  errorMappings: [
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    GeneratedAuthoringHttpVectorErrorMapping,
+    ...GeneratedAuthoringHttpVectorErrorMapping[],
+  ];
+  id: GeneratedCommonStableId;
+  kind: 'authoring-http-vector';
+  operations: [
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    GeneratedAuthoringHttpVectorOperation,
+    ...GeneratedAuthoringHttpVectorOperation[],
+  ];
+  securityCases: [
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    GeneratedAuthoringHttpVectorSecurityCase,
+    ...GeneratedAuthoringHttpVectorSecurityCase[],
+  ];
+};
+
+export type GeneratedAuthoringHttpVectorErrorCategory =
+  | 'invalid-request'
+  | 'unauthenticated'
+  | 'forbidden'
+  | 'not-found'
+  | 'conflict'
+  | 'validation-failed'
+  | 'incompatible'
+  | 'limit-exceeded'
+  | 'rate-limited'
+  | 'unavailable'
+  | 'cancelled'
+  | 'internal';
+
+export type GeneratedAuthoringHttpVectorErrorMapping = {
+  category: GeneratedAuthoringHttpVectorErrorCategory;
+  status: number;
+};
+
+export type GeneratedAuthoringHttpVectorOperation = {
+  argumentMember: 'request' | 'query' | 'intent';
+  capability: GeneratedCommonQualifiedName;
+  expectedRevision: 'forbidden';
+  idempotencyKey: 'required' | 'forbidden';
+  mutating: boolean;
+  requestSchema: string;
+  resourceContextMatch: boolean;
+  responseSchema: string;
+  route: GeneratedAuthoringHttpVectorRoute;
+  successStatus: 200;
+};
+
+export type GeneratedAuthoringHttpVectorRoute =
+  | 'authoring/resolve-target'
+  | 'authoring/list-types'
+  | 'authoring/start'
+  | 'authoring/plan-save'
+  | 'authoring/save-item'
+  | 'authoring/save-new-type-version'
+  | 'authoring/save-as-new-type';
+
+export type GeneratedAuthoringHttpVectorSecurityCase = {
+  authenticated: boolean;
+  expect:
+    | { dispatch: true; outcome: 'result'; status: 200 }
+    | {
+        category: GeneratedAuthoringHttpVectorErrorCategory;
+        dispatch: boolean;
+        outcome: 'error';
+        status: number;
+      };
+  id: GeneratedCommonLocalName;
+  request:
+    | 'valid'
+    | 'malformed-json'
+    | 'context-mismatch'
+    | 'missing-idempotency-key'
+    | 'wrong-operation-id'
+    | 'host-conflict'
+    | 'host-rate-limited'
+    | 'host-internal-failure';
+  requestIntegrity: boolean;
+};
+
+/** Studio contextual authoring HTTP exchange */
+export type GeneratedAuthoringHttp = GeneratedAuthoringHttpExchange;
+
+export type GeneratedAuthoringHttpErrorResponse = {
+  body: GeneratedHostError;
+  status: 400 | 401 | 403 | 404 | 409 | 413 | 422 | 429 | 500 | 502 | 503 | 504;
+};
+
+export type GeneratedAuthoringHttpExchange =
+  | GeneratedAuthoringHttpResolveTargetExchange
+  | GeneratedAuthoringHttpListTypesExchange
+  | GeneratedAuthoringHttpStartExchange
+  | GeneratedAuthoringHttpPlanSaveExchange
+  | GeneratedAuthoringHttpSaveItemExchange
+  | GeneratedAuthoringHttpSaveNewTypeVersionExchange
+  | GeneratedAuthoringHttpSaveAsNewTypeExchange;
+
+export type GeneratedAuthoringHttpListTypesExchange = GeneratedAuthoringHttpOperationExchange & {
+  request?: GeneratedAuthoringHttpListTypesRequest;
+  response?: GeneratedAuthoringHttpListTypesResponse;
+  route?: 'authoring/list-types';
+  [key: string]:
+    | GeneratedJsonValue
+    | GeneratedAuthoringHttpListTypesRequest
+    | GeneratedAuthoringHttpListTypesResponse
+    | 'authoring/list-types';
+};
+
+export type GeneratedAuthoringHttpListTypesRequest = GeneratedHostRequest & {
+  arguments: { query: GeneratedReusableContentTypeListQuery };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey?: never;
+    operationId?: 'studio.operation/authoring.list-types';
+    [key: string]: GeneratedJsonValue | never | 'studio.operation/authoring.list-types';
+  };
+};
+
+export type GeneratedAuthoringHttpListTypesResponse =
+  GeneratedAuthoringHttpListTypesSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpListTypesResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedReusableContentTypeListPage;
+  [key: string]: GeneratedJsonValue | GeneratedReusableContentTypeListPage;
+};
+
+export type GeneratedAuthoringHttpListTypesSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpListTypesResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpListTypesResult;
+  };
+
+export type GeneratedAuthoringHttpOperationExchange = {
+  kind: 'authoring-http-exchange';
+  request: GeneratedJsonValue;
+  response: GeneratedJsonValue;
+  route: string;
+};
+
+export type GeneratedAuthoringHttpOperationResult = GeneratedHostResult & {
+  revision?: never;
+  value: GeneratedJsonValue;
+};
+
+export type GeneratedAuthoringHttpPlanSaveExchange = GeneratedAuthoringHttpOperationExchange & {
+  request?: GeneratedAuthoringHttpPlanSaveRequest;
+  response?: GeneratedAuthoringHttpPlanSaveResponse;
+  route?: 'authoring/plan-save';
+  [key: string]:
+    | GeneratedJsonValue
+    | GeneratedAuthoringHttpPlanSaveRequest
+    | GeneratedAuthoringHttpPlanSaveResponse
+    | 'authoring/plan-save';
+};
+
+export type GeneratedAuthoringHttpPlanSaveRequest = GeneratedHostRequest & {
+  arguments: { intent: GeneratedAuthoringSaveSaveIntent };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey?: never;
+    operationId?: 'studio.operation/authoring.plan-save';
+    [key: string]: GeneratedJsonValue | never | 'studio.operation/authoring.plan-save';
+  };
+};
+
+export type GeneratedAuthoringHttpPlanSaveResponse =
+  GeneratedAuthoringHttpPlanSaveSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpPlanSaveResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedAuthoringSaveSavePlan;
+  [key: string]: GeneratedJsonValue | GeneratedAuthoringSaveSavePlan;
+};
+
+export type GeneratedAuthoringHttpPlanSaveSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpPlanSaveResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpPlanSaveResult;
+  };
+
+export type GeneratedAuthoringHttpResolveTargetExchange =
+  GeneratedAuthoringHttpOperationExchange & {
+    request?: GeneratedAuthoringHttpResolveTargetRequest;
+    response?: GeneratedAuthoringHttpResolveTargetResponse;
+    route?: 'authoring/resolve-target';
+    [key: string]:
+      | GeneratedJsonValue
+      | GeneratedAuthoringHttpResolveTargetRequest
+      | GeneratedAuthoringHttpResolveTargetResponse
+      | 'authoring/resolve-target';
+  };
+
+export type GeneratedAuthoringHttpResolveTargetRequest = GeneratedHostRequest & {
+  arguments: { request: GeneratedAuthoringTargetResolveRequest };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey?: never;
+    operationId?: 'studio.operation/authoring.resolve-target';
+    [key: string]: GeneratedJsonValue | never | 'studio.operation/authoring.resolve-target';
+  };
+};
+
+export type GeneratedAuthoringHttpResolveTargetResponse =
+  GeneratedAuthoringHttpResolveTargetSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpResolveTargetResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedAuthoringTargetResolution;
+  [key: string]: GeneratedJsonValue | GeneratedAuthoringTargetResolution;
+};
+
+export type GeneratedAuthoringHttpResolveTargetSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpResolveTargetResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpResolveTargetResult;
+  };
+
+export type GeneratedAuthoringHttpSaveAsNewTypeExchange =
+  GeneratedAuthoringHttpOperationExchange & {
+    request?: GeneratedAuthoringHttpSaveAsNewTypeRequest;
+    response?: GeneratedAuthoringHttpSaveAsNewTypeResponse;
+    route?: 'authoring/save-as-new-type';
+    [key: string]:
+      | GeneratedJsonValue
+      | GeneratedAuthoringHttpSaveAsNewTypeRequest
+      | GeneratedAuthoringHttpSaveAsNewTypeResponse
+      | 'authoring/save-as-new-type';
+  };
+
+export type GeneratedAuthoringHttpSaveAsNewTypeRequest = GeneratedHostRequest & {
+  arguments: { request: GeneratedAuthoringSaveSaveAsNewTypeRequest };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey: GeneratedCommonStableId;
+    operationId?: 'studio.operation/authoring.save-as-new-type';
+    [key: string]:
+      | GeneratedJsonValue
+      | never
+      | GeneratedCommonStableId
+      | 'studio.operation/authoring.save-as-new-type';
+  };
+};
+
+export type GeneratedAuthoringHttpSaveAsNewTypeResponse =
+  GeneratedAuthoringHttpSaveAsNewTypeSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpSaveAsNewTypeResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedAuthoringSaveSaveResult & {
+    outcome?: 'save-as-new-type';
+    [key: string]: GeneratedJsonValue | 'save-as-new-type';
+  };
+  [key: string]:
+    | GeneratedJsonValue
+    | (GeneratedAuthoringSaveSaveResult & {
+        outcome?: 'save-as-new-type';
+        [key: string]: GeneratedJsonValue | 'save-as-new-type';
+      });
+};
+
+export type GeneratedAuthoringHttpSaveAsNewTypeSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpSaveAsNewTypeResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpSaveAsNewTypeResult;
+  };
+
+export type GeneratedAuthoringHttpSaveItemExchange = GeneratedAuthoringHttpOperationExchange & {
+  request?: GeneratedAuthoringHttpSaveItemRequest;
+  response?: GeneratedAuthoringHttpSaveItemResponse;
+  route?: 'authoring/save-item';
+  [key: string]:
+    | GeneratedJsonValue
+    | GeneratedAuthoringHttpSaveItemRequest
+    | GeneratedAuthoringHttpSaveItemResponse
+    | 'authoring/save-item';
+};
+
+export type GeneratedAuthoringHttpSaveItemRequest = GeneratedHostRequest & {
+  arguments: { request: GeneratedAuthoringSaveSaveItemRequest };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey: GeneratedCommonStableId;
+    operationId?: 'studio.operation/authoring.save-item';
+    [key: string]:
+      GeneratedJsonValue | never | GeneratedCommonStableId | 'studio.operation/authoring.save-item';
+  };
+};
+
+export type GeneratedAuthoringHttpSaveItemResponse =
+  GeneratedAuthoringHttpSaveItemSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpSaveItemResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedAuthoringSaveSaveResult & {
+    outcome?: 'save-item';
+    [key: string]: GeneratedJsonValue | 'save-item';
+  };
+  [key: string]:
+    | GeneratedJsonValue
+    | (GeneratedAuthoringSaveSaveResult & {
+        outcome?: 'save-item';
+        [key: string]: GeneratedJsonValue | 'save-item';
+      });
+};
+
+export type GeneratedAuthoringHttpSaveItemSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpSaveItemResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpSaveItemResult;
+  };
+
+export type GeneratedAuthoringHttpSaveNewTypeVersionExchange =
+  GeneratedAuthoringHttpOperationExchange & {
+    request?: GeneratedAuthoringHttpSaveNewTypeVersionRequest;
+    response?: GeneratedAuthoringHttpSaveNewTypeVersionResponse;
+    route?: 'authoring/save-new-type-version';
+    [key: string]:
+      | GeneratedJsonValue
+      | GeneratedAuthoringHttpSaveNewTypeVersionRequest
+      | GeneratedAuthoringHttpSaveNewTypeVersionResponse
+      | 'authoring/save-new-type-version';
+  };
+
+export type GeneratedAuthoringHttpSaveNewTypeVersionRequest = GeneratedHostRequest & {
+  arguments: { request: GeneratedAuthoringSaveSaveNewTypeVersionRequest };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey: GeneratedCommonStableId;
+    operationId?: 'studio.operation/authoring.save-new-type-version';
+    [key: string]:
+      | GeneratedJsonValue
+      | never
+      | GeneratedCommonStableId
+      | 'studio.operation/authoring.save-new-type-version';
+  };
+};
+
+export type GeneratedAuthoringHttpSaveNewTypeVersionResponse =
+  GeneratedAuthoringHttpSaveNewTypeVersionSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpSaveNewTypeVersionResult =
+  GeneratedAuthoringHttpOperationResult & {
+    value?: GeneratedAuthoringSaveSaveResult & {
+      outcome?: 'save-new-type-version';
+      [key: string]: GeneratedJsonValue | 'save-new-type-version';
+    };
+    [key: string]:
+      | GeneratedJsonValue
+      | (GeneratedAuthoringSaveSaveResult & {
+          outcome?: 'save-new-type-version';
+          [key: string]: GeneratedJsonValue | 'save-new-type-version';
+        });
+  };
+
+export type GeneratedAuthoringHttpSaveNewTypeVersionSuccessResponse =
+  GeneratedAuthoringHttpSuccessResponse & {
+    body?: GeneratedAuthoringHttpSaveNewTypeVersionResult;
+    [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpSaveNewTypeVersionResult;
+  };
+
+export type GeneratedAuthoringHttpStartExchange = GeneratedAuthoringHttpOperationExchange & {
+  request?: GeneratedAuthoringHttpStartRequest;
+  response?: GeneratedAuthoringHttpStartResponse;
+  route?: 'authoring/start';
+  [key: string]:
+    | GeneratedJsonValue
+    | GeneratedAuthoringHttpStartRequest
+    | GeneratedAuthoringHttpStartResponse
+    | 'authoring/start';
+};
+
+export type GeneratedAuthoringHttpStartRequest = GeneratedHostRequest & {
+  arguments: { request: GeneratedAuthoringSessionStartRequest };
+  context: {
+    expectedRevision?: never;
+    idempotencyKey: GeneratedCommonStableId;
+    operationId?: 'studio.operation/authoring.start';
+    [key: string]:
+      GeneratedJsonValue | never | GeneratedCommonStableId | 'studio.operation/authoring.start';
+  };
+};
+
+export type GeneratedAuthoringHttpStartResponse =
+  GeneratedAuthoringHttpStartSuccessResponse | GeneratedAuthoringHttpErrorResponse;
+
+export type GeneratedAuthoringHttpStartResult = GeneratedAuthoringHttpOperationResult & {
+  value?: GeneratedAuthoringSessionSnapshot;
+  [key: string]: GeneratedJsonValue | GeneratedAuthoringSessionSnapshot;
+};
+
+export type GeneratedAuthoringHttpStartSuccessResponse = GeneratedAuthoringHttpSuccessResponse & {
+  body?: GeneratedAuthoringHttpStartResult;
+  [key: string]: GeneratedJsonValue | GeneratedAuthoringHttpStartResult;
+};
+
+export type GeneratedAuthoringHttpSuccessResponse = { body: GeneratedHostResult; status: 200 };
 
 /** Studio authoring message catalog */
 export type GeneratedAuthoringMessageCatalog = {
@@ -1775,6 +2194,7 @@ export type GeneratedPluginManifest = {
     id: GeneratedCommonQualifiedName;
     integrity: GeneratedCommonIntegrity;
     kind:
+      | 'authoring-target'
       | 'block'
       | 'command'
       | 'design-vocabulary'
@@ -2387,6 +2807,51 @@ export type GeneratedSchemaProfileSubschema = boolean | GeneratedSchemaProfileSc
 export type GeneratedSchemaProfileTypeName =
   'array' | 'boolean' | 'integer' | 'null' | 'number' | 'object' | 'string';
 
+/** Studio prebuilt browser asset manifest */
+export type GeneratedStudioBrowserAssets = {
+  assets: [GeneratedStudioBrowserAssetsAsset, ...GeneratedStudioBrowserAssetsAsset[]];
+  kind: 'studio-browser-assets';
+  module: {
+    entryPoint: GeneratedStudioBrowserAssetsPath;
+    exports: [
+      'mountStudio',
+      'mountStudioFromConfigElement',
+      'autoMountStudio',
+      'parseStudioDeploymentConfiguration',
+      'resolveStudioDeploymentRuntime',
+      'createBrowserHttpHostAdapter',
+      'createCoreProductionBlockDefinitions',
+      'createCoreProductionPatterns',
+      'createStudioStandaloneRuntime',
+      'defineKumweStudio',
+      'defineKumweStudioContextual',
+      'defineKumweStudioStandalone',
+      'defineStudioBrowserElements',
+      'mountStudioHosted',
+      'mountStudioStandalone',
+      'openContextualStudioSession',
+    ];
+    format: 'esm';
+  };
+  productionRuntime: {
+    forbidden: [string, ...string[]];
+    requires: string[];
+    servingModel: 'static-files';
+  };
+  release: { corpusManifestDigest: string; version: string };
+  schemaVersion: 1;
+};
+
+export type GeneratedStudioBrowserAssetsAsset = {
+  bytes: number;
+  integrity: string;
+  mediaType: 'text/javascript' | 'text/plain' | 'text/markdown' | 'application/json';
+  path: GeneratedStudioBrowserAssetsPath;
+  role: 'browser-module' | 'license' | 'notice' | 'release-record' | 'documentation' | 'schema';
+};
+
+export type GeneratedStudioBrowserAssetsPath = string;
+
 /** Studio canonical chart */
 export type GeneratedStudioChart = {
   datasets: [{ label: string; values: number[] }, ...{ label: string; values: number[] }[]];
@@ -2469,6 +2934,117 @@ export type GeneratedStudioConfig = {
   sessionId: GeneratedCommonStableId;
   sessionState: 'editable' | 'read-only';
 };
+
+/** Studio browser deployment configuration */
+export type GeneratedStudioDeployment = GeneratedStudioDeploymentConfiguration;
+
+export type GeneratedStudioDeploymentAuthentication =
+  | GeneratedStudioDeploymentSameOriginSessionAuthentication
+  | GeneratedStudioDeploymentBearerTokenAuthentication
+  | GeneratedStudioDeploymentHeaderTokenAuthentication;
+
+export type GeneratedStudioDeploymentBearerTokenAuthentication = {
+  credentials: 'omit';
+  expiresAt: GeneratedCommonRfc3339Instant;
+  issuedAt: GeneratedCommonRfc3339Instant;
+  kind: 'bearer-token';
+  token: string;
+};
+
+export type GeneratedStudioDeploymentConfiguration = {
+  contractVersion?: GeneratedCommonContractVersion;
+  contributions?: GeneratedStudioDeploymentContributionBundle;
+  instanceId?: GeneratedCommonStableId;
+  kind?: 'studio-deployment';
+  launch?: GeneratedStudioDeploymentLaunch;
+  mount?: GeneratedStudioDeploymentMountSelector;
+  session?: GeneratedStudioConfig;
+  transport?: GeneratedStudioDeploymentTransport;
+};
+
+export type GeneratedStudioDeploymentContributionBundle = {
+  generation: GeneratedCommonRevision;
+  payloads: GeneratedStudioDeploymentContributionPayload[];
+};
+
+export type GeneratedStudioDeploymentContributionPayload =
+  | GeneratedBlockDefinition
+  | GeneratedPattern
+  | GeneratedFieldAdapter
+  | GeneratedInspector
+  | GeneratedDesignVocabulary
+  | GeneratedMigration;
+
+export type GeneratedStudioDeploymentCsrf = {
+  headerName: GeneratedStudioDeploymentCustomAuthenticationHeaderName;
+  token: string;
+};
+
+/** A custom authentication field that cannot impersonate bearer authentication or a transport-, browser-, proxy-, or forwarding-owned field. */
+export type GeneratedStudioDeploymentCustomAuthenticationHeaderName =
+  GeneratedStudioDeploymentHeaderName & string;
+
+/** A bounded HTTP(S) URL reference resolved against the containing document URL. Runtime validation rejects non-HTTP(S), credential-bearing, and fragment-bearing URLs. */
+export type GeneratedStudioDeploymentEndpointUrl = string;
+
+export type GeneratedStudioDeploymentHeaderName = string;
+
+export type GeneratedStudioDeploymentHeaderTokenAuthentication = {
+  credentials: 'omit';
+  expiresAt: GeneratedCommonRfc3339Instant;
+  headerName: GeneratedStudioDeploymentCustomAuthenticationHeaderName;
+  issuedAt: GeneratedCommonRfc3339Instant;
+  kind: 'header-token';
+  token: string;
+};
+
+export type GeneratedStudioDeploymentHttpTransport = {
+  authentication: GeneratedStudioDeploymentAuthentication;
+  kind: 'http';
+  maximumResponseBytes?: number;
+  requestTimeoutMilliseconds?: number;
+  routing: GeneratedStudioDeploymentRouting;
+};
+
+export type GeneratedStudioDeploymentLaunch = {
+  initialPresentation: GeneratedAuthoringTargetPresentationState;
+  intent: GeneratedAuthoringTargetEligibility;
+  resourceContext: GeneratedCommonResourceContext;
+  start: GeneratedAuthoringSessionStartSource;
+  targetId: GeneratedCommonQualifiedName;
+};
+
+export type GeneratedStudioDeploymentMountSelector = string;
+
+export type GeneratedStudioDeploymentOperationEndpoints = {
+  'authoring/resolve-target': GeneratedStudioDeploymentEndpointUrl;
+  'authoring/start': GeneratedStudioDeploymentEndpointUrl;
+  [key: string]: GeneratedStudioDeploymentEndpointUrl;
+};
+
+export type GeneratedStudioDeploymentOperationMapRouting = {
+  endpoints: GeneratedStudioDeploymentOperationEndpoints;
+  kind: 'operation-map';
+};
+
+export type GeneratedStudioDeploymentRouting =
+  GeneratedStudioDeploymentSingleEndpointRouting | GeneratedStudioDeploymentOperationMapRouting;
+
+export type GeneratedStudioDeploymentSameOriginSessionAuthentication = {
+  credentials: 'same-origin';
+  csrf: GeneratedStudioDeploymentCsrf;
+  kind: 'same-origin-session';
+};
+
+export type GeneratedStudioDeploymentSingleEndpointRouting = {
+  endpoint: GeneratedStudioDeploymentEndpointUrl;
+  kind: 'single-endpoint';
+};
+
+export type GeneratedStudioDeploymentStandaloneTransport = { kind: 'standalone' };
+
+export type GeneratedStudioDeploymentTransport =
+  GeneratedStudioDeploymentStandaloneTransport | GeneratedStudioDeploymentHttpTransport;
 
 /** Studio canonical drawing */
 export type GeneratedStudioDrawing = {
@@ -2654,6 +3230,8 @@ export type GeneratedUnresolvedContribution = {
 };
 
 export interface GeneratedProtocolModelMap {
+  readonly 'authoring-http-vector.schema.json': GeneratedAuthoringHttpVector;
+  readonly 'authoring-http.schema.json': GeneratedAuthoringHttp;
   readonly 'authoring-message-catalog.schema.json': GeneratedAuthoringMessageCatalog;
   readonly 'authoring-save.schema.json': GeneratedAuthoringSave;
   readonly 'authoring-session.schema.json': GeneratedAuthoringSession;
@@ -2696,8 +3274,10 @@ export interface GeneratedProtocolModelMap {
   readonly 'rich-text.schema.json': GeneratedRichText;
   readonly 'schema-profile-vector.schema.json': GeneratedSchemaProfileVector;
   readonly 'schema-profile.schema.json': GeneratedSchemaProfile;
+  readonly 'studio-browser-assets.schema.json': GeneratedStudioBrowserAssets;
   readonly 'studio-chart.schema.json': GeneratedStudioChart;
   readonly 'studio-config.schema.json': GeneratedStudioConfig;
+  readonly 'studio-deployment.schema.json': GeneratedStudioDeployment;
   readonly 'studio-drawing.schema.json': GeneratedStudioDrawing;
   readonly 'studio-money.schema.json': GeneratedStudioMoney;
   readonly 'studio-presentation.schema.json': GeneratedStudioPresentation;
@@ -2712,6 +3292,8 @@ export type GeneratedProtocolModel = GeneratedProtocolModelMap[GeneratedProtocol
 
 export const GENERATED_PROTOCOL_SCHEMA_FILES: readonly GeneratedProtocolSchemaFile[] =
   Object.freeze([
+    'authoring-http-vector.schema.json',
+    'authoring-http.schema.json',
     'authoring-message-catalog.schema.json',
     'authoring-save.schema.json',
     'authoring-session.schema.json',
@@ -2754,8 +3336,10 @@ export const GENERATED_PROTOCOL_SCHEMA_FILES: readonly GeneratedProtocolSchemaFi
     'rich-text.schema.json',
     'schema-profile-vector.schema.json',
     'schema-profile.schema.json',
+    'studio-browser-assets.schema.json',
     'studio-chart.schema.json',
     'studio-config.schema.json',
+    'studio-deployment.schema.json',
     'studio-drawing.schema.json',
     'studio-money.schema.json',
     'studio-presentation.schema.json',

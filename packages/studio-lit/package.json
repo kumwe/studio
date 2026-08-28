@@ -23,10 +23,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js"
+    },
+    "./browser-bundle": {
+      "types": "./dist/browser-entry.d.ts",
+      "import": "./dist/browser/studio-browser.js"
+    },
     "./catalogs/en.json": "./dist/catalogs/en.json"
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b && node ../../scripts/build-studio-browser.mjs"
   },
   "dependencies": {
     "@kumwe/studio-core": "0.1.0-beta.2",

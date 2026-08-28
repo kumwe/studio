@@ -1,0 +1,207 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "authoring-http-vector",
+  "id": "vectors/authoring-http-transport-matrix",
+  "operations": [
+    {
+      "route": "authoring/resolve-target",
+      "capability": "studio.operation/authoring.resolve-target",
+      "argumentMember": "request",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/resolveTargetRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/resolveTargetResult",
+      "mutating": false,
+      "idempotencyKey": "forbidden",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": true,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/list-types",
+      "capability": "studio.operation/authoring.list-types",
+      "argumentMember": "query",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/listTypesRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/listTypesResult",
+      "mutating": false,
+      "idempotencyKey": "forbidden",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": true,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/start",
+      "capability": "studio.operation/authoring.start",
+      "argumentMember": "request",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/startRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/startResult",
+      "mutating": true,
+      "idempotencyKey": "required",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": true,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/plan-save",
+      "capability": "studio.operation/authoring.plan-save",
+      "argumentMember": "intent",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/planSaveRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/planSaveResult",
+      "mutating": false,
+      "idempotencyKey": "forbidden",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": false,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/save-item",
+      "capability": "studio.operation/authoring.save-item",
+      "argumentMember": "request",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveItemRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveItemResult",
+      "mutating": true,
+      "idempotencyKey": "required",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": false,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/save-new-type-version",
+      "capability": "studio.operation/authoring.save-new-type-version",
+      "argumentMember": "request",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveNewTypeVersionRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveNewTypeVersionResult",
+      "mutating": true,
+      "idempotencyKey": "required",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": false,
+      "successStatus": 200
+    },
+    {
+      "route": "authoring/save-as-new-type",
+      "capability": "studio.operation/authoring.save-as-new-type",
+      "argumentMember": "request",
+      "requestSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveAsNewTypeRequest",
+      "responseSchema": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json#/$defs/saveAsNewTypeResult",
+      "mutating": true,
+      "idempotencyKey": "required",
+      "expectedRevision": "forbidden",
+      "resourceContextMatch": false,
+      "successStatus": 200
+    }
+  ],
+  "securityCases": [
+    {
+      "id": "accepted",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "valid",
+      "expect": { "outcome": "result", "status": 200, "dispatch": true }
+    },
+    {
+      "id": "unauthenticated",
+      "authenticated": false,
+      "requestIntegrity": true,
+      "request": "valid",
+      "expect": {
+        "outcome": "error",
+        "status": 401,
+        "category": "unauthenticated",
+        "dispatch": false
+      }
+    },
+    {
+      "id": "csrf-refused",
+      "authenticated": true,
+      "requestIntegrity": false,
+      "request": "valid",
+      "expect": { "outcome": "error", "status": 403, "category": "forbidden", "dispatch": false }
+    },
+    {
+      "id": "malformed-json",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "malformed-json",
+      "expect": {
+        "outcome": "error",
+        "status": 400,
+        "category": "invalid-request",
+        "dispatch": false
+      }
+    },
+    {
+      "id": "context-mismatch",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "context-mismatch",
+      "expect": {
+        "outcome": "error",
+        "status": 400,
+        "category": "invalid-request",
+        "dispatch": false
+      }
+    },
+    {
+      "id": "missing-idempotency",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "missing-idempotency-key",
+      "expect": {
+        "outcome": "error",
+        "status": 400,
+        "category": "invalid-request",
+        "dispatch": false
+      }
+    },
+    {
+      "id": "wrong-operation",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "wrong-operation-id",
+      "expect": {
+        "outcome": "error",
+        "status": 400,
+        "category": "invalid-request",
+        "dispatch": false
+      }
+    },
+    {
+      "id": "host-conflict",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "host-conflict",
+      "expect": { "outcome": "error", "status": 409, "category": "conflict", "dispatch": true }
+    },
+    {
+      "id": "host-rate-limited",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "host-rate-limited",
+      "expect": {
+        "outcome": "error",
+        "status": 429,
+        "category": "rate-limited",
+        "dispatch": true
+      }
+    },
+    {
+      "id": "host-internal",
+      "authenticated": true,
+      "requestIntegrity": true,
+      "request": "host-internal-failure",
+      "expect": { "outcome": "error", "status": 500, "category": "internal", "dispatch": true }
+    }
+  ],
+  "errorMappings": [
+    { "category": "invalid-request", "status": 400 },
+    { "category": "unauthenticated", "status": 401 },
+    { "category": "forbidden", "status": 403 },
+    { "category": "not-found", "status": 404 },
+    { "category": "conflict", "status": 409 },
+    { "category": "validation-failed", "status": 422 },
+    { "category": "incompatible", "status": 400 },
+    { "category": "limit-exceeded", "status": 413 },
+    { "category": "rate-limited", "status": 429 },
+    { "category": "unavailable", "status": 503 },
+    { "category": "cancelled", "status": 400 },
+    { "category": "internal", "status": 500 }
+  ]
+}

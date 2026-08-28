@@ -3,9 +3,10 @@
 This artifact contract is subordinate to the [Studio product contract](../product-contract.md), especially
 `STUDIO-PROD-002` through `STUDIO-PROD-006`, `STUDIO-PROD-009`, and `STUDIO-PROD-014`.
 
-> **Current implementation:** Studio can compose and persist a supplied Blueprint through its bounded
-> Blueprint profile. The coordinated reusable-content-type and Entry authoring behavior described below is a
-> required target and is not implemented by the current headless session or experimental shell.
+> **Implementation relationship:** the bounded `openStudioSession` Blueprint profile remains supported. The
+> additive `openContextualStudioSession` coordinator and contextual shell now coordinate exact Model,
+> Blueprint, and Entry drafts and all three save outcomes without changing this Blueprint artifact contract.
+> That Studio-side implementation is not evidence of a qualified host integration or completed product journey.
 
 ## Purpose
 
