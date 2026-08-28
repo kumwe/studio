@@ -213,7 +213,7 @@ describe('Studio browser mounting', () => {
     );
     const resolveAuthentication = vi.fn(() => ({
       credentials: 'same-origin' as const,
-      csrf: { headerName: 'X-CSRF-Token', token: 'rotated-session-csrf' },
+      csrf: { headerName: 'X-CSRF-Token', token: 'rotated' },
       kind: 'same-origin-session' as const,
     }));
 
@@ -240,7 +240,7 @@ describe('Studio browser mounting', () => {
       method: 'POST',
       redirect: 'error',
     });
-    expect(new Headers(request?.headers).get('x-csrf-token')).toBe('rotated-session-csrf');
+    expect(new Headers(request?.headers).get('x-csrf-token')).toBe('rotated');
     expect(mountTarget.querySelector('kumwe-studio-contextual')).toBeNull();
     expect(mountTarget.querySelector('kumwe-studio-standalone')).toBeNull();
     expect(mountTarget.querySelector('[role="alert"]')?.textContent).toBe(

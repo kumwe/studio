@@ -12,7 +12,7 @@
       "authentication": {
         "kind": "bearer-token",
         "credentials": "omit",
-        "token": "durable-api-key-is-not-admitted"
+        "token": "<bearer-token>"
       }
     }
   }

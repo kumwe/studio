@@ -72,20 +72,23 @@ interface HostileNetworkObservation {
 test('compiled Studio completes isolated authoritative round trips through real PHP', async ({
   context,
   page,
+  request: isolatedRequest,
 }) => {
   const browserErrors: string[] = [];
   const hostileNetworkResponses = new Map<string, HostileNetworkObservation>();
   const hostileResponseReads: Promise<void>[] = [];
   const postPaths: string[] = [];
+  const postUrls: string[] = [];
   let alphaResolveRequestBody: string | undefined;
   page.on('pageerror', (error) => browserErrors.push(error.message));
   page.on('request', (request) => {
-    if (request.method() === 'POST' && request.url().startsWith(phpOrigin)) {
-      const path = new URL(request.url()).pathname;
-      postPaths.push(path);
-      if (path === '/studio/alpha/ports/authoring/resolve-target') {
-        alphaResolveRequestBody ??= request.postData() ?? undefined;
-      }
+    if (request.method() !== 'POST') return;
+    postUrls.push(request.url());
+    if (!request.url().startsWith(phpOrigin)) return;
+    const path = new URL(request.url()).pathname;
+    postPaths.push(path);
+    if (path === '/studio/alpha/ports/authoring/resolve-target') {
+      alphaResolveRequestBody ??= request.postData() ?? undefined;
     }
   });
   page.on('response', (networkResponse) => {
@@ -281,6 +284,24 @@ test('compiled Studio completes isolated authoritative round trips through real 
     Origin: phpOrigin,
     'Sec-Fetch-Site': 'same-origin',
   };
+  const unauthenticatedResponse = await isolatedRequest.post(
+    `${phpOrigin}/studio/alpha/ports/authoring/resolve-target`,
+    {
+      data: alphaResolveRequestBody,
+      headers: {
+        ...acceptedHeaders,
+        [alphaConfiguration.csrfHeaderName]: alphaConfiguration.csrfToken,
+      },
+    },
+  );
+  expect(unauthenticatedResponse.status()).toBe(401);
+  expect(unauthenticatedResponse.headers()['content-type']).toContain('application/json');
+  expect(await unauthenticatedResponse.json()).toMatchObject({
+    category: 'unauthenticated',
+    kind: 'host-error',
+    message: { key: 'studio.php/http-unauthenticated' },
+    retryable: false,
+  });
   const integrityAttempts = [
     { label: 'missing CSRF', headers: acceptedHeaders },
     {
@@ -449,9 +470,10 @@ test('compiled Studio completes isolated authoritative round trips through real 
     ),
   ).toBe(true);
 
-  const uniquePostPaths = [...new Set(postPaths)];
+  expect(postUrls.every((url) => new URL(url).origin === phpOrigin)).toBe(true);
+  const uniquePostPaths = [...new Set(postPaths)].sort();
   expect(uniquePostPaths).toEqual(
-    expect.arrayContaining([
+    [
       '/studio/alpha/ports/authoring/resolve-target',
       '/studio/alpha/ports/authoring/start',
       '/studio/alpha/ports/authoring/plan-save',
@@ -464,9 +486,8 @@ test('compiled Studio completes isolated authoritative round trips through real 
       '/studio/duplicate-json/ports/authoring/resolve-target',
       '/studio/conflict/ports/authoring/resolve-target',
       '/studio/oversized/ports/authoring/resolve-target',
-    ]),
+    ].sort(),
   );
-  expect(uniquePostPaths.every((path) => path.startsWith('/studio/'))).toBe(true);
   expect(browserErrors).toEqual([]);
 });
 

@@ -120,7 +120,7 @@
           "file": "studio-config.example.json"
         },
         {
-          "digest": "sha256-O7sP5vJlqRSHvTxH1v485A1y3/K2k6/IhTMPUTNMjtQ=",
+          "digest": "sha256-mAtet+rMXebscDcPRtzHmjDL+46CWljMHWEpd36CqhM=",
           "file": "studio-deployment.hosted.example.json"
         },
         {
@@ -1156,7 +1156,7 @@
           "file": "studio-chart.script-config.json"
         },
         {
-          "digest": "sha256-jwb4PmLpOmXE3s2T3TYQ7EEfwNsjR/HpevXAOgjhh3I=",
+          "digest": "sha256-9SeB6HdFd4q6wbWlhMHwRyGDGJOuNffBg+3ZYbT+FzQ=",
           "file": "studio-deployment.long-lived-token.json"
         },
         {

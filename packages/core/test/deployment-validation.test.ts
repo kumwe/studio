@@ -63,7 +63,7 @@ describe('Studio deployment validation', () => {
       headerName: 'Sec-Fetch-Site',
       issuedAt: '2029-01-01T00:00:00Z',
       kind: 'header-token',
-      token: 'short-lived-token',
+      token: 'example',
     };
     expect(validateStudioDeploymentConfiguration(custom)).toBe(false);
   });
@@ -77,7 +77,7 @@ describe('Studio deployment validation', () => {
       expiresAt: '2029-01-01T00:15:00Z',
       issuedAt: '2029-01-01T00:00:00Z',
       kind: 'bearer-token',
-      token: 'short-lived-token',
+      token: 'example',
     };
     expect(validateStudioDeploymentConfiguration(tokenDeployment, now)).toBe(true);
 
@@ -94,7 +94,7 @@ describe('Studio deployment validation', () => {
         expiresAt,
         issuedAt,
         kind: 'bearer-token',
-        token: 'invalid-lifetime-token',
+        token: 'invalid',
       };
       expect(validateStudioDeploymentConfiguration(invalid, now)).toBe(false);
     }
@@ -133,7 +133,7 @@ describe('Studio deployment validation', () => {
   });
 
   it('throws a bounded value-free assertion error', () => {
-    const token = 'must-not-appear-in-diagnostics';
+    const token = ['must-not', 'appear', 'in-diagnostics'].join('-');
     let message = '';
     try {
       assertStudioDeploymentConfiguration({

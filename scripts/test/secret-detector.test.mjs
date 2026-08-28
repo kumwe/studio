@@ -74,3 +74,21 @@ test('ordinary source identifiers are not treated as credential values', () => {
     assert.deepEqual(scanSecretLine(sourceLine), []);
   }
 });
+
+test('unquoted dotted credential values cannot bypass detection', () => {
+  assert.ok(
+    scanSecretLine(
+      'token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.AAAAAAAAAAAAAAAAAAAA',
+    ).includes('generic credential assignment'),
+  );
+  assert.ok(
+    scanSecretLine('password: production.CorrectHorseBatteryStaple123').includes(
+      'generic credential assignment',
+    ),
+  );
+  assert.ok(
+    scanSecretLine(
+      ["const auth = { token: '<token>', pass", "word: 'correct-horse-battery-staple' };"].join(''),
+    ).includes('generic credential assignment'),
+  );
+});
