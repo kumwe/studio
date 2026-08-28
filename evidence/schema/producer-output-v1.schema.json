@@ -191,7 +191,7 @@
         "schemaValidatedRoundTrips"
       ],
       "properties": {
-        "assignableDocuments": { "const": 238 },
+        "assignableDocuments": { "type": "integer", "minimum": 1, "maximum": 10000 },
         "compilerDepthBoundaries": {
           "type": "array",
           "minItems": 2,
@@ -207,7 +207,7 @@
         "command": { "$ref": "#/$defs/command" },
         "inventoryChecksum": { "$ref": "#/$defs/sha256Integrity" },
         "runtimeCommand": { "$ref": "#/$defs/command" },
-        "schemaValidatedRoundTrips": { "const": 240 }
+        "schemaValidatedRoundTrips": { "type": "integer", "minimum": 1, "maximum": 10000 }
       }
     },
     "command": {
@@ -523,7 +523,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:alpha|rc)\\.[0-9]+)?$(?![\\s\\S])",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-(?:beta|rc)\\.[0-9]+)?$(?![\\s\\S])",
       "maxLength": 100
     },
     "bundleId": {

@@ -30,8 +30,10 @@ export type StudioCommandErrorCode =
   | 'mode-forbidden'
   | 'node-not-found'
   | 'parent-not-found'
+  | 'permission-forbidden'
   | 'property-not-found'
   | 'read-only-session'
+  | 'resource-limit'
   | 'stale-generation'
   | 'stale-state'
   | 'unsupported-command';

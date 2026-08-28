@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Studio is the planned central contextual editor for host content. Any eligible core surface or host extension
+Studio is the central contextual editor product for host content. Any eligible core surface or host extension
 must be able to declare and launch the same Studio workspace for that exact context, rather than sending the
 author through a separate schema editor, layout builder, and value form. The target workspace coordinates a
 schema-aware canvas, model designer, Blueprint designer, in-context Entry editor, media experience, preview,
@@ -14,13 +14,18 @@ Studio does not replace the host application's domain, security, workflow, persi
 services. The host resolves the launch target, authenticates and authorizes the actor, supplies exact artifact
 and value context, and accepts or refuses every durable effect (`STUDIO-PROD-010`).
 
-### Current shipped shell boundary
+### Current Studio-side implementation boundary
 
-The currently shipped shell surface is an integration candidate, not the completed contextual product. Its
-composed host-session path edits one existing Blueprint and can project an exact host content model read-only for
-field binding. It does not yet compose Model and Entry persistence, create a blank coordinated definition,
-provide item/type save choices, or preserve a contextual session across inline and fullscreen host surfaces.
-Those behaviors are required target state, not claims about the implementation (`STUDIO-PROD-014`).
+The repository implements an additive `openContextualStudioSession` coordinator, a contextual browser shell,
+blank/from-type/existing starts, separate Model/Blueprint/Entry draft state, four presentation states, and the
+three explicit save intents. The configured browser runtime binds those components to exact host operations;
+standalone mode instead opens a blank in-memory project with built-in blocks and patterns. The older
+`openStudioSession` API remains a deliberately bounded Blueprint-only compatibility profile.
+
+These Studio-side components do not prove a completed host product. Kumwe App integration, complete Model and
+Entry authoring breadth, real-host persistence and rendering, the full `authoring-web` assertion set, manual
+accessibility work, and the single acceptance journey remain subject to the authoritative status and evidence
+gates (`STUDIO-PROD-014` and `STUDIO-PROD-015`).
 
 ## Participants
 
@@ -51,8 +56,9 @@ Studio crosses five explicit trust boundaries:
 
 ### Contextual coordinated authoring target
 
-This is a required product flow; the current shipped shell does not implement it end to end
-(`STUDIO-PROD-001`–`STUDIO-PROD-008`, `STUDIO-PROD-012`).
+The Studio-side coordinator and shell implement this flow's bounded browser/runtime mechanics. The sequence is
+still the required end-to-end host acceptance flow, not a claim that a real host has executed and qualified it
+(`STUDIO-PROD-001`–`STUDIO-PROD-008`, `STUDIO-PROD-012`, and `STUDIO-PROD-015`).
 
 1. A resolved core or extension-owned host target invokes Studio with the authenticated actor and exact item,
    reusable-type, revision, locale, workflow, and surface context that the host authorizes.

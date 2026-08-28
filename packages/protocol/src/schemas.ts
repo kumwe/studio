@@ -1,3 +1,5 @@
+import authoringHttpSchemaDocument from '../schemas/authoring-http.schema.json' with { type: 'json' };
+import authoringHttpVectorSchemaDocument from '../schemas/authoring-http-vector.schema.json' with { type: 'json' };
 import authoringMessageCatalogSchemaDocument from '../schemas/authoring-message-catalog.schema.json' with { type: 'json' };
 import authoringSaveSchemaDocument from '../schemas/authoring-save.schema.json' with { type: 'json' };
 import authoringSessionSchemaDocument from '../schemas/authoring-session.schema.json' with { type: 'json' };
@@ -41,6 +43,8 @@ import reusableContentTypeSchemaDocument from '../schemas/reusable-content-type.
 import schemaProfileSchemaDocument from '../schemas/schema-profile.schema.json' with { type: 'json' };
 import schemaProfileVectorSchemaDocument from '../schemas/schema-profile-vector.schema.json' with { type: 'json' };
 import studioConfigurationSchemaDocument from '../schemas/studio-config.schema.json' with { type: 'json' };
+import studioBrowserAssetsSchemaDocument from '../schemas/studio-browser-assets.schema.json' with { type: 'json' };
+import studioDeploymentSchemaDocument from '../schemas/studio-deployment.schema.json' with { type: 'json' };
 import studioChartSchemaDocument from '../schemas/studio-chart.schema.json' with { type: 'json' };
 import studioDrawingSchemaDocument from '../schemas/studio-drawing.schema.json' with { type: 'json' };
 import studioMoneySchemaDocument from '../schemas/studio-money.schema.json' with { type: 'json' };
@@ -51,6 +55,8 @@ import themeSchemaDocument from '../schemas/theme.schema.json' with { type: 'jso
 import unresolvedContributionSchemaDocument from '../schemas/unresolved-contribution.schema.json' with { type: 'json' };
 import type { JsonSchema } from './types.js';
 
+export const authoringHttpSchema: JsonSchema = authoringHttpSchemaDocument;
+export const authoringHttpVectorSchema: JsonSchema = authoringHttpVectorSchemaDocument;
 export const authoringMessageCatalogSchema: JsonSchema = authoringMessageCatalogSchemaDocument;
 export const authoringSaveSchema: JsonSchema = authoringSaveSchemaDocument;
 export const authoringSessionSchema: JsonSchema = authoringSessionSchemaDocument;
@@ -94,6 +100,8 @@ export const reusableContentTypeSchema: JsonSchema = reusableContentTypeSchemaDo
 export const schemaProfileSchema: JsonSchema = schemaProfileSchemaDocument;
 export const schemaProfileVectorSchema: JsonSchema = schemaProfileVectorSchemaDocument;
 export const studioConfigurationSchema: JsonSchema = studioConfigurationSchemaDocument;
+export const studioBrowserAssetsSchema: JsonSchema = studioBrowserAssetsSchemaDocument;
+export const studioDeploymentSchema: JsonSchema = studioDeploymentSchemaDocument;
 export const studioChartSchema: JsonSchema = studioChartSchemaDocument;
 export const studioDrawingSchema: JsonSchema = studioDrawingSchemaDocument;
 export const studioMoneySchema: JsonSchema = studioMoneySchemaDocument;
@@ -105,6 +113,8 @@ export const unresolvedContributionSchema: JsonSchema = unresolvedContributionSc
 
 export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   commonSchema,
+  authoringHttpSchema,
+  authoringHttpVectorSchema,
   authoringMessageCatalogSchema,
   authoringSaveSchema,
   authoringSessionSchema,
@@ -146,7 +156,9 @@ export const protocolSchemas: readonly JsonSchema[] = Object.freeze([
   reusableContentTypeSchema,
   schemaProfileSchema,
   schemaProfileVectorSchema,
+  studioBrowserAssetsSchema,
   studioConfigurationSchema,
+  studioDeploymentSchema,
   studioChartSchema,
   studioDrawingSchema,
   studioMoneySchema,

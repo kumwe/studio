@@ -1,7 +1,7 @@
-# ADR 0021: Kind-scoped canonical composition registries
+# ADR 0021: Kind-scoped canonical contribution generations
 
 - Status: proposed
-- Scope: activation and resolution of canonical composition contribution payloads
+- Scope: activation and resolution of contextual targets and canonical composition contribution payloads
 
 ## Context
 
@@ -26,6 +26,14 @@ cannot claim the same kind and ID. Successful activation publishes one immutable
 containing all six families; resolution returns defensive copies. Disable and trust revocation remove
 all six from successor generations while retaining lifecycle inventory and unresolved diagnostics.
 
+The canonical `AuthoringTargetDeclaration` is admitted to that same lifecycle as the distinct
+`authoring-target` manifest kind. It is not a seventh composition family: it is bounded discovery
+metadata that selects which of the six families a contextual target admits. Host-core and extension
+targets use the same registration and deterministic resolution path. Resolution matches the target's
+surface, resource type, intent, presentation, optional mode and required capability versions, then
+selects the newest compatible active payload for each declared dependency. An unavailable required
+dependency makes the target unavailable; optional dependencies degrade without widening the result.
+
 Activation of a declarative payload does not execute extension code. Inspector and field-adapter code
 still requires an executable manifest, a declared capability, and host-owned realm and policy
 selection. Migration descriptors register as inert data; only the separately trusted migration
@@ -34,12 +42,14 @@ runner can execute an implementation.
 ## Consequences
 
 Hosts can translate their owner-aware extension registry into a single Studio generation without a
-parallel block-only authority. Malformed or partially loaded canonical payload sets fail as one
-transaction. Unresolved reporting is kind-safe, so an unrelated declaration can no longer mask a
-missing contribution.
+parallel block-only or target-only authority. Malformed or partially loaded canonical payload sets
+fail as one transaction. Unresolved reporting is kind-safe, so an unrelated declaration can no longer
+mask a missing contribution. Target resolution cannot grant host authority; the host still
+authenticates, authorizes and mints the resource context through its authoring port.
 
-This record does not ratify the plugin API or approve an execution realm. Integrity and provenance
-verification remain host prerequisites before the already verified payload bytes reach this runtime.
+This record ratifies the data-only plugin definition and generation-resolution boundary; it does not
+approve an execution realm. Integrity and provenance verification remain host prerequisites before the
+already verified payload bytes reach this runtime.
 
 ## Rejected alternatives
 

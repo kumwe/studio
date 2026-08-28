@@ -229,7 +229,9 @@ function createNodeFetch(): HttpFetchLike {
           const chunks: Buffer[] = [];
           incoming.on('data', (chunk: Buffer) => chunks.push(chunk));
           incoming.on('end', () => {
+            const contentType = incoming.headers['content-type'];
             resolve({
+              ...(typeof contentType === 'string' ? { contentType } : {}),
               status: incoming.statusCode ?? 0,
               text: () => Promise.resolve(Buffer.concat(chunks).toString('utf8')),
             });
@@ -320,7 +322,11 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
     const adapter = createHttpHostAdapter('https://authoring.test/', {
       fetchImplementation: (url, init) => {
         calls.push({ body: init.body, url });
-        return Promise.resolve({ status: 200, text: () => Promise.resolve('{"value":null}') });
+        return Promise.resolve({
+          contentType: 'application/json',
+          status: 200,
+          text: () => Promise.resolve('{"value":null}'),
+        });
       },
     });
     const authoring = definedPort(adapter.authoring);
@@ -600,7 +606,7 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
     );
     expect(failure.category).toBe('unavailable');
     expect(failure.retryable).toBe(true);
-    expect(failure.message.key).toBe('studio.testkit/http-unreachable');
+    expect(failure.message.key).toBe('studio.transport/http-unreachable');
   });
 
   it('maps a mid-call disconnect onto the canonical unavailable error', async () => {
@@ -648,7 +654,7 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
       );
       expect(failure.category).toBe('unavailable');
       expect(failure.retryable).toBe(true);
-      expect(failure.message.key).toBe('studio.testkit/http-timeout');
+      expect(failure.message.key).toBe('studio.transport/http-timeout');
     } finally {
       await testbed.close();
     }
@@ -669,7 +675,7 @@ describe('createHttpHostAdapter over a real node:http transport', () => {
       );
       expect(unparseable.category).toBe('internal');
       expect(unparseable.retryable).toBe(false);
-      expect(unparseable.message.key).toBe('studio.testkit/http-malformed-response');
+      expect(unparseable.message.key).toBe('studio.transport/http-malformed-response');
 
       // A 200 whose JSON body is not a HostPortResult.
       testbed.behaviors.overrideNext = { body: '{"revision":42,"value":null}', status: 200 };

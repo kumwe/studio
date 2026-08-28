@@ -1,139 +1,148 @@
-# Studio completion plan for Kumwe App Version 2
+# Version 2 completion track: Kumwe App integration and qualification
 
-**Objective.** Complete and qualify Studio as Kumwe App's default contextual authoring surface without creating
-a second product specification in this roadmap.
+**Objective.** Carry the implemented Studio browser/runtime boundary through one real Kumwe App PHP
+integration, one reproducible acceptance journey, and the governed beta-to-RC qualification path. This is a
+delivery sequence, not a second product specification or implementation-status ledger.
 
 The [Studio product contract](../product-contract.md) is the sole authority for the target and stable
-`STUDIO-PROD-001`–`015` identifiers. This file records implementation work and ordering only. Current
-implementation, release, profile, and gate truth remains authoritative in [`STATUS.md`](STATUS.md); the joint
-cross-repository boundary is in
-[`docs/integration/version-two-joint-plan.md`](../integration/version-two-joint-plan.md).
+`STUDIO-PROD-001`–`015` identifiers. [`STATUS.md`](STATUS.md) is the sole authority for current implementation,
+profile, release, Gate A, and Gate B state. Canonical shape and behavior live in
+[`schemas/`](../../schemas/README.md) and [`docs/contracts/`](../contracts/README.md). The exact cross-repository
+boundary is [`docs/integration/version-two-joint-plan.md`](../integration/version-two-joint-plan.md).
 
-## Fixed scope
+## Fixed boundary
 
-Version 2 is the web authoring product. Dart and Flutter remain Version 3 targets and do not block this plan.
-Kumwe App is authoritative through PHP application services, PHP HTTP endpoints, and PHP/Twig delivery. Studio
-ships as compiled browser assets; production requires no Node.js, npm, Vite, or server-side JavaScript process.
+Version 2 is the compiled browser authoring product. Dart and Flutter remain Version 3 targets. Kumwe App is
+the first real host, not a dependency embedded in Studio packages.
 
-The default supported create/edit path is Studio opened in the exact host-resource context. A legacy form may
-remain only as a named migration, recovery, rollback, or unsupported-capability fallback. It does not redefine
-the product target.
+- Studio mounts in the exact content context, either inline or on a context-preserving route.
+- A mount with no transport opens isolated blank local authoring with the compiled built-in catalog, zero
+  network requests, and project/save-intent JSON interchange.
+- A hosted mount uses only the exact declared routes, authentication projection, resolved session locks, and
+  target-admitted contributions. Missing or refused host work never becomes local success.
+- Kumwe App owns identity, authorization, disclosure, persistence, validation, revisions, transactions,
+  workflow, audit, webhooks, preview, publication, and public rendering through PHP application services and
+  PHP HTTP endpoints.
+- Node.js, npm, Vite, and server-side JavaScript remain build/test/release tools only. Production deploys
+  verified prebuilt browser assets.
+- Beta remains the development channel until implementation and qualification are complete. A green repository
+  or reference demo is not an RC, conformance, support, or production claim.
 
-## Current baseline
+## Do not rebuild the landed Studio boundary
 
-| Item                       | Exact current truth                                                                                                                                         |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Maturity                   | Active beta development; this is incomplete implementation, not a support or conformance claim                                                              |
-| Historical coordinate      | All eight checked-in packages and `studio-release.json` preserve immutable abandoned-candidate `0.1.0-rc.1` provenance; it MUST NOT be staged or published  |
-| Proposed profiles          | The abandoned release record preserves nine withdrawn proposals; beta clears claims and a new RC restores them only after all 15 requirements are verified  |
-| Composed core host profile | `openStudioSession` currently loads and saves one Blueprint                                                                                                 |
-| Lit shell                  | Separate Blueprint-oriented shell with canvas/catalog/preview/media/resource primitives and read-only model projection; no coordinated Entry persistence    |
-| Reference host             | Browser/Vite harness with an external block-control panel; not contextual host launch, production persistence, PHP authority, or zero-Node deployment proof |
-| Gates                      | Gate A **Not assessed**; Gate B **Blocked**; no official stable or production-host support claim                                                            |
+The Studio repository now contains the public browser deployment contract, isolated local and hosted mounts,
+the contextual target/start coordinator, separate Model/Blueprint/Entry drafts, blank/from-type/existing
+starts, the three explicit save outcomes, presentation-state continuity, the six-kind contribution lifecycle,
+the production browser archive, and the PHP-neutral HTTP contract. Those surfaces still require the exact
+verification and status treatment recorded in `STATUS.md`, but they are the integration boundary—not a new
+backlog to reimplement under host-private shapes.
 
-The abandoned release record's nine names preserve historical intent. They are withdrawn, are not reproduced
-evidence, and do not open the official npm `rc` channel.
+An implementation agent starts from these canonical entry points:
 
-## Completion ledger
+| Concern                                                           | Canonical entry point                                                                                                          |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Browser mounting and local/hosted selection                       | [Studio browser deployment](../contracts/studio-deployment.md)                                                                 |
+| Exact HTTP requests, results, errors, routing, and authentication | [Host transport](../contracts/host-transport.md)                                                                               |
+| Contextual target, type selection, session, and save semantics    | [Studio configuration](../contracts/studio-configuration.md) and [content/entry contract](../contracts/content-and-entries.md) |
+| Host/session catalog locks and contribution admission             | [Extension lifecycle](../contracts/extension-lifecycle.md)                                                                     |
+| Generic server responsibilities                                   | [Generic host guide](../integration/generic-host.md)                                                                           |
+| Kumwe PHP mapping                                                 | [Kumwe App guide](../integration/kumwe-app.md)                                                                                 |
+| Executable PHP boundary example                                   | [`examples/php-authoring-host`](../../examples/php-authoring-host/README.md)                                                   |
+| Prebuilt asset/archive consumption                                | [Prebuilt browser assets](../integration/prebuilt-browser-assets.md)                                                           |
+| Current gaps and evidence state                                   | [`STATUS.md`](STATUS.md)                                                                                                       |
 
-| Product requirement | Repository-verified primitive                                                                    | Work still required for completion                                                                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `STUDIO-PROD-001`   | Host session configuration and browser element can receive host context                          | Extension-declared target resolves an exact existing/new resource and launches Studio directly from host create/edit                                            |
-| `STUDIO-PROD-002`   | Empty Blueprint roots and reusable patterns can be supplied by a harness                         | Authorized blank and reusable-type starts through the real host, without pre-creating a Blueprint elsewhere                                                     |
-| `STUDIO-PROD-003`   | Blueprint composition plus separate headless Model/Entry command primitives                      | One session/canvas for layout, field definition or binding, and Entry values                                                                                    |
-| `STUDIO-PROD-004`   | Separate Model, Blueprint, and Entry protocol artifacts                                          | A host reusable type coordinates exact Model and Blueprint revisions while excluding Entry values                                                               |
-| `STUDIO-PROD-005`   | Exact references and read-only model projection                                                  | Hydrate the selected reusable type and an empty/new or exact existing Entry without leaking prior values                                                        |
-| `STUDIO-PROD-006`   | Blueprint optimistic-concurrency save                                                            | Separate save-item, save-as-new-type, and update-type-version transactions with visible scope/migration impact                                                  |
-| `STUDIO-PROD-007`   | One standalone responsive shell layout                                                           | Preserve resource, selection, authority, locale, unsaved state, and return path across in-context and expanded states                                           |
-| `STUDIO-PROD-008`   | Host-neutral configuration and canonical contribution runtime                                    | Canonical extension-declared authoring target with permitted resource/surface/mode and launch binding                                                           |
-| `STUDIO-PROD-009`   | Canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration generations | Prove target-scoped visibility plus install/activate/disable/reactivate/upgrade/recovery for blocks and field adapters in a real host                           |
-| `STUDIO-PROD-010`   | Host ports, transport binding, renderer callbacks, and authorization boundaries                  | Kumwe App PHP application services and PHP HTTP endpoints implement every authoritative load/save/type/preview/media/workflow/publication effect                |
-| `STUDIO-PROD-011`   | Build emits browser packages and renderer output                                                 | Production package/install/serve/preview/save/render path with zero Node.js/npm runtime or development server                                                   |
-| `STUDIO-PROD-012`   | Standalone harness proves primitives can compose                                                 | Remove pre-creation, catalogue-screen, copy/paste, and manual reconciliation from the supported author journey                                                  |
-| `STUDIO-PROD-013`   | Keyboard/outline parity, automated accessibility, responsive and reduced-motion lanes            | Complete contextual keyboard/touch/screen-reader/zoom/RTL/manual matrix, including fields, values, saves, and presentation changes                              |
-| `STUDIO-PROD-014`   | Status/evidence machinery distinguishes implementation from acceptance                           | Keep Blueprint harness, RC metadata, profile claims, gates, and production support explicitly separate in every release surface                                 |
-| `STUDIO-PROD-015`   | Existing E2E suites prove canvas, preview, renderer, media, and accessibility slices             | One exact real-host journey proves existing/new/blank/type flows, all saves, extension block+field adapter, PHP/Twig delivery, reopen, and zero production Node |
+Do not create a second route vocabulary, copy the built-in catalog into Kumwe App, configure Editor.js from the
+host, assign private custom-element properties, or replace the public coordinator with a host-specific editor.
+A Studio-side change is warranted only when the public contract or a reproducible integration test exposes a
+generic defect.
 
-## Dependency-ordered work
+## One dependency-ordered completion sequence
 
-### 1. Publish the missing contracts before code claims them
+### Goal 1 — Freeze one consumable Studio beta input
 
-Define the canonical host-target declaration, coordinated session state, exact hydration, and explicit save
-operations through the normal contract/schema/ADR/fixture workflow. Existing configuration and contribution
-schemas remain authoritative until changed; prose does not invent a shipped shape.
+1. Complete the repository gate for the exact Studio commit.
+2. Build the self-contained browser archive and verify its manifest, checksums, schema closure, PHP reference,
+   and zero runtime-package-manager declaration.
+3. Run the local mount, hosted transport, multi-mount isolation, contribution lifecycle, browser, accessibility,
+   and PHP reference lanes.
+4. Merge the generated beta version operation and record one exact eight-package coordinate, release record,
+   browser-archive digest, and corpus digest for the App integration branch.
 
-Acceptance for this stage:
+**Done when:** the App can consume one immutable beta family and archive without a workspace checkout or a
+production Node/npm install. This goal does not claim a supported host or RC.
 
-- an extension can declare where contextual Studio launch is permitted without embedding routes, PHP classes,
-  callbacks, or credentials in portable artifacts;
-- Model, Blueprint, and Entry coordinates and transaction boundaries remain explicit;
-- a content-item save cannot silently mutate a reusable type; and
-- every new operation has deterministic success, denial, conflict, retry, cancellation, and recovery vectors.
+### Goal 2 — Implement the Kumwe App PHP adapter
 
-### 2. Compose the core and shell
+For each eligible core or extension-owned content surface, Kumwe App PHP:
 
-Build the contextual session over the existing DOM-free command/session primitives and Lit shell:
+1. resolves the target and exact resource context;
+2. emits one inert, bounded deployment document beside the ordinary mount;
+3. supplies exact operation routes plus one supported authentication/CSRF projection;
+4. returns authorized type choices and one exact Model/Blueprint/Entry session;
+5. enforces the session block/plugin locks and target-admitted contribution generation;
+6. implements plan-save, save-item, save-new-type-version, and save-as-new-type as independently authorized,
+   validated, revisioned, audited transactions;
+7. maps resource, media, preview, localization, workflow, publication, and renderer seams to existing PHP
+   application services; and
+8. emits webhooks/outbox events only after an accepted server transaction.
 
-1. resolve an exact existing/new resource from the host target;
-2. hydrate Model, Blueprint, Entry, theme, policy, and contribution generation;
-3. present layout, fields, bindings, and values together while enforcing artifact permissions;
-4. support blank and reusable-type starts;
-5. execute explicit item/new-type/type-version saves through host ports; and
-6. preserve session state across in-context and expanded presentation.
+The App may use one controller/dispatcher or an operation map. Both must preserve the same canonical bodies,
+error taxonomy, idempotency, expected-revision, origin/CSRF, and authorization behavior. The browser is never
+the authority merely because it received configuration.
 
-The current single-Blueprint `openStudioSession` and read-only model projection remain truthful supported
-primitives until this composed profile lands; they are not aliases for the target.
+**Done when:** compiled Studio mounts from normal App create/edit flows, every server effect terminates in PHP,
+configured denials remain denials, and neither deployment nor operation requires server-side JavaScript.
 
-### 3. Complete extension targeting
+### Goal 3 — Prove the real contextual journey
 
-Extend the owner-aware immutable contribution generation with the canonical authoring target. Prove that an
-extension target admits only its authorized blocks, patterns, field adapters, inspectors, design intent, and
-migrations on the declared resource/surface/mode. Disable, revocation, stale generation, trust failure, and
-upgrade remove executable behavior without deleting Model, Blueprint, or Entry data.
+Run `STUDIO-PROD-015` against the exact pinned Studio beta and real Kumwe App adapter. The recorded journey must
+cover two isolated mounts, backendless import/export, configured denial, core and extension targets, existing
+exact-version hydration, blank and from-type creation, fields/layout/values in one session, all three save
+outcomes, reopen/revision reconciliation, presentation continuity, extension block/field/pattern lifecycle,
+semantic PHP/Twig rendering, and pointer/keyboard/structural-control parity.
 
-### 4. Implement the Kumwe App adapter
+Add adversarial lanes for authentication expiry, CSRF/origin refusal, malformed and oversized JSON, missing
+routes, conflict/idempotent retry, contribution-generation drift, permission reduction, media/preview failure,
+restart/recovery, and two simultaneous hosted mounts with distinct routes and session state. A test must use the
+compiled browser artifact and real PHP HTTP boundary; a JavaScript mock plus a separate handcrafted PHP request
+is useful unit coverage but not this integration proof.
 
-Kumwe App maps the public target and ports onto its existing bounded contexts:
+**Done when:** the exact integrated system produces reproducible repository evidence for every journey step and
+leaves manual/external requirements explicitly pending rather than inferred.
 
-- PHP resolves identity, tenant/site, resource, content type, policy, revisions, workflow, and runtime
-  generation;
-- PHP application transactions authorize, validate, revision, audit, and persist item/type/type-version saves;
-- PHP owns media, recovery, preview grants, and publication;
-- PHP/Twig/KIS renders preview and public output from validated portable artifacts; and
-- the administrator serves compiled Studio browser assets without production Node.js/npm.
+### Goal 4 — Qualify, review, and promote
 
-App-specific owner/trust, presenter/Twig, service, route, database, and policy metadata stays in App host
-bindings. It never enters generic Studio packages or canonical artifacts.
+1. Complete the selector-neutral `authoring-web` assertion set and supported browser/accessibility/security/
+   recovery/performance matrices.
+2. Replay the portable host, HTTP, contribution, preview, media, binding, schema, and renderer corpora through
+   Kumwe App and the required independent host/renderer.
+3. Record implementation state only through the exact-commit process in `STATUS.md`.
+4. Prepare a new immutable RC only after all 15 implementation rows and all fixed profile assertion sets are
+   repository-executable.
+5. Reproduce and accept Gate A evidence before publishing the official `rc`; complete Gate B before stable.
 
-### 5. Qualify one exact candidate
+Any changed candidate receives a new coordinate and affected evidence. Historical `0.1.0-rc.1`, a workspace
+tree, a mixed package family, a profile label, or a reference-host screenshot cannot substitute for this path.
 
-1. Quarantine and verify the complete candidate family through the protected workflow.
-2. Pin its exact release record and corpus digest atomically in Kumwe App.
-3. Replay host, preview, model/binding, contribution, schema, media, renderer, security, and environment
-   assertions through the real PHP/Twig adapter and an unrelated host/renderer where required.
-4. Run `STUDIO-PROD-015` end to end, including blank/type hydration, empty values, item save/reopen,
-   save-as-type, update-type-version, presentation continuity, extension block, field adapter, and public
-   rendering.
-5. Reproduce browser, database, accessibility, migration, restart, backup/restore, rollback, provenance,
-   package-integrity, and zero-production-Node evidence independently.
+## Commit and review discipline
 
-A changed candidate requires a new coordinate and affected evidence. A workspace tree, mixed package set,
-release-record label, or reference-host demo cannot substitute.
+Keep the work in one reviewable integration PR when practical, using dependency-ordered commits that each
+leave the branch testable:
 
-## Release and claim boundary
+1. exact beta/archive pin and PHP bootstrap;
+2. target/type/start endpoints;
+3. save transactions and revision reconciliation;
+4. contributions plus resource/media/preview services;
+5. compiled-browser-to-real-PHP journey and negative cases;
+6. qualification evidence and truthful documentation.
 
-The active route is generated beta development → machine-verified `STUDIO-PROD-001`–`015` → prepared RC →
-independently reproduced Gate A evidence → authorized official `rc` → Gate B qualification → stable. The
-checked-in `0.1.0-rc.1` metadata is abandoned history and is not a candidate on that route.
+Each commit uses the existing contracts and adds the lowest responsible tests. Do not mark a later goal done
+because an earlier unit test is green, and do not update gate or profile status without the immutable evidence
+fields required by `STATUS.md`.
 
-Completion requires all of the following at the same immutable candidate:
+## Completion boundary
 
-- the contextual authoring implementation and `authoring-web` assertions;
-- the real Kumwe App PHP/Twig journey and an independent host replay;
-- supported manual accessibility and production environment matrices;
-- exact package/provenance/clean-consumer evidence;
-- independently signed evidence and gate decisions; and
-- truthful release notes and support boundaries.
-
-Until those conditions pass, documentation must say Gate A **Not assessed**, Gate B **Blocked**, no supported
-production host, no official stable release, and no completed contextual authoring product.
+Version 2 is complete only when the same immutable candidate has the contextual implementation, real Kumwe App
+PHP/Twig journey, required independent replay, supported manual accessibility and production matrices, exact
+package/provenance/clean-consumer evidence, accepted gate decisions, and truthful release/support language.
+Until then, it remains governed beta work with no official RC, stable, production-host, or conformance claim.

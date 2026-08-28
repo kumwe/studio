@@ -4,15 +4,12 @@ This guide describes how an unrelated application embeds Studio without importin
 both an implementation sequence and the basis of the generic-host conformance profile.
 
 The default integration target is an exact host resource opened for contextual authoring, not a catalogue-level
-Blueprint tool. The [Studio product contract](../product-contract.md) is the sole authority for that target:
-`STUDIO-PROD-001`–`006` cover launch, hydration, coordinated artifacts, and save outcomes;
-`STUDIO-PROD-007`–`009` cover workspace, targets, and contribution behavior; and `STUDIO-PROD-010`–`011`
-preserve host and runtime authority. This guide describes the required host mapping without claiming that every necessary
-port, declaration, command, or shell surface is implemented today.
-
-The current composed `openStudioSession` profile opens and saves one Blueprint. The current Lit shell is a
-separate Blueprint-oriented surface with read-only model projection and no coordinated Entry persistence. Those primitives
-are useful integration scaffolding, but they are not completed contextual authoring (`STUDIO-PROD-014`).
+Blueprint tool. The [Studio product contract](../product-contract.md) is the sole authority for that target.
+The normal integration is configuration-first: serve the prebuilt browser module, emit one inert
+`StudioDeploymentConfiguration` per mount, and call `mountStudio()` or the explicit `autoMountStudio()` scan.
+That one path covers a backendless local canvas and a PHP/host-authoritative HTTP session. Lower-level adapter,
+coordinator, and custom-element APIs remain advanced composition seams, not a prerequisite or competing
+workflow.
 
 The adapter's obligations are executable: replay the canonical host conformance corpus published as
 `vectors/host/` in `@kumwe/studio-testkit` to claim
@@ -38,9 +35,37 @@ Before wiring UI, record where the host authoritatively stores and enforces:
 An ownership gap is an integration blocker. Studio must not become an accidental database, identity system,
 workflow engine, media store, renderer registry, or policy authority.
 
-## 2. Resolve a contextual authoring target
+## 2. Install one coordinate and deploy static assets
 
-An installed, trusted extension declares the host-owned authoring target on which Studio is available. When an
+Consume all eight exact versions from the published `studio-release.json` and verify its corpus digest before
+replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
+first-party definitions are not a deployable integration.
+
+Node.js, npm, and Vite belong only in a contributor, CI, build, test, or release environment. A consuming
+project normally verifies and extracts the published prebuilt browser archive, copies that immutable directory
+to a static document root, CDN, object store, or PHP public directory, and serves it directly. There is no
+production install/start command, package-registry access, Node process, npm process, or Vite server.
+
+Repository contributors can reproduce the static-delivery and zero-production-Node evidence with:
+
+```bash
+npm run build:static-host
+```
+
+It writes `examples/standalone-static-host/dist/`, containing the contextual authoring page, a public
+no-JavaScript page and stylesheet, fingerprinted `assets/studio-*.js`/CSS files, Vite's
+`build-manifest.json`, and `studio-assets.json` with integrity, size, and runtime declarations. That command is
+for a trusted contributor/build environment, never a production host. A project may instead bundle the exact
+published family through its own trusted build pipeline. It
+MUST preserve the same rules: immutable fingerprinted assets, an auditable manifest, exact package-family
+provenance, CSP-compatible module loading, and no production package manager. `serve.py` in the standalone
+example is validation tooling, not a production dependency. This example directly composes a contextual shell;
+it proves static asset delivery and the absent production toolchain, not the ordinary-element
+`mountStudio()`/configuration path described below.
+
+## 3. Resolve a contextual authoring target
+
+An installed, trusted extension declares the host-owned `authoring-target` on which Studio is available. When an
 authorized create or edit action selects that target, the host resolves the exact resource and launches Studio
 without asking the author to pre-create or transfer a Blueprint (`STUDIO-PROD-001`, `008`, `012`). The target binds,
 under host policy:
@@ -52,12 +77,13 @@ under host policy:
 - permitted authoring and presentation states, save outcomes, and return destination; and
 - the PHP or other authoritative host operations that load, validate, transact, preview, and render it.
 
-This target declaration is a product requirement, not a shipped `0.1.0-rc.1` public schema or API. Until its
-contract lands, integrations MUST NOT invent a host-specific shape and present it as canonical Studio
-conformance. They may exercise the existing Blueprint-only profile as explicitly temporary scaffolding.
+The declaration conforms to canonical `AuthoringTargetDeclaration`. It is discovery metadata, never an
+authorization token. Core and extension targets use the same resolution path. The host rechecks the exact
+surface, resource type, create/edit intent, requested presentation, mode, required capabilities, and each
+explicitly admitted contribution dependency before returning a resolution.
 
-The host also declares protocol and capability versions plus finite limits. At minimum the eventual resolved
-contextual session identifies:
+The host also declares protocol and capability versions plus finite limits. The resolved contextual session
+identifies:
 
 - session, actor and resource context using opaque identifiers;
 - internal Model, Blueprint, and Content authority boundaries and session state; these are permissions inside
@@ -73,48 +99,109 @@ contextual session identifies:
 Configuration is generated server-side or by another trusted host boundary. User-supplied configuration never
 grants a capability.
 
-### Install and bootstrap one Studio coordinate
+### Emit configuration and mount Studio
 
-Consume the exact eight versions in the published `studio-release.json`; verify its corpus digest before
-replaying conformance. Broad ranges, workspace links, independently selected package versions, and copied
-first-party definitions are not a deployable integration. The checked-in `0.1.0-rc.1` metadata from
-`829694efb25374d3b498f2d46856d2c39650728a` is immutable abandoned-candidate provenance whose proposed profile
-claims were withdrawn. It is not the current maturity and MUST NOT be staged or published. Active work follows
-the governed beta-development lane; only a generated coordinated successor can become an integration input.
+One ordinary element is one Studio instance. With no configured transport, it opens the compiled first-party
+catalogue as a blank in-memory page builder, performs zero network requests, and offers distinct project JSON
+import/download and save-intent download actions:
 
-For the current Blueprint-only shell, the browser harness starts from Studio's additive bootstrap rather
-than recreating the page-builder catalog:
-
-```ts
-import {
-  createStudioStandaloneSetup,
-  defineKumweStudio,
-  StudioAuthoringControlRegistry,
-} from '@kumwe/studio';
-
-defineKumweStudio();
-const setup = createStudioStandaloneSetup(resolvedSession, {
-  blockDefinitions: trustedExtensionBlocks,
-  patterns: trustedExtensionPatterns,
-});
-
-studio.configuration = setup.configuration;
-studio.patterns = setup.patterns;
-studio.authoringControlRegistry = new StudioAuthoringControlRegistry({
-  media: { provider: mediaProvider, uploadTransport },
-});
+```html
+<div data-kumwe-studio></div>
+<script type="module" src="/assets/start-studio.js"></script>
 ```
 
-This snippet is not the future contextual-launch API. The first-party 45 blocks and ten patterns lead
-deterministically; host contributions append only after their
-owner, namespace, capability, and schema checks pass. Duplicate identities fail closed. Editor.js remains a
-private Studio implementation selected by the registry: the host supplies canonical values and neutral
-services, never editor tools, plugin configuration, or editor-native JSON.
+```js
+// /assets/start-studio.js
+import { autoMountStudio } from './studio-browser-<fingerprint>.js';
 
-## 3. Implement host ports
+await autoMountStudio();
+```
 
-Transport is adapter-owned. HTTP, an in-process API, `postMessage`, a desktop bridge, or a native channel may
-be used if it preserves the same semantics.
+For HTTP operation, the server emits one inert `script[type="application/json"]` associated with the mount.
+Its schema-valid deployment contains:
+
+- `launch`: the exact target, create/edit intent, resource context, start source, and presentation;
+- `session`: the complete resolved `StudioConfiguration` for the current display context and policy;
+- `transport.routing`: either exact URLs keyed by supported operation or one exact dispatcher URL; and
+- `transport.authentication`: same-origin session plus CSRF, or a bearer/custom-header projection with required
+  `issuedAt`/`expiresAt`, `issuedAt <= now < expiresAt`, and a maximum positive 15-minute lifetime.
+
+PHP can render the pair without inline executable JavaScript:
+
+```php
+<?= $deploymentEmitter->render('article-studio', 'article-studio-config', $deployment) ?>
+```
+
+The [PHP host reference](../../examples/php-authoring-host/README.md#emit-one-browser-deployment-configuration-per-mount)
+provides the complete schema-valid construction and escaping rules. Another server language emits the same
+JSON contract. The prebuilt start module is identical for every actor and resource: it reads no ambient route,
+cookie value, hidden form, or application global.
+
+An empty `data-kumwe-studio` value means local defaults. A non-empty value names the exact inert configuration
+element for that target. Several pairs may appear on one page; every mount owns independent draft, history,
+focus, lifecycle, and transport state. A configured hosted failure remains visible and never switches that
+instance to local work.
+
+The host may mount the same logical session inline or on a context-preserving expanded route. Presentation
+changes do not reopen the resource or create another draft. The host listens for Studio's public change,
+presentation, mode, and save-request events; it does not query or mutate the element's shadow DOM. Save requests
+always follow plan, review/confirmation when required, and one explicit save operation.
+
+Trusted live browser objects use `mountStudio(deployment, { hosted: … })` (or the same `hosted` option on
+`autoMountStudio`) instead of replacing the shipped resolver. Use the factory form
+`autoMountStudio({ hosted: (target, deployment) => ({ … }) })` for per-instance live objects. The bounded
+options are authentication refresh, a precompiled field-control registry, server-consequence confirmation UI,
+and the raw-byte transfer for a short-lived media grant. None may supply routes, permissions, resource
+identity, or session data. Those remain in the inert deployment document and every advertised standard
+operation must have its exact operation-map route. Studio automatically adapts configured `resource/search`
+and browse-only `media/get` plus `media/list` to its existing controls; browse-only media disables byte intake.
+When upload is advertised, Studio itself calls configured `media/authorize-upload`, `media/complete-upload`,
+and `media/abort-upload`; the precompiled transfer sees only the validated grant, bytes, and grant-relative
+offset, never local Studio session identity or lifecycle authority. Requested and granted byte bounds may not
+exceed the exact resolved `limits.maxMediaUploadBytes`. The browser treats grant receipt as issuance and
+requires `issuedAt <= now < expiresAt` with a maximum 15-minute lifetime. Header count/name/value bounds match
+the grant schema. A terminal transfer or completion failure best-effort aborts the grant, clears it locally,
+and reauthorization must return a fresh grant before retry. Until a separate file-upload flag exists, resolved
+`clipboardMediaUpload` gates all file, paste, and drop byte intake. `externalMediaImport` must be enabled before
+that capability may be advertised; the current first-party control still exposes no external-URL input.
+
+Normal configured HTTP mounting rejects enabled preview because the current port renders or cancels an
+already-staged digest but has no configured operation that receives and authorizes the complete draft. Taking
+an opaque `StudioPreviewBinding.stage()` here would create a second endpoint track. A host that already owns a
+complete isolated binding may use the advanced direct-composition API below, but that is not presented as the
+normal configuration-first path. Unsupported enabled preview, partial media service claims, upload without a
+grant transfer, or a capability/route mismatch rejects that mount and never activates local fallback. The
+current Model needs no extra service bridge because the authoritative coordinated Model is part of
+`authoring/start`.
+
+The ordinary contextual mount consumes the complete authoring route family, `resource/search`, media
+`get`/`list`, and the three upload lifecycle routes above. Media `upload-status` and `import-external`, plus
+artifact, localization, model-discovery, permission, recovery, and telemetry ports, remain lower-level
+`HostAdapter` operations until a first-party contextual surface adopts them. A capability advertises what the
+PHP host can perform; it does not falsely claim that the current browser shell invokes an unfinished workflow.
+
+Standalone local Studio uses the complete compiled first-party catalog and compatible starter patterns. A
+hosted session instead exposes exactly its host-resolved block type/version/revision locks. Each lock must
+resolve to the matching compiled first-party definition or to an extension block admitted for the resolved
+target; extension blocks require both target admission and an exact session lock. Hosted patterns are only
+target-admitted patterns whose exact block dependencies all match session locks. The opened Blueprint's
+dependency locks must be an exact subset of that session catalog, and every node must use a session-locked
+type/version. Missing, duplicate, stale, or mismatched locks reject the mount, with no full-catalog or
+default-pattern fallback. The other declarative contribution families likewise come only from the
+target-admitted immutable generation. Editor.js remains a private Studio implementation: the host supplies
+canonical values and neutral services, never editor tools, plugin configuration, or editor-native JSON.
+
+Applications that already own a live session may use the configured browser adapter,
+`openContextualStudioSession`, and custom elements directly. That advanced path must consume the same exact
+deployment routing/authentication values and preserve the same lifecycle. Production adapters accept only
+explicit routing; conventional base-path expansion belongs exclusively to testkit fixtures. Integrations do
+not infer `/ports/...` paths or manually assign detached snapshots to element properties.
+
+## 4. Implement host ports and HTTP/AJAX endpoints
+
+Transport is host-configured. A browser deployment names its exact HTTP routes and authentication projection;
+it does not discover them from the page URL. An advanced embedder may instead implement an in-process API,
+`postMessage`, desktop bridge, native channel, or direct `HostAdapter` if it preserves the same semantics.
 
 | Port area     | Required behaviour                                                                                                                                                                |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -132,15 +219,135 @@ be used if it preserves the same semantics.
 | Recovery      | Store/load/delete bounded recovery envelopes under actor/resource policy, encryption and expiry                                                                                   |
 | Telemetry     | Accept only declared redacted events with consent and retention policy; authoring does not depend on telemetry success                                                            |
 
-Each request carries a request ID, session generation, actor/resource context, cancellation signal where the
-transport permits it, and an idempotency key for retryable mutation. Sensitive credentials remain in the host
-transport; they are never serialized into Studio configuration, documents, command history, diagnostics,
-recovery envelopes, preview messages, or telemetry.
+### Canonical HTTP/AJAX binding
 
-The target-launch and coordinated Model/Blueprint/Entry mutations above are required product behavior, but
-they are not all operations in the current public adapter. The current `openStudioSession` load/save path is
-single-Blueprint, while model projection is read-only. A generic host must preserve that distinction until the
-contract, schemas, commands, and conformance vectors add the missing operations.
+An HTTP deployment chooses either:
+
+- `operation-map`, whose closed object maps every advertised stable route such as
+  `authoring/resolve-target` or `resource/search` to the host's exact URL; or
+- `single-endpoint`, whose one exact URL receives every advertised operation and the fixed
+  `X-Studio-Operation` route discriminator.
+
+Those URLs are host choices. `/studio/ports/...` is a convenient reference-host layout, not a convention that
+Studio derives or requires. `authoring/resolve-target` and `authoring/start` are required to open hosted
+Studio; every other route is present only when the resolved session advertises that capability. An operation
+map must exactly match those advertised operation capabilities. The single endpoint must reject any unknown or
+mismatched discriminator. Missing optional routes disable their features rather than triggering URL synthesis.
+
+The browser resolves target authority before creating drafts. Existing/edit launches then call start directly.
+For create launches that advertise `from-type`, Studio queries `authoring/list-types` in the same mount and lets
+the author choose blank or one exact authorized coordinate (including host-backed search and cursor paging)
+before start. The deployment's create source is a preferred preselection, never permission. No second page,
+pre-created definition, client-side catalogue filtering, or alternate endpoint track is involved.
+
+Every configured call uses `POST`, `Content-Type: application/json`, and `Accept: application/json`. Reads also
+use `POST`; resource contexts, revisions, and idempotency keys never enter URLs, access logs, referrers, or
+caches. The body conforms to `host-request.schema.json`, success to `host-result.schema.json`, and failure to
+`host-error.schema.json`. The closed route/capability registry is `host-operations.schema.json`;
+[`authoring-http.schema.json`](../../schemas/authoring-http.schema.json) closes the exact
+route/request/result pair for each of the seven contextual operations. The deployment runtime and its
+configured browser adapter implement this client behavior.
+`@kumwe/studio-testkit` supplies the executable reference responder and corpora for server conformance; it is
+not a production server runtime. The
+[`examples/php-authoring-host`](../../examples/php-authoring-host/README.md) reference binds the same closed
+contract to PHP application-service interfaces without owning persistence or requiring Node/npm.
+
+Every request `context` carries the exact `operationId`, selected `protocolVersion`, fresh `requestId`, opaque
+`resourceContextKey`, and `sessionGeneration`. Retryable mutations also carry an `idempotencyKey`. Actor,
+credential, CSRF evidence, site/organization authority, and the authoritative resource context are attached or
+resolved by the trusted transport; the browser cannot grant them by writing JSON.
+
+The contextual lifecycle has exactly these seven routes:
+
+| Route                             | `arguments` member                            | Mutation | Authoritative result/obligation                                                                                                                           |
+| --------------------------------- | --------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `authoring/resolve-target`        | `request: AuthoringTargetResolveRequest`      | No       | Reauthorize target, complete resource context, intent, capabilities, dependencies, and presentation; return `AuthoringTargetResolution`                   |
+| `authoring/list-types`            | `query: AuthoringTypeListQuery`               | No       | Return only authorized exact type summaries with opaque cursor pagination                                                                                 |
+| `authoring/start`                 | `request: AuthoringStartRequest`              | Yes      | Idempotently allocate/load one coordinated snapshot; return exact Model/Blueprint/Entry/type coordinates and empty Entry values for a new from-type start |
+| `authoring/plan-save`             | `intent: AuthoringSaveIntent`                 | No       | Validate expected coordinates and return affected artifacts, stable consequences, confirmation requirement, and host-bound plan identity                  |
+| `authoring/save-item`             | `request: AuthoringSaveItemRequest`           | Yes      | Atomically save Entry plus only an explicitly permitted item Blueprint override; never mutate the reusable type                                           |
+| `authoring/save-new-type-version` | `request: AuthoringSaveNewTypeVersionRequest` | Yes      | Atomically create coordinated Model/Blueprint/type successor revisions, validate migration/dependency impact, and exclude Entry values                    |
+| `authoring/save-as-new-type`      | `request: AuthoringSaveAsNewTypeRequest`      | Yes      | Atomically create a new reusable type from Model/Blueprint drafts and policy, excluding Entry values                                                      |
+
+All three save requests bind the reviewed plan reference and accepted consequence codes. Their expected type,
+Model, Blueprint, and Entry coordinates live in the intent/plan rather than the envelope's single
+`expectedRevision`; a host MUST reject any mismatch, unknown/invalidated/host-expired plan, altered draft,
+changed authority, changed generation, or idempotency-key reuse for different intent. A successful save returns one normalized
+`AuthoringSaveResult` carrying the reconciled complete session.
+
+The remaining standard port routes are additive and capability-negotiated:
+
+| Area             | Routes                                                                                                                                             | Host responsibility                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Artifact         | `artifact/dependencies`, `artifact/load`, `artifact/save`, `artifact/publish`, `artifact/unpublish`                                                | Single-artifact compatibility and separately authorized publication; never approximate a contextual multi-artifact save |
+| Media            | `media/list`, `media/get`, `media/authorize-upload`, `media/complete-upload`, `media/abort-upload`, `media/upload-status`, `media/import-external` | Policy-filter catalogue, byte custody, scanning, processing, stable identity, SSRF-safe optional import, and audit      |
+| Preview          | `preview/render`, `preview/cancel`                                                                                                                 | Authenticated staged-draft render/cancel keyed by digest, resource, generation, and attempt                             |
+| Discovery/policy | `model/list`, `model/get`, `resource/search`, `permission/explain`, `permission/refresh`                                                           | Return already-authorized bounded projections; never rely on client-side post-filtering                                 |
+| Support          | `localization/messages`, `recovery/load`, `recovery/store`, `recovery/discard`, `telemetry/emit`                                                   | Locale policy, protected recovery storage, and allowlisted redacted telemetry                                           |
+
+Media bytes do not traverse the JSON port. `authorize-upload` returns a short-lived bounded HTTPS grant; the
+browser transfers bytes to that destination, then calls `complete-upload`. Artifacts persist only stable media
+references, never transfer URLs, filesystem paths, credentials, or raw bytes.
+
+### Host application seams outside `HostAdapter`
+
+The closed browser-port registry deliberately does not invent workflow, public-page, or webhook routes:
+
+- **Workflow and publication** remain explicit host application commands. A host may expose its normal review,
+  approve, schedule, publish, unpublish, and translation routes after an accepted Studio save. Generic
+  `artifact/publish` and `artifact/unpublish` remain separate port operations; they never make save imply publish.
+- **Public rendering** is a host delivery route such as a normal page/controller, not a Studio port. It loads
+  accepted pinned artifacts and values and renders through `@kumwe/studio-renderer-web` or a conforming native
+  renderer. Public output does not mount Studio and retains an operable no-JavaScript fallback.
+- **Webhooks and integration events** originate only after the host transaction commits, preferably through a
+  transactional outbox. Delivery is signed, versioned, idempotent, retried with bounds, auditable, and subject
+  to host policy. Browser Studio never holds webhook secrets, destinations, retry state, or delivery authority.
+
+These seams reuse the same accepted resource/type/artifact coordinates, actor/system context, runtime
+generation, authorization, revision, audit, and idempotency rules. They do not create a second content model or
+a private Studio protocol.
+
+Each request carries a request ID, session generation, opaque resource-context key, cancellation signal where
+the transport permits it, and an idempotency key for retryable mutation. Actor identity and server authority
+come only from the verified session or short-lived credential. The same-origin configuration contains a CSRF
+token but never the HttpOnly session-cookie value; token profiles contain only purpose-bound material with a
+required issuance/expiry window of at most 15 minutes. Studio checks that window before every request, while the
+host independently verifies protected token claims and authority. Authentication material is never copied into documents, command history, exports,
+diagnostics, recovery envelopes, preview messages, or telemetry.
+
+The legacy `openStudioSession` Blueprint handle and artifact routes remain supported bounded surfaces. They do
+not replace, widen, or partially implement the contextual seven-operation transaction protocol.
+
+### Authentication, CSRF, concurrency, and errors
+
+- Authenticate through the host's established secure session cookie or purpose/audience-bound bearer
+  credential. Never accept an actor, role, tenant, organization, permission, or session from Studio JSON as
+  authentication evidence.
+- For a cookie-authenticated browser, validate the CSRF token and exact allowed origin on port requests, enforce
+  the framework's fetch-metadata policy, and use `Secure`, `HttpOnly`, and appropriate `SameSite` cookies.
+  Credentialed wildcard CORS is forbidden. A cross-origin adapter needs an explicit allowlist and equivalent
+  proof; it is not enabled by a target declaration.
+- Validate content type, body byte/depth/member limits, the request schema, operation/capability match,
+  protocol, session generation, resource-context binding, and current authority before dispatch. Unknown
+  members fail closed.
+- Scope accepted idempotency results by key, operation capability, resource context, session generation, and
+  canonical intent. Return the original accepted result for an exact retry; reject reuse for changed intent.
+  Keep records for at least the maximum client retry window and never charge a second mutation/rate-limit unit.
+- Compare every expected coordinate inside the same transaction that writes and audits. A conflict returns the
+  safe current revision/coordinates and leaves local work intact; silent last-write-wins and automatic overwrite
+  are forbidden.
+- Return canonical `HostPortError` values. Use `401 unauthenticated`, `403 forbidden`, `404 not-found`,
+  `409 conflict`, `413 limit-exceeded`, `422 validation-failed`, `429 rate-limited`, `502/503/504 unavailable`,
+  and safe `4xx`/`5xx` fallbacks as specified by the transport contract. Do not return stack traces, SQL,
+  filesystem paths, credentials, private identifiers, or hidden-resource existence.
+- Bound deadlines, cancellation, and server work independently. A client abort does not mean a transaction was
+  rolled back; the idempotency key resolves an unknown outcome safely. The diagnostic
+  `studio.host/stale-session-generation` invalidates the whole handle and requires a new handshake.
+
+The authoring response applies the [security contract](../contracts/security.md): fingerprinted same-origin
+modules, no `unsafe-eval`, Trusted Types where supported, bounded `connect-src`, no ambient third-party assets,
+and restrictive base/form/object/frame policy. Preview uses a separate dedicated response policy and sandbox;
+never weaken every administrator/public response merely to permit preview.
 
 ### Bind resource discovery
 
@@ -158,7 +365,7 @@ inspect-only. A host-contributed block must deliberately omit
 `authoring.readOnly: true` before Studio can select or clear its canonical
 `resource-reference`; every other binding source remains read-only.
 
-## 4. Preserve artifact separation
+## 5. Preserve artifact separation
 
 The host persists separate identities and revisions for:
 
@@ -181,7 +388,7 @@ For a business aggregate, the host may expose a Studio entry projection while re
 storage and transactional invariants. Studio commands must call application use cases; generic JSON is not an
 authority to bypass business rules.
 
-## 5. Build trusted rendering
+## 6. Build trusted rendering
 
 The host maps validated block/theme contracts to trusted renderers. Rendering observes these rules:
 
@@ -219,7 +426,7 @@ A browser preview bridge must:
 
 Cross-origin preview is deny-by-default and requires an explicit capability plus an equivalent security proof.
 
-### Bind the browser surface
+### Bind the browser surface through advanced direct composition
 
 For `@kumwe/studio`, advertise `studio.port/preview` with both render and cancel operations, enable preview
 in the resolved session, place the renderer surface in the element's `preview` slot, and assign one
@@ -248,26 +455,30 @@ one before the client is pinned would open an unbound surface. Replacing a bindi
 tears down the old channel. Removing preview authority renders the textual fallback and does not create a
 browser-storage or direct-rendering fallback.
 
-## 6. Integrate extensions and themes
+## 7. Integrate extensions and themes
 
-The host compiles one immutable contribution generation from trusted declarations. Every contribution carries
-owner, namespace, contract version, semantic version, required capabilities, ordering, compatibility, fallback
-and migration metadata.
+The host compiles one immutable owner-aware contribution generation from trusted plugin manifests. An
+`authoring-target` is activated atomically with the six canonical payload families: `block-definition`,
+`pattern`, `field-adapter`, `inspector`, `design-vocabulary`, and `migration`. Every declaration carries its
+bounded owner, namespace, contract/semantic version, capability, compatibility, and dependency metadata.
 
 The contextual target selects that generation; it does not copy contributions into a private palette. A
-trusted extension may declare where its target is launched and contribute canonical blocks, patterns, and field
-adapters for that target. Blocks and field adapters remain separate canonical contribution kinds with their own
-schemas and lifecycle. The missing target-declaration schema/API remains planned; the existing contribution
-runtime does not imply it already exists (`STUDIO-PROD-008`, `009`).
+trusted extension may declare where its target is launched and the exact contribution dependencies that target
+admits. `resolveAuthoringTarget` checks those dependencies and version ranges against the immutable generation;
+unrelated active contributions are not returned merely because they share an owner or surface. Core and
+extension targets resolve identically. Blocks and field adapters remain separate canonical kinds with their own
+schemas and lifecycle (`STUDIO-PROD-008`, `009`).
 
 - Collision, namespace, schema, dependency, or trust failure rejects the contribution before session use.
 - A required missing contribution prevents write mode; a safe read-only recovery view remains possible.
-- Disabling or revoking a provider removes executable registrations but preserves artifacts.
+- Disabling, uninstalling, or revoking a provider removes its targets and executable registrations from new
+  resolution but preserves authored artifacts and owned data. Verified reactivation restores a newly compiled
+  generation; a stale generation never becomes current again.
 - Unresolved nodes remain identifiable and diagnosable; fallback rendering occurs only when declared.
 - Declarative contributions are preferred. Executable plugins receive scoped APIs, never the host container.
 - Themes expose semantic tokens, viewport roles and recipes, not raw CSS/classes/template source.
 
-## 7. Handle save, conflict and recovery
+## 8. Handle save, conflict and recovery
 
 The contextual surface distinguishes three user outcomes before confirmation (`STUDIO-PROD-006`):
 
@@ -277,16 +488,15 @@ The contextual surface distinguishes three user outcomes before confirmation (`S
 
 These are separate host-authorized transactions, even when one user action coordinates multiple artifact
 writes. The host may commit related draft changes atomically, but no generic “save JSON” call may silently turn
-an Entry save into a Model or Blueprint publication. The current Blueprint save operation implements only a
-subset of this target.
+an Entry save into a Model or Blueprint publication.
 
-Save sends the complete proposed state or a protocol-defined command batch with:
+The contextual save intent sends the exact outcome-specific proposed drafts with:
 
 - base/expected revision;
 - session and contribution generation;
 - idempotency key;
 - dependency revision set; and
-- client validation result/checksum.
+- the reviewed save-plan identity and accepted consequence codes on confirmation.
 
 The host authorizes and validates again inside the durable transaction. It returns the accepted normalized
 revision, a structured validation/policy error, or conflict data. Silent last-write-wins is not conforming.
@@ -295,7 +505,7 @@ Local recovery is explicit. A recovery envelope names its base revision, protoco
 bounded/checksummed. The host decides whether and how it is encrypted and stored. Reopen validates it against
 current contracts before replay; incompatible commands do not run speculatively.
 
-## 8. Accessibility, localization and policy reduction
+## 9. Accessibility, localization and policy reduction
 
 The host supplies localized labels/catalogues and announces permission changes. A field hidden by policy must
 not leak through palette entries, preview, outline, validation counts, clipboard, history, telemetry, resource
@@ -305,15 +515,20 @@ The integration must preserve semantic landmarks, labels, focus order, keyboard 
 contrast and reduced-motion preferences. Host chrome cannot make dragging the sole path or intercept Studio
 shortcuts without an accessible alternative.
 
-## 9. Production runtime boundary
+## 10. Production runtime boundary
 
-Browser packages are compiled during build and release. A production host installs and serves those static
-assets through its normal deployment path; content authors and operators do not run Vite, Node.js, npm, or a
-server-side JavaScript process. All authoritative effects stay in the host application's services and HTTP/API
-boundary (`STUDIO-PROD-010`, `011`), and public delivery remains operable without Studio. Kumwe App's stricter
-PHP mapping is described in its playbook.
+Browser packages are compiled during build and release. A production deployment copies and serves only the
+verified static output through its normal web/CDN path; it does not install an npm package on the server.
+Fingerprint assets are immutable and long-cacheable, while HTML and asset manifests use controlled revalidation.
+Deployment is atomic: HTML never names a partly copied asset generation, and rollback restores the complete
+prior manifest/directory. Verify the declared integrity and size bounds before activation.
 
-## 10. Lifecycle and compatibility
+Content authors and operators do not run Vite, Node.js, npm, a package-registry client, or a server-side
+JavaScript process. All authoritative effects stay in the host application's services and HTTP/API boundary
+(`STUDIO-PROD-010`, `011`), and public delivery remains operable without Studio or authoring JavaScript. Kumwe
+App's stricter PHP mapping is described in its playbook.
+
+## 11. Lifecycle and compatibility
 
 The host records Studio protocol/package versions with stored artifacts and follows the published
 [compatibility policy](../governance/compatibility.md). Upgrade procedure:
@@ -328,7 +543,7 @@ The host records Studio protocol/package versions with stored artifacts and foll
 
 A host must reject an unsupported downgrade rather than attempt to interpret newer artifacts.
 
-## 11. Generic-host acceptance
+## 12. Generic-host acceptance
 
 Gate B generic-host evidence proves:
 

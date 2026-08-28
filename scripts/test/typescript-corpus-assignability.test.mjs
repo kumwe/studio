@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative, sep } from 'node:path';
 import { test } from 'node:test';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 
+import { buildExpectedTypeScriptRuntimeInventory } from '../lib/typescript-evidence.mjs';
+
 const execFileAsync = promisify(execFile);
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 const schemaRoot = join(repositoryRoot, 'schemas');
+const corpusManifest = JSON.parse(
+  await readFile(join(repositoryRoot, 'packages/testkit/corpus-manifest.json'), 'utf8'),
+);
 const compilerDepthBoundary = new Set([
   'schemas/vectors/schema-profile/json-depth-limit.accepted.json',
   'schemas/vectors/schema-profile/json-depth-limit.rejected.json',
@@ -43,32 +48,54 @@ const exampleSchemas = new Map([
   ['rich-text.schema.json', ['rich-text.example.json']],
   ['reusable-content-type.schema.json', ['reusable-content-type.example.json']],
   ['studio-config.schema.json', ['studio-config.example.json']],
+  [
+    'studio-deployment.schema.json',
+    ['studio-deployment.hosted.example.json', 'studio-deployment.standalone.example.json'],
+  ],
   ['theme.schema.json', ['theme.example.json']],
   ['unresolved-contribution.schema.json', ['unresolved-contribution.example.json']],
 ]);
 
-const corpusGroups = [
-  ['vectors/binding-projection', 'binding-projection-vector.schema.json'],
-  ['vectors/canonical', 'canonical-vector.schema.json'],
-  ['vectors/command', 'command-vector.schema.json'],
-  ['vectors/host', 'host-vector.schema.json'],
-  ['vectors/host-sequence', 'host-sequence-vector.schema.json'],
-  ['vectors/media', 'media-vector.schema.json'],
-  ['vectors/preview', 'preview-vector.schema.json'],
-  ['vectors/schema-profile', 'schema-profile-vector.schema.json'],
-  ['conformance/authoring-web', 'authoring-web-vector.schema.json'],
-  ['conformance/renderer-web', 'renderer-web-vector.schema.json'],
-  ['conformance/rich-text', 'rich-text-projection.schema.json'],
-];
+const corpusGroupSchemas = new Map([
+  [
+    'binding-projection-vectors',
+    ['vectors/binding-projection', 'binding-projection-vector.schema.json'],
+  ],
+  ['canonical-vectors', ['vectors/canonical', 'canonical-vector.schema.json']],
+  ['command-vectors', ['vectors/command', 'command-vector.schema.json']],
+  ['host-vectors', ['vectors/host', 'host-vector.schema.json']],
+  ['host-sequence-vectors', ['vectors/host-sequence', 'host-sequence-vector.schema.json']],
+  ['authoring-http-vectors', ['vectors/authoring-http', 'authoring-http-vector.schema.json']],
+  ['media-vectors', ['vectors/media', 'media-vector.schema.json']],
+  ['preview-vectors', ['vectors/preview', 'preview-vector.schema.json']],
+  ['schema-profile-vectors', ['vectors/schema-profile', 'schema-profile-vector.schema.json']],
+  ['authoring-web-conformance', ['conformance/authoring-web', 'authoring-web-vector.schema.json']],
+  ['renderer-web-conformance', ['conformance/renderer-web', 'renderer-web-vector.schema.json']],
+  ['rich-text-conformance', ['conformance/rich-text', 'rich-text-projection.schema.json']],
+]);
+
+const exampleSchemaByFile = new Map(
+  [...exampleSchemas].flatMap(([schemaFile, files]) => files.map((file) => [file, schemaFile])),
+);
+const transportMatrixPath = 'schemas/vectors/authoring-http/transport-matrix.json';
 
 test('canonical corpus literals are assignable to their exact generated schema roots', async () => {
   const documents = await loadApplicableCorpus();
-  assert.equal(documents.length, 240);
+  const expectedPaths = buildExpectedTypeScriptRuntimeInventory(corpusManifest);
+  assert.deepEqual(documents.map(({ path }) => path).sort(), expectedPaths);
+
+  assert.deepEqual(
+    documents
+      .filter(({ path }) => path === transportMatrixPath)
+      .map(({ path, schemaFile }) => ({ path, schemaFile })),
+    [{ path: transportMatrixPath, schemaFile: 'authoring-http-vector.schema.json' }],
+  );
 
   const bounded = documents.filter(({ path }) => compilerDepthBoundary.has(path));
   assert.deepEqual(bounded.map(({ path }) => path).sort(), [...compilerDepthBoundary].sort());
   const staticallyChecked = documents.filter(({ path }) => !compilerDepthBoundary.has(path));
-  assert.equal(staticallyChecked.length, 238);
+  assert.equal(staticallyChecked.length, expectedPaths.length - compilerDepthBoundary.size);
+  assert.ok(staticallyChecked.some(({ path }) => path === transportMatrixPath));
 
   const proofRoot = await mkdtemp(join(tmpdir(), 'studio-typescript-corpus-'));
   try {
@@ -99,20 +126,33 @@ test('canonical corpus literals are assignable to their exact generated schema r
 
 async function loadApplicableCorpus() {
   const documents = [];
-  for (const [schemaFile, files] of exampleSchemas) {
-    for (const file of files) {
-      documents.push(await loadDocument(join(schemaRoot, 'examples', file), schemaFile));
+  const expectedMappedGroups = new Set(corpusGroupSchemas.keys());
+  const observedMappedGroups = new Set();
+  for (const group of corpusManifest.groups) {
+    if (group.path === 'invalid') continue;
+    if (group.path === 'fixtures') {
+      for (const { file } of group.files) {
+        const schemaFile = exampleSchemaByFile.get(file);
+        assert.ok(schemaFile, `Manifest fixture ${file} has no generated schema assignment.`);
+        documents.push(await loadDocument(join(schemaRoot, 'examples', file), schemaFile));
+      }
+      assert.deepEqual(
+        group.files.map(({ file }) => file).sort(),
+        [...exampleSchemaByFile.keys()].sort(),
+      );
+      continue;
+    }
+
+    const assignment = corpusGroupSchemas.get(group.group);
+    assert.ok(assignment, `Manifest group ${group.group} has no generated schema assignment.`);
+    const [expectedPath, schemaFile] = assignment;
+    assert.equal(group.path, expectedPath, `Manifest group ${group.group} changed path.`);
+    observedMappedGroups.add(group.group);
+    for (const { file } of group.files) {
+      documents.push(await loadDocument(join(schemaRoot, group.path, file), schemaFile));
     }
   }
-  for (const [directory, schemaFile] of corpusGroups) {
-    const absoluteDirectory = join(schemaRoot, directory);
-    const files = (await readdir(absoluteDirectory))
-      .filter((file) => file.endsWith('.json'))
-      .sort();
-    for (const file of files) {
-      documents.push(await loadDocument(join(absoluteDirectory, file), schemaFile));
-    }
-  }
+  assert.deepEqual([...observedMappedGroups].sort(), [...expectedMappedGroups].sort());
   documents.push(
     await loadDocument(
       join(repositoryRoot, 'packages/testkit/corpus-manifest.json'),

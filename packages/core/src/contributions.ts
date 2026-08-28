@@ -1,4 +1,5 @@
 import {
+  authoringTargetSchema,
   blockDefinitionSchema,
   blueprintSchema,
   commonSchema,
@@ -10,6 +11,9 @@ import {
   STUDIO_CONTRACT_VERSION,
 } from '@kumwe/studio-protocol';
 import type {
+  AuthoringContributionDependency,
+  AuthoringTargetDeclaration,
+  AuthoringTargetResolveRequest,
   BlockDefinition,
   BlockType,
   BlueprintDocument,
@@ -17,6 +21,7 @@ import type {
   DesignVocabulary,
   ExtensionLifecycleState,
   FieldAdapterContribution,
+  HostFeatureCapability,
   InspectorContribution,
   MigrationDeclaration,
   NodeId,
@@ -33,8 +38,10 @@ import { StudioCommandError } from './commands.js';
 import { BlockRegistry } from './registry.js';
 import { compileProfileSchema, type CompiledSchemaValidator } from './profile-validator.js';
 import { assertStudioPropertySchema } from './schema-profile.js';
+import { compareSemanticVersions, satisfiesVersionRange } from './semver.js';
 
 export interface ExtensionContributions {
+  authoringTargets?: AuthoringTargetDeclaration[];
   blocks: BlockDefinition[];
   designVocabularies?: DesignVocabulary[];
   fieldAdapters?: FieldAdapterContribution[];
@@ -44,6 +51,7 @@ export interface ExtensionContributions {
 }
 
 interface NormalizedExtensionContributions {
+  authoringTargets: AuthoringTargetDeclaration[];
   blocks: BlockDefinition[];
   designVocabularies: DesignVocabulary[];
   fieldAdapters: FieldAdapterContribution[];
@@ -55,6 +63,14 @@ interface NormalizedExtensionContributions {
 export type StudioCompositionContributionKind =
   'block' | 'design-vocabulary' | 'field-adapter' | 'inspector' | 'migration' | 'pattern';
 
+/**
+ * Every canonical payload admitted to an immutable contribution generation.
+ * Authoring targets are discovery declarations rather than page composition,
+ * so they intentionally remain outside `StudioCompositionContributionKind`.
+ */
+export type StudioLifecycleContributionKind =
+  'authoring-target' | StudioCompositionContributionKind;
+
 export type StudioCompositionContribution =
   | BlockDefinition
   | DesignVocabulary
@@ -62,6 +78,20 @@ export type StudioCompositionContribution =
   | InspectorContribution
   | MigrationDeclaration
   | PatternDocument;
+
+export type StudioLifecycleContribution =
+  AuthoringTargetDeclaration | StudioCompositionContribution;
+
+export interface AuthoringTargetRuntimeOptions {
+  capabilities: readonly HostFeatureCapability[];
+  mode?: 'blueprint' | 'content' | 'model';
+}
+
+export interface ResolvedAuthoringTarget {
+  /** Only dependencies explicitly admitted by this target are returned. */
+  contributions: readonly StudioCompositionContribution[];
+  target: AuthoringTargetDeclaration;
+}
 
 export interface ExtensionInventory {
   diagnostics: StudioDiagnostic[];
@@ -100,15 +130,16 @@ interface ExtensionRecord {
 
 interface ContributionEntry {
   id: string;
-  kind: StudioCompositionContributionKind;
+  kind: StudioLifecycleContributionKind;
   owner: OwnerReference;
-  payload: StudioCompositionContribution;
+  payload: StudioLifecycleContribution;
   version: string;
 }
 
 const contributionValidators: Readonly<
-  Record<StudioCompositionContributionKind, CompiledSchemaValidator>
+  Record<StudioLifecycleContributionKind, CompiledSchemaValidator>
 > = {
+  'authoring-target': compileProfileSchema(authoringTargetSchema, { schemas: [commonSchema] }),
   block: compileProfileSchema(blockDefinitionSchema, { schemas: [commonSchema] }),
   'design-vocabulary': compileProfileSchema(designVocabularySchema, {
     schemas: [commonSchema],
@@ -124,7 +155,7 @@ const contributionValidators: Readonly<
  * after publication; lifecycle transitions publish a successor instead.
  */
 export class RegistryGeneration {
-  readonly #contributions: ReadonlyMap<string, StudioCompositionContribution>;
+  readonly #contributions: ReadonlyMap<string, StudioLifecycleContribution>;
   readonly #generation: Revision;
   readonly #owners: readonly OwnerReference[];
   readonly #registry: BlockRegistry;
@@ -166,12 +197,12 @@ export class RegistryGeneration {
     return this.#registry.resolve(type, version);
   }
 
-  /** Resolve one of the six canonical composition payload kinds by exact identity. */
+  /** Resolve a canonical lifecycle payload by exact kind, identity, and version. */
   public resolveContribution(
-    kind: StudioCompositionContributionKind,
+    kind: StudioLifecycleContributionKind,
     id: string,
     version: string,
-  ): StudioCompositionContribution | undefined {
+  ): StudioLifecycleContribution | undefined {
     if (kind === 'block') {
       return this.resolveBlock(id as BlockType, version);
     }
@@ -188,7 +219,59 @@ export class RegistryGeneration {
     return [...this.#contributions.entries()]
       .filter(([key]) => key.startsWith(prefix))
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([, payload]) => cloneContractValue(payload));
+      .map(([, payload]) => cloneContractValue(payload as StudioCompositionContribution));
+  }
+
+  /** Enumerate active core and extension targets in deterministic identity order. */
+  public authoringTargets(): AuthoringTargetDeclaration[] {
+    const prefix = 'authoring-target\u0000';
+    return [...this.#contributions.entries()]
+      .filter(([key]) => key.startsWith(prefix))
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([, payload]) => cloneContractValue(payload as AuthoringTargetDeclaration));
+  }
+
+  /**
+   * Resolve one contextual target against the same immutable generation used
+   * for all six composition families. This is deterministic discovery only:
+   * a successful result neither authorizes the actor nor mints a resource
+   * context. The host must still perform both duties through its authoring
+   * port before a session can open.
+   */
+  public resolveAuthoringTarget(
+    request: Readonly<AuthoringTargetResolveRequest>,
+    options: Readonly<AuthoringTargetRuntimeOptions>,
+  ): ResolvedAuthoringTarget | undefined {
+    const target = this.authoringTargets().find((candidate) => candidate.id === request.targetId);
+    if (target === undefined || !targetMatchesRequest(target, request, options)) {
+      return undefined;
+    }
+
+    const contributions: StudioCompositionContribution[] = [];
+    for (const dependency of target.contributionDependencies) {
+      const resolved = this.#resolveDependency(dependency);
+      if (resolved === undefined) {
+        if (dependency.required) {
+          return undefined;
+        }
+        continue;
+      }
+      contributions.push(resolved);
+    }
+    return {
+      contributions: cloneContractValue(contributions),
+      target: cloneContractValue(target),
+    };
+  }
+
+  #resolveDependency(
+    dependency: Readonly<AuthoringContributionDependency>,
+  ): StudioCompositionContribution | undefined {
+    const kind = compositionKindFromAuthoringKind(dependency.kind);
+    const candidates = contributionEntriesFromGeneration(this.#contributions, kind, dependency.id)
+      .filter((entry) => satisfiesVersionRange(entry.version, dependency.versions))
+      .sort((left, right) => compareSemanticVersions(right.version, left.version));
+    return candidates[0]?.payload;
   }
 }
 
@@ -263,6 +346,12 @@ export class ContributionRuntime {
 
   public disable(ownerId: string, options: Readonly<GenerationOptions>): RegistryGeneration {
     const record = this.#requireExtension(ownerId);
+    if (record.state !== 'active' && record.state !== 'disabled') {
+      throw new StudioContributionError(
+        `Extension ${ownerId} cannot be disabled from lifecycle state ${record.state}.`,
+        record.diagnostics,
+      );
+    }
     record.state = 'disabled';
     this.#current = this.#publish(options.generation);
     return this.#current;
@@ -270,9 +359,9 @@ export class ContributionRuntime {
 
   public reactivate(ownerId: string, options: Readonly<GenerationOptions>): RegistryGeneration {
     const record = this.#requireExtension(ownerId);
-    if (record.state === 'trust-revoked') {
+    if (record.state !== 'disabled') {
       throw new StudioContributionError(
-        `Extension ${ownerId} is trust-revoked and requires a fresh verified activation.`,
+        `Extension ${ownerId} cannot be reactivated from lifecycle state ${record.state}; a fresh verified activation is required.`,
         record.diagnostics,
       );
     }
@@ -287,6 +376,18 @@ export class ContributionRuntime {
     // Contribution DATA is retained for the diagnostics inventory the
     // lifecycle contract requires; only resolution excludes it, because a
     // published generation includes active extensions exclusively.
+    this.#current = this.#publish(options.generation);
+    return this.#current;
+  }
+
+  /**
+   * Remove all executable resolution for an extension while retaining its
+   * owned payload inventory for unresolved diagnostics and later migration.
+   * A fresh verified activation is required before it can contribute again.
+   */
+  public uninstall(ownerId: string, options: Readonly<GenerationOptions>): RegistryGeneration {
+    const record = this.#requireExtension(ownerId);
+    record.state = 'uninstalled-data-preserved';
     this.#current = this.#publish(options.generation);
     return this.#current;
   }
@@ -386,7 +487,7 @@ export class ContributionRuntime {
   public unresolvedReference(
     reference: UnresolvedContributionReference,
   ): { owner?: OwnerReference; reason: UnresolvedContributionReason } | undefined {
-    if (!isCompositionContributionKind(reference.contribution)) {
+    if (!isLifecycleContributionKind(reference.contribution)) {
       return { reason: 'not-installed' };
     }
     if (
@@ -410,7 +511,7 @@ export class ContributionRuntime {
   }
 
   #unresolvedContributionReason(
-    kind: StudioCompositionContributionKind,
+    kind: StudioLifecycleContributionKind,
     id: string,
     version: string,
   ): { owner?: OwnerReference; reason: UnresolvedContributionReason } {
@@ -512,7 +613,7 @@ export class ContributionRuntime {
   }
 
   #ownerOfContribution(
-    kind: StudioCompositionContributionKind,
+    kind: StudioLifecycleContributionKind,
     id: string,
     exceptOwnerId: string,
   ): string | undefined {
@@ -520,7 +621,10 @@ export class ContributionRuntime {
       if (record.owner.id === exceptOwnerId) {
         continue;
       }
-      if (record.state === 'purged' || record.state === 'uninstalled-data-preserved') {
+      // Uninstall preserves ownership as well as data. Releasing the identity
+      // before an explicitly authorized purge would let another extension
+      // reinterpret preserved artifacts under an unrelated implementation.
+      if (record.state === 'purged') {
         continue;
       }
       if (
@@ -568,6 +672,7 @@ function normalizeContributions(
   contributions: Readonly<ExtensionContributions>,
 ): NormalizedExtensionContributions {
   return {
+    authoringTargets: cloneContractValue(contributions.authoringTargets ?? []),
     blocks: cloneContractValue(contributions.blocks),
     designVocabularies: cloneContractValue(contributions.designVocabularies ?? []),
     fieldAdapters: cloneContractValue(contributions.fieldAdapters ?? []),
@@ -579,6 +684,16 @@ function normalizeContributions(
 
 function contributionEntries(contributions: NormalizedExtensionContributions): ContributionEntry[] {
   return [
+    ...contributions.authoringTargets.map((payload) => ({
+      id: payload.id,
+      kind: 'authoring-target' as const,
+      owner: payload.owner,
+      payload,
+      // The declaration itself is intentionally not a versioned artifact.
+      // Its immutable lifecycle identity is the exact owner release that
+      // contributed it, mirrored by the plugin manifest declaration.
+      version: payload.owner.version,
+    })),
     ...contributions.blocks.map((payload) => ({
       id: payload.type,
       kind: 'block' as const,
@@ -625,23 +740,75 @@ function contributionEntries(contributions: NormalizedExtensionContributions): C
 }
 
 function contributionKey(
-  kind: StudioCompositionContributionKind,
+  kind: StudioLifecycleContributionKind,
   id: string,
   version: string,
 ): string {
   return `${kind}\u0000${id}\u0000${version}`;
 }
 
-function isCompositionContributionKind(
+function isLifecycleContributionKind(
   kind: UnresolvedContributionReference['contribution'],
-): kind is StudioCompositionContributionKind {
+): kind is StudioLifecycleContributionKind {
   return (
+    kind === 'authoring-target' ||
     kind === 'block' ||
     kind === 'design-vocabulary' ||
     kind === 'field-adapter' ||
     kind === 'inspector' ||
     kind === 'migration' ||
     kind === 'pattern'
+  );
+}
+
+function compositionKindFromAuthoringKind(
+  kind: AuthoringContributionDependency['kind'],
+): StudioCompositionContributionKind {
+  return kind === 'block-definition' ? 'block' : kind;
+}
+
+interface GenerationContributionEntry {
+  payload: StudioCompositionContribution;
+  version: string;
+}
+
+function contributionEntriesFromGeneration(
+  contributions: ReadonlyMap<string, StudioLifecycleContribution>,
+  kind: StudioCompositionContributionKind,
+  id: string,
+): GenerationContributionEntry[] {
+  const prefix = `${kind}\u0000${id}\u0000`;
+  return [...contributions.entries()]
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, payload]) => ({
+      payload: cloneContractValue(payload as StudioCompositionContribution),
+      version: key.slice(prefix.length),
+    }));
+}
+
+function targetMatchesRequest(
+  target: Readonly<AuthoringTargetDeclaration>,
+  request: Readonly<AuthoringTargetResolveRequest>,
+  options: Readonly<AuthoringTargetRuntimeOptions>,
+): boolean {
+  if (
+    target.surface !== request.resourceContext.surface ||
+    request.resourceContext.resource === undefined ||
+    !target.resourceTypes.includes(request.resourceContext.resource.type) ||
+    !target.eligibility.includes(request.intent) ||
+    (request.requestedPresentation !== undefined &&
+      !target.presentationStates.includes(request.requestedPresentation)) ||
+    (options.mode !== undefined && !target.modes.includes(options.mode))
+  ) {
+    return false;
+  }
+
+  return target.requiredCapabilities.every((requirement) =>
+    options.capabilities.some(
+      (capability) =>
+        capability.id === requirement.id &&
+        satisfiesVersionRange(capability.version, requirement.versions),
+    ),
   );
 }
 

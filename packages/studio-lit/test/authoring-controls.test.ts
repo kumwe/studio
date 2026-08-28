@@ -20,6 +20,62 @@ describe('first-party page authoring controls', () => {
     expect(STUDIO_AUTHORING_CONTROL_IDS.table).toBe('studio.control/table');
   });
 
+  it('mounts an admitted extension control without allowing first-party replacement', async () => {
+    const changes: unknown[] = [];
+    const registry = new StudioAuthoringControlRegistry({
+      extensionControls: [
+        {
+          control: 'org.example.catalog/product-name',
+          mount(options) {
+            const input = document.createElement('input');
+            input.setAttribute('aria-label', 'Extension product name');
+            input.disabled = options.readOnly === true;
+            input.value = String(options.value);
+            input.addEventListener('input', () => {
+              options.onChange?.({ valid: true, value: input.value });
+            });
+            options.holder.append(input);
+            return {
+              destroy: (): void => input.remove(),
+              focus: (): void => input.focus(),
+              readOnly: input.disabled,
+              value: (): string => input.value,
+            };
+          },
+        },
+      ],
+    });
+    expect(registry.supports('org.example.catalog/product-name')).toBe(true);
+    expect(registry.supports('org.example.catalog/not-admitted')).toBe(false);
+
+    const root = holder();
+    const control = await registry.mount('org.example.catalog/product-name', {
+      holder: root,
+      onChange: (change) => changes.push(change),
+      value: 'Trail Backpack',
+    });
+    const input = root.querySelector<HTMLInputElement>('[aria-label="Extension product name"]');
+    if (input === null) throw new Error('Missing extension field control.');
+    input.value = 'Expedition Backpack';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    expect(control.value()).toBe('Expedition Backpack');
+    expect(changes).toEqual([{ valid: true, value: 'Expedition Backpack' }]);
+    control.destroy();
+    root.remove();
+
+    expect(
+      () =>
+        new StudioAuthoringControlRegistry({
+          extensionControls: [
+            {
+              control: STUDIO_AUTHORING_CONTROL_IDS.richText,
+              mount: () => control,
+            },
+          ],
+        }),
+    ).toThrow(/cannot replace a first-party Studio control/u);
+  });
+
   it('mounts the source control behind a CodeMirror-neutral seam and previews lazily', async () => {
     const renders: string[] = [];
     const preview: StudioSourcePreviewAdapter = {

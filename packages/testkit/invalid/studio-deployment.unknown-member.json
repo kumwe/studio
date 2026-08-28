@@ -1,0 +1,10 @@
+{
+  "schema": "studio-deployment.schema.json",
+  "description": "Deployment configuration is closed and rejects inferred backend configuration.",
+  "value": {
+    "mount": "#studio-page",
+    "backend": {
+      "url": "/api/studio"
+    }
+  }
+}

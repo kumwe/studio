@@ -60,6 +60,15 @@ single-purpose https destination the host controls, with the chunk plan and any 
 send verbatim. The client transfers directly to that destination, so custody, quotas and storage
 placement stay host-owned and a large body never traverses the port transport (ADR 0015).
 
+For the browser integration, successful receipt of the `authorize-upload` result is the grant's effective
+issuance point. The exact usability rule is `issuedAt <= now < expiresAt`, and `expiresAt - issuedAt` MUST be
+positive and no greater than 15 minutes. The requested byte size and the returned plan's `maximumBytes` MUST
+each be no greater than the active session's exact `limits.maxMediaUploadBytes`; a grant MUST also cover the
+exact requested size. Header count, names and values retain the grant schema bounds. The raw transfer seam sees
+only that validated grant, bytes and grant-relative offset. It receives no Studio session identity and cannot
+authorize, complete or abort. A terminal byte-transfer or completion failure best-effort calls `abort-upload`,
+clears the grant locally and reauthorizes before retry.
+
 `complete-upload` closes the transfer. The host verifies what it actually received — a client-declared
 media type or checksum is never trusted — and mints the stable asset identity, which may still be
 `processing` or `quarantined`. `upload-status` polls an accepted asset whose processing has not

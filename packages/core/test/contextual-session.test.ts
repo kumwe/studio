@@ -18,7 +18,9 @@ import {
   type AuthoringTargetResolution,
   type AuthoringTargetResolveRequest,
   type AuthoringTypeListQuery,
+  type BlueprintCommand,
   type BlueprintDocument,
+  type BlueprintNode,
   type ContentModelDocument,
   type EntryDocument,
   type HostAdapter,
@@ -35,6 +37,7 @@ import { createBlueprintFixture, createStudioConfigurationFixture } from '@kumwe
 import {
   openContextualStudioSession,
   openStudioSession,
+  preflightContextualStudioSession,
   type StudioHostSessionIdentifierFactories,
 } from '../src/index.js';
 
@@ -91,6 +94,21 @@ function blueprintFixture(model: ContentModelDocument): BlueprintDocument {
   blueprint.model = { id: model.id, revision: model.revision, version: model.version };
   blueprint.status = 'draft';
   return blueprint;
+}
+
+function blueprintNodeFixture(id: string, requiredPermission?: QualifiedName): BlueprintNode {
+  return {
+    authoring: {
+      mode: 'designer',
+      ...(requiredPermission === undefined ? {} : { requiredPermission }),
+    },
+    bindings: {},
+    id,
+    properties: {},
+    slots: {},
+    type: 'studio.test/section',
+    version: '1.0.0',
+  };
 }
 
 function entryFixture(
@@ -274,6 +292,7 @@ function identifierProbe(): IdentifierProbe {
 interface AuthoringProbe {
   contexts: HostRequestContext[];
   failNextSave: boolean;
+  failNextStart?: boolean;
   resolution: AuthoringTargetResolution;
   snapshot: AuthoringSessionSnapshot;
 }
@@ -324,6 +343,12 @@ function hostAdapter(probe: AuthoringProbe): HostAdapter {
     },
     start(request, context) {
       probe.contexts.push(structuredClone(context));
+      if (probe.failNextStart === true) {
+        probe.failNextStart = false;
+        return Promise.reject(
+          hostFailure('unavailable', 'studio.test/retryable-authoring-start-failure'),
+        );
+      }
       return Promise.resolve({ value: structuredClone(probe.snapshot) });
     },
   };
@@ -574,6 +599,7 @@ function modelCommand(
 async function openFixture(
   source: AuthoringStartRequest['source'] = { kind: 'existing' },
   snapshotOverrides: Partial<AuthoringSessionSnapshot> = {},
+  configure?: (configuration: StudioConfiguration) => void,
 ): Promise<{
   handle: Awaited<ReturnType<typeof openContextualStudioSession>>;
   identifiers: IdentifierProbe;
@@ -587,8 +613,10 @@ async function openFixture(
     snapshot,
   };
   const identifiers = identifierProbe();
+  const configuration = configurationFixture();
+  configure?.(configuration);
   const handle = await openContextualStudioSession(hostAdapter(probe), {
-    configuration: configurationFixture(),
+    configuration,
     identifiers: identifiers.factories,
     start: startRequest(source),
     target: targetRequest(source.kind === 'existing' ? 'edit' : 'create'),
@@ -597,6 +625,134 @@ async function openFixture(
 }
 
 describe('contextual Studio opening and exact hydration', () => {
+  it.each(['blueprint', 'entry', 'model'] as const)(
+    'rejects a schema-valid host %s above the resolved session policy before opening',
+    async (artifact) => {
+      const snapshot = snapshotFixture({ kind: 'existing' });
+      snapshot.state[artifact].extensions = {
+        'studio.test/security-probe': { enabled: true },
+      };
+
+      await expect(
+        openFixture({ kind: 'existing' }, snapshot, (configuration) => {
+          configuration.limits.maxExtensionBytes = 0;
+        }),
+      ).rejects.toMatchObject({ code: 'resource-limit' });
+    },
+  );
+
+  it('resolves and lists authorized reusable types before starting exact create drafts', async () => {
+    const type = typeFixture(modelFixture(), blueprintFixture(modelFixture()));
+    const source = {
+      kind: 'from-type' as const,
+      type: { id: type.id, revision: type.revision, version: type.version },
+    };
+    const probe: AuthoringProbe = {
+      contexts: [],
+      failNextSave: false,
+      resolution: resolutionFixture(),
+      snapshot: snapshotFixture(source),
+    };
+    const identifiers = identifierProbe();
+    const preflight = await preflightContextualStudioSession(hostAdapter(probe), {
+      configuration: configurationFixture(),
+      identifiers: identifiers.factories,
+      target: targetRequest('create'),
+    });
+
+    expect(preflight.started).toBe(false);
+    expect(identifiers.requests.map(({ operation }) => operation)).toEqual([
+      'studio.operation/authoring.resolve-target',
+    ]);
+    const listed = await preflight.types?.list({
+      limit: 100,
+      resourceContext,
+      targetId: TARGET_ID,
+    });
+    expect(listed?.value.items[0]?.reference).toEqual(source.type);
+
+    const handle = await preflight.start(startRequest(source));
+    expect(handle.session.snapshot.start).toEqual(source);
+    expect(preflight.started).toBe(true);
+    expect(identifiers.requests.map(({ operation }) => operation)).toEqual([
+      'studio.operation/authoring.resolve-target',
+      'studio.operation/authoring.list-types',
+      'studio.operation/authoring.start',
+    ]);
+    expect(
+      identifiers.idempotency.filter(
+        ({ operation }) => operation === 'studio.operation/authoring.start',
+      ),
+    ).toHaveLength(1);
+    expect(probe.contexts.at(-1)?.idempotencyKey).toBe('idempotency/contextual-1');
+    await expect(preflight.start(startRequest({ kind: 'blank' }))).rejects.toMatchObject({
+      code: 'disposed',
+    });
+    handle.dispose();
+  });
+
+  it('disposes an unstarted preflight without issuing a start request', async () => {
+    const probe: AuthoringProbe = {
+      contexts: [],
+      failNextSave: false,
+      resolution: resolutionFixture(),
+      snapshot: snapshotFixture({ kind: 'blank' }),
+    };
+    const identifiers = identifierProbe();
+    const preflight = await preflightContextualStudioSession(hostAdapter(probe), {
+      configuration: configurationFixture(),
+      identifiers: identifiers.factories,
+      target: targetRequest('create'),
+    });
+    preflight.dispose();
+
+    await expect(preflight.start(startRequest({ kind: 'blank' }))).rejects.toMatchObject({
+      code: 'disposed',
+    });
+    expect(identifiers.requests.map(({ operation }) => operation)).toEqual([
+      'studio.operation/authoring.resolve-target',
+    ]);
+  });
+
+  it('reuses the exact start idempotency key after an ambiguous retryable failure', async () => {
+    const probe: AuthoringProbe = {
+      contexts: [],
+      failNextSave: false,
+      failNextStart: true,
+      resolution: resolutionFixture(),
+      snapshot: snapshotFixture({ kind: 'blank' }),
+    };
+    const identifiers = identifierProbe();
+    const preflight = await preflightContextualStudioSession(hostAdapter(probe), {
+      configuration: configurationFixture(),
+      identifiers: identifiers.factories,
+      target: targetRequest('create'),
+    });
+    const request = startRequest({ kind: 'blank' });
+
+    await expect(preflight.start(request)).rejects.toMatchObject({
+      error: { category: 'unavailable' },
+    });
+    const handle = await preflight.start(request);
+
+    expect(
+      identifiers.idempotency.filter(
+        ({ operation }) => operation === 'studio.operation/authoring.start',
+      ),
+    ).toHaveLength(1);
+    expect(
+      probe.contexts
+        .filter(({ operationId }) => operationId === 'studio.operation/authoring.start')
+        .map(({ idempotencyKey }) => idempotencyKey),
+    ).toEqual(['idempotency/contextual-1', 'idempotency/contextual-1']);
+    expect(
+      identifiers.requests.filter(
+        ({ operation }) => operation === 'studio.operation/authoring.start',
+      ),
+    ).toHaveLength(2);
+    handle.dispose();
+  });
+
   it('resolves and starts one exact resource-bound existing-item session', async () => {
     const { handle, identifiers, probe } = await openFixture();
 
@@ -669,6 +825,28 @@ describe('contextual Studio opening and exact hydration', () => {
     ).rejects.toBeInstanceOf(HostPortFailure);
   });
 
+  it('rejects a started snapshot that substitutes a different return context', async () => {
+    const probe: AuthoringProbe = {
+      contexts: [],
+      failNextSave: false,
+      resolution: resolutionFixture(),
+      snapshot: snapshotFixture({ kind: 'existing' }),
+    };
+    probe.snapshot.presentation.returnContext = {
+      key: 'return/substituted',
+      label: { defaultMessage: 'Wrong return', key: 'studio.test/wrong-return' },
+    };
+
+    await expect(
+      openContextualStudioSession(hostAdapter(probe), {
+        configuration: configurationFixture(),
+        identifiers: identifierProbe().factories,
+        start: startRequest({ kind: 'existing' }),
+        target: targetRequest('edit'),
+      }),
+    ).rejects.toBeInstanceOf(HostPortFailure);
+  });
+
   it('keeps the Blueprint-only opener available and independently profiled', () => {
     expect(openStudioSession).toBeTypeOf('function');
   });
@@ -715,6 +893,75 @@ describe('coordinated but separate contextual drafts', () => {
     expect(() =>
       contentOnly.handle.session.executeModel(modelCommand(contentOnly.handle.session)),
     ).toThrow(expect.objectContaining({ code: 'mode-forbidden' }) as Error);
+  });
+
+  it('enforces the exact contextual Blueprint limits without advancing draft state', async () => {
+    const snapshot = snapshotFixture();
+    snapshot.state.blueprint.roots = [blueprintNodeFixture('existing-section')];
+    const { handle } = await openFixture({ kind: 'existing' }, snapshot, (configuration) => {
+      configuration.limits.maxNodes = 1;
+    });
+    const before = handle.session.snapshot;
+
+    expect(() => handle.session.executeBlueprint(insertCommand(handle.session))).toThrow(
+      expect.objectContaining({ code: 'resource-limit' }) as Error,
+    );
+    expect(handle.session.snapshot).toStrictEqual(before);
+    expect(handle.session.stateVersions).toEqual({ blueprint: 0, entry: 0, model: 0 });
+    expect(handle.session.dirty).toEqual({ blueprint: false, entry: false, model: false });
+  });
+
+  it('enforces exact contextual permissions on protected Blueprint nodes', async () => {
+    const snapshot = snapshotFixture();
+    const protectedNode = blueprintNodeFixture(
+      'protected-section',
+      'studio.permission/edit-protected',
+    );
+    snapshot.state.blueprint.roots = [protectedNode];
+    const { handle } = await openFixture({ kind: 'existing' }, snapshot);
+    const command: BlueprintCommand = {
+      artifactId: handle.session.blueprint.id,
+      baseStateVersion: 0,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      expectedRevision: handle.session.coordinates.blueprint.revision,
+      id: 'commands/protected-property',
+      kind: 'command',
+      payload: { nodeId: protectedNode.id, property: 'title', value: 'Denied' },
+      sessionGeneration: 'session-r3',
+      type: 'studio.command/set-property',
+    };
+
+    expect(() => handle.session.executeBlueprint(command)).toThrow(
+      expect.objectContaining({ code: 'permission-forbidden' }) as Error,
+    );
+    expect(handle.session.stateVersions.blueprint).toBe(0);
+    expect(handle.session.dirty.blueprint).toBe(false);
+  });
+
+  it('enforces contextual rich-text and extension limits before entry/model state advances', async () => {
+    const { handle } = await openFixture({ kind: 'existing' }, {}, (configuration): void => {
+      configuration.limits.maxExtensionBytes = 0;
+      configuration.limits.maxRichTextBytes = 20;
+    });
+    const beforeEntry = handle.session.entry;
+    const richTextCommand = entryCommand(handle.session);
+    richTextCommand.payload.value = {
+      content: [{ content: [{ text: 'too much content', type: 'text' }], type: 'paragraph' }],
+      type: 'doc',
+    };
+    expect(() => handle.session.executeEntry(richTextCommand)).toThrow(
+      expect.objectContaining({ code: 'resource-limit' }) as Error,
+    );
+    expect(handle.session.entry).toStrictEqual(beforeEntry);
+    expect(handle.session.stateVersions.entry).toBe(0);
+
+    const extensionCommand = modelCommand(handle.session);
+    extensionCommand.payload.field.extensions = { 'studio.test/data': { enabled: true } };
+    expect(() => handle.session.executeModel(extensionCommand)).toThrow(
+      expect.objectContaining({ code: 'resource-limit' }) as Error,
+    );
+    expect(handle.session.model.fields.map((field) => field.id)).toEqual(['title']);
+    expect(handle.session.stateVersions.model).toBe(0);
   });
 });
 

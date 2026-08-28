@@ -26,21 +26,22 @@ Capabilities state technical support. Permissions state actor authority. Studio 
 
 Negotiation produces one resolved StudioConfig. Its `contractVersion` selects that configuration document's shape, while its `protocolVersion` is the one wire version selected from Studio support and `hostCapabilities.protocolVersions`. The schema epoch is identified by canonical schema `$id`; it is not transmitted as a substitute for either value. No common wire version or unsupported document revision prevents an editable session.
 
-The headless Blueprint composition entry point consumes that resolved configuration; it does not
-perform or simulate this handshake. Before loading, it verifies the selected protocol and negotiates
-the required artifact port against the capability inventory. The host still checks the exact operation
-capability, resource context, generation, and authority on every request. The current composition
-profile requires `mode: blueprint`, `composite: single`, and a configured Blueprint reference. It
-refuses other modes, hybrid composition, or a loaded model or entry rather than fabricating a
-different artifact kind ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
-
-That restriction describes current shipped behavior. The product target requires a coordinated contextual
-profile, but no current adapter operation or composed handle implements it (`STUDIO-PROD-014`).
+The headless entry points consume resolved configuration; they do not perform or simulate authentication or a
+host capability handshake. The legacy `openStudioSession` profile negotiates the artifact port and deliberately
+requires `mode: blueprint`, `composite: single`, and a configured Blueprint reference
+([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)). The additive contextual profile instead
+negotiates the canonical authoring port. `preflightContextualStudioSession` resolves the exact target and may
+list authorized exact reusable types before any drafts are hydrated; one subsequent `start` executes the chosen
+blank/from-type/existing source. `openContextualStudioSession` is the convenience form when the source is
+already known. Both produce the same separate Model, Blueprint, and Entry drafts and save-planning boundary.
+The host still checks the exact operation, resource context, generation, authentication, and authority on every
+request (`STUDIO-PROD-014`).
 
 ## Standard ports
 
 | Port           | Responsibility                                                             |
 | -------------- | -------------------------------------------------------------------------- |
+| `authoring`    | Resolve contextual targets, start exact snapshots, plan and transact saves |
 | `artifact`     | Load, validate, save, version, publish, unpublish and inspect dependencies |
 | `model`        | Discover authorized models and fields through read-only `list` and `get`   |
 | `resource`     | Search and resolve authorized resources and registered queries             |
@@ -97,6 +98,11 @@ legacy Blueprint handle (`STUDIO-PROD-014`).
 Presentation changes between inline, minimized, maximized, and fullscreen do not grant authority and MUST NOT
 change the resource context or artifact revisions (`STUDIO-PROD-007`). The host retains the deterministic
 return context and blocks navigation that would silently discard or misattribute dirty state.
+
+Choosing the browser Return control emits `studio-contextual-return-request`. Its event detail contains exactly
+`{ returnContext }`, cloned from the resolved target/session; it contains no URL, callback, draft, actor, or
+inferred navigation. Studio does not navigate, save, discard, or dispose in response. The host interprets its
+own opaque context and applies its dirty-work and navigation policy.
 
 ## Request envelope
 

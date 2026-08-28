@@ -63,6 +63,11 @@ Those commands are contributor/harness commands. They do not imply a production 
 product target requires compiled browser assets served by the host with zero production Node.js/npm
 (`STUDIO-PROD-011`), which this Vite harness does not qualify.
 
+For the build-once, copy-only deployment proof, use the
+[`standalone-static-host`](../standalone-static-host/README.md) example. It emits fingerprinted authoring assets,
+pre-rendered public output, and an integrity/runtime manifest that an ordinary static or PHP server can serve
+without an install or start command.
+
 The harness proves that the public packages compose into a runnable contextual product slice and that the host
 boundary can preserve target, resource, type, Model, Blueprint, Entry, and revision identity. Its in-memory
 `AuthoringPort` is the already-authenticated authority for the demonstration; it deliberately rejects attempts

@@ -1,12 +1,30 @@
 # Key authoring journeys
 
-These journeys define target end-to-end outcomes that roadmap increments and conformance scenarios must
-eventually prove. Their sole normative source is the [product contract](../product-contract.md). They do not
-claim that the current shipped shell implements the outcomes (`STUDIO-PROD-014` and `STUDIO-PROD-015`).
+These journeys define target end-to-end outcomes that roadmap increments and conformance scenarios must prove.
+Their sole normative source is the [product contract](../product-contract.md). The repository now implements
+the Studio-side standalone/hosted mounts, contextual coordinator and shell, presentation state, contribution
+admission, and save orchestration used by these journeys. It does not thereby claim that Kumwe App or another
+real host has executed, persisted, rendered, and qualified the complete outcomes (`STUDIO-PROD-014` and
+`STUDIO-PROD-015`).
 
-The currently shipped shell surface composes an existing Blueprint and projects an exact host model read-only
-for binding. The contextual launches, coordinated Model/Blueprint/Entry persistence, save choices, and
-presentation continuity below remain planned requirements.
+## Mount standalone or connect an authoritative host
+
+1. A normal HTML page loads the precompiled Studio browser assets and mounts explicit ordinary target elements
+   with zero configuration or associates them with bounded `application/json` deployment configuration. Two
+   instances on the same page remain isolated; neither discovers or shares the other's state or authority.
+2. A zero-configuration element, or a configuration containing only `mount`, opens a blank standalone workspace with Studio's built-in blocks and
+   patterns. It performs no network request and exposes canonical, lossless project JSON import/download plus an
+   explicit save-intent JSON download; these local actions do not claim durable host persistence
+   (`STUDIO-PROD-011` and `STUDIO-PROD-012`).
+3. A hosted configuration identifies the exact target, resource context, start, initial mode and presentation,
+   bounded capabilities, operation routing, and authentication transport. The server still authenticates,
+   authorizes, validates, and accepts or rejects every operation independently (`STUDIO-PROD-010`).
+4. A single endpoint receives the canonical operation name in `X-Studio-Operation`; an operation map names each
+   available route independently. Request and response bodies retain their exact canonical schemas in both
+   cases. Missing operations are disabled. A configured endpoint failure is shown and never becomes a local
+   success.
+5. Closing one mount disposes only that instance. Reopening standalone content requires an explicit import;
+   reopening hosted content requires a fresh server-authorized launch.
 
 ## Open a core or extension target and keep one session
 

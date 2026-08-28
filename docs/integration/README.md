@@ -3,44 +3,72 @@
 Studio is embedded through a versioned host contract. It does not assume a CMS, database, server language,
 HTTP framework, renderer, media store, identity provider, or publication workflow.
 
-The target product is contextual content authoring: create or edit an exact host resource, arrange its layout,
-define or bind fields, and enter values in one continuous Studio journey. The sole authority for that outcome is
-the [Studio product contract](../product-contract.md), especially `STUDIO-PROD-001`–`STUDIO-PROD-010`. This
-guide maps that target onto host responsibilities; it does not turn a planned target into a shipped API.
+The product is contextual content authoring: create or edit an exact host resource, arrange its layout, define
+or bind fields, and enter values in one continuous Studio journey. The sole authority for that outcome is the
+[Studio product contract](../product-contract.md). The public target, session, save, host-port, shell, and
+renderer contracts are host-neutral; the host supplies all authority and durable effects.
 
 Start with:
 
 - [`generic-host.md`](generic-host.md) for the implementation-neutral integration sequence and conformance
   obligations;
 - [`kumwe-app.md`](kumwe-app.md) for the first-party Kumwe App profile;
+- [`../../examples/php-authoring-host/README.md`](../../examples/php-authoring-host/README.md) for the executable,
+  framework-neutral PHP boundary for all seven authoring operations;
+- [`prebuilt-browser-assets.md`](prebuilt-browser-assets.md) for the host-neutral, integrity-pinned browser
+  bundle and governed release archive;
+- [`standalone-local.md`](standalone-local.md) for the backendless, in-browser workspace and its distinct
+  project versus save-intent JSON downloads;
+- [`../../examples/standalone-static-host/README.md`](../../examples/standalone-static-host/README.md) for the
+  build-once/copy-only static-delivery and zero-production-Node evidence;
 - [`../portability/README.md`](../portability/README.md) for language/runtime rules; and
 - [`../media/README.md`](../media/README.md) for the media ownership boundary.
 
-## Current Studio-side deliverable and gap
+## One integration path
 
-The integration candidate contains the runtime an embedding host consumes, not only a proposed API:
+Every host follows this sequence. Kumwe App uses the same sequence with PHP application services and PHP HTTP
+endpoints.
 
-| Surface                 | Repository-verified implementation                                                                                                                                                    | Contextual-authoring gap                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Blueprint composition   | 45 first-party block definitions, ten starter patterns, schema-valid insertion defaults, measured direct manipulation, and keyboard/outline/explicit-control parity                   | `openStudioSession` currently composes one Blueprint; it does not open and transact Model, Blueprint, and Entry together (`STUDIO-PROD-001`–`006`)                                         |
-| Block-local controls    | Editor.js `2.31.6` behind Studio's private factory, first-party structured tools, canonical rich-text JSON, Markdown conversion, safe-HTML import, and a strict-CSP sink-free surface | The Lit shell remains a separate Blueprint-oriented surface with read-only model projection; these controls are not a coordinated accessible Entry-value editor (`STUDIO-PROD-003`, `013`) |
-| Delivery                | `@kumwe/studio-renderer-web` semantic output for all 45 types, no-JavaScript fallbacks, disposable trusted enhancements, and an exhaustive portable renderer corpus                   | Kumwe App must still prove its PHP-authoritative path and compiled-browser deployment with zero production Node.js/npm (`STUDIO-PROD-010`, `011`)                                          |
-| Host data               | Read-only model projection, policy-filtered resource discovery, canonical resource-reference selection for opted-in contributed ports, and host-authoritative binding resolution      | Contextual launch from an extension-declared host target, exact reusable-type hydration, entry persistence, and explicit type-save transactions are not composed (`STUDIO-PROD-002`–`006`) |
-| Workspace presentation  | One standalone shell layout with host-bound preview and degraded structural fallback                                                                                                  | Inline/expanded continuity, including host-supported minimized, maximized, or full-screen states, remains target work (`STUDIO-PROD-007`)                                                  |
-| Contribution generation | Owner-aware canonical block, pattern, field-adapter, inspector, design-vocabulary, and migration contributions                                                                        | The host-target declaration that selects where those contributions appear and launches the exact resource remains target work (`STUDIO-PROD-008`, `009`)                                   |
-| Media                   | Studio-owned browse/upload/metadata/reorder/recovery controls over host-owned media providers and upload transports                                                                   | Real host custody, authorization, persistence, and audit remain unproved                                                                                                                   |
+1. Pin one exact eight-package family and verify `studio-release.json` plus its corpus digest.
+2. Build the browser bundle outside production, then deploy only immutable static assets. Production never installs or
+   runs Node.js, npm, Vite, or a JavaScript application server.
+3. Admit trusted `authoring-target` declarations and their six canonical contribution families into one immutable,
+   owner-aware generation.
+4. Resolve the exact create/edit resource and emit one inert `StudioDeploymentConfiguration` beside its ordinary
+   mount. It contains the exact launch/session, operation URLs, authentication projection, and admitted
+   declarative contributions; Studio never infers a base URL.
+5. Call `mountStudio()` or the explicit `autoMountStudio()` scan from the prebuilt module. No transport means
+   blank local Studio with zero network and JSON interchange; HTTP means the authoritative configured round
+   trip with no local fallback. Several mounts remain independent.
+6. Implement preview, media, resources, localization, recovery, workflow, publication, and public rendering through
+   host-owned services. Webhooks are emitted by the host after accepted transactions, never by browser Studio.
+7. Replay the public corpora through the real adapter and complete the `authoring-web`, security, accessibility,
+   public-rendering, extension-lifecycle, and zero-production-Node acceptance lanes.
 
-This is beta-development implementation, not completed contextual authoring or a support claim. The checked-in
-`0.1.0-rc.1` family is immutable abandoned-candidate provenance from
-`829694efb25374d3b498f2d46856d2c39650728a`; it is not the current maturity and MUST NOT be staged or
-published. Its proposed profile claims were withdrawn. The next publishable runtime Changeset generates one
-coordinated beta successor and clears those claims. Gate A remains **Not assessed**, Gate B remains **Blocked**,
-and no production host is supported.
+[`generic-host.md`](generic-host.md) is the complete implementation-neutral playbook, including the endpoint
+map, launch/save sequence, browser boundary, and acceptance checklist. [`kumwe-app.md`](kumwe-app.md) maps the
+same path onto Kumwe App's PHP services, extension generation, media, Twig/KIS rendering, workflow, and outbox.
+
+## Current Studio-side integration surface
+
+| Surface               | Public Studio-side implementation                                                                                                                                                       | Host obligation                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Browser deployment    | Bounded deployment schema, local defaults, configured HTTP runtime, explicit mount/auto-mount APIs, and isolated multi-mount lifecycle                                                  | Emit one inert per-mount document or intentionally omit transport; serve only verified prebuilt assets |
+| Contextual protocol   | Canonical target, reusable type, session, and save schemas plus the seven-operation `AuthoringPort`                                                                                     | Resolve authorization and return exact, normalized Model/Blueprint/Entry coordinates                   |
+| Headless coordination | `openContextualStudioSession` coordinates blank, from-type, and existing starts and all three save outcomes                                                                             | Implement every call atomically through the host's application boundary                                |
+| Browser shell         | `<kumwe-studio-contextual>` composes Model, Blueprint, and Content and preserves inline/minimized/maximized/fullscreen state                                                            | Mount it for the exact resource, handle navigation/dirty-state policy, and never mutate its shadow DOM |
+| Contributions         | `authoring-target` plus block, pattern, field-adapter, inspector, design-vocabulary, and migration declarations                                                                         | Admit only trusted owner/version-compatible declarations into one immutable generation                 |
+| HTTP binding          | Canonical request/result/error schemas, closed operation registry, production browser adapter, portable core adapter, and testkit responder                                             | Supply the authoritative server endpoints; the testkit responder is reference/conformance code         |
+| Media and preview     | Typed ports, state machines, origin-pinned preview protocol, and portable conformance vectors                                                                                           | Own bytes, identity, scanning, policy, draft staging, trusted rendering, and isolation                 |
+| Public delivery       | Deterministic semantic renderer, scoped CSS, bounded enhancements, and no-JavaScript fallbacks                                                                                          | Serve authorized published data and assets independently of the authoring application                  |
+| Static delivery       | The standalone static-host build proves fingerprinted asset delivery, public no-JavaScript output, and an integrity/runtime manifest; it does not exercise the canonical DOM mount path | Copy the built directory to a static/CDN/PHP public root; run no production package manager            |
+
+The repository remains on the governed beta lane while qualification is completed. An implemented API, a green
+repository, or a reference-host demonstration is not by itself an RC, host-support claim, or accepted profile.
 
 ## Cross-repository landing sequence
 
-1. Complete `STUDIO-PROD-001`–`015` on the governed beta-development lane. Use only generated Changesets
-   versioning for a coordinated beta successor; never stage or publish the abandoned `0.1.0-rc.1` metadata.
+1. Complete and verify `STUDIO-PROD-001`–`015` on the governed beta-development lane.
 2. In the host, update one exact release record and corpus digest atomically. Never combine an old Studio
    package with the new renderer, vendor workspace builds, or reconstruct the catalog inside the host.
 3. Bind contextual resource launch, session, preview, media, resource, renderer, localization, contribution,
@@ -74,7 +102,7 @@ makes a draft durable; only an authorized host publication makes it public.
 
 ## Required host capabilities
 
-A writable Studio session requires ports for:
+A writable contextual Studio session requires:
 
 1. session and capability negotiation;
 2. identity and permission context;
@@ -83,12 +111,12 @@ A writable Studio session requires ports for:
 5. preview/render coordination;
 6. localization;
 7. structured diagnostics; and
-8. lifecycle/teardown.
+8. explicit close/abandon and dirty-navigation policy in the host chrome.
 
-Media, publication, model design, extension discovery, recovery, collaboration, external references,
-telemetry, and offline operation are negotiated capabilities. A mode that needs one of them fails session
-creation or becomes explicitly read-only when the capability is absent; Studio does not emulate host
-authority.
+Media, publication, extension discovery, recovery, collaboration, external references, telemetry, and offline
+operation are negotiated capabilities. A mode that needs one of them fails session creation or becomes
+explicitly read-only when the capability is absent; Studio does not emulate host authority. Local handle
+disposal is not a server logout, lease release, recovery discard, or workflow transition.
 
 ## Integration and product claims
 

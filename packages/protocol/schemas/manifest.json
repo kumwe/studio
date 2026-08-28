@@ -8,6 +8,16 @@
   "kind": "schema-manifest",
   "schemas": [
     {
+      "digest": "sha256-+4CCsRfFU5PEcYEPKbc0nql0vk1xVThOjkk+SetWufA=",
+      "file": "authoring-http-vector.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/authoring-http-vector.schema.json"
+    },
+    {
+      "digest": "sha256-1G8TtRsEvzqO9ixuoaMRAOBJZ2FdSM82xLA6zziA5Rk=",
+      "file": "authoring-http.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json"
+    },
+    {
       "digest": "sha256-WvSNMOQ3OZWs7ZKBCCRRwLtw5byZBtn6Rwvxz74vfAY=",
       "file": "authoring-message-catalog.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json"
@@ -98,7 +108,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/host-capabilities.schema.json"
     },
     {
-      "digest": "sha256-6FWXIBdUaiuxpwLJUWnHxnRdcYmR6Ni6WWFCEQFekGw=",
+      "digest": "sha256-7tYC8PpuMQd3DHt4zrB3A+w5bZVMOman4gYvfugXdc8=",
       "file": "host-error.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/host-error.schema.json"
     },
@@ -168,7 +178,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/pattern.schema.json"
     },
     {
-      "digest": "sha256-WWBFJmWz4p0F1PhOwup1rgBJuAkelWZz83SJX7mshGE=",
+      "digest": "sha256-UyyZAvE8JJcZqrKucPPK4oy2HPELR3q+zAl3pWPkWOU=",
       "file": "plugin-manifest.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/plugin-manifest.schema.json"
     },
@@ -218,6 +228,11 @@
       "id": "https://schemas.kumwe.org/studio/v1/schema-profile.schema.json"
     },
     {
+      "digest": "sha256-xxlqJjx70QTSZ3mxIRCxjKZhKYjK1g45ms22bxBkXa8=",
+      "file": "studio-browser-assets.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json"
+    },
+    {
       "digest": "sha256-3jvAa7VGd6F7uAOR82AcTOSMGXWvgaMVmGsG1UzSXiI=",
       "file": "studio-chart.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/studio-chart.schema.json"
@@ -226,6 +241,11 @@
       "digest": "sha256-LK81tgJb05u/pwRymTrccKbZiQHD7QXMYv14myilfGs=",
       "file": "studio-config.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/studio-config.schema.json"
+    },
+    {
+      "digest": "sha256-06kgbYt1gjqWAOo96PIuHy1gRkkSbWOYXXjIsoMMN/4=",
+      "file": "studio-deployment.schema.json",
+      "id": "https://schemas.kumwe.org/studio/v1/studio-deployment.schema.json"
     },
     {
       "digest": "sha256-SAP1i3VfZS51FRsqnN2frFxE/UmI9xEUsSREUp/cA+E=",

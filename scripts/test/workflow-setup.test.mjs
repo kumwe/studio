@@ -6,12 +6,14 @@ import test from 'node:test';
 import { assertLiveMain } from '../reconcile-release-tag.mjs';
 
 const workflows = new Map([
-  ['ci.yml', 2],
+  ['ci.yml', 3],
   ['evidence-bundle.yml', 1],
   ['release.yml', 6],
   ['version-packages.yml', 1],
 ]);
 const workflowRoot = fileURLToPath(new URL('../../.github/workflows/', import.meta.url));
+const packageFile = fileURLToPath(new URL('../../package.json', import.meta.url));
+const pinnedPhpSetup = 'shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240';
 
 test('official channel reconciliation requires the exact live main ref', async () => {
   const expected = 'a'.repeat(40);
@@ -40,6 +42,110 @@ test('every executable workflow uses the single Studio environment action', asyn
     assert.doesNotMatch(source, /^\s*run: npm ci$/mu, `${name} duplicates dependency setup`);
     assert.doesNotMatch(source, /npm install --global npm@/u, `${name} duplicates toolchain setup`);
   }
+});
+
+test('one candidate qualification command owns repository, PHP, and browser proof', async () => {
+  const manifest = JSON.parse(await readFile(packageFile, 'utf8'));
+  assert.equal(manifest.scripts['check:php-reference'], 'node scripts/check-php-reference.mjs');
+  assert.equal(
+    manifest.scripts['qualify:candidate'],
+    'npm run check && npm run check:php-reference && npm run check:a11y',
+  );
+  assert.equal(manifest.scripts.verify, 'npm run qualify:candidate');
+  assert.equal(
+    manifest.scripts['release:readiness'],
+    'node scripts/verify-release-gate.mjs && npm run qualify:candidate',
+  );
+});
+
+test('beta publication qualifies the exact source before artifacts or credentials', async () => {
+  const source = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
+  const plan = source.indexOf('name: Inspect beta release plan');
+  const php = source.indexOf('name: Set up pinned PHP for beta candidate qualification');
+  const chromium = source.indexOf('name: Install locked Chromium for beta candidate qualification');
+  const qualification = source.indexOf('name: Qualify the exact beta publication source');
+  const artifacts = source.indexOf('name: Generate approved local package tarball digests');
+  const authentication = source.indexOf('name: Verify npm authentication');
+  assert.ok(plan >= 0 && plan < php);
+  assert.ok(php < chromium && chromium < qualification);
+  assert.ok(qualification < artifacts && artifacts < authentication);
+  assert.match(source, new RegExp(pinnedPhpSetup, 'u'));
+  assert.match(source, /php-version: '8\.1'/u);
+  assert.match(source, /playwright install --with-deps chromium/u);
+  assert.match(
+    source,
+    /name: Qualify the exact beta publication source\n\s+if: steps\.plan\.outputs\.operation == 'publish'\n\s+run: npm run qualify:candidate/u,
+  );
+  assert.match(
+    source,
+    /name: Run repository quality for non-publishing beta work\n\s+if: steps\.plan\.outputs\.operation != 'publish'/u,
+  );
+});
+
+test('governed promotion qualifies mutated, quarantined, and publication sources', async () => {
+  const source = await readFile(`${workflowRoot}release.yml`, 'utf8');
+  const prepare = source.split('\n  prepare:')[1].split('\n  stage:')[0];
+  const stage = source.split('\n  stage:')[1].split('\n  publish:')[0];
+  const publish = source.split('\n  publish:')[1];
+
+  for (const [name, block] of [
+    ['prepare', prepare],
+    ['stage', stage],
+    ['publish', publish],
+  ]) {
+    assert.match(block, new RegExp(pinnedPhpSetup, 'u'), `${name} does not pin PHP setup`);
+    assert.match(block, /php-version: '8\.1'/u, `${name} does not select the PHP 8.1 baseline`);
+    assert.match(block, /install-playwright: 'true'/u, `${name} does not install locked Chromium`);
+  }
+
+  assert.ok(
+    prepare.indexOf('run: npm run release:prepare') <
+      prepare.indexOf('run: npm run qualify:candidate'),
+    'promotion metadata is not qualified after mutation',
+  );
+  assert.ok(
+    stage.indexOf('run: npm run qualify:candidate') <
+      stage.indexOf('run: npm run release:artifacts'),
+    'RC quarantine artifacts are created before qualification',
+  );
+  assert.ok(
+    stage.indexOf('run: npm run release:artifacts') <
+      stage.indexOf('name: Verify npm authentication'),
+    'RC quarantine authenticates before exact artifacts exist',
+  );
+
+  assert.match(
+    publish,
+    /ref: \$\{\{ inputs\.channel == 'rc' && inputs\.candidate_sha \|\| inputs\.expected_main_sha \}\}/u,
+  );
+  assert.match(
+    publish,
+    /uses: \.\/\.release-controller\/\.github\/actions\/setup-studio\n\s+with:\n\s+working-directory: '\.'\n\s+install-playwright: 'true'/u,
+  );
+  assert.match(
+    publish,
+    /name: Revalidate RC with the exact current-main controller\n\s+if: inputs\.channel == 'rc'\n\s+working-directory: \.release-controller/u,
+  );
+  const candidateQualification = publish
+    .split('name: Qualify the exact immutable RC publication source')[1]
+    .split('name: Generate approved local package tarball digests')[0];
+  assert.match(candidateQualification, /run: npm run qualify:candidate/u);
+  assert.doesNotMatch(candidateQualification, /working-directory:/u);
+  assert.ok(
+    publish.indexOf('run: npm run release:readiness') <
+      publish.indexOf('run: npm run release:artifacts'),
+    'stable evidence/readiness does not precede artifact generation',
+  );
+  assert.ok(
+    publish.indexOf('run: npm run qualify:candidate') <
+      publish.indexOf('run: npm run release:artifacts'),
+    'RC qualification does not precede artifact generation',
+  );
+  assert.ok(
+    publish.indexOf('run: npm run release:artifacts') <
+      publish.indexOf('name: Verify npm authentication'),
+    'publication authenticates before exact artifacts exist',
+  );
 });
 
 test('publish workflows approve exact local tarballs before npm authentication', async () => {
@@ -106,6 +212,19 @@ test('publish workflows prove new registry bits before moving distribution tags'
       );
     }
   }
+});
+
+test('official GitHub releases recover exact browser assets without overwrite', async () => {
+  const source = await readFile(`${workflowRoot}release.yml`, 'utf8');
+  const releaseBlock = source.split('name: Create or verify the GitHub release')[1];
+  assert.match(releaseBlock, /approved\.browser\.path/u);
+  assert.match(releaseBlock, /approved\.browser\.checksumPath/u);
+  assert.match(releaseBlock, /sha256sum --check/u);
+  assert.match(releaseBlock, /gh release create .*"\$archive" "\$checksum"/u);
+  assert.match(releaseBlock, /gh release download/u);
+  assert.match(releaseBlock, /cmp --silent/u);
+  assert.match(releaseBlock, /--json assets,body,isDraft,isPrerelease,name,tagName/u);
+  assert.doesNotMatch(releaseBlock, /--clobber/u);
 });
 
 test('Changesets action is version-PR-only and cannot publish tags or GitHub releases', async () => {

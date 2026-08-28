@@ -42,7 +42,7 @@ final class HostFailure extends RuntimeException
         if (!preg_match(
             '/\A[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\/[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\z/',
             $messageKey,
-        )) {
+        ) || strlen($messageKey) > 160) {
             throw new InvalidArgumentException('messageKey must be a Studio qualified name.');
         }
         if ($defaultMessage === '' || strlen($defaultMessage) > 500) {
@@ -54,8 +54,19 @@ final class HostFailure extends RuntimeException
         ) {
             throw new InvalidArgumentException('retryAfterMilliseconds is outside the contract range.');
         }
+        if (
+            $retryAfterMilliseconds !== null
+            && (!$retryable || !in_array($category, ['rate-limited', 'unavailable'], true))
+        ) {
+            throw new InvalidArgumentException(
+                'retryAfterMilliseconds is allowed only for retryable rate-limited or unavailable failures.',
+            );
+        }
         if ($revision !== null && ($revision === '' || strlen($revision) > 200)) {
             throw new InvalidArgumentException('revision is outside the contract range.');
+        }
+        if ($revision !== null && $category !== 'conflict') {
+            throw new InvalidArgumentException('A safe current revision is allowed only on a conflict.');
         }
 
         parent::__construct($defaultMessage);
@@ -77,6 +88,14 @@ final class HostFailure extends RuntimeException
 
     public function document(string $correlationId): stdClass
     {
+        if (
+            strlen($correlationId) > 240
+            || !preg_match('/\A[A-Za-z0-9][A-Za-z0-9._:\/-]*\z/', $correlationId)
+            || in_array($correlationId, ['__proto__', 'prototype', 'constructor'], true)
+        ) {
+            throw new InvalidArgumentException('correlationId must be a Studio stable identifier.');
+        }
+
         $document = (object) [
             'contractVersion' => self::CONTRACT_VERSION,
             'kind' => 'host-error',

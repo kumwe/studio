@@ -1,6 +1,7 @@
 # `@kumwe/studio-rich-text`
 
-Status: integration-candidate implementation. Gate claims still require the evidence ledger.
+Status: governed beta development, not an RC or production-supported release. The exact coordinated version
+is in the workspace `studio-release.json`; gate claims still require the evidence ledger.
 
 A bounded Studio-owned rich-text authoring boundary backed internally by Editor.js `2.31.6`. It supplies a
 deliberate Studio tool profile for structured-content leaf fields; it is not a second page-layout model.

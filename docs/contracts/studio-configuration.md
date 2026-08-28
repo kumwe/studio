@@ -6,14 +6,27 @@ configuration behavior that has an accepted protocol shape.
 
 ## Purpose
 
-A resolved Studio configuration describes one authoring session and its policy. It does not contain secrets, bearer tokens, executable callbacks in serialized form, or persistent artifacts.
+Studio has two deliberately separate serializable configuration layers:
 
-The serializable portion conforms to [`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations and deterministic identifier factories remain separate from that document. The headless `openStudioSession` composition API consumes the complete resolved configuration for the bounded Blueprint persistence profile described below. The experimental custom-element shell remains a separate candidate surface: `defineKumweStudio()` registers a shell whose `ExperimentalShellConfiguration` does not yet consume this canonical configuration or host-adapter contract.
+- [`StudioDeploymentConfiguration`](studio-deployment.md) is the small browser bootstrap. It selects an
+  explicit or associated mount, standalone or HTTP transport, launch request, transient authentication
+  projection, and optional safe declarative contribution bundle. An HTTP deployment includes the complete
+  host-resolved session configuration below.
+- `StudioConfiguration`, defined here, describes one resolved authoring session and its host policy. It contains
+  no secret, bearer token, executable callback, or persistent artifact body.
 
-That final limitation is material: the current implementation is not the coordinated contextual authoring
-profile required by the product contract. Model, Content, and hybrid documents remain valid contract concepts,
-but their coordinated state, history, persistence, presentation continuity, and save outcomes are planned work
-rather than supported configuration behavior (`STUDIO-PROD-014`).
+The resolved session portion conforms to
+[`studio-config.schema.json`](../../schemas/studio-config.schema.json). JavaScript host-port implementations,
+authentication refresh callbacks, and deterministic identifier factories remain separate from that document.
+The browser MUST NOT synthesize its actor, session generation, permissions, limits, host capabilities, protocol,
+or resource authority from deployment defaults. A PHP or other authoritative host emits it for HTTP deployment,
+and the core consumes that exact value.
+
+The deployment launch repeats only the resource context needed in the canonical resolve/start request. The two
+resource contexts MUST be canonically equal before any request is sent. Launch does not repeat mode, session
+state, permissions, or host capabilities: those have one source in this resolved configuration. The later
+`AuthoringSessionSnapshot` returned by `authoring/start` remains the single source for admitted target modes,
+presentation states, save outcomes, artifacts, and contribution generation.
 
 ## Required configuration
 
@@ -37,7 +50,7 @@ A session MUST define:
 
 The headless session flattens the three members above into one session mode — `model`, `blueprint`, `content`, `hybrid`, or `read-only` — fixed at session creation: a read-only session state always flattens to `read-only`, the hybrid composite flattens to `hybrid`, and every other session keeps its editing mode. One deterministic mode-to-permitted-command table decides every dispatch; a command outside the active mode's permitted set fails closed with the stable `mode-forbidden` code, while a read-only session keeps rejecting with `read-only-session`. UIs MUST derive disabled affordances from the same exported table rather than duplicating it, and MUST NOT treat a hidden or disabled control as a substitute for the session-level check ([ADR 0011](../decisions/0011-editing-modes.md)).
 
-## Headless Blueprint composition profile
+## Advanced headless Blueprint composition profile
 
 `openStudioSession` accepts a host-supplied `StudioConfiguration` only after the host has completed
 layering, authority resolution, and protocol selection. The core does not fetch, merge, or repair
@@ -76,7 +89,7 @@ automatically. Recovery validation, compatibility, reconciliation, and UI remain
 concerns. Synchronous `dispose()` is a local idempotent lifecycle boundary and does not claim host
 teardown ([ADR 0020](../decisions/0020-blueprint-host-session-composition.md)).
 
-## Target coordinated contextual profile
+## Hosted coordinated contextual profile
 
 The product target requires one contextual Studio session to coordinate separately versioned Model,
 Blueprint, and Entry artifacts while the author composes layout, defines permitted fields, and enters actual
@@ -91,9 +104,10 @@ outcomes (`STUDIO-PROD-006`). The last two coordinate Model and Blueprint revisi
 The host owns identifiers, authorization, validation, transactions, migration policy, persistence, and accepted
 revisions (`STUDIO-PROD-010`).
 
-The legacy StudioConfig shape and `openStudioSession` API do not themselves define that multi-artifact
-composition. The companion canonical `authoring-target`, `reusable-content-type`, `authoring-session`, and
-`authoring-save` schemas plus the typed `AuthoringPort` now define the additive protocol foundation. A
+`StudioConfiguration` and the lower-level `openStudioSession` Blueprint API do not by themselves define that
+multi-artifact composition. The normal browser deployment combines this resolved configuration with the
+canonical `authoring-target`, `reusable-content-type`, `authoring-session`, and `authoring-save` schemas plus
+the typed `AuthoringPort`. A
 contextual start returns complete, separately identified Model, Blueprint, and Entry documents with exact
 coordinates; it never relies on hidden adapter binding. Implementations MUST NOT overload the current
 single-artifact `artifact.save` behavior or infer an undocumented transaction (`STUDIO-PROD-014`).
@@ -128,7 +142,7 @@ Inline, minimized, maximized, and fullscreen are presentations of the same conte
 offers them (`STUDIO-PROD-007`). Moving between them MUST preserve the resource and artifact coordinates,
 drafts, history, selection, focus intent, dirty and validation state, locale, authority, and deterministic
 return context. It MUST NOT create a new item, silently save, or convert the work into another artifact. The
-the contextual session snapshot carries the current presentation and a non-secret host-minted return-context
+contextual session snapshot carries the current presentation and a non-secret host-minted return-context
 key. That serialized state does not by itself implement the shell transition lifecycle; the UI MUST NOT claim
 continuity until it preserves the full live state listed above (`STUDIO-PROD-014`).
 
@@ -139,14 +153,14 @@ Versioned definition artifacts—model, Blueprint, and theme—use locked refere
 A target reusable content type coordinates the exact Model and Blueprint locks through host-owned authoring
 policy; it does not merge those artifacts or add Entry values to either one (`STUDIO-PROD-004`). An
 existing-item launch MUST hydrate the exact accepted type version and Entry values rather than select a newer
-compatible definition (`STUDIO-PROD-005`). The current configuration can carry the individual references but
-does not yet compose their complete contextual lifecycle.
+compatible definition (`STUDIO-PROD-005`). The resolved configuration provides pre-request policy and locked
+references; the accepted contextual start snapshot provides the complete coordinated live state.
 
 ## Immutability
 
 Configuration is immutable after session compilation, except locale, writing direction, preview viewport, theme preview choice, and user preferences explicitly marked dynamic. A change to editing mode, composition, session state, resource context, permissions, blocks, plugins, resource limits, contract or protocol version, model revision, or trust state requires a new session generation.
 
-The UI MUST NOT infer permission from hidden controls. The Lit shell resolves the same flattened mode at session creation and derives each mutating affordance from the core's exported command table; it does not coerce every editable configuration to Blueprint mode. Hybrid insert, remove, duplicate, and reorder affordances are additionally bounded to the same structural or per-slot composable regions as the headless session. Every command and host call still carries an operation identifier that the core checks against session permissions; the host authorizes independently.
+The UI MUST NOT infer permission from hidden controls. The Lit shell resolves the same flattened mode at session creation and derives each mutating affordance from the core's exported command table; it does not coerce every editable configuration to Blueprint mode. Hybrid insert, remove, duplicate, and reorder affordances are additionally bounded to the same structural or per-slot composable regions as the headless session. The core checks every local command against the resolved mode, state, generation, artifact fence, and any `BlueprintNode.authoring.requiredPermission`. A structural command must satisfy protected nodes in the touched subtree and protected source or destination parents; inserting a node cannot mint authority by declaring a permission the resolved session does not hold. This browser check is deterministic defense in depth, not authorization: every host call carries its exact operation identifier, and the authenticated host independently re-authorizes the operation instead of trusting the browser-readable `permissions` projection.
 
 ## Resource limits
 
@@ -163,7 +177,26 @@ At minimum, a host specifies limits for:
 
 A missing limit is a configuration error. Protocol releases publish safe maxima; a host MAY lower them. Raising a security-critical maximum beyond the protocol maximum requires a new negotiated capability version.
 
-`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo history; zero is not a hidden way to disable the invariant. `openStudioSession` passes the resolved value to the core history engine. The experimental candidate shell does not yet consume canonical StudioConfig and currently uses the core's explicit default, so it does not claim this pass-through is implemented there.
+The core evaluates the complete projected artifact before committing a command. A rejection advances neither
+history nor artifact state version and leaves the document, dirty state, and selection unchanged. `maxNodes`
+counts all Blueprint nodes, root depth is one, `maxSlotsPerNode` applies to each node, and
+`maxChildrenPerSlot` applies to each named slot. `maxCommandBatch` counts operations in one batch (the closed
+command schema MAY impose a lower release-specific ceiling). `maxPropertyBytes` is the aggregate UTF-8 JSON
+member payload of base and responsive property maps across Blueprint nodes; empty maps consume zero.
+`maxExtensionBytes` is the corresponding aggregate across the artifact's declared extension envelopes.
+`maxRichTextBytes` measures each canonical `{ "type": "doc", "content": [...] }` value as serialized UTF-8
+JSON, and `maxRichTextDepth` counts its document root as depth one. Entry and Model commands apply the same
+extension and rich-text checks before replacing their independent drafts.
+
+Hosted and contextual opening validates the complete host-accepted Blueprint, Entry, and Model against the
+exact resolved limits before exposing a draft or mounting a UI, then passes those limits and permissions into
+the command boundary. A direct low-level `StudioSession` with no host configuration retains compatibility by
+using the published protocol maxima, while omitted permissions grant no protected-node permission. It never
+invents a host policy.
+
+`maxHistoryEntries` is a positive integer because every editable command session provides bounded undo
+history; zero is not a hidden way to disable the invariant. Headless and mounted sessions pass the resolved
+value to the same core history boundary.
 
 ## Feature policy
 

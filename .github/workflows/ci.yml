@@ -46,6 +46,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Set up PHP browser host
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.1'
+          coverage: none
+
       - name: Set up Studio with Chromium
         uses: ./.github/actions/setup-studio
         with:
@@ -63,24 +69,27 @@ jobs:
           retention-days: 7
 
   php-reference:
-    name: PHP reference host
+    name: PHP reference host (${{ matrix.php-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.1', '8.5']
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+
+      - name: Set up Studio command environment
+        uses: ./.github/actions/setup-studio
+
       - name: Verify PHP reference boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          php --version
-          find examples/php-authoring-host/src \
-            examples/php-authoring-host/public \
-            examples/php-authoring-host/tests \
-            -type f -name '*.php' -print0 \
-            | sort -z \
-            | xargs -0 -n1 php -l
-          php examples/php-authoring-host/tests/run.php
+        run: npm run check:php-reference

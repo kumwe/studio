@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_PACKAGE_NAMES } from '../release-family.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
+import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
 import { collectRegistryFailures } from '../verify-published-release.mjs';
 
 const version = '0.1.0-rc.1';
@@ -12,6 +13,7 @@ const record = {
   release: version,
 };
 const approvedArtifacts = {
+  browser: browserArtifactFromBytes(Buffer.from(`studio-browser@${version}`), version),
   kind: 'studio-approved-package-artifacts',
   packages: Object.fromEntries(
     STUDIO_RELEASE_PACKAGES.map(({ directory, name }) => [

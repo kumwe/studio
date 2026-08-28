@@ -36,7 +36,7 @@ final class AuthoringResponder
         private readonly TransportSecurityVerifier $security,
         ?FailureMapper $failureMapper = null,
         ?CorrelationIdFactory $correlationIds = null,
-        string $routePrefix = '/ports',
+        string $routePrefix = AuthoringEndpointConfiguration::DEFAULT_ROUTE_PREFIX,
         private readonly int $maximumRequestBytes = self::DEFAULT_MAXIMUM_REQUEST_BYTES,
         private readonly int $maximumJsonDepth = 128,
         array $supportedProtocolVersions = [self::WIRE_PROTOCOL_VERSION],
@@ -48,7 +48,7 @@ final class AuthoringResponder
             throw new InvalidArgumentException('maximumJsonDepth must be between 2 and 512.');
         }
 
-        $this->routePrefix = self::normalizeRoutePrefix($routePrefix);
+        $this->routePrefix = AuthoringEndpointConfiguration::normalizeRoutePrefix($routePrefix);
         $versions = [];
         foreach ($supportedProtocolVersions as $version) {
             if (!is_string($version) || $version === '') {
@@ -71,7 +71,7 @@ final class AuthoringResponder
 
     public function respond(HttpRequest $request): HttpResponse
     {
-        $operation = $this->operationForPath($request->path);
+        $operation = $this->operationForRequest($request);
         if ($operation === null) {
             return $this->failure(new HostFailure(
                 'not-found',
@@ -130,6 +130,13 @@ final class AuthoringResponder
                 'studio.php/http-request-integrity-failed',
                 'The Studio authoring request failed request-integrity verification.',
             ));
+        }
+
+        if (!JsonDuplicateMemberDetector::isDuplicateFree($request->body, $this->maximumJsonDepth)) {
+            return $this->invalidRequest(
+                'studio.php/http-request-malformed',
+                'The Studio host request body is not valid unambiguous JSON.',
+            );
         }
 
         try {
@@ -200,8 +207,16 @@ final class AuthoringResponder
         return HttpResponse::json(200, $result);
     }
 
-    private function operationForPath(string $path): ?AuthoringOperation
+    private function operationForRequest(HttpRequest $request): ?AuthoringOperation
     {
+        $path = $request->path;
+        if ($path === $this->routePrefix) {
+            $route = $this->singleHeader(
+                $request->headers,
+                AuthoringEndpointConfiguration::SINGLE_ENDPOINT_OPERATION_HEADER,
+            );
+            return $route === null ? null : AuthoringOperationRegistry::find($route);
+        }
         if (
             !str_starts_with($path, $this->routePrefix . '/')
             || str_contains($path, '?')
@@ -211,6 +226,23 @@ final class AuthoringResponder
         }
 
         return AuthoringOperationRegistry::find(substr($path, strlen($this->routePrefix) + 1));
+    }
+
+    /** @param array<string, string> $headers */
+    private function singleHeader(array $headers, string $expectedName): ?string
+    {
+        $value = null;
+        foreach ($headers as $name => $candidate) {
+            if (strcasecmp($name, $expectedName) !== 0) {
+                continue;
+            }
+            if ($value !== null || preg_match('/[\r\n]/', $candidate)) {
+                return null;
+            }
+            $value = $candidate;
+        }
+
+        return $value;
     }
 
     /** @param array<string, string> $headers */
@@ -335,21 +367,4 @@ final class AuthoringResponder
         return 'php-authoring/fallback-' . $this->fallbackCorrelationSerial;
     }
 
-    private static function normalizeRoutePrefix(string $value): string
-    {
-        if (
-            !str_starts_with($value, '/')
-            || str_contains($value, '?')
-            || str_contains($value, '#')
-            || str_contains($value, '//')
-        ) {
-            throw new InvalidArgumentException('routePrefix must be one normalized absolute pathname.');
-        }
-        $normalized = str_ends_with($value, '/') ? substr($value, 0, -1) : $value;
-        if ($normalized === '') {
-            throw new InvalidArgumentException('routePrefix must not be the root pathname.');
-        }
-
-        return $normalized;
-    }
 }

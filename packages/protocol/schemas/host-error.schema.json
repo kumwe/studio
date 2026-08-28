@@ -38,5 +38,26 @@
       "maxItems": 1000,
       "items": { "$ref": "common.schema.json#/$defs/diagnostic" }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "revision": {} },
+        "required": ["revision"]
+      },
+      "then": { "properties": { "category": { "const": "conflict" } } }
+    },
+    {
+      "if": {
+        "properties": { "retryAfterMilliseconds": {} },
+        "required": ["retryAfterMilliseconds"]
+      },
+      "then": {
+        "properties": {
+          "category": { "enum": ["rate-limited", "unavailable"] },
+          "retryable": { "const": true }
+        }
+      }
+    }
+  ]
 }

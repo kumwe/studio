@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
 import { classifyReleaseVersion } from './release-policy.mjs';
+import { assertSelfContainedBrowserModule } from './studio-browser-artifacts.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -87,6 +88,21 @@ for (const packageName of packageNames) {
   if (manifest.name === '@kumwe/studio-testkit') {
     requiredFiles.push('studio-release.json');
   }
+  if (manifest.name === '@kumwe/studio') {
+    requiredFiles.push(
+      'dist/browser-entry.d.ts',
+      'dist/browser/LICENSE',
+      'dist/browser/README.md',
+      'dist/browser/THIRD_PARTY_NOTICES.md',
+      'dist/browser/studio-assets.json',
+      'dist/browser/studio-browser-assets.schema.json',
+      'dist/browser/studio-browser.js',
+      'dist/browser/studio-release.json',
+    );
+    assertSelfContainedBrowserModule(
+      await readFile(new URL('dist/browser/studio-browser.js', packageDirectory), 'utf8'),
+    );
+  }
   for (const required of requiredFiles) {
     if (!packedFiles.includes(required)) {
       throw new Error(`${manifest.name ?? packageName} tarball is missing ${required}.`);
@@ -97,7 +113,12 @@ for (const packageName of packageNames) {
       path.endsWith('.tsbuildinfo') ||
       path.startsWith('src/') ||
       path.startsWith('test/') ||
-      path.includes('/src/') ||
+      (path.includes('/src/') &&
+        !(
+          manifest.name === '@kumwe/studio' &&
+          path.startsWith('dist/browser/examples/php-authoring-host/src/') &&
+          path.endsWith('.php')
+        )) ||
       path.includes('/test/'),
   );
   if (forbidden !== undefined) {

@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/authoring-http-vector.schema.json",
+  "title": "Studio contextual authoring HTTP conformance vector",
+  "description": "A language-neutral matrix for replaying the seven contextual authoring HTTP routes and their transport-security refusal boundaries in any host implementation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "kind", "id", "operations", "securityCases", "errorMappings"],
+  "properties": {
+    "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+    "kind": { "const": "authoring-http-vector" },
+    "id": { "$ref": "common.schema.json#/$defs/stableId" },
+    "operations": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": { "$ref": "#/$defs/operation" }
+    },
+    "securityCases": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/securityCase" }
+    },
+    "errorMappings": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/errorMapping" }
+    }
+  },
+  "$defs": {
+    "route": {
+      "enum": [
+        "authoring/resolve-target",
+        "authoring/list-types",
+        "authoring/start",
+        "authoring/plan-save",
+        "authoring/save-item",
+        "authoring/save-new-type-version",
+        "authoring/save-as-new-type"
+      ]
+    },
+    "errorCategory": {
+      "enum": [
+        "invalid-request",
+        "unauthenticated",
+        "forbidden",
+        "not-found",
+        "conflict",
+        "validation-failed",
+        "incompatible",
+        "limit-exceeded",
+        "rate-limited",
+        "unavailable",
+        "cancelled",
+        "internal"
+      ]
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "capability",
+        "argumentMember",
+        "requestSchema",
+        "responseSchema",
+        "mutating",
+        "idempotencyKey",
+        "expectedRevision",
+        "resourceContextMatch",
+        "successStatus"
+      ],
+      "properties": {
+        "route": { "$ref": "#/$defs/route" },
+        "capability": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "argumentMember": { "enum": ["request", "query", "intent"] },
+        "requestSchema": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "responseSchema": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "mutating": { "type": "boolean" },
+        "idempotencyKey": { "enum": ["required", "forbidden"] },
+        "expectedRevision": { "const": "forbidden" },
+        "resourceContextMatch": { "type": "boolean" },
+        "successStatus": { "const": 200 }
+      }
+    },
+    "securityCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "authenticated", "requestIntegrity", "request", "expect"],
+      "properties": {
+        "id": { "$ref": "common.schema.json#/$defs/localName" },
+        "authenticated": { "type": "boolean" },
+        "requestIntegrity": { "type": "boolean" },
+        "request": {
+          "enum": [
+            "valid",
+            "malformed-json",
+            "context-mismatch",
+            "missing-idempotency-key",
+            "wrong-operation-id",
+            "host-conflict",
+            "host-rate-limited",
+            "host-internal-failure"
+          ]
+        },
+        "expect": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "status", "dispatch"],
+              "properties": {
+                "outcome": { "const": "result" },
+                "status": { "const": 200 },
+                "dispatch": { "const": true }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["outcome", "status", "category", "dispatch"],
+              "properties": {
+                "outcome": { "const": "error" },
+                "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+                "category": { "$ref": "#/$defs/errorCategory" },
+                "dispatch": { "type": "boolean" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "errorMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "status"],
+      "properties": {
+        "category": { "$ref": "#/$defs/errorCategory" },
+        "status": { "type": "integer", "minimum": 400, "maximum": 599 }
+      }
+    }
+  }
+}

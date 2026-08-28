@@ -107,16 +107,16 @@ recovery authority.
 `set-field-value` and `add-model-field` belong to entry and content-model authoring surfaces respectively;
 they are intentionally not represented as Blueprint controls.
 
-## Target contextual command coverage
+## Contextual command coverage
 
 The product target requires layout, typed-field definition, and actual Entry values to be authorable in one
-coordinated Studio session (`STUDIO-PROD-003`). The current vocabulary supplies rich Blueprint commands, one
-Entry value command, and one top-level model-field addition command. It does not yet supply the complete Model
-field lifecycle, coordinated multi-artifact history and dirty-state behavior, or Lit controls that dispatch
-Entry and Model commands.
+coordinated Studio session (`STUDIO-PROD-003`). The current vocabulary supplies the complete bounded Blueprint
+set, one Entry-value command, and one top-level Model-field addition command. `openContextualStudioSession`
+coordinates their separate drafts and dirty/state versions, and the contextual Lit shell dispatches those
+implemented Entry and Model commands alongside the existing Blueprint canvas.
 
-Before the contextual profile is implementable, reviewed additive protocol work MUST either define or
-deliberately resolve at least:
+This is an implemented additive slice, not the complete `authoring-web` command profile. Before that profile
+is claimable, reviewed additive protocol work MUST either define or deliberately resolve at least:
 
 - updating, removing, and reordering fields in a draft Model, including binding-impact diagnostics and verified
   compensation behavior;
@@ -126,10 +126,12 @@ deliberately resolve at least:
 - canonical vectors for pointer, keyboard, explicit-control, automation, and failure parity
   (`STUDIO-PROD-009`, `STUDIO-PROD-013`).
 
-This list does not assign command identifiers or claim schemas or reducers already exist. New identifiers become
-canonical only through the normal additive protocol process. **Save item**, **save new type version**, and
-**save as new type** are host outcomes, not document reducer commands; their transactional operation contract is
-also planned (`STUDIO-PROD-004`, `STUDIO-PROD-006`, `STUDIO-PROD-010`).
+This list does not assign command identifiers or claim missing schemas or reducers already exist. New
+identifiers become canonical only through the normal additive protocol process. **Save item**, **save new type
+version**, and **save as new type** are host outcomes, not document reducer commands. Their target/session/save
+schemas, seven-operation `AuthoringPort`, HTTP binding, and coordinator plan/submit/reconcile behavior are
+implemented; real-host atomicity and acceptance still require independent evidence (`STUDIO-PROD-004`,
+`STUDIO-PROD-006`, `STUDIO-PROD-010`).
 
 Changing between inline, minimized, maximized, and fullscreen presentation is local session presentation, not
 a persistent content command. It MUST preserve coordinates, drafts, history, selection, dirty and validation
@@ -171,10 +173,10 @@ The Gate A contract is required to add or deliberately resolve the following voc
 
 No item in this bounded Blueprint list remains open. The canonical subset carries payload schema, reducer
 semantics, permission mapping, inverse/compensation behavior, fixtures and migration rules for its declared
-operations. This statement does **not** mean the contextual product vocabulary is complete: the Model, Entry,
-multi-artifact coordination, presentation, and save-outcome work above remains required before the product
-contract can be claimed. Future vocabulary additions follow the additive protocol-change rules rather than
-being implied by this Blueprint list (`STUDIO-PROD-014`).
+operations. The additive contextual coordinator, presentation state, Entry/Model slice, and save outcomes do
+not make the complete product vocabulary or host journey qualified: the missing Model/Entry breadth and
+evidence above remain required before the product contract can be claimed. Future vocabulary additions follow
+the additive protocol-change rules rather than being implied by this Blueprint list (`STUDIO-PROD-014`).
 
 Plugins may add namespaced commands with schema, authorization operation, deterministic reducer, inverse/compensation behavior, and migration rules.
 

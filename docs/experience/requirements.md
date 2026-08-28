@@ -47,20 +47,22 @@ contextual product (`STUDIO-PROD-014`).
 
 ## Product-contract evidence relationship
 
-The descriptions below are navigation summaries only; the linked product contract remains authoritative.
+The descriptions below are navigation summaries only; the linked product contract remains authoritative and
+[`docs/roadmap/STATUS.md`](../roadmap/STATUS.md) remains the sole gate/status authority. “Implemented” here
+identifies a repository component, never a profile, host-support, or acceptance claim.
 
-| Product IDs                          | Interaction evidence needed                                                                                    | Current relationship                                                                      |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `STUDIO-PROD-001`, `STUDIO-PROD-008` | Contextual launch from every eligible core or extension-owned target                                           | Open; no shipped end-to-end target declaration and launch journey                         |
-| `STUDIO-PROD-002`, `STUDIO-PROD-012` | Blank/from-type start without pre-creation, copy/paste, or manual reconciliation                               | Open; the current composed session requires an existing Blueprint                         |
-| `STUDIO-PROD-003`                    | Blocks, typed fields, bindings, and Entry values authored in one continuous canvas                             | Partial Blueprint evidence only; Model and Entry composition is open                      |
-| `STUDIO-PROD-004`–`STUDIO-PROD-006`  | Separate artifacts, exact type-version hydration, and the three explicit save choices                          | Open; current model projection is read-only and composed persistence is Blueprint-only    |
-| `STUDIO-PROD-007`                    | Inline, minimized, maximized, and fullscreen continuity                                                        | Open; custom-element embedding alone is not continuity proof                              |
-| `STUDIO-PROD-009`                    | Extension block, field-adapter, and pattern lifecycle throughout the contextual journey                        | Component-level lifecycle evidence exists; contextual end-to-end coverage is open         |
-| `STUDIO-PROD-010`, `STUDIO-PROD-011` | Host-authoritative acceptance with compiled browser assets and no production Node.js/npm dependency            | Architectural constraints exist; integrated PHP-host product evidence remains open        |
-| `STUDIO-PROD-013`                    | Complete keyboard, focus, announcement, reflow, and assistive-technology parity for the new journeys           | Existing `SR-*` rows cover Blueprint surfaces only; expanded target qualification is open |
-| `STUDIO-PROD-014`                    | Truthful distinction between current shipped behavior and required target state                                | Documentation-level distinction; it is not proof of another product behavior              |
-| `STUDIO-PROD-015`                    | Executable end-to-end acceptance across launch, authoring, continuity, save/refusal, reload, and accepted data | Open; existing unit/browser assertions do not constitute this target product journey      |
+| Product IDs                          | Interaction evidence needed                                                                                    | Current relationship                                                                                                                       |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `STUDIO-PROD-001`, `STUDIO-PROD-008` | Contextual launch from every eligible core or extension-owned target                                           | Target schema, owner-aware resolution, hosted mount, and contextual shell implemented; core/extension real-host journey evidence open      |
+| `STUDIO-PROD-002`, `STUDIO-PROD-012` | Blank/from-type start without pre-creation, copy/paste, or manual reconciliation                               | Blank standalone plus blank/from-type/existing coordinator starts implemented; authoritative host replay and acceptance open               |
+| `STUDIO-PROD-003`                    | Blocks, typed fields, bindings, and Entry values authored in one continuous canvas                             | Contextual shell composes Blueprint, field-add, binding, and Entry-value controls; complete field lifecycle and qualification open         |
+| `STUDIO-PROD-004`–`STUDIO-PROD-006`  | Separate artifacts, exact type-version hydration, and the three explicit save choices                          | Separate snapshot, save schemas, plan/submit/reconcile coordinator, and shell choices implemented; real-host atomic transaction proof open |
+| `STUDIO-PROD-007`                    | Inline, minimized, maximized, and fullscreen continuity                                                        | One-session presentation state implemented; route/frame handoff, manual accessibility, and integrated continuity proof open                |
+| `STUDIO-PROD-009`                    | Extension block, field-adapter, and pattern lifecycle throughout the contextual journey                        | Six-kind owner-aware admission and hosted-shell wiring implemented; full disable/upgrade/migration journey evidence open                   |
+| `STUDIO-PROD-010`, `STUDIO-PROD-011` | Host-authoritative acceptance with compiled browser assets and no production Node.js/npm dependency            | Configured HTTP runtime, prebuilt static assets, and PHP reference boundary implemented; Kumwe App and independent-host evidence open      |
+| `STUDIO-PROD-013`                    | Complete keyboard, focus, announcement, reflow, and assistive-technology parity for the new journeys           | Component and browser assertions exist; complete `authoring-web` plus manual AT/touch/zoom/RTL qualification remains open                  |
+| `STUDIO-PROD-014`                    | Truthful distinction among implemented components, integrated behavior, required target, and accepted claims   | Implemented components are documented separately from integrated journeys and accepted claims; this row is not acceptance evidence         |
+| `STUDIO-PROD-015`                    | Executable end-to-end acceptance across launch, authoring, continuity, save/refusal, reload, and accepted data | Open; repository unit/browser/reference-host assertions do not constitute the required real-host acceptance journey                        |
 
 ## Manual procedures
 

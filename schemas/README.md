@@ -17,6 +17,10 @@ canonical Studio release record, and runs strict schema/example validation. The 
 5. compares packaged digests with canonical digests and fails on divergence;
 6. publishes a manifest containing each `$id`, file digest, schema epoch URI, document contract revision, and generator version.
 
+The current generated manifest contains 55 canonical root schemas. Their generated TypeScript projection also
+contains 253 top-level reusable `$defs` definitions; the manifest and generated metadata, rather than a copied
+documentation list, remain the machine authority for that inventory.
+
 `npm run contracts:sync` is the single schema/corpus/release synchronization path. The focused generated-model
 commands are `npm run protocol:models:generate` and `npm run protocol:models:check`; the latter is part of
 `npm run contracts:check`. Compilation and corpus tests run later in the enclosing `npm run check`; generated
@@ -35,6 +39,10 @@ Any existing package-local schema with a different shape or `$id` is an incompat
 | [`common.schema.json`](common.schema.json)                                       | Shared identifiers, references, messages and diagnostics |
 | [`authoring-message-catalog.schema.json`](authoring-message-catalog.schema.json) | Versioned shell locale catalog and named parameters      |
 | [`studio-config.schema.json`](studio-config.schema.json)                         | Resolved serializable session configuration              |
+| [`studio-deployment.schema.json`](studio-deployment.schema.json)                 | Browser mount, host routing and standalone bootstrap     |
+| [`studio-browser-assets.schema.json`](studio-browser-assets.schema.json)         | Prebuilt browser asset and runtime-requirement manifest  |
+| [`authoring-http.schema.json`](authoring-http.schema.json)                       | Exact seven-operation contextual HTTP exchange shapes    |
+| [`authoring-http-vector.schema.json`](authoring-http-vector.schema.json)         | PHP/host HTTP transport conformance matrix               |
 | [`authoring-target.schema.json`](authoring-target.schema.json)                   | Core/extension contextual target declaration             |
 | [`reusable-content-type.schema.json`](reusable-content-type.schema.json)         | Host-owned Model/Blueprint type projection               |
 | [`authoring-session.schema.json`](authoring-session.schema.json)                 | Coordinated Model/Blueprint/Entry session snapshot       |

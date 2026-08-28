@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   STUDIO_CONTRACT_VERSION,
+  type AuthoringTargetDeclaration,
   type BlockDefinition,
   type DesignVocabulary,
   type FieldAdapterContribution,
@@ -90,6 +91,27 @@ function block(
     themeControls: [],
     type,
     version,
+  };
+}
+
+function authoringTarget(
+  id: QualifiedName = 'org.example.kit/product-content',
+): AuthoringTargetDeclaration {
+  return {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    contributionDependencies: [],
+    eligibility: ['create', 'edit'],
+    id,
+    kind: 'authoring-target',
+    label: { defaultMessage: 'Product content', key: 'org.example.kit/product-content' },
+    modes: ['model', 'blueprint', 'content'],
+    owner: kitOwner,
+    presentationStates: ['inline', 'fullscreen'],
+    requiredCapabilities: [],
+    resourceTypes: ['org.example.kit/product'],
+    saveOutcomes: ['save-item', 'save-new-type-version', 'save-as-new-type'],
+    startKinds: ['blank', 'from-type', 'existing'],
+    surface: 'org.example.kit/product-editor',
   };
 }
 
@@ -227,6 +249,19 @@ describe('defineStudioPlugin', () => {
     ]);
   });
 
+  it('accepts and freezes canonical extension-owned authoring targets', () => {
+    const target = authoringTarget();
+    const definition = defineStudioPlugin({
+      authoringTargets: [target],
+      manifest: manifest({
+        contributions: [declaration('authoring-target', target.id)],
+      }),
+    });
+
+    expect(definition.authoringTargets).toEqual([target]);
+    expect(Object.isFrozen(definition.authoringTargets?.[0])).toBe(true);
+  });
+
   it('accepts contribution ids in dotted sub-namespaces of the plugin namespace', () => {
     const definition = defineStudioPlugin({
       fieldAdapters: [fieldAdapter('org.example.kit.fields/slider')],
@@ -304,6 +339,54 @@ describe('defineStudioPlugin', () => {
       }),
     );
     expect(undeclared.codes).toEqual(['studio.contribution/undeclared-registration']);
+  });
+
+  it('requires authoring-target manifests and payloads to agree exactly', () => {
+    const target = authoringTarget();
+    const undeclared = diagnosticsOf(() =>
+      defineStudioPlugin({ authoringTargets: [target], manifest: manifest() }),
+    );
+    expect(undeclared.codes).toEqual(['studio.contribution/undeclared-registration']);
+
+    const missing = diagnosticsOf(() =>
+      defineStudioPlugin({
+        manifest: manifest({
+          contributions: [declaration('authoring-target', target.id)],
+        }),
+      }),
+    );
+    expect(missing.codes).toEqual(['studio.contribution/missing-registration']);
+
+    const wrongOwner = diagnosticsOf(() =>
+      defineStudioPlugin({
+        authoringTargets: [
+          {
+            ...target,
+            owner: { id: kitOwner.id, version: '2.0.0' },
+          },
+        ],
+        manifest: manifest({
+          contributions: [declaration('authoring-target', target.id, '2.0.0')],
+        }),
+      }),
+    );
+    expect(wrongOwner.codes).toEqual(['studio.contribution/owner-mismatch']);
+  });
+
+  it('requires target capabilities to be declared by the plugin manifest', () => {
+    const target: AuthoringTargetDeclaration = {
+      ...authoringTarget(),
+      requiredCapabilities: [{ id: 'studio.capability/contextual-authoring', versions: '^1.0.0' }],
+    };
+    const missing = diagnosticsOf(() =>
+      defineStudioPlugin({
+        authoringTargets: [target],
+        manifest: manifest({
+          contributions: [declaration('authoring-target', target.id)],
+        }),
+      }),
+    );
+    expect(missing.codes).toEqual(['studio.contribution/undeclared-capability']);
   });
 
   it('rejects renderer capability requirements absent from the manifest', () => {

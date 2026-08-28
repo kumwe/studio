@@ -1,0 +1,505 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kumwe.org/studio/v1/authoring-http.schema.json",
+  "title": "Studio contextual authoring HTTP exchange",
+  "description": "The language-neutral HTTP/AJAX binding for one contextual authoring operation. Each exchange fixes the route, exact request argument, capability identifier, idempotency boundary, and normalized result without prescribing a server implementation language.",
+  "$ref": "#/$defs/exchange",
+  "$defs": {
+    "exchange": {
+      "oneOf": [
+        { "$ref": "#/$defs/resolveTargetExchange" },
+        { "$ref": "#/$defs/listTypesExchange" },
+        { "$ref": "#/$defs/startExchange" },
+        { "$ref": "#/$defs/planSaveExchange" },
+        { "$ref": "#/$defs/saveItemExchange" },
+        { "$ref": "#/$defs/saveNewTypeVersionExchange" },
+        { "$ref": "#/$defs/saveAsNewTypeExchange" }
+      ]
+    },
+    "resolveTargetExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/resolve-target" },
+        "request": { "$ref": "#/$defs/resolveTargetRequest" },
+        "response": { "$ref": "#/$defs/resolveTargetResponse" }
+      }
+    },
+    "listTypesExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/list-types" },
+        "request": { "$ref": "#/$defs/listTypesRequest" },
+        "response": { "$ref": "#/$defs/listTypesResponse" }
+      }
+    },
+    "startExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/start" },
+        "request": { "$ref": "#/$defs/startRequest" },
+        "response": { "$ref": "#/$defs/startResponse" }
+      }
+    },
+    "planSaveExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/plan-save" },
+        "request": { "$ref": "#/$defs/planSaveRequest" },
+        "response": { "$ref": "#/$defs/planSaveResponse" }
+      }
+    },
+    "saveItemExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/save-item" },
+        "request": { "$ref": "#/$defs/saveItemRequest" },
+        "response": { "$ref": "#/$defs/saveItemResponse" }
+      }
+    },
+    "saveNewTypeVersionExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/save-new-type-version" },
+        "request": { "$ref": "#/$defs/saveNewTypeVersionRequest" },
+        "response": { "$ref": "#/$defs/saveNewTypeVersionResponse" }
+      }
+    },
+    "saveAsNewTypeExchange": {
+      "$ref": "#/$defs/operationExchange",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "route": { "const": "authoring/save-as-new-type" },
+        "request": { "$ref": "#/$defs/saveAsNewTypeRequest" },
+        "response": { "$ref": "#/$defs/saveAsNewTypeResponse" }
+      }
+    },
+    "operationExchange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "route", "request", "response"],
+      "properties": {
+        "kind": { "const": "authoring-http-exchange" },
+        "route": { "type": "string" },
+        "request": true,
+        "response": true
+      }
+    },
+    "resolveTargetRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["request"],
+              "properties": {
+                "request": { "$ref": "authoring-target.schema.json#/$defs/resolveRequest" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": {
+                "operationId": { "const": "studio.operation/authoring.resolve-target" },
+                "expectedRevision": false,
+                "idempotencyKey": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "listTypesRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["query"],
+              "properties": {
+                "query": { "$ref": "reusable-content-type.schema.json#/$defs/listQuery" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": {
+                "operationId": { "const": "studio.operation/authoring.list-types" },
+                "expectedRevision": false,
+                "idempotencyKey": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "startRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["request"],
+              "properties": {
+                "request": { "$ref": "authoring-session.schema.json#/$defs/startRequest" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "required": ["idempotencyKey"],
+              "properties": {
+                "idempotencyKey": { "$ref": "common.schema.json#/$defs/stableId" },
+                "operationId": { "const": "studio.operation/authoring.start" },
+                "expectedRevision": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "planSaveRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["intent"],
+              "properties": {
+                "intent": { "$ref": "authoring-save.schema.json#/$defs/saveIntent" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": {
+                "operationId": { "const": "studio.operation/authoring.plan-save" },
+                "expectedRevision": false,
+                "idempotencyKey": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "saveItemRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["request"],
+              "properties": {
+                "request": { "$ref": "authoring-save.schema.json#/$defs/saveItemRequest" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "required": ["idempotencyKey"],
+              "properties": {
+                "idempotencyKey": { "$ref": "common.schema.json#/$defs/stableId" },
+                "operationId": { "const": "studio.operation/authoring.save-item" },
+                "expectedRevision": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "saveNewTypeVersionRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["request"],
+              "properties": {
+                "request": {
+                  "$ref": "authoring-save.schema.json#/$defs/saveNewTypeVersionRequest"
+                }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "required": ["idempotencyKey"],
+              "properties": {
+                "idempotencyKey": { "$ref": "common.schema.json#/$defs/stableId" },
+                "operationId": {
+                  "const": "studio.operation/authoring.save-new-type-version"
+                },
+                "expectedRevision": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "saveAsNewTypeRequest": {
+      "allOf": [
+        { "$ref": "host-request.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["arguments", "context"],
+          "properties": {
+            "arguments": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["request"],
+              "properties": {
+                "request": { "$ref": "authoring-save.schema.json#/$defs/saveAsNewTypeRequest" }
+              }
+            },
+            "context": {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "required": ["idempotencyKey"],
+              "properties": {
+                "idempotencyKey": { "$ref": "common.schema.json#/$defs/stableId" },
+                "operationId": { "const": "studio.operation/authoring.save-as-new-type" },
+                "expectedRevision": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "resolveTargetResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": { "$ref": "authoring-target.schema.json#/$defs/resolution" }
+      }
+    },
+    "listTypesResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": { "$ref": "reusable-content-type.schema.json#/$defs/listPage" }
+      }
+    },
+    "startResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": { "$ref": "authoring-session.schema.json#/$defs/snapshot" }
+      }
+    },
+    "planSaveResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": { "$ref": "authoring-save.schema.json#/$defs/savePlan" }
+      }
+    },
+    "saveItemResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": {
+          "allOf": [
+            { "$ref": "authoring-save.schema.json#/$defs/saveResult" },
+            {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": { "outcome": { "const": "save-item" } }
+            }
+          ]
+        }
+      }
+    },
+    "saveNewTypeVersionResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": {
+          "allOf": [
+            { "$ref": "authoring-save.schema.json#/$defs/saveResult" },
+            {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": { "outcome": { "const": "save-new-type-version" } }
+            }
+          ]
+        }
+      }
+    },
+    "saveAsNewTypeResult": {
+      "$ref": "#/$defs/operationResult",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": {
+        "value": {
+          "allOf": [
+            { "$ref": "authoring-save.schema.json#/$defs/saveResult" },
+            {
+              "type": "object",
+              "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+              "properties": { "outcome": { "const": "save-as-new-type" } }
+            }
+          ]
+        }
+      }
+    },
+    "operationResult": {
+      "allOf": [
+        { "$ref": "host-result.schema.json" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": {
+            "revision": false,
+            "value": true
+          }
+        }
+      ]
+    },
+    "resolveTargetResponse": {
+      "oneOf": [
+        { "$ref": "#/$defs/resolveTargetSuccessResponse" },
+        { "$ref": "#/$defs/errorResponse" }
+      ]
+    },
+    "resolveTargetSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/resolveTargetResult" } }
+    },
+    "listTypesResponse": {
+      "oneOf": [{ "$ref": "#/$defs/listTypesSuccessResponse" }, { "$ref": "#/$defs/errorResponse" }]
+    },
+    "listTypesSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/listTypesResult" } }
+    },
+    "startResponse": {
+      "oneOf": [{ "$ref": "#/$defs/startSuccessResponse" }, { "$ref": "#/$defs/errorResponse" }]
+    },
+    "startSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/startResult" } }
+    },
+    "planSaveResponse": {
+      "oneOf": [{ "$ref": "#/$defs/planSaveSuccessResponse" }, { "$ref": "#/$defs/errorResponse" }]
+    },
+    "planSaveSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/planSaveResult" } }
+    },
+    "saveItemResponse": {
+      "oneOf": [{ "$ref": "#/$defs/saveItemSuccessResponse" }, { "$ref": "#/$defs/errorResponse" }]
+    },
+    "saveItemSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/saveItemResult" } }
+    },
+    "saveNewTypeVersionResponse": {
+      "oneOf": [
+        { "$ref": "#/$defs/saveNewTypeVersionSuccessResponse" },
+        { "$ref": "#/$defs/errorResponse" }
+      ]
+    },
+    "saveNewTypeVersionSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/saveNewTypeVersionResult" } }
+    },
+    "saveAsNewTypeResponse": {
+      "oneOf": [
+        { "$ref": "#/$defs/saveAsNewTypeSuccessResponse" },
+        { "$ref": "#/$defs/errorResponse" }
+      ]
+    },
+    "saveAsNewTypeSuccessResponse": {
+      "$ref": "#/$defs/successResponse",
+      "type": "object",
+      "propertyNames": { "$ref": "common.schema.json#/$defs/safeJsonMemberName" },
+      "properties": { "body": { "$ref": "#/$defs/saveAsNewTypeResult" } }
+    },
+    "successResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "body"],
+      "properties": {
+        "status": { "const": 200 },
+        "body": { "$ref": "host-result.schema.json" }
+      }
+    },
+    "errorResponse": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "body"],
+          "properties": {
+            "status": {
+              "enum": [400, 401, 403, 404, 409, 413, 422, 429, 500, 502, 503, 504]
+            },
+            "body": { "$ref": "host-error.schema.json" }
+          }
+        }
+      ]
+    }
+  }
+}

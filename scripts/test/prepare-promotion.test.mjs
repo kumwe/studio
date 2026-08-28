@@ -24,6 +24,7 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
     '.changeset/config.json',
     '.changeset/pre.json',
     'docs/roadmap/STATUS.md',
+    'evidence/profile-assertions.json',
     'examples/reference-host/package.json',
     'package-lock.json',
     'package.json',
@@ -49,6 +50,19 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
     `${JSON.stringify(changesetConfig, null, 2)}\n`,
   );
   await writeFile(new URL('docs/roadmap/STATUS.md', root), productStatus());
+  await writeFile(
+    new URL('evidence/profile-assertions.json', root),
+    `${JSON.stringify({
+      contractVersion: '0.1-draft',
+      kind: 'profile-assertion-registry',
+      profiles: VERSION_TWO_RELEASE_PROFILES.map((id) => ({
+        id,
+        requiredInputs: ['fixture.test.ts'],
+        requiredRuns: ['unit/workspace'],
+        status: 'executable',
+      })),
+    })}\n`,
+  );
   await normalizeFixtureToBetaPhase(root);
 
   const rcPlan = await preparePromotion(root, {

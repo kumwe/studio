@@ -213,7 +213,7 @@ interface MountedResourceBindingControl {
 
 interface InspectorAuthoringTarget {
   binding?: FieldBinding;
-  control: StudioAuthoringControlId;
+  control: QualifiedName;
   key: string;
   kind: 'port' | 'property';
   label: string;
@@ -240,6 +240,7 @@ export class KumweStudioElement extends LitElement {
     authoringControlRegistry: { attribute: false },
     canvasDirectManipulation: { attribute: false, state: true },
     canvasGeometry: { attribute: false, state: true },
+    commandSession: { attribute: false },
     configuration: { attribute: false },
     contentModel: { attribute: false },
     designControls: { attribute: false },
@@ -867,6 +868,12 @@ export class KumweStudioElement extends LitElement {
 
   declare public configuration: ExperimentalShellConfiguration | undefined;
   declare public authoringControlRegistry: StudioAuthoringControlRegistry | undefined;
+  /**
+   * Optional pre-existing core session used by a composed host runtime. When
+   * present, commands and history operate on that exact session instead of a
+   * second shell-owned draft.
+   */
+  declare public commandSession: StudioSession | undefined;
   declare public contentModel: ContentModelDocument | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
@@ -1128,7 +1135,7 @@ export class KumweStudioElement extends LitElement {
     if (changed.has('configuration') || changed.has('previewBinding')) {
       this.#synchronizePreviewSurface();
     }
-    if (changed.has('document') || changed.has('configuration')) {
+    if (changed.has('document') || changed.has('configuration') || changed.has('commandSession')) {
       if (this.#internalDocumentUpdate) {
         this.#internalDocumentUpdate = false;
       } else {
@@ -2802,7 +2809,11 @@ export class KumweStudioElement extends LitElement {
   }
 
   #rebuildSession(): void {
-    if (this.document === undefined) {
+    if (this.commandSession !== undefined) {
+      this.#session = this.commandSession;
+      this.#sessionGeneration =
+        this.configuration?.session.sessionGeneration ?? this.document?.revision ?? '';
+    } else if (this.document === undefined) {
       this.#session = undefined;
       this.#sessionGeneration = '';
     } else {
@@ -3141,14 +3152,17 @@ export class KumweStudioElement extends LitElement {
   #inspectorAuthoringTargets(node: BlueprintNode, readOnly: boolean): InspectorAuthoringTarget[] {
     const definition = this.#findDefinition(node);
     if (definition === undefined) return [];
+    const registry = this.authoringControlRegistry ?? this.#defaultAuthoringControlRegistry;
     const targets: InspectorAuthoringTarget[] = [];
     for (const propertyControl of definition.propertyControls ?? []) {
-      if (!isStudioAuthoringControlId(propertyControl.control)) continue;
+      if (!registry.supports(propertyControl.control)) continue;
       const value =
         propertyControl.control === STUDIO_AUTHORING_CONTROL_IDS.scopedCss
           ? defaultAuthoringControlValue(propertyControl.control)
           : (node.properties[propertyControl.property] ??
-            defaultAuthoringControlValue(propertyControl.control));
+            (isStudioAuthoringControlId(propertyControl.control)
+              ? defaultAuthoringControlValue(propertyControl.control)
+              : undefined));
       targets.push({
         control: propertyControl.control,
         key: `${node.id}:property:${propertyControl.property}`,
@@ -3167,14 +3181,16 @@ export class KumweStudioElement extends LitElement {
     }
     for (const port of definition.ports) {
       const metadata = port.authoring;
-      if (metadata?.control === undefined || !isStudioAuthoringControlId(metadata.control)) {
+      if (metadata?.control === undefined || !registry.supports(metadata.control)) {
         continue;
       }
       const binding = node.bindings[port.id];
       const value =
         binding?.source.kind === 'static-value'
           ? binding.source.value
-          : defaultAuthoringControlValue(metadata.control);
+          : isStudioAuthoringControlId(metadata.control)
+            ? defaultAuthoringControlValue(metadata.control)
+            : undefined;
       targets.push({
         ...(binding === undefined ? {} : { binding }),
         control: metadata.control,
@@ -4345,9 +4361,10 @@ export class KumweStudioElement extends LitElement {
   }
 
   #renderInspectorProperties(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const registry = this.authoringControlRegistry ?? this.#defaultAuthoringControlRegistry;
     const customProperties = new Set(
       (this.#findDefinition(node)?.propertyControls ?? [])
-        .filter((entry) => isStudioAuthoringControlId(entry.control))
+        .filter((entry) => registry.supports(entry.control))
         .map((entry) => entry.property),
     );
     const entries = Object.entries(node.properties).filter(

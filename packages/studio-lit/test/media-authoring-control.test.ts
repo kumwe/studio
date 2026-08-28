@@ -102,6 +102,24 @@ describe('Studio media authoring controls', () => {
     holder.remove();
   });
 
+  it('keeps browse and selection active while a browse-only host disables byte intake', async () => {
+    const holder = root();
+    const control = await new StudioAuthoringControlRegistry({
+      media: { provider: new Provider(), uploadsEnabled: false },
+    }).mount('studio.control/media-reference', { holder, value: undefined });
+    await settle();
+
+    expect(holder.querySelector<HTMLInputElement>('[aria-label="Upload media"]')?.disabled).toBe(
+      true,
+    );
+    expect(
+      holder.querySelector<HTMLButtonElement>('[aria-label="Select windhoek.jpg (image)"]')
+        ?.disabled,
+    ).toBe(false);
+    control.destroy();
+    holder.remove();
+  });
+
   it('preserves orphan references and offers an explicit replacement path', async () => {
     const provider = new Provider();
     provider.missing = true;

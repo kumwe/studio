@@ -3,6 +3,8 @@ import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
   protocolSchemas,
   STUDIO_CONTRACT_VERSION,
+  type AuthoringTargetDeclaration,
+  type AuthoringTargetResolveRequest,
   type BlockDefinition,
   type BlueprintDocument,
   type DesignVocabulary,
@@ -29,6 +31,10 @@ import {
 
 const ownerA: OwnerReference = { id: 'org.example/blocks', version: '1.0.0' };
 const ownerB: OwnerReference = { id: 'org.other/blocks', version: '2.0.0' };
+const CONTEXTUAL_CAPABILITY = {
+  id: 'studio.capability/contextual-authoring',
+  version: '1.0.0',
+} as const;
 
 function block(
   type: `${string}/${string}`,
@@ -88,6 +94,85 @@ function documentUsing(type: `${string}/${string}`): BlueprintDocument {
     ],
     status: 'draft',
     version: '1.0.0',
+  };
+}
+
+function authoringTarget(
+  owner: OwnerReference,
+  id: `${string}/${string}`,
+  dependencies: AuthoringTargetDeclaration['contributionDependencies'] = [],
+): AuthoringTargetDeclaration {
+  return {
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    contributionDependencies: dependencies,
+    eligibility: ['create', 'edit'],
+    id,
+    kind: 'authoring-target',
+    label: { defaultMessage: 'Contextual content', key: `${id.replace('/', '.')}/label` },
+    modes: ['model', 'blueprint', 'content'],
+    owner,
+    presentationStates: ['inline', 'maximized', 'fullscreen'],
+    requiredCapabilities: [{ id: CONTEXTUAL_CAPABILITY.id, versions: '>=1.0.0 <2.0.0' }],
+    resourceTypes: ['org.example/content'],
+    saveOutcomes: ['save-item', 'save-new-type-version', 'save-as-new-type'],
+    startKinds: ['blank', 'from-type', 'existing'],
+    surface: 'org.example/content-editor',
+  };
+}
+
+function resolveRequest(targetId: `${string}/${string}`): AuthoringTargetResolveRequest {
+  return {
+    intent: 'edit',
+    requestedPresentation: 'inline',
+    resourceContext: {
+      key: 'contexts/article-42',
+      resource: { id: 'articles/42', type: 'org.example/content' },
+      scopes: [{ id: 'sites/main', kind: 'org.example/site' }],
+      surface: 'org.example/content-editor',
+    },
+    targetId,
+  };
+}
+
+function targetPluginDefinition(
+  owner: OwnerReference,
+  target: AuthoringTargetDeclaration,
+  contributions: Partial<StudioPluginDefinition> = {},
+): StudioPluginDefinition {
+  return {
+    ...contributions,
+    authoringTargets: [target],
+    manifest: {
+      activation: 'declarative',
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      contributions: [
+        {
+          executable: false,
+          id: target.id,
+          integrity: 'sha256-gEReHtrWQj4XVxU9b3Yie2ssI8Wsy/nv+rvEe6RcFac=',
+          kind: 'authoring-target',
+          resource: 'authoring/target.json',
+          version: owner.version,
+        },
+        ...(contributions.manifest?.contributions ?? []),
+      ],
+      dependencies: [],
+      entryModules: [],
+      id: owner.id,
+      kind: 'plugin-manifest',
+      label: {
+        defaultMessage: 'Contextual extension',
+        key: `${owner.id.replace('/', '.')}/plugin`,
+      },
+      optionalCapabilities: [],
+      owner,
+      permissions: [],
+      requiredCapabilities: [
+        { id: CONTEXTUAL_CAPABILITY.id, versions: '>=1.0.0 <2.0.0' },
+        ...(contributions.manifest?.requiredCapabilities ?? []),
+      ],
+      version: owner.version,
+    },
   };
 }
 
@@ -370,6 +455,242 @@ describe('ContributionRuntime', () => {
   });
 });
 
+describe('extension-owned contextual target lifecycle', () => {
+  it('resolves core and extension targets through the same immutable path', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const coreOwner: OwnerReference = { id: 'studio.core/content', version: '1.0.0' };
+    const coreTarget = authoringTarget(coreOwner, 'studio.core/article-content');
+    runtime.activate(
+      coreOwner,
+      { authoringTargets: [coreTarget], blocks: [] },
+      {
+        generation: 'gen-1',
+      },
+    );
+
+    const extensionOwner: OwnerReference = { id: 'org.example/contextual', version: '1.0.0' };
+    const extensionTarget = authoringTarget(
+      extensionOwner,
+      'org.example.contextual/article-content',
+    );
+    activateStudioPlugin(
+      runtime,
+      defineStudioPlugin(targetPluginDefinition(extensionOwner, extensionTarget)),
+      { generation: 'gen-2' },
+    );
+
+    expect(runtime.current.authoringTargets().map(({ id }) => id)).toEqual([
+      extensionTarget.id,
+      coreTarget.id,
+    ]);
+    for (const target of [coreTarget, extensionTarget]) {
+      expect(
+        runtime.current.resolveAuthoringTarget(resolveRequest(target.id), {
+          capabilities: [CONTEXTUAL_CAPABILITY],
+          mode: 'content',
+        }),
+      ).toEqual({ contributions: [], target });
+    }
+  });
+
+  it('fails closed on the wrong surface, resource, intent, presentation, mode, or capability', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const owner: OwnerReference = { id: 'org.example/contextual', version: '1.0.0' };
+    const target: AuthoringTargetDeclaration = {
+      ...authoringTarget(owner, 'org.example.contextual/article-content'),
+      modes: ['content'],
+    };
+    activateStudioPlugin(runtime, defineStudioPlugin(targetPluginDefinition(owner, target)), {
+      generation: 'gen-1',
+    });
+    const request = resolveRequest(target.id);
+    const resolve = (
+      override: Partial<AuthoringTargetResolveRequest> = {},
+      options: Parameters<typeof runtime.current.resolveAuthoringTarget>[1] = {
+        capabilities: [CONTEXTUAL_CAPABILITY],
+      },
+    ) => runtime.current.resolveAuthoringTarget({ ...request, ...override }, options);
+
+    expect(resolve()).toBeDefined();
+    expect(resolve({ intent: 'create' })).toBeDefined();
+    expect(resolve({ requestedPresentation: 'minimized' })).toBeUndefined();
+    expect(
+      resolve({
+        resourceContext: { ...request.resourceContext, surface: 'org.other/editor' },
+      }),
+    ).toBeUndefined();
+    expect(
+      resolve({
+        resourceContext: {
+          ...request.resourceContext,
+          resource: { id: 'articles/42', type: 'org.other/content' },
+        },
+      }),
+    ).toBeUndefined();
+    expect(resolve({}, { capabilities: [CONTEXTUAL_CAPABILITY], mode: 'content' })).toBeDefined();
+    expect(resolve({}, { capabilities: [CONTEXTUAL_CAPABILITY], mode: 'model' })).toBeUndefined();
+    expect(resolve({}, { capabilities: [], mode: 'content' })).toBeUndefined();
+    expect(
+      resolve(
+        {},
+        {
+          capabilities: [{ ...CONTEXTUAL_CAPABILITY, version: '2.0.0' }],
+          mode: 'content',
+        },
+      ),
+    ).toBeUndefined();
+  });
+
+  it('admits only explicitly declared dependencies and selects the newest compatible version', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const providerOwner: OwnerReference = { id: 'org.example/controls', version: '1.0.0' };
+    const adapter = (version: SemanticVersion): FieldAdapterContribution => ({
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      control: 'org.example.controls/text-control',
+      fieldKinds: ['studio.field/string'],
+      id: 'org.example.controls/text',
+      kind: 'field-adapter',
+      label: { defaultMessage: `Text ${version}`, key: 'org.example.controls/text' },
+      owner: providerOwner,
+      version,
+    });
+    runtime.activate(
+      providerOwner,
+      {
+        blocks: [block('org.example.controls/unrelated', providerOwner)],
+        fieldAdapters: [adapter('1.0.0'), adapter('1.2.0'), adapter('2.0.0')],
+      },
+      { generation: 'gen-1' },
+    );
+
+    const targetOwner: OwnerReference = { id: 'org.example/contextual', version: '1.0.0' };
+    const target = authoringTarget(targetOwner, 'org.example.contextual/article-content', [
+      {
+        id: 'org.example.controls/text',
+        kind: 'field-adapter',
+        required: true,
+        versions: '^1.0.0',
+      },
+      {
+        id: 'org.example.controls/optional-pattern',
+        kind: 'pattern',
+        required: false,
+        versions: '^1.0.0',
+      },
+    ]);
+    activateStudioPlugin(runtime, defineStudioPlugin(targetPluginDefinition(targetOwner, target)), {
+      generation: 'gen-2',
+    });
+
+    const resolution = runtime.current.resolveAuthoringTarget(resolveRequest(target.id), {
+      capabilities: [CONTEXTUAL_CAPABILITY],
+    });
+    expect(resolution?.contributions).toEqual([adapter('1.2.0')]);
+    expect(resolution?.contributions).not.toContainEqual(
+      block('org.example.controls/unrelated', providerOwner),
+    );
+  });
+
+  it('withdraws targets and required dependencies on disable or revocation without corrupting generations', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const provider = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, provider, { generation: 'gen-1' });
+
+    const targetOwner: OwnerReference = { id: 'org.example/contextual', version: '1.0.0' };
+    const target = authoringTarget(targetOwner, 'org.example.contextual/article-content', [
+      {
+        id: 'org.example.toolkit/field-adapter',
+        kind: 'field-adapter',
+        required: true,
+        versions: '^1.0.0',
+      },
+    ]);
+    const targetDefinition = defineStudioPlugin(targetPluginDefinition(targetOwner, target));
+    activateStudioPlugin(runtime, targetDefinition, { generation: 'gen-2' });
+    const request = resolveRequest(target.id);
+    const options = { capabilities: [CONTEXTUAL_CAPABILITY] } as const;
+    const pinned = runtime.current;
+    expect(pinned.resolveAuthoringTarget(request, options)).toBeDefined();
+
+    runtime.disable(provider.manifest.owner.id, { generation: 'gen-3' });
+    expect(runtime.current.resolveAuthoringTarget(request, options)).toBeUndefined();
+    expect(pinned.resolveAuthoringTarget(request, options)).toBeDefined();
+    expect(
+      runtime.unresolvedReference({
+        contribution: 'field-adapter',
+        id: 'org.example.toolkit/field-adapter',
+        version: '1.0.0',
+      }),
+    ).toEqual({ owner: provider.manifest.owner, reason: 'owner-disabled' });
+
+    runtime.reactivate(provider.manifest.owner.id, { generation: 'gen-4' });
+    expect(runtime.current.resolveAuthoringTarget(request, options)).toBeDefined();
+    runtime.revokeTrust(targetOwner.id, { generation: 'gen-5' });
+    expect(runtime.current.authoringTargets()).toEqual([]);
+    expect(
+      runtime.unresolvedReference({
+        contribution: 'authoring-target',
+        id: target.id,
+        version: targetOwner.version,
+      }),
+    ).toEqual({ owner: targetOwner, reason: 'owner-revoked' });
+
+    activateStudioPlugin(runtime, targetDefinition, { generation: 'gen-6' });
+    runtime.uninstall(targetOwner.id, { generation: 'gen-7' });
+    expect(runtime.current.authoringTargets()).toEqual([]);
+    expect(runtime.inventory()).toContainEqual(
+      expect.objectContaining({ owner: targetOwner, state: 'uninstalled-data-preserved' }),
+    );
+    expect(() => runtime.reactivate(targetOwner.id, { generation: 'gen-8' })).toThrow(
+      StudioContributionError,
+    );
+    expect(
+      runtime.unresolvedReference({
+        contribution: 'authoring-target',
+        id: target.id,
+        version: targetOwner.version,
+      }),
+    ).toEqual({ owner: targetOwner, reason: 'owner-disabled' });
+  });
+
+  it('upgrades targets atomically and rejects cross-owner target collisions', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const ownerV1: OwnerReference = { id: 'org.example/contextual', version: '1.0.0' };
+    const targetV1 = authoringTarget(ownerV1, 'org.example.contextual/article-content');
+    activateStudioPlugin(runtime, defineStudioPlugin(targetPluginDefinition(ownerV1, targetV1)), {
+      generation: 'gen-1',
+    });
+
+    const otherOwner: OwnerReference = { id: 'org.example/other', version: '1.0.0' };
+    const collision = authoringTarget(otherOwner, targetV1.id);
+    expect(() =>
+      activateStudioPlugin(
+        runtime,
+        defineStudioPlugin(targetPluginDefinition(otherOwner, collision)),
+        { generation: 'gen-2' },
+      ),
+    ).toThrow(StudioContributionError);
+    expect(runtime.current.generation).toBe('gen-1');
+
+    const ownerV2: OwnerReference = { ...ownerV1, version: '2.0.0' };
+    const targetV2 = {
+      ...authoringTarget(ownerV2, targetV1.id),
+      presentationStates: ['inline', 'maximized'] as const,
+    };
+    activateStudioPlugin(runtime, defineStudioPlugin(targetPluginDefinition(ownerV2, targetV2)), {
+      generation: 'gen-2',
+    });
+    expect(runtime.current.authoringTargets()).toEqual([targetV2]);
+    expect(
+      runtime.unresolvedReference({
+        contribution: 'authoring-target',
+        id: targetV1.id,
+        version: '1.0.0',
+      }),
+    ).toEqual({ owner: ownerV2, reason: 'incompatible' });
+  });
+});
+
 describe('unresolved contribution reporting', () => {
   it('distinguishes disabled, revoked, incompatible, and uninstalled reasons', () => {
     const runtime = new ContributionRuntime({ generation: 'gen-0' });
@@ -579,6 +900,31 @@ describe('extension lifecycle beyond blocks', () => {
       toolkitKinds.map((kind) => [kind, 'owner-revoked']),
     );
     expect(() => runtime.reactivate('org.example/toolkit', { generation: 'gen-3' })).toThrow(
+      StudioContributionError,
+    );
+
+    activateStudioPlugin(runtime, definition, { generation: 'gen-4' });
+    expect(unresolvedDeclaredContributions(runtime, [definition], toolkitReferences())).toEqual([]);
+  });
+
+  it('uninstall removes all six kinds while retaining owner identity for diagnosis and migration', () => {
+    const runtime = new ContributionRuntime({ generation: 'gen-0' });
+    const definition = defineStudioPlugin(toolkitDefinition());
+    activateStudioPlugin(runtime, definition, { generation: 'gen-1' });
+
+    runtime.uninstall(definition.manifest.owner.id, { generation: 'gen-2' });
+    expect(runtime.current.owners()).toEqual([]);
+    expect(runtime.inventory()).toEqual([
+      expect.objectContaining({
+        owner: definition.manifest.owner,
+        state: 'uninstalled-data-preserved',
+      }),
+    ]);
+    const unresolved = unresolvedDeclaredContributions(runtime, [definition], toolkitReferences());
+    expect(unresolved.map((entry) => [entry.reference.contribution, entry.reason])).toEqual(
+      toolkitKinds.map((kind) => [kind, 'owner-disabled']),
+    );
+    expect(() => runtime.reactivate(definition.manifest.owner.id, { generation: 'gen-3' })).toThrow(
       StudioContributionError,
     );
 

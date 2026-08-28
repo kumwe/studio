@@ -12,15 +12,31 @@ export {
   type NodeFieldBindingProjection,
 } from './binding-projection.js';
 export {
+  isAuthoringSaveIntent,
+  isAuthoringSessionSnapshot,
   openContextualStudioSession,
+  preflightContextualStudioSession,
   type OpenContextualStudioSessionOptions,
+  type PreflightContextualStudioSessionOptions,
   type StudioContextualArtifactStateVersions,
   type StudioContextualDirtyArtifacts,
   type StudioContextualHostSessionHandle,
+  type StudioContextualPreflightHandle,
   type StudioContextualSaveIntentOptions,
   type StudioContextualSession,
   type StudioContextualTypeCatalog,
 } from './contextual-session.js';
+export {
+  assertStudioDeploymentConfiguration,
+  validateStudioDeploymentConfiguration,
+} from './deployment-validation.js';
+export {
+  assertStudioTokenLifetime,
+  isAuthenticationLifetimeFailure,
+  isStudioTokenLifetimeValid,
+  STUDIO_TOKEN_MAXIMUM_LIFETIME_MILLISECONDS,
+  type StudioTokenLifetime,
+} from './authentication-lifetime.js';
 export {
   applyCommand,
   invertCommand,
@@ -35,8 +51,12 @@ export {
   type ExtensionContributions,
   type ExtensionInventory,
   type GenerationOptions,
+  type AuthoringTargetRuntimeOptions,
+  type ResolvedAuthoringTarget,
   type StudioCompositionContribution,
   type StudioCompositionContributionKind,
+  type StudioLifecycleContribution,
+  type StudioLifecycleContributionKind,
   type UnresolvedNodeReport,
 } from './contributions.js';
 export {
@@ -97,6 +117,35 @@ export {
   type StudioHostSessionRecovery,
   type StudioHostSessionResources,
 } from './host-session.js';
+export {
+  AUTHORING_HTTP_OPERATIONS,
+  AUTHORING_HTTP_OPERATIONS_BY_ROUTE,
+  AUTHORING_HTTP_SCHEMA_ID,
+  type AuthoringHttpOperationContract,
+  type AuthoringHttpOperationRegistry,
+  type AuthoringHttpRoute,
+  type HttpSchemaValidator,
+} from './http-authoring-contract.js';
+export {
+  createHttpHostAdapter,
+  HTTP_HOST_OPERATION_ROUTES,
+  type ConfiguredHttpHostAdapterOptions,
+  type HttpAuthenticationConfiguration,
+  type HttpAuthenticationRequest,
+  type HttpAuthenticationResolver,
+  type HttpBearerTokenAuthentication,
+  type HttpFetchLike,
+  type HttpHeaderTokenAuthentication,
+  type HttpHostAdapterOptions,
+  type HttpHostOperationEndpoints,
+  type HttpHostOperationRoute,
+  type HttpHostRoutingConfiguration,
+  type HttpHostTransportConfiguration,
+  type HttpRequestInit,
+  type HttpResponseLike,
+  type HttpSameOriginSessionAuthentication,
+  type HttpTimeoutHandle,
+} from './http-host-adapter.js';
 export { applyModelCommand } from './model-commands.js';
 export {
   permittedCommandTypes,
@@ -127,6 +176,15 @@ export {
   type ParsedSemanticVersion,
 } from './semver.js';
 export { StudioSession, type StudioSessionOptions } from './session.js';
+export {
+  assertBlueprintWithinSessionPolicy,
+  assertEntryWithinSessionPolicy,
+  assertModelWithinSessionPolicy,
+  STUDIO_PROTOCOL_MAXIMUM_COMMAND_POLICY_LIMITS,
+  type StudioCommandPolicyLimits,
+  type StudioSessionPolicyOptions,
+} from './session-policy.js';
+export { parseJsonRejectingDuplicateMembers } from './strict-json.js';
 export {
   BlockRegistry,
   type BlockRegistrationOptions,

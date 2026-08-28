@@ -1,5 +1,9 @@
 # `@kumwe/studio-renderer-web`
 
+Status: governed beta development, not an RC or production-supported release. The exact coordinated version
+is in the workspace `studio-release.json`; renderer conformance and host support still require accepted
+evidence.
+
 Portable semantic HTML and trusted progressive enhancements for the Studio production catalog.
 
 `renderStudioWeb(document, context)` renders all 45 first-party types, escapes ordinary values,

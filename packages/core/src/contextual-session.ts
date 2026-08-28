@@ -59,6 +59,11 @@ import { applyModelCommand } from './model-commands.js';
 import { negotiateCapabilities, type CapabilityNegotiationResult } from './negotiation.js';
 import { compileProfileSchema, type CompiledSchemaValidator } from './profile-validator.js';
 import { StudioSession } from './session.js';
+import {
+  assertBlueprintWithinSessionPolicy,
+  assertEntryWithinSessionPolicy,
+  assertModelWithinSessionPolicy,
+} from './session-policy.js';
 
 const AUTHORING_PORT: QualifiedName = 'studio.port/authoring';
 const AUTHORING_RESOLVE_TARGET: QualifiedName = 'studio.operation/authoring.resolve-target';
@@ -113,6 +118,21 @@ interface ContractValidator<TValue> {
   validate(instance: unknown): instance is TValue;
 }
 
+/**
+ * Check an untrusted value against the complete canonical contextual-project
+ * schema. The guard performs no authorization and returns no host authority;
+ * callers still decide whether the referenced blocks and capabilities are
+ * available in their runtime.
+ */
+export function isAuthoringSessionSnapshot(value: unknown): value is AuthoringSessionSnapshot {
+  return validateSessionSnapshot.validate(value);
+}
+
+/** Check an untrusted value against the canonical host save-intent shape. */
+export function isAuthoringSaveIntent(value: unknown): value is AuthoringSaveIntent {
+  return validateSaveIntent.validate(value);
+}
+
 export interface OpenContextualStudioSessionOptions {
   /** The same resolved configuration that binds locale, actor, context and generation. */
   configuration: StudioConfiguration;
@@ -122,6 +142,15 @@ export interface OpenContextualStudioSessionOptions {
   target: AuthoringTargetResolveRequest;
   /** Blank, reusable-type, or existing-item start for that same target and resource. */
   start: AuthoringStartRequest;
+}
+
+export interface PreflightContextualStudioSessionOptions {
+  /** The same resolved configuration that binds locale, actor, context and generation. */
+  configuration: StudioConfiguration;
+  /** Injected deterministic identifiers; core reads no clock or random source. */
+  identifiers: StudioHostSessionIdentifierFactories;
+  /** The exact target/resource request authorized before a start is selected. */
+  target: AuthoringTargetResolveRequest;
 }
 
 export interface StudioContextualArtifactStateVersions {
@@ -174,6 +203,19 @@ export interface StudioContextualTypeCatalog {
   list(query: AuthoringTypeListQuery): Promise<HostPortResult<AuthoringTypeListPage>>;
 }
 
+/** A resolved target that has not yet hydrated blank, reusable-type, or existing drafts. */
+export interface StudioContextualPreflightHandle {
+  readonly diagnostics: readonly StudioDiagnostic[];
+  readonly disposed: boolean;
+  readonly invalidated: boolean;
+  readonly negotiation: CapabilityNegotiationResult;
+  readonly resolution: AuthoringTargetResolution;
+  readonly started: boolean;
+  readonly types: StudioContextualTypeCatalog | undefined;
+  dispose(): void;
+  start(request: AuthoringStartRequest): Promise<StudioContextualHostSessionHandle>;
+}
+
 export interface StudioContextualHostSessionHandle {
   readonly diagnostics: readonly StudioDiagnostic[];
   readonly disposed: boolean;
@@ -200,10 +242,32 @@ export async function openContextualStudioSession(
   adapter: HostAdapter,
   options: Readonly<OpenContextualStudioSessionOptions>,
 ): Promise<StudioContextualHostSessionHandle> {
+  assertOpeningRequests(options.configuration, options.target, options.start);
+  const preflight = await preflightContextualStudioSession(adapter, {
+    configuration: options.configuration,
+    identifiers: options.identifiers,
+    target: options.target,
+  });
+  try {
+    return await preflight.start(options.start);
+  } catch (error) {
+    preflight.dispose();
+    throw error;
+  }
+}
+
+/**
+ * Resolve one target without prematurely choosing a create source. Interactive
+ * shells use this to present only the host-authorized blank/from-type choices;
+ * the convenience opener above uses the same path and immediately starts.
+ */
+export async function preflightContextualStudioSession(
+  adapter: HostAdapter,
+  options: Readonly<PreflightContextualStudioSessionOptions>,
+): Promise<StudioContextualPreflightHandle> {
   const configuration = cloneContractValue(options.configuration);
   const targetRequest = cloneContractValue(options.target);
-  const startRequest = cloneContractValue(options.start);
-  assertOpeningRequests(configuration, targetRequest, startRequest);
+  assertPreflightRequest(configuration, targetRequest);
 
   const negotiation = negotiateCapabilities(configuration.hostCapabilities, {
     requiredPorts: [AUTHORING_PORT],
@@ -223,52 +287,191 @@ export async function openContextualStudioSession(
   }
 
   const identifiers = new SessionIdentifierAllocator(options.identifiers);
-  const resolutionResult: unknown = await invokeOpeningCall(() =>
-    authoring.resolveTarget(
+  try {
+    const resolutionResult: unknown = await invokeOpeningCall(() =>
+      authoring.resolveTarget(
+        targetRequest,
+        createContext(configuration, identifiers.requestId(AUTHORING_RESOLVE_TARGET), {
+          operationId: AUTHORING_RESOLVE_TARGET,
+        }),
+      ),
+    );
+    const resolution = readResultValue<AuthoringTargetResolution>(
+      resolutionResult,
+      validateTargetResolution,
+      'studio.host/unexpected-authoring-target',
+      'The authoring port returned a malformed target resolution.',
+    );
+    assertResolvedTarget(configuration, targetRequest, resolution);
+    appendResolvedOperationDiagnostics(configuration, negotiation, resolution);
+    throwIfBlocked(
+      negotiation,
+      'The resolved target cannot provide its declared authoring profile.',
+    );
+
+    return new BoundContextualPreflight(
+      authoring,
+      configuration,
+      identifiers,
+      negotiation,
       targetRequest,
-      createContext(configuration, identifiers.requestId(AUTHORING_RESOLVE_TARGET), {
-        operationId: AUTHORING_RESOLVE_TARGET,
-      }),
-    ),
-  );
-  const resolution = readResultValue<AuthoringTargetResolution>(
-    resolutionResult,
-    validateTargetResolution,
-    'studio.host/unexpected-authoring-target',
-    'The authoring port returned a malformed target resolution.',
-  );
-  assertResolution(configuration, targetRequest, startRequest, resolution);
-  appendResolvedOperationDiagnostics(configuration, negotiation, resolution);
-  throwIfBlocked(negotiation, 'The resolved target cannot provide its declared authoring profile.');
+      resolution,
+    );
+  } catch (error) {
+    identifiers.dispose();
+    throw error;
+  }
+}
 
-  const startResult: unknown = await invokeOpeningCall(() =>
-    authoring.start(
-      startRequest,
-      createContext(configuration, identifiers.requestId(AUTHORING_START), {
-        operationId: AUTHORING_START,
-      }),
-    ),
-  );
-  const snapshot = readResultValue<AuthoringSessionSnapshot>(
-    startResult,
-    validateSessionSnapshot,
-    'studio.host/unexpected-authoring-session',
-    'The authoring port returned a malformed contextual session.',
-  );
-  assertOpeningSnapshot(configuration, resolution, startRequest, snapshot);
+class BoundContextualPreflight implements StudioContextualPreflightHandle {
+  public readonly diagnostics: readonly StudioDiagnostic[];
+  public readonly negotiation: CapabilityNegotiationResult;
+  public readonly resolution: AuthoringTargetResolution;
+  public readonly types: StudioContextualTypeCatalog | undefined;
 
-  return new BoundContextualHostSession(
-    authoring,
-    configuration,
-    identifiers,
-    negotiation,
-    resolution,
-    snapshot,
-  );
+  readonly #authoring: AuthoringPort;
+  readonly #configuration: StudioConfiguration;
+  readonly #identifiers: SessionIdentifierAllocator;
+  readonly #targetRequest: AuthoringTargetResolveRequest;
+  #disposed = false;
+  #invalidationFailure: HostPortFailure | undefined;
+  #startIdempotencyKeys = new Map<string, string>();
+  #startActive = false;
+  #started = false;
+
+  public constructor(
+    authoring: AuthoringPort,
+    configuration: StudioConfiguration,
+    identifiers: SessionIdentifierAllocator,
+    negotiation: CapabilityNegotiationResult,
+    targetRequest: AuthoringTargetResolveRequest,
+    resolution: AuthoringTargetResolution,
+  ) {
+    this.#authoring = authoring;
+    this.#configuration = configuration;
+    this.#identifiers = identifiers;
+    this.#targetRequest = cloneContractValue(targetRequest);
+    this.negotiation = cloneNegotiation(negotiation);
+    this.diagnostics = cloneContractValue(negotiation.diagnostics);
+    this.resolution = cloneContractValue(resolution);
+    this.types = operationAdvertised(configuration, AUTHORING_LIST_TYPES)
+      ? Object.freeze({ list: (query: AuthoringTypeListQuery) => this.#listTypes(query) })
+      : undefined;
+  }
+
+  public get disposed(): boolean {
+    return this.#disposed;
+  }
+
+  public get invalidated(): boolean {
+    return this.#invalidationFailure !== undefined;
+  }
+
+  public get started(): boolean {
+    return this.#started;
+  }
+
+  public dispose(): void {
+    if (this.#disposed || this.#started) return;
+    this.#disposed = true;
+    this.#startIdempotencyKeys.clear();
+    this.#identifiers.dispose();
+  }
+
+  public async start(request: AuthoringStartRequest): Promise<StudioContextualHostSessionHandle> {
+    this.#assertActive();
+    if (this.#startActive) {
+      throw new StudioHostSessionError(
+        'invalid-authoring-request',
+        'A contextual Studio start is already active for this resolved target.',
+      );
+    }
+    const startRequest = cloneContractValue(request);
+    assertOpeningRequests(this.#configuration, this.#targetRequest, startRequest);
+    assertStartAllowed(this.resolution, startRequest);
+    const fingerprint = mutationFingerprint(
+      startRequest as unknown as JsonValue,
+      this.#configuration,
+    );
+    let idempotencyKey = this.#startIdempotencyKeys.get(fingerprint);
+    if (idempotencyKey === undefined) {
+      idempotencyKey = this.#identifiers.idempotencyKey(AUTHORING_START, fingerprint);
+      this.#startIdempotencyKeys.set(fingerprint, idempotencyKey);
+    }
+    this.#startActive = true;
+    try {
+      const startResult: unknown = await this.#invoke(() =>
+        this.#authoring.start(
+          startRequest,
+          createContext(this.#configuration, this.#identifiers.requestId(AUTHORING_START), {
+            idempotencyKey,
+            operationId: AUTHORING_START,
+          }),
+        ),
+      );
+      const snapshot = readResultValue<AuthoringSessionSnapshot>(
+        startResult,
+        validateSessionSnapshot,
+        'studio.host/unexpected-authoring-session',
+        'The authoring port returned a malformed contextual session.',
+      );
+      assertOpeningSnapshot(this.#configuration, this.resolution, startRequest, snapshot);
+      this.#started = true;
+      this.#startIdempotencyKeys.clear();
+      return new BoundContextualHostSession(
+        this.#authoring,
+        this.#configuration,
+        this.#identifiers,
+        this.negotiation,
+        this.resolution,
+        snapshot,
+      );
+    } finally {
+      this.#startActive = false;
+    }
+  }
+
+  async #listTypes(query: AuthoringTypeListQuery): Promise<HostPortResult<AuthoringTypeListPage>> {
+    this.#assertActive();
+    return listContextualTypes(
+      this.#authoring,
+      this.#configuration,
+      this.#identifiers,
+      this.resolution,
+      (operation) => this.#invoke(operation),
+      query,
+    );
+  }
+
+  #assertActive(): void {
+    if (this.#invalidationFailure !== undefined) throw this.#invalidationFailure;
+    if (this.#started) {
+      throw new StudioHostSessionError(
+        'disposed',
+        'The contextual Studio preflight has already transferred ownership to a session.',
+      );
+    }
+    if (this.#disposed) {
+      throw new StudioHostSessionError('disposed', 'The contextual Studio preflight is disposed.');
+    }
+  }
+
+  async #invoke<TValue>(operation: () => Promise<TValue>): Promise<TValue> {
+    this.#assertActive();
+    try {
+      return await operation();
+    } catch (error) {
+      const failure = normalizeHostRejection(error);
+      if (isStaleGenerationFailure(failure)) this.#invalidationFailure = failure;
+      throw failure;
+    }
+  }
 }
 
 class BoundContextualDraftSession implements StudioContextualSession {
+  readonly #limits: StudioConfiguration['limits'];
   readonly #maximumHistoryEntries: number;
+  readonly #permissions: readonly QualifiedName[];
   readonly #readOnly: boolean;
   #blueprintSession!: StudioSession;
   #entry!: EntryDocument;
@@ -279,13 +482,11 @@ class BoundContextualDraftSession implements StudioContextualSession {
   #presentation!: AuthoringPresentationState;
   #snapshot!: AuthoringSessionSnapshot;
 
-  public constructor(
-    snapshot: AuthoringSessionSnapshot,
-    maximumHistoryEntries: number,
-    readOnly: boolean,
-  ) {
-    this.#maximumHistoryEntries = maximumHistoryEntries;
-    this.#readOnly = readOnly;
+  public constructor(snapshot: AuthoringSessionSnapshot, configuration: StudioConfiguration) {
+    this.#limits = cloneContractValue(configuration.limits);
+    this.#maximumHistoryEntries = configuration.limits.maxHistoryEntries;
+    this.#permissions = cloneContractValue(configuration.permissions);
+    this.#readOnly = configuration.sessionState === 'read-only';
     this.acceptHostSnapshot(snapshot);
   }
 
@@ -427,7 +628,9 @@ class BoundContextualDraftSession implements StudioContextualSession {
       this.#entry.revision,
       this.#entryStateVersion,
     );
-    this.#entry = applyEntryCommand(this.#entry, cloneContractValue(command));
+    const next = applyEntryCommand(this.#entry, cloneContractValue(command));
+    assertEntryWithinSessionPolicy(next, this.#limits);
+    this.#entry = next;
     this.#entryStateVersion += 1;
     return this.entry;
   }
@@ -440,7 +643,9 @@ class BoundContextualDraftSession implements StudioContextualSession {
       this.#model.revision,
       this.#modelStateVersion,
     );
-    this.#model = applyModelCommand(this.#model, cloneContractValue(command));
+    const next = applyModelCommand(this.#model, cloneContractValue(command));
+    assertModelWithinSessionPolicy(next, this.#limits);
+    this.#model = next;
     this.#modelStateVersion += 1;
     return this.model;
   }
@@ -458,6 +663,9 @@ class BoundContextualDraftSession implements StudioContextualSession {
 
   /** @internal Replaces drafts only with a fully validated host-accepted snapshot. */
   public acceptHostSnapshot(snapshot: AuthoringSessionSnapshot): void {
+    assertBlueprintWithinSessionPolicy(snapshot.state.blueprint, this.#limits);
+    assertEntryWithinSessionPolicy(snapshot.state.entry, this.#limits);
+    assertModelWithinSessionPolicy(snapshot.state.model, this.#limits);
     const previousSelection = this.#blueprintSession?.selection ?? [];
     this.#snapshot = cloneContractValue(snapshot);
     this.#model = cloneContractValue(snapshot.state.model);
@@ -468,8 +676,10 @@ class BoundContextualDraftSession implements StudioContextualSession {
     this.#initialDirty = new Set(snapshot.state.dirty);
     this.#blueprintSession = new StudioSession({
       document: cloneContractValue(snapshot.state.blueprint),
+      limits: this.#limits,
       maximumHistoryEntries: this.#maximumHistoryEntries,
       mode: resolveBlueprintDraftMode(snapshot, this.#readOnly),
+      permissions: this.#permissions,
       sessionGeneration: snapshot.sessionGeneration,
     });
     this.#blueprintSession.markSaved(snapshot.state.blueprint.revision);
@@ -586,11 +796,7 @@ class BoundContextualHostSession implements StudioContextualHostSessionHandle {
     this.negotiation = cloneNegotiation(negotiation);
     this.diagnostics = cloneContractValue(negotiation.diagnostics);
     this.resolution = cloneContractValue(resolution);
-    this.#draftSession = new BoundContextualDraftSession(
-      snapshot,
-      configuration.limits.maxHistoryEntries,
-      configuration.sessionState === 'read-only',
-    );
+    this.#draftSession = new BoundContextualDraftSession(snapshot, configuration);
     this.session = this.#draftSession;
     this.types = operationAdvertised(configuration, AUTHORING_LIST_TYPES)
       ? Object.freeze({
@@ -733,41 +939,14 @@ class BoundContextualHostSession implements StudioContextualHostSessionHandle {
 
   async #listTypes(query: AuthoringTypeListQuery): Promise<HostPortResult<AuthoringTypeListPage>> {
     this.#assertActive();
-    if (
-      !validateTypeListQuery.validate(query) ||
-      query.targetId !== this.resolution.target.id ||
-      !equal(query.resourceContext, this.resolution.resourceContext)
-    ) {
-      throw new StudioHostSessionError(
-        'invalid-authoring-request',
-        'A type query must be canonical and target this exact contextual resource.',
-      );
-    }
-    const querySnapshot = cloneContractValue(query);
-    const result: unknown = await this.#invoke(() =>
-      this.#authoring.listTypes(
-        querySnapshot,
-        createContext(this.#configuration, this.#identifiers.requestId(AUTHORING_LIST_TYPES), {
-          operationId: AUTHORING_LIST_TYPES,
-        }),
-      ),
+    return listContextualTypes(
+      this.#authoring,
+      this.#configuration,
+      this.#identifiers,
+      this.resolution,
+      (operation) => this.#invoke(operation),
+      query,
     );
-    const page = readResultValue<AuthoringTypeListPage>(
-      result,
-      validateTypeListPage,
-      'studio.host/unexpected-authoring-type-page',
-      'The authoring port returned a malformed reusable-type page.',
-    );
-    if (page.items.length > query.limit || hasDuplicateTypeCoordinates(page)) {
-      throw adapterContractFailure(
-        'studio.host/unexpected-authoring-type-page',
-        'The authoring port returned an oversized or duplicate reusable-type page.',
-      );
-    }
-    return {
-      ...(isResultWithRevision(result) ? { revision: result.revision } : {}),
-      value: cloneContractValue(page),
-    };
   }
 
   #assertCurrentIntent(intent: AuthoringSaveIntent): void {
@@ -825,6 +1004,51 @@ class BoundContextualHostSession implements StudioContextualHostSessionHandle {
   }
 }
 
+async function listContextualTypes(
+  authoring: AuthoringPort,
+  configuration: StudioConfiguration,
+  identifiers: SessionIdentifierAllocator,
+  resolution: AuthoringTargetResolution,
+  invoke: <TValue>(operation: () => Promise<TValue>) => Promise<TValue>,
+  query: AuthoringTypeListQuery,
+): Promise<HostPortResult<AuthoringTypeListPage>> {
+  if (
+    !validateTypeListQuery.validate(query) ||
+    query.targetId !== resolution.target.id ||
+    !equal(query.resourceContext, resolution.resourceContext)
+  ) {
+    throw new StudioHostSessionError(
+      'invalid-authoring-request',
+      'A type query must be canonical and target this exact contextual resource.',
+    );
+  }
+  const querySnapshot = cloneContractValue(query);
+  const result: unknown = await invoke(() =>
+    authoring.listTypes(
+      querySnapshot,
+      createContext(configuration, identifiers.requestId(AUTHORING_LIST_TYPES), {
+        operationId: AUTHORING_LIST_TYPES,
+      }),
+    ),
+  );
+  const page = readResultValue<AuthoringTypeListPage>(
+    result,
+    validateTypeListPage,
+    'studio.host/unexpected-authoring-type-page',
+    'The authoring port returned a malformed reusable-type page.',
+  );
+  if (page.items.length > query.limit || hasDuplicateTypeCoordinates(page)) {
+    throw adapterContractFailure(
+      'studio.host/unexpected-authoring-type-page',
+      'The authoring port returned an oversized or duplicate reusable-type page.',
+    );
+  }
+  return {
+    ...(isResultWithRevision(result) ? { revision: result.revision } : {}),
+    value: cloneContractValue(page),
+  };
+}
+
 interface RetryIntent {
   readonly fingerprint: string;
   readonly idempotencyKey: string;
@@ -842,17 +1066,14 @@ function assertOpeningRequests(
   target: AuthoringTargetResolveRequest,
   start: AuthoringStartRequest,
 ): void {
-  if (!validateResolveRequest.validate(target) || !validateStartRequest.validate(start)) {
+  assertPreflightRequest(configuration, target);
+  if (!validateStartRequest.validate(start)) {
     throw new StudioHostSessionError(
       'invalid-authoring-request',
-      'Contextual opening requires canonical target-resolution and start requests.',
+      'Contextual opening requires a canonical start request.',
     );
   }
-  if (
-    target.targetId !== start.targetId ||
-    !equal(target.resourceContext, start.resourceContext) ||
-    !equal(target.resourceContext, configuration.resourceContext)
-  ) {
+  if (target.targetId !== start.targetId || !equal(target.resourceContext, start.resourceContext)) {
     throw new StudioHostSessionError(
       'invalid-authoring-request',
       'Target resolution, start, and configuration must bind the same exact resource context.',
@@ -873,6 +1094,21 @@ function assertOpeningRequests(
     throw new StudioHostSessionError(
       'invalid-authoring-request',
       'The target and start requests name different presentation states.',
+    );
+  }
+}
+
+function assertPreflightRequest(
+  configuration: StudioConfiguration,
+  target: AuthoringTargetResolveRequest,
+): void {
+  if (
+    !validateResolveRequest.validate(target) ||
+    !equal(target.resourceContext, configuration.resourceContext)
+  ) {
+    throw new StudioHostSessionError(
+      'invalid-authoring-request',
+      'Contextual preflight requires one canonical target bound to the configured resource context.',
     );
   }
 }
@@ -960,10 +1196,9 @@ function throwIfBlocked(negotiation: CapabilityNegotiationResult, message: strin
   }
 }
 
-function assertResolution(
+function assertResolvedTarget(
   configuration: StudioConfiguration,
   request: AuthoringTargetResolveRequest,
-  start: AuthoringStartRequest,
   resolution: AuthoringTargetResolution,
 ): void {
   const resourceType = resolution.resourceContext.resource?.type;
@@ -973,8 +1208,6 @@ function assertResolution(
     !equal(resolution.resourceContext, request.resourceContext) ||
     !equal(resolution.resourceContext, configuration.resourceContext) ||
     !resolution.target.eligibility.includes(request.intent) ||
-    !resolution.availableStarts.includes(start.source.kind) ||
-    !resolution.target.startKinds.includes(start.source.kind) ||
     !resolution.target.presentationStates.includes(resolution.initialPresentation) ||
     (resourceType !== undefined && !resolution.target.resourceTypes.includes(resourceType)) ||
     (request.requestedPresentation !== undefined &&
@@ -982,7 +1215,7 @@ function assertResolution(
   ) {
     throw unexpectedAuthoringResult(
       'studio.host/authoring-target-mismatch',
-      'The resolved target does not match the requested resource, intent, start, or presentation.',
+      'The resolved target does not match the requested resource, intent, or presentation.',
     );
   }
   if (resolution.availableStarts.some((kind) => !resolution.target.startKinds.includes(kind))) {
@@ -993,12 +1226,35 @@ function assertResolution(
   }
 }
 
+function assertStartAllowed(
+  resolution: AuthoringTargetResolution,
+  request: AuthoringStartRequest,
+): void {
+  if (
+    !resolution.availableStarts.includes(request.source.kind) ||
+    !resolution.target.startKinds.includes(request.source.kind) ||
+    (request.presentation !== undefined &&
+      !resolution.target.presentationStates.includes(request.presentation))
+  ) {
+    throw new StudioHostSessionError(
+      'invalid-authoring-request',
+      `The resolved target does not authorize the requested ${request.source.kind} start and presentation.`,
+    );
+  }
+}
+
 function assertOpeningSnapshot(
   configuration: StudioConfiguration,
   resolution: AuthoringTargetResolution,
   request: AuthoringStartRequest,
   snapshot: AuthoringSessionSnapshot,
 ): void {
+  // A schema-valid host document can still exceed the lower limits negotiated
+  // for this exact session. Reject every coordinated draft before ownership is
+  // transferred to a live session (and before the preflight becomes started).
+  assertBlueprintWithinSessionPolicy(snapshot.state.blueprint, configuration.limits);
+  assertEntryWithinSessionPolicy(snapshot.state.entry, configuration.limits);
+  assertModelWithinSessionPolicy(snapshot.state.model, configuration.limits);
   const expectedPresentation = request.presentation ?? resolution.initialPresentation;
   if (
     snapshot.sessionId !== configuration.sessionId ||
@@ -1007,6 +1263,7 @@ function assertOpeningSnapshot(
     !equal(snapshot.resourceContext, resolution.resourceContext) ||
     !equal(snapshot.start, request.source) ||
     snapshot.presentation.current !== expectedPresentation ||
+    !equal(snapshot.presentation.returnContext, resolution.returnContext) ||
     !isSubset(snapshot.capabilities.modes, resolution.target.modes) ||
     !isSubset(snapshot.capabilities.presentationStates, resolution.target.presentationStates) ||
     !isSubset(snapshot.capabilities.saveOutcomes, resolution.target.saveOutcomes)

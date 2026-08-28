@@ -112,11 +112,24 @@ export interface AuthoringWebLaneResult {
 }
 
 export interface AuthoringWebVectorResult {
+  /**
+   * Blueprint interaction vectors are one executable part of authoring-web,
+   * not a claim that the complete contextual product profile has passed.
+   */
+  completeProfile: false;
   lanes: AuthoringWebLaneResult[];
+  mismatches: string[];
   passed: boolean;
   profile: 'studio.profile/authoring-web';
+  requirements: string[];
   vectorId: QualifiedName;
 }
+
+const REQUIRED_INTERACTION_SURFACES = Object.freeze([
+  'keyboard',
+  'pointer',
+  'structural-control',
+] as const satisfies readonly AuthoringWebLane['surface'][]);
 
 /**
  * Replay every interaction lane from an independent copy of the same initial
@@ -128,6 +141,7 @@ export async function runAuthoringWebVector(
   adapter: Readonly<AuthoringWebConformanceAdapter>,
 ): Promise<AuthoringWebVectorResult> {
   const pristine = stableJson(vector);
+  const mismatches = inspectVectorCoverage(vector);
   const lanes: AuthoringWebLaneResult[] = [];
 
   for (const lane of vector.lanes) {
@@ -155,11 +169,33 @@ export async function runAuthoringWebVector(
   }
 
   return {
+    completeProfile: false,
     lanes,
-    passed: lanes.every((lane) => lane.passed),
+    mismatches,
+    passed: mismatches.length === 0 && lanes.every((lane) => lane.passed),
     profile: 'studio.profile/authoring-web',
+    requirements: [...vector.requirements],
     vectorId: vector.id,
   };
+}
+
+function inspectVectorCoverage(vector: Readonly<AuthoringWebVector>): string[] {
+  const mismatches: string[] = [];
+  const names = new Set<string>();
+  const surfaces = new Set<AuthoringWebLane['surface']>();
+  for (const lane of vector.lanes) {
+    if (names.has(lane.name)) {
+      mismatches.push(`lane name ${lane.name} is duplicated`);
+    }
+    names.add(lane.name);
+    surfaces.add(lane.surface);
+  }
+  for (const surface of REQUIRED_INTERACTION_SURFACES) {
+    if (!surfaces.has(surface)) {
+      mismatches.push(`missing ${surface} interaction lane`);
+    }
+  }
+  return mismatches;
 }
 
 function compareAuthoringObservation(

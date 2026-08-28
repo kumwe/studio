@@ -1,0 +1,148 @@
+{
+  "contractVersion": "0.1-draft",
+  "kind": "studio-deployment",
+  "instanceId": "studio-example-page",
+  "mount": "#studio-page",
+  "launch": {
+    "targetId": "org.example.authoring/page",
+    "intent": "create",
+    "resourceContext": {
+      "key": "contexts/example-page",
+      "surface": "org.example.surface/content",
+      "revision": "context-r1",
+      "scopes": [
+        {
+          "kind": "studio.scope/site",
+          "id": "sites/main"
+        }
+      ],
+      "resource": {
+        "type": "org.example.content/page",
+        "id": "pages/example"
+      }
+    },
+    "start": { "kind": "blank" },
+    "initialPresentation": "inline"
+  },
+  "session": {
+    "contractVersion": "0.1-draft",
+    "protocolVersion": "0.1.0-draft.2",
+    "sessionId": "session-example-page",
+    "sessionGeneration": "session-generation-1",
+    "mode": "blueprint",
+    "composite": "single",
+    "sessionState": "editable",
+    "actor": {
+      "id": "users/example-author",
+      "displayName": "Example Author"
+    },
+    "locale": {
+      "requested": "en",
+      "resolved": "en",
+      "fallbacks": [],
+      "direction": "ltr",
+      "timeZone": "Etc/UTC"
+    },
+    "displayPreferences": {
+      "calendar": "gregory",
+      "numberingSystem": "latn",
+      "hourCycle": "h23",
+      "measurementSystem": "metric"
+    },
+    "resourceContext": {
+      "key": "contexts/example-page",
+      "surface": "org.example.surface/content",
+      "revision": "context-r1",
+      "scopes": [
+        {
+          "kind": "studio.scope/site",
+          "id": "sites/main"
+        }
+      ],
+      "resource": {
+        "type": "org.example.content/page",
+        "id": "pages/example"
+      }
+    },
+    "permissions": [
+      "studio.operation/authoring.resolve-target",
+      "studio.operation/authoring.start"
+    ],
+    "artifacts": {},
+    "blocks": [],
+    "plugins": [],
+    "hostCapabilities": {
+      "contractVersion": "0.1-draft",
+      "kind": "host-capabilities",
+      "host": {
+        "id": "org.example/php-host",
+        "version": "1.0.0",
+        "generation": "php-runtime-1"
+      },
+      "protocolVersions": ["0.1.0-draft.2"],
+      "ports": [
+        {
+          "id": "studio.port/authoring",
+          "version": "1.0.0",
+          "operations": [
+            "studio.operation/authoring.resolve-target",
+            "studio.operation/authoring.start"
+          ]
+        }
+      ],
+      "capabilities": []
+    },
+    "limits": {
+      "maxNodes": 5000,
+      "maxDepth": 32,
+      "maxSlotsPerNode": 20,
+      "maxChildrenPerSlot": 1000,
+      "maxPropertyBytes": 1048576,
+      "maxExtensionBytes": 1048576,
+      "maxCommandBatch": 100,
+      "maxHistoryEntries": 1000,
+      "maxRichTextBytes": 1048576,
+      "maxRichTextDepth": 32,
+      "maxPreviewRequestsPerMinute": 600,
+      "maxPreviewBytes": 10485760,
+      "maxMediaUploadBytes": 1073741824,
+      "maxMediaBatch": 50,
+      "maxPluginCount": 50,
+      "maxContributionsPerPlugin": 500,
+      "maxLocaleBytes": 1048576
+    },
+    "features": {
+      "executablePlugins": false,
+      "customInspectors": false,
+      "externalMediaImport": false,
+      "clipboardMediaUpload": false,
+      "collaboration": false,
+      "offlineRecovery": false
+    },
+    "preview": {
+      "enabled": false,
+      "sameOriginRequired": true,
+      "allowApproximateRenderer": false
+    }
+  },
+  "transport": {
+    "kind": "http",
+    "routing": {
+      "kind": "operation-map",
+      "endpoints": {
+        "authoring/resolve-target": "/api/studio/authoring/resolve-target",
+        "authoring/start": "/api/studio/authoring/start"
+      }
+    },
+    "authentication": {
+      "kind": "same-origin-session",
+      "credentials": "same-origin",
+      "csrf": {
+        "headerName": "X-CSRF-Token",
+        "token": "example-csrf-token-replace-per-session"
+      }
+    },
+    "requestTimeoutMilliseconds": 10000,
+    "maximumResponseBytes": 67108864
+  }
+}

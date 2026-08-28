@@ -8,6 +8,7 @@ import {
   SCHEMA_EPOCH,
   SCHEMA_MANIFEST_GENERATOR,
 } from './lib/schema-manifest.mjs';
+import { assertNoDuplicateJsonMembers } from './lib/json-no-duplicate-members.mjs';
 
 const rootSchemaDirectory = new URL('../schemas/', import.meta.url);
 const packageSchemaDirectory = new URL('../packages/protocol/schemas/', import.meta.url);
@@ -38,6 +39,14 @@ const rootHostSequenceVectorDirectory = new URL(
 );
 const packageHostSequenceVectorDirectory = new URL(
   '../packages/testkit/vectors/host-sequence/',
+  import.meta.url,
+);
+const rootAuthoringHttpVectorDirectory = new URL(
+  '../schemas/vectors/authoring-http/',
+  import.meta.url,
+);
+const packageAuthoringHttpVectorDirectory = new URL(
+  '../packages/testkit/vectors/authoring-http/',
   import.meta.url,
 );
 const rootPreviewVectorDirectory = new URL('../schemas/vectors/preview/', import.meta.url);
@@ -161,6 +170,24 @@ await assertCopies(
   rootHostSequenceVectorDirectory,
   packageHostSequenceVectorDirectory,
   hostSequenceVectorFiles,
+);
+
+const authoringHttpVectorFiles = (await readdir(rootAuthoringHttpVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+const packageAuthoringHttpVectorFiles = (await readdir(packageAuthoringHttpVectorDirectory))
+  .filter((name) => name.endsWith('.json'))
+  .sort();
+
+assertSameNames(
+  'testkit authoring-http-vector copies',
+  authoringHttpVectorFiles,
+  packageAuthoringHttpVectorFiles,
+);
+await assertCopies(
+  rootAuthoringHttpVectorDirectory,
+  packageAuthoringHttpVectorDirectory,
+  authoringHttpVectorFiles,
 );
 
 const previewVectorFiles = (await readdir(rootPreviewVectorDirectory))
@@ -302,6 +329,7 @@ if (corpusManifest.kind !== 'corpus-manifest' || !Array.isArray(corpusManifest.g
   throw new Error('The published corpus manifest is malformed.');
 }
 const corpusDirectories = new Map([
+  ['authoring-http-vectors', packageAuthoringHttpVectorDirectory],
   ['binding-projection-vectors', packageBindingProjectionVectorDirectory],
   ['authoring-web-conformance', packageAuthoringWebConformanceDirectory],
   ['canonical-vectors', packageCanonicalVectorDirectory],
@@ -344,9 +372,11 @@ for (const group of corpusManifest.groups) {
 }
 
 const schemas = await Promise.all(
-  schemaFiles.map(async (name) =>
-    JSON.parse(await readFile(new URL(name, rootSchemaDirectory), 'utf8')),
-  ),
+  schemaFiles.map(async (name) => {
+    const source = await readFile(new URL(name, rootSchemaDirectory), 'utf8');
+    assertNoDuplicateJsonMembers(source, name);
+    return JSON.parse(source);
+  }),
 );
 for (const [index, schema] of schemas.entries()) {
   assertOpenObjectsConstrainMemberNames(schemaFiles[index], schema);
@@ -527,6 +557,8 @@ const schemaByExample = new Map([
   ['rich-text.example.json', 'rich-text.schema.json'],
   ['reusable-content-type.example.json', 'reusable-content-type.schema.json'],
   ['studio-config.example.json', 'studio-config.schema.json'],
+  ['studio-deployment.hosted.example.json', 'studio-deployment.schema.json'],
+  ['studio-deployment.standalone.example.json', 'studio-deployment.schema.json'],
   ['theme.example.json', 'theme.schema.json'],
   ['unresolved-contribution.example.json', 'unresolved-contribution.schema.json'],
 ]);
@@ -1204,6 +1236,62 @@ function requiredOperationCapability(port, operation) {
   }
   return capability;
 }
+
+if (authoringHttpVectorFiles.length === 0) {
+  throw new Error('The canonical authoring HTTP vector corpus is empty.');
+}
+const validateAuthoringHttpVector = getCanonicalValidator('authoring-http-vector.schema.json');
+const expectedAuthoringHttpRoutes = hostOperationRegistry.operations
+  .filter((entry) => entry.port === 'authoring')
+  .map((entry) => entry.route)
+  .sort();
+const expectedHostErrorCategories = [
+  'cancelled',
+  'conflict',
+  'forbidden',
+  'incompatible',
+  'internal',
+  'invalid-request',
+  'limit-exceeded',
+  'not-found',
+  'rate-limited',
+  'unauthenticated',
+  'unavailable',
+  'validation-failed',
+];
+for (const authoringHttpVectorFile of authoringHttpVectorFiles) {
+  const vector = JSON.parse(
+    await readFile(new URL(authoringHttpVectorFile, rootAuthoringHttpVectorDirectory), 'utf8'),
+  );
+  if (!validateAuthoringHttpVector(vector)) {
+    throw new Error(
+      `${authoringHttpVectorFile} violates authoring-http-vector.schema.json: ` +
+        ajv.errorsText(validateAuthoringHttpVector.errors),
+    );
+  }
+  assertExactSet(
+    `${authoringHttpVectorFile} routes`,
+    expectedAuthoringHttpRoutes,
+    vector.operations.map((entry) => entry.route),
+  );
+  for (const operation of vector.operations) {
+    const registry = hostOperationRegistry.operations.find(
+      (entry) => entry.route === operation.route,
+    );
+    if (
+      registry === undefined ||
+      registry.capability !== operation.capability ||
+      registry.mutating !== operation.mutating
+    ) {
+      throw new Error(`${authoringHttpVectorFile} drifts from registry route ${operation.route}.`);
+    }
+  }
+  assertExactSet(
+    `${authoringHttpVectorFile} error categories`,
+    expectedHostErrorCategories,
+    vector.errorMappings.map((entry) => entry.category),
+  );
+}
 const validateHostVector = getCanonicalValidator('host-vector.schema.json');
 const hostVectorIdentifiers = new Set();
 const hostVectorPorts = new Set();
@@ -1328,6 +1416,7 @@ console.log(
     `${bindingProjectionVectorFiles.length} binding projection vectors, ` +
     `${hostVectorFiles.length} host conformance vectors, ` +
     `${hostSequenceVectorFiles.length} host sequence vectors, ` +
+    `${authoringHttpVectorFiles.length} authoring HTTP vectors, ` +
     `${previewVectorFiles.length} preview identity vectors, ` +
     `${schemaProfileVectorFiles.length} schema-profile vectors, ` +
     `${canonicalVectorFiles.length} canonical serialization vectors, ` +

@@ -9,6 +9,7 @@ import { cleanupStagingTags } from '../cleanup-staging-tags.mjs';
 import { reconcileBetaTags } from '../reconcile-beta-tag.mjs';
 import { artifactFromBytes } from '../release-artifacts.mjs';
 import { STUDIO_RELEASE_PACKAGES } from '../release-family.mjs';
+import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
 import {
   inspectStagingTags,
   publishMissingApprovedArtifacts,
@@ -248,8 +249,20 @@ async function createArtifacts(t) {
     await writeFile(join(rootPath, path), bytes);
     packages[name] = { ...artifactFromBytes(bytes, version), path };
   }
+  const assetManifestBytes = Buffer.from('{"kind":"test-browser-assets"}\n');
+  const browserBytes = singleFileTar(
+    `studio-browser-${version}/studio-assets.json`,
+    assetManifestBytes,
+  );
+  const browser = browserArtifactFromBytes(browserBytes, version, { assetManifestBytes });
+  await mkdir(join(rootPath, browser.path, '..'), { recursive: true });
+  await writeFile(join(rootPath, browser.path), browserBytes);
+  await writeFile(
+    join(rootPath, browser.checksumPath),
+    `${browser.sha256}  studio-browser-${version}.tar\n`,
+  );
   return {
-    approved: { kind: 'studio-approved-package-artifacts', packages, release: version },
+    approved: { browser, kind: 'studio-approved-package-artifacts', packages, release: version },
     coordinates: STUDIO_RELEASE_PACKAGES.map(({ name }) => `${name}@${version}`),
     record,
     root,
@@ -263,4 +276,29 @@ function releaseRecord(version) {
     packages: Object.fromEntries(STUDIO_RELEASE_PACKAGES.map(({ name }) => [name, version])),
     release: version,
   };
+}
+
+function singleFileTar(path, content) {
+  const header = Buffer.alloc(512);
+  Buffer.from(path).copy(header, 0);
+  writeOctal(header, 100, 8, 0o644);
+  writeOctal(header, 108, 8, 0);
+  writeOctal(header, 116, 8, 0);
+  writeOctal(header, 124, 12, content.byteLength);
+  writeOctal(header, 136, 12, 0);
+  header.fill(0x20, 148, 156);
+  header[156] = '0'.charCodeAt(0);
+  Buffer.from('ustar\0').copy(header, 257);
+  Buffer.from('00').copy(header, 263);
+  const checksum = header.reduce((sum, value) => sum + value, 0);
+  Buffer.from(checksum.toString(8).padStart(6, '0')).copy(header, 148);
+  header[154] = 0;
+  header[155] = 0x20;
+  const padding = Buffer.alloc((512 - (content.byteLength % 512)) % 512);
+  return Buffer.concat([header, content, padding, Buffer.alloc(1_024)]);
+}
+
+function writeOctal(buffer, offset, length, value) {
+  Buffer.from(value.toString(8).padStart(length - 1, '0')).copy(buffer, offset);
+  buffer[offset + length - 1] = 0;
 }

@@ -1,470 +1,219 @@
 import {
-  isHostPortError,
-  STUDIO_CONTRACT_VERSION,
-  type ArtifactReference,
-  type AuthoringSaveAsNewTypeRequest,
-  type AuthoringSaveIntent,
-  type AuthoringSaveItemRequest,
-  type AuthoringSaveNewTypeVersionRequest,
-  type AuthoringSavePlan,
-  type AuthoringSaveResult,
-  type AuthoringSessionSnapshot,
-  type AuthoringStartRequest,
-  type AuthoringTargetResolution,
-  type AuthoringTargetResolveRequest,
-  type AuthoringTypeListPage,
-  type AuthoringTypeListQuery,
-  type ContentModelDocument,
-  type HostAdapter,
-  type HostErrorCategory,
-  type HostPortError,
-  type HostPortResult,
-  type HostRequestContext,
-  type JsonObject,
-  type MediaAsset,
-  type MediaPage,
-  type MediaUploadAcceptedAsset,
-  type MediaUploadGrant,
-  type MediaUploadRequestDescriptor,
-  type MediaQuery,
-  type PermissionExplanation,
-  type PermissionSnapshot,
-  type PreviewRenderedPayload,
-  type PreviewRenderPayload,
-  type QualifiedName,
-  type ResourceSearchPage,
-  type ResourceSearchQuery,
-  type StudioArtifact,
-  type TelemetryEvent,
-} from '@kumwe/studio-protocol';
+  HTTP_HOST_OPERATION_ROUTES,
+  createHttpHostAdapter as createCoreHttpHostAdapter,
+  type HttpAuthenticationResolver,
+  type HttpFetchLike,
+  type HttpRequestInit,
+  type HttpSchemaValidator,
+  type HttpTimeoutHandle,
+} from '@kumwe/studio-core';
+import { isHostPortFailure, type HostAdapter } from '@kumwe/studio-protocol';
 import { TestbedHostError } from './host-testbed.js';
 
-/**
- * Minimal structural view of an HTTP response the adapter needs: the status
- * code and the raw body text. Deliberately narrower than any platform
- * response class so implementations from any runtime satisfy it.
- */
-export interface HttpResponseLike {
-  status: number;
-  text(): Promise<string>;
-}
+export { HTTP_HOST_OPERATION_ROUTES } from '@kumwe/studio-core';
 
-/** The request shape the adapter hands to the injected transport. */
-export interface HttpRequestInit {
-  body: string;
-  headers: Record<string, string>;
-  method: 'POST';
-  /** Opaque abort signal produced by the injected timeout factory, if any. */
-  signal?: unknown;
-}
+export type {
+  ConfiguredHttpHostAdapterOptions,
+  HttpAuthenticationConfiguration,
+  HttpAuthenticationRequest,
+  HttpAuthenticationResolver,
+  HttpBearerTokenAuthentication,
+  HttpFetchLike,
+  HttpHeaderTokenAuthentication,
+  HttpHostOperationEndpoints,
+  HttpHostOperationRoute,
+  HttpHostRoutingConfiguration,
+  HttpHostTransportConfiguration,
+  HttpRequestInit,
+  HttpResponseLike,
+  HttpSameOriginSessionAuthentication,
+  HttpTimeoutHandle,
+} from '@kumwe/studio-core';
 
-/**
- * The injected fetch-like transport — the adapter's portability seam.
- *
- * Testkit source is deliberately free of host globals (no fetch, no DOM, no
- * Node), so the embedder supplies the platform transport: a Node test injects
- * a `node:http`-backed implementation, a browser host would inject the
- * platform fetch, and either stays outside this package. The function must
- * resolve with the terminal HTTP response (any status) and reject only for
- * transport-level failures: network refusal, connection loss, or an abort
- * raised by the injected timeout signal.
- */
-export type HttpFetchLike = (url: string, init: HttpRequestInit) => Promise<HttpResponseLike>;
-
-/**
- * An abort signal handle minted per request by the injected timeout factory.
- * `signal` is passed through to the transport untouched; `release` (when
- * present) is invoked once the request settles so timer-backed factories can
- * clean up.
- */
-export interface HttpTimeoutHandle {
-  release?(): void;
-  signal: unknown;
-}
-
+/** Historical conventional-route options retained only for test conformance. */
 export interface HttpHostAdapterOptions {
-  /**
-   * Second half of the portability seam: mints the per-request timeout
-   * signal. When omitted, requests carry no deadline. A rejection whose
-   * reason is named `AbortError` or `TimeoutError` is mapped to the canonical
-   * deadline failure.
-   */
   createTimeoutSignal?: (timeoutMilliseconds: number) => HttpTimeoutHandle;
+  credentials?: HttpRequestInit['credentials'];
   fetchImplementation: HttpFetchLike;
-  /** Transport deadline handed to `createTimeoutSignal`. Defaults to 10 000. */
+  maximumResponseBytes?: number;
+  requestHeaders?: () => Readonly<Record<string, string>>;
+  resolveAuthentication?: HttpAuthenticationResolver;
   timeoutMilliseconds?: number;
-}
-
-interface FailureShape {
-  category: HostErrorCategory;
-  defaultMessage: string;
-  key: QualifiedName;
-  retryable: boolean;
+  validateSchema?: HttpSchemaValidator;
 }
 
 /**
- * A `HostAdapter` that speaks JSON over an injected fetch-like transport to a
- * host server: every port operation becomes
- * `POST {baseUrl}/ports/{port}/{operation}` with a
- * `{ arguments, context }` JSON body.
- *
- * Success responses (2xx) must carry a `HostPortResult` JSON body. Failure
- * responses that carry a guard-conforming `HostPortError` body are re-thrown
- * as that canonical error, so a host-authored category (with its safe
- * revision on conflicts) crosses the transport intact. Everything else is
- * mapped onto the canonical host error categories without disclosing
- * transport details: network refusal and deadline expiry become
- * `unavailable`, HTTP statuses map by class (401 `unauthenticated`, 403
- * `forbidden`, 404 `not-found`, 409 `conflict`, 413 `limit-exceeded`, 422
- * `validation-failed`, 429 `rate-limited`, 5xx `internal`/`unavailable`), and
- * a malformed body — unparseable JSON, a result without `value`, or an error
- * document the guard rejects — becomes `internal`. Every rejection is a
- * `TestbedHostError` whose `error` satisfies `isHostPortError`, and no
- * message ever echoes response bodies, addresses, or underlying reasons.
+ * Backward-compatible testkit facade over the production core transport.
+ * Canonical `HostPortFailure` rejections are translated to the historical
+ * `TestbedHostError` subclass without duplicating any HTTP behavior.
  */
 export function createHttpHostAdapter(
   baseUrl: string,
   options: HttpHostAdapterOptions,
 ): HostAdapter {
-  const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  const createTimeoutSignal = options.createTimeoutSignal;
+  const base = normalizeConventionalBaseUrl(baseUrl);
+  const endpoints = Object.fromEntries(
+    HTTP_HOST_OPERATION_ROUTES.map((operation) => [operation, `${base}/ports/${operation}`]),
+  );
   const timeoutMilliseconds = options.timeoutMilliseconds ?? 10_000;
-  let correlationSerial = 0;
-
-  function createError(failure: FailureShape): TestbedHostError {
-    correlationSerial += 1;
-    const error: HostPortError = {
-      category: failure.category,
-      contractVersion: STUDIO_CONTRACT_VERSION,
-      correlationId: `http-transport-${correlationSerial}`,
-      kind: 'host-error',
-      message: { defaultMessage: failure.defaultMessage, key: failure.key },
-      retryable: failure.retryable,
-    };
-    return new TestbedHostError(error);
+  const maximumResponseBytes = options.maximumResponseBytes ?? 64 * 1024 * 1024;
+  if (!Number.isSafeInteger(timeoutMilliseconds) || timeoutMilliseconds <= 0) {
+    throw new TypeError('timeoutMilliseconds must be a positive safe integer.');
   }
-
-  async function call<TValue>(
-    portName: string,
-    operation: string,
-    callArguments: JsonObject,
-    context: HostRequestContext,
-  ): Promise<HostPortResult<TValue>> {
-    const handle = options.createTimeoutSignal?.(timeoutMilliseconds);
-    let response: HttpResponseLike;
+  if (!Number.isSafeInteger(maximumResponseBytes) || maximumResponseBytes <= 0) {
+    throw new TypeError('maximumResponseBytes must be a positive safe integer.');
+  }
+  const fetchImplementation: HttpFetchLike = async (url, init) => {
+    let headers: Record<string, string>;
     try {
-      response = await options.fetchImplementation(`${base}/ports/${portName}/${operation}`, {
-        body: JSON.stringify({ arguments: callArguments, context }),
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-        ...(handle === undefined ? {} : { signal: handle.signal }),
-      });
-    } catch (reason) {
-      throw createError(classifyTransportFailure(reason));
-    } finally {
-      handle?.release?.();
-    }
-
-    let bodyText: string;
-    try {
-      bodyText = await response.text();
+      headers = createLegacyRequestHeaders(init.headers, options.requestHeaders?.());
     } catch {
-      throw createError(malformedResponse());
+      const error = new Error('The testkit HTTP request headers are invalid.');
+      error.name = 'InvalidRequestError';
+      throw error;
     }
-
-    if (response.status >= 200 && response.status < 300) {
-      const parsed = parseJson(bodyText);
-      if (!isHostPortResult(parsed)) {
-        throw createError(malformedResponse());
-      }
-      const result: HostPortResult<TValue> = {
-        ...(parsed.revision === undefined ? {} : { revision: parsed.revision }),
-        value: parsed.value as TValue,
-      };
-      return result;
-    }
-
-    const parsed = parseJson(bodyText);
-    if (isHostPortError(parsed)) {
-      // The host authored a canonical error; transport it verbatim.
-      throw new TestbedHostError(parsed);
-    }
-    throw createError(statusFailure(response.status));
-  }
-
-  return {
-    artifact: {
-      dependencies(
-        reference: ArtifactReference,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<ArtifactReference[]>> {
-        return call('artifact', 'dependencies', { reference: asJson(reference) }, context);
-      },
-      load(
-        reference: ArtifactReference,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<StudioArtifact>> {
-        return call('artifact', 'load', { reference: asJson(reference) }, context);
-      },
-      publish(
-        reference: ArtifactReference,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<null>> {
-        return call('artifact', 'publish', { reference: asJson(reference) }, context);
-      },
-      save(document: StudioArtifact, context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('artifact', 'save', { document: asJson(document) }, context);
-      },
-      unpublish(
-        reference: ArtifactReference,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<null>> {
-        return call('artifact', 'unpublish', { reference: asJson(reference) }, context);
-      },
-    },
-    authoring: {
-      listTypes(
-        query: AuthoringTypeListQuery,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringTypeListPage>> {
-        return call('authoring', 'list-types', { query: asJson(query) }, context);
-      },
-      planSave(
-        intent: AuthoringSaveIntent,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringSavePlan>> {
-        return call('authoring', 'plan-save', { intent: asJson(intent) }, context);
-      },
-      resolveTarget(
-        request: AuthoringTargetResolveRequest,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringTargetResolution>> {
-        return call('authoring', 'resolve-target', { request: asJson(request) }, context);
-      },
-      saveAsNewType(
-        request: AuthoringSaveAsNewTypeRequest,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringSaveResult>> {
-        return call('authoring', 'save-as-new-type', { request: asJson(request) }, context);
-      },
-      saveItem(
-        request: AuthoringSaveItemRequest,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringSaveResult>> {
-        return call('authoring', 'save-item', { request: asJson(request) }, context);
-      },
-      saveNewTypeVersion(
-        request: AuthoringSaveNewTypeVersionRequest,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringSaveResult>> {
-        return call('authoring', 'save-new-type-version', { request: asJson(request) }, context);
-      },
-      start(
-        request: AuthoringStartRequest,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<AuthoringSessionSnapshot>> {
-        return call('authoring', 'start', { request: asJson(request) }, context);
-      },
-    },
-    localization: {
-      messages(
-        locale: string,
-        namespaces: QualifiedName[],
-        context: HostRequestContext,
-      ): Promise<HostPortResult<Record<QualifiedName, string>>> {
-        return call('localization', 'messages', { locale, namespaces }, context);
-      },
-    },
-    media: {
-      abortUpload(uploadId: string, context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('media', 'abort-upload', { uploadId }, context);
-      },
-      authorizeUpload(
-        request: MediaUploadRequestDescriptor,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<MediaUploadGrant>> {
-        return call('media', 'authorize-upload', { request: asJson(request) }, context);
-      },
-      completeUpload(
-        uploadId: string,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
-        return call('media', 'complete-upload', { uploadId }, context);
-      },
-      get(
-        assetId: string,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<MediaAsset | null>> {
-        return call('media', 'get', { assetId }, context);
-      },
-      importExternal(
-        url: string,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
-        return call('media', 'import-external', { url }, context);
-      },
-      list(query: MediaQuery, context: HostRequestContext): Promise<HostPortResult<MediaPage>> {
-        return call('media', 'list', { query: asJson(query) }, context);
-      },
-      uploadStatus(
-        assetId: string,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<MediaUploadAcceptedAsset>> {
-        return call('media', 'upload-status', { assetId }, context);
-      },
-    },
-    model: {
-      get(
-        reference: ArtifactReference,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<ContentModelDocument>> {
-        return call('model', 'get', { reference: asJson(reference) }, context);
-      },
-      list(context: HostRequestContext): Promise<HostPortResult<ContentModelDocument[]>> {
-        return call('model', 'list', {}, context);
-      },
-    },
-    permission: {
-      explain(
-        operation: QualifiedName,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<PermissionExplanation>> {
-        return call('permission', 'explain', { operation }, context);
-      },
-      refresh(context: HostRequestContext): Promise<HostPortResult<PermissionSnapshot>> {
-        return call('permission', 'refresh', {}, context);
-      },
-    },
-    preview: {
-      cancel(draftDigest: string, context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('preview', 'cancel', { draftDigest }, context);
-      },
-      render(
-        payload: PreviewRenderPayload,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<PreviewRenderedPayload>> {
-        return call('preview', 'render', { payload: asJson(payload) }, context);
-      },
-    },
-    recovery: {
-      discard(context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('recovery', 'discard', {}, context);
-      },
-      load(context: HostRequestContext): Promise<HostPortResult<JsonObject | null>> {
-        return call('recovery', 'load', {}, context);
-      },
-      store(envelope: JsonObject, context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('recovery', 'store', { envelope }, context);
-      },
-    },
-    resource: {
-      search(
-        query: ResourceSearchQuery,
-        context: HostRequestContext,
-      ): Promise<HostPortResult<ResourceSearchPage>> {
-        return call('resource', 'search', { query: asJson(query) }, context);
-      },
-    },
-    telemetry: {
-      emit(event: TelemetryEvent, context: HostRequestContext): Promise<HostPortResult<null>> {
-        return call('telemetry', 'emit', { event: asJson(event) }, context);
-      },
-    },
-  };
-}
-
-/** Serializable typed values cross the wire as their JSON projections. */
-function asJson(value: unknown): JsonObject {
-  return JSON.parse(JSON.stringify(value)) as JsonObject;
-}
-
-function parseJson(text: string): unknown {
-  try {
-    return JSON.parse(text) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
-function isHostPortResult(value: unknown): value is { revision?: string; value: unknown } {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  const record = value as Record<string, unknown>;
-  if (!Object.hasOwn(record, 'value')) {
-    return false;
-  }
-  const revision = record.revision;
-  if (revision !== undefined && (typeof revision !== 'string' || revision.length === 0)) {
-    return false;
-  }
-  return Object.keys(record).every((key) => key === 'value' || key === 'revision');
-}
-
-function classifyTransportFailure(reason: unknown): FailureShape {
-  const name =
-    typeof reason === 'object' && reason !== null && 'name' in reason ? reason.name : undefined;
-  if (name === 'AbortError' || name === 'TimeoutError') {
-    // The injected deadline signal fired before the host answered.
+    const response = await options.fetchImplementation(url, {
+      ...init,
+      credentials: options.credentials ?? 'same-origin',
+      headers,
+    });
     return {
-      category: 'unavailable',
-      defaultMessage: 'The host did not respond within the transport deadline.',
-      key: 'studio.testkit/http-timeout',
-      retryable: true,
+      ...(response.contentType === undefined ? {} : { contentType: response.contentType }),
+      status: response.status,
+      text: () => response.text(maximumResponseBytes),
     };
+  };
+  return wrapAdapterFailures(
+    createCoreHttpHostAdapter(
+      {
+        authentication: {
+          credentials: 'omit',
+          expiresAt: '1970-01-01T00:10:00Z',
+          headerName: 'X-Studio-Testkit-Transport',
+          issuedAt: '1970-01-01T00:00:00Z',
+          kind: 'header-token',
+          token: 'conformance',
+        },
+        kind: 'http',
+        maximumResponseBytes: Math.min(64 * 1024 * 1024, Math.max(1024, maximumResponseBytes)),
+        requestTimeoutMilliseconds: 10_000,
+        routing: { endpoints, kind: 'operation-map' },
+      },
+      {
+        ...(createTimeoutSignal === undefined
+          ? {}
+          : {
+              createTimeoutSignal: () => createTimeoutSignal(timeoutMilliseconds),
+            }),
+        currentTimeMilliseconds: () => 0,
+        fetchImplementation,
+        ...(options.resolveAuthentication === undefined
+          ? {}
+          : { resolveAuthentication: options.resolveAuthentication }),
+        ...(options.validateSchema === undefined ? {} : { validateSchema: options.validateSchema }),
+      },
+    ),
+  );
+}
+
+function normalizeConventionalBaseUrl(value: string): string {
+  if (value === '') {
+    return '';
   }
-  return {
-    category: 'unavailable',
-    defaultMessage: 'The host could not be reached.',
-    key: 'studio.testkit/http-unreachable',
-    retryable: true,
-  };
+  if (
+    value.trim() !== value ||
+    /\s/u.test(value) ||
+    value.includes('?') ||
+    value.includes('#') ||
+    value.includes('\\')
+  ) {
+    throw new TypeError('baseUrl must not contain whitespace, a query, or a fragment.');
+  }
+  const normalized = value.endsWith('/') ? value.slice(0, -1) : value;
+  let path: string;
+  if (normalized.startsWith('https://') || normalized.startsWith('http://')) {
+    const schemeEnd = normalized.indexOf('://') + 3;
+    const pathStart = normalized.indexOf('/', schemeEnd);
+    const authority =
+      pathStart === -1 ? normalized.slice(schemeEnd) : normalized.slice(schemeEnd, pathStart);
+    if (authority.length === 0 || authority.includes('@')) {
+      throw new TypeError('baseUrl must contain a host and must not embed credentials.');
+    }
+    path = pathStart === -1 ? '' : normalized.slice(pathStart);
+  } else {
+    if (!normalized.startsWith('/') || normalized.startsWith('//')) {
+      throw new TypeError('baseUrl must be an HTTP(S) URL or a same-origin absolute path.');
+    }
+    path = normalized;
+  }
+  if (path.includes('//')) {
+    throw new TypeError('baseUrl path must be normalized without empty segments.');
+  }
+  for (const segment of path.split('/')) {
+    if (segment === '.' || segment === '..' || /%2e/iu.test(segment)) {
+      throw new TypeError('baseUrl path must not contain dot segments.');
+    }
+  }
+  return normalized;
 }
 
-function malformedResponse(): FailureShape {
-  return {
-    category: 'internal',
-    defaultMessage: 'The host response could not be interpreted.',
-    key: 'studio.testkit/http-malformed-response',
-    retryable: false,
-  };
+function createLegacyRequestHeaders(
+  transportHeaders: Readonly<Record<string, string>>,
+  supplied: Readonly<Record<string, string>> | undefined,
+): Record<string, string> {
+  const headers: Record<string, string> = { ...transportHeaders };
+  for (const [name, value] of Object.entries(supplied ?? {})) {
+    const normalized = name.toLowerCase();
+    if (
+      name.length > 100 ||
+      !/^[!#$%&'*+.^_`|~0-9a-z-]+$/u.test(normalized) ||
+      value.length > 8192 ||
+      value.trim() !== value ||
+      invalidByteStringHeaderValue(value) ||
+      normalized === 'accept' ||
+      normalized === 'content-type' ||
+      normalized === 'x-studio-operation' ||
+      Object.hasOwn(headers, normalized)
+    ) {
+      throw new TypeError('Invalid HTTP request header.');
+    }
+    headers[normalized] = value;
+  }
+  return headers;
 }
 
-function statusFailure(status: number): FailureShape {
-  const category = categoryForStatus(status);
-  return {
-    category,
-    defaultMessage: 'The host rejected the request.',
-    key: `studio.testkit/http-status-${category}`,
-    retryable: category === 'rate-limited' || category === 'unavailable',
-  };
+function invalidByteStringHeaderValue(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 8 || (code >= 10 && code <= 31) || code === 127 || code > 255) {
+      return true;
+    }
+  }
+  return false;
 }
 
-function categoryForStatus(status: number): HostErrorCategory {
-  switch (status) {
-    case 401:
-      return 'unauthenticated';
-    case 403:
-      return 'forbidden';
-    case 404:
-      return 'not-found';
-    case 408:
-      return 'unavailable';
-    case 409:
-      return 'conflict';
-    case 413:
-      return 'limit-exceeded';
-    case 422:
-      return 'validation-failed';
-    case 429:
-      return 'rate-limited';
-    case 502:
-    case 503:
-    case 504:
-      return 'unavailable';
-    default:
-      if (status >= 400 && status < 500) {
-        return 'invalid-request';
+function wrapAdapterFailures(adapter: HostAdapter): HostAdapter {
+  const wrapped = Object.fromEntries(
+    Object.entries(adapter).map(([name, port]) => [name, wrapPortFailures(port)]),
+  );
+  return wrapped as unknown as HostAdapter;
+}
+
+function wrapPortFailures<TPort extends object>(port: TPort): TPort {
+  return new Proxy(port, {
+    get(target, property, receiver): unknown {
+      const member = Reflect.get(target, property, receiver) as unknown;
+      if (typeof member !== 'function') {
+        return member;
       }
-      return 'internal';
-  }
+      return (...arguments_: unknown[]): Promise<unknown> =>
+        Promise.resolve(Reflect.apply(member, target, arguments_)).catch((error: unknown) => {
+          if (isHostPortFailure(error) && !(error instanceof TestbedHostError)) {
+            throw new TestbedHostError(error.error);
+          }
+          throw error;
+        });
+    },
+  });
 }

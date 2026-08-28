@@ -11,13 +11,17 @@ blocks, typed fields, and values on the same canvas. The session may set `compos
 authorized subset of Blueprint and Content operations, while `sessionState: read-only` permits inspection and
 recovery without mutation (`STUDIO-PROD-001`, `STUDIO-PROD-003`, and `STUDIO-PROD-008`).
 
-## Current shipped shell boundary
+## Current Studio-side implementation boundary
 
-The currently shipped shell surface is an integration candidate centered on existing Blueprint composition.
-It projects an exact host content model read-only for field binding, and its composed host session does not yet
-create or persist Model and Entry drafts. Blank/reusable coordinated starts, same-canvas value persistence,
-item/type save choices, and inline-to-fullscreen session continuity are required planned work, not shipped
-capabilities (`STUDIO-PROD-014`).
+The contextual shell now composes one exact Model, Blueprint, and Entry snapshot over the existing Blueprint
+canvas. It exposes the authorized modes, current additive Model-field and Entry-value controls, separate dirty
+state, all four presentation states, and the three explicit save choices. `mountStudio()` opens either a blank
+standalone workspace or the same shell through an exact configured host transport.
+
+That is implemented browser behavior, not proof of the completed product journey. Complete field lifecycle and
+interaction breadth, Kumwe App persistence/rendering, independent-host replay, the complete `authoring-web`
+assertion set, and manual accessibility evidence remain unqualified (`STUDIO-PROD-014` and
+`STUDIO-PROD-015`).
 
 ```mermaid
 stateDiagram-v2

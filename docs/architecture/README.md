@@ -20,7 +20,10 @@ The architecture deliberately separates the reusable authoring product from any 
 The following rules are non-negotiable:
 
 - Portable artifacts are declarative, bounded, versioned JSON documents.
-- Studio core is deterministic and independent of DOM, Lit, HTTP, storage, authentication, and host frameworks.
+- Studio's deterministic state/session logic is independent of DOM, Lit, storage, authentication authority,
+  and host frameworks. The core package may provide a DOM- and Node-free HTTP client adapter only through an
+  explicitly injected fetch-like function; it never reads ambient `fetch`, discovers routes, or becomes a
+  server runtime.
 - The host owns identity, authorization, persistence, publication, media custody, secrets, template execution, and server-side validation.
 - Studio never evaluates document-authored code or treats rendered DOM as the source of truth.
 - Blocks, themes, plugins, and hosts negotiate explicit capabilities and contract versions.

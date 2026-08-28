@@ -101,17 +101,31 @@ native state as a host contract, or persist dependency-native Editor.js data as 
   transact, version, audit, and apply every load, create, save, type-definition, migration, workflow, media,
   preview, webhook, publication, and rendering operation. Kumwe App MUST implement those server operations in
   PHP application services exposed through PHP HTTP endpoints; browser JavaScript MUST NOT become a parallel
-  server authority or bypass PHP policy and persistence.
+  server authority or bypass PHP policy and persistence. A host MAY provide Studio's mount, resource launch,
+  capability bounds, endpoint routing, and standard authentication transport as bounded declarative JSON. That
+  browser-readable configuration is routing and presentation input only: it MUST NOT contain a long-lived
+  credential, grant permission, or replace the server's per-request checks. A configured endpoint's
+  unauthenticated, forbidden, validation, conflict, or other failure is authoritative and MUST NOT fall back to
+  local acceptance or fabricated content.
 - **`STUDIO-PROD-011` — Compiled browser delivery and zero production Node.js/npm.** Node.js and npm are
   contributor, build, test, and release tools only. Official Studio browser assets MUST be compiled before
   deployment. A production host, container, operator, or content author MUST NOT need Node.js, npm, Vite, a
   development server, or a server-side JavaScript process to install, start, operate, preview, save, publish,
   render, or deliver Studio-authored content. Public rendering MUST remain independent of the authoring runtime
-  and preserve its declared no-JavaScript fallback.
+  and preserve its declared no-JavaScript fallback. A normal HTML document MUST be able to mount the compiled
+  Studio browser application into an explicit ordinary element with zero configuration for local defaults, or
+  into an associated/selected element from bounded declarative configuration. Multiple
+  independently configured Studio mounts on one page are first-class and MUST NOT share draft, authority,
+  history, selection, authentication material, or lifecycle accidentally.
 - **`STUDIO-PROD-012` — No pre-creation, copy-paste, or manual reconciliation.** A host MUST NOT require an
   author to pre-create a Blueprint or content type elsewhere, copy composition or values between tools, visit a
   catalogue-level Studio page first, or repair accepted revisions manually across disconnected screens. Type
-  selection, blank creation, conflicts, save results, and return navigation belong to the contextual flow.
+  selection, blank creation, conflicts, save results, and return navigation belong to the contextual flow. A
+  deployment with no host transport MUST open a deterministic blank standalone workspace with Studio's built-in
+  blocks and patterns. It MUST support lossless canonical JSON import and download/export so work can leave and
+  re-enter that standalone workspace without a server. Local export is not a durable host save; when an HTTP
+  operation is configured, a refusal or failure MUST remain visible and MUST NOT silently downgrade to local
+  success.
 
 ### Accessible operation
 
@@ -136,28 +150,37 @@ native state as a host contract, or persist dependency-native Editor.js data as 
 product contract until the exact integrated system executes and records every step below as one acceptance
 journey:
 
-1. Start a clean production host whose runtime contains no Node.js or npm requirement.
-2. Resolve one core target and one extension-owned target through the same declaration mechanism, then choose an
+1. Load the official compiled browser assets in an ordinary static HTML document whose runtime contains no
+   Node.js or npm requirement. Mount two isolated Studio instances into two ordinary elements, one with no
+   configuration and one with bounded hosted JSON.
+2. Give the local instance no route or configuration. Verify deterministic blank standalone authoring with the built-in
+   block and pattern catalog, losslessly download/export its canonical project and save-intent JSON, import the
+   project into a fresh instance, and observe the same authored state without any network request.
+3. Give the other instance an exact hosted launch plus either a single canonical endpoint or an explicit
+   operation map and a supported authentication transport. Verify that configuration never grants authority,
+   missing operations remain disabled, and a configured 401 or 403 remains an authoritative refusal without
+   standalone fallback.
+4. Resolve one core target and one extension-owned target through the same declaration mechanism, then choose an
    existing item and open Studio directly in that item's normal content context.
-3. Verify that the item hydrates its exact reusable-content-type, Model, Blueprint, and Entry revisions and
+5. Verify that the item hydrates its exact reusable-content-type, Model, Blueprint, and Entry revisions and
    actual values rather than the latest available type.
-4. Change layout, add or configure a typed field, change its Entry value in the same session, choose save item,
+6. Change layout, add or configure a typed field, change its Entry value in the same session, choose save item,
    reopen the item, and observe every host-accepted revision without changing the reusable type.
-5. Create an item from an existing reusable content type and receive its exact structure and fields with no
+7. Create an item from an existing reusable content type and receive its exact structure and fields with no
    previous Entry values.
-6. Create an item from a blank canvas, insert layout and content blocks, add or bind authorized typed fields,
+8. Create an item from a blank canvas, insert layout and content blocks, add or bind authorized typed fields,
    and enter values without leaving Studio or pre-creating another artifact.
-7. Choose save as new type, create another item from the accepted type, and receive its structure and fields
+9. Choose save as new type, create another item from the accepted type, and receive its structure and fields
    with empty Entry values.
-8. Choose save new type version and observe immutable successor revisions plus visible migration and
-   dependent-entry consequences before confirmation.
-9. Move through every declared inline, minimized, maximized, and fullscreen state without losing coordinates,
-   selection, history, dirty state, validation, authority, unsaved work, or return context.
-10. Activate authorized extension `block-definition`, `field-adapter`, and `pattern` contributions, use the
+10. Choose save new type version and observe immutable successor revisions plus visible migration and
+    dependent-entry consequences before confirmation.
+11. Move through every declared inline, minimized, maximized, and fullscreen state without losing coordinates,
+    selection, history, dirty state, validation, authority, unsaved work, or return context.
+12. Activate authorized extension `block-definition`, `field-adapter`, and `pattern` contributions, use the
     contributed block and field control, save and render the result, then prove deterministic disable,
     unresolved, upgrade, and migration behavior.
-11. Prove equivalent pointer, keyboard, structural-control, and required assistive-technology outcomes.
-12. Record that every accepted durable effect passed through the authoritative host API and, for Kumwe App,
+13. Prove equivalent pointer, keyboard, structural-control, and required assistive-technology outcomes.
+14. Record that every accepted durable effect passed through the authoritative host API and, for Kumwe App,
     through PHP application services and PHP HTTP endpoints.
 
 ## Current implementation relationship
@@ -165,6 +188,6 @@ journey:
 This contract deliberately describes the required product, not the current implementation. At the time this
 contract was introduced, the repository contained substantial standalone Blueprint, block, pattern, preview,
 media, rich-text, renderer, model-command, and entry-command primitives, but its documented composed host
-profile remained Blueprint-only and its model host port remained read-only. Those limitations are open work,
-not an alternative interpretation of this contract. The exact current state and blockers belong only in
+profile remained Blueprint-only and its model host port remained read-only. Those were implementation gaps at
+that point, not an alternative interpretation of this contract. The exact current state and blockers belong only in
 [`docs/roadmap/STATUS.md`](roadmap/STATUS.md).

@@ -286,6 +286,24 @@ describe('contextual authoring shell', () => {
     );
   });
 
+  it('requests host return with only the opaque resolved return context', async () => {
+    const element = await mount();
+    let detail: unknown;
+    element.addEventListener('studio-contextual-return-request', (event) => {
+      detail = (event as CustomEvent).detail;
+    });
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.contextual-return-button')?.click();
+
+    expect(detail).toEqual({
+      returnContext: {
+        key: 'article-edit',
+        label: { defaultMessage: 'Return to article', key: 'studio.test/return' },
+      },
+    });
+    expect(Object.keys(detail as Record<string, unknown>)).toEqual(['returnContext']);
+  });
+
   it.each([
     [{ kind: 'blank' } as const, 'blank', 'Blank start'],
     [
@@ -402,6 +420,55 @@ describe('contextual authoring shell', () => {
     expect(holder?.querySelector('[data-studio-rich-text-surface="strict-csp"]')).not.toBeNull();
     expect(holder?.querySelector('.codex-editor,.fake-editorjs-runtime')).toBeNull();
     expect(element).not.toHaveProperty('editorJs');
+  });
+
+  it('uses an admitted extension field adapter for canonical Entry values', async () => {
+    const field: FieldDefinition = {
+      authoring: { control: 'org.example.catalog/product-name', order: 0 },
+      cardinality: 'one',
+      id: 'name',
+      kind: 'string',
+      label: { defaultMessage: 'Name', key: 'studio.test/name' },
+      localized: true,
+      required: true,
+    };
+    const element = await mount({ modelFields: [field], values: { name: 'Trail Backpack' } });
+    element.authoringControlRegistry = new StudioAuthoringControlRegistry({
+      extensionControls: [
+        {
+          control: 'org.example.catalog/product-name',
+          mount(options) {
+            const input = document.createElement('input');
+            input.setAttribute('aria-label', 'Extension product name');
+            input.value = String(options.value);
+            input.addEventListener('input', () => {
+              options.onChange?.({ valid: true, value: input.value });
+            });
+            options.holder.append(input);
+            return {
+              destroy: (): void => input.remove(),
+              focus: (): void => input.focus(),
+              readOnly: options.readOnly === true,
+              value: (): string => input.value,
+            };
+          },
+        },
+      ],
+    });
+    element.setMode('content');
+    await element.updateComplete;
+    await element.authoringReady;
+
+    const input = element.shadowRoot?.querySelector<HTMLInputElement>(
+      '[aria-label="Extension product name"]',
+    );
+    if (input === null || input === undefined) throw new Error('Missing extension field adapter.');
+    input.value = 'Expedition Backpack';
+    input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+    await element.updateComplete;
+
+    expect(element.snapshot?.state.entry.values.name).toBe('Expedition Backpack');
+    expect(element.dirtyState.entry).toBe(true);
   });
 
   it('keeps Blueprint selection, history, dirty state and Entry work across modes and presentations', async () => {

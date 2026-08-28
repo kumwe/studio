@@ -11,6 +11,7 @@ into an alternative product workflow. The roadmap status remains the authority o
 
 - [Normative language](normative-language.md)
 - [Studio configuration](studio-configuration.md)
+- [Studio browser deployment](studio-deployment.md)
 - [Schema profile](schema-profile.md)
 - [Blueprints](blueprint.md)
 - [Content models and entries](content-and-entries.md)

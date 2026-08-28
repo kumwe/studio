@@ -17,13 +17,17 @@ identity, revisions, publication, or authority. The normative distinction is def
 | Plugin manifest      | Executable authoring contributions and required host capabilities                   | Trusted package             |
 | Studio configuration | Session-level policy, limits, enabled capabilities and port bindings                | Embedding host              |
 
-### Current shipped shell boundary
+### Current Studio-side implementation boundary
 
-The currently shipped shell surface composes an existing Blueprint and consumes an exact content-model
-projection read-only for binding. It does not yet open or persist a coordinated Model/Blueprint/Entry draft,
-create a blank definition, hydrate and save Entry values through that composed session, or implement the three
-target save outcomes below. This section describes required product state, not shipped behavior
-(`STUDIO-PROD-014`).
+The contextual coordinator and shell now keep one exact Model, Blueprint, and Entry snapshot together without
+merging their identities or revisions. They support blank/from-type/existing starts, Blueprint commands, the
+current additive Model-field and Entry-value commands, separate dirty state, presentation state, and all three
+save intents. The legacy Blueprint handle and read-only model projection remain valid narrower APIs.
+
+This implemented coordination is not evidence that a host has accepted the complete artifact lifecycle. Full
+Model-field lifecycle breadth, real-host atomic persistence and migration, publication, independent replay,
+and end-to-end qualification remain outside this architecture description (`STUDIO-PROD-014` and
+`STUDIO-PROD-015`).
 
 ## Coordinated authoring definitions
 
@@ -42,9 +46,11 @@ The target product exposes three explicit, non-interchangeable save intentions (
   migration, compatibility, and publication policy; it never mutates an immutable published revision in place.
 
 The host owns identity allocation, validation, concurrency, atomicity, migration, publication, and failure
-recovery for those outcomes. Future protocol contracts must define any necessary operations before the product
-claims them. Authors must not have to pre-create companion records, copy serialized artifacts between tools, or
-manually reconcile browser- and host-created definitions (`STUDIO-PROD-010` and `STUDIO-PROD-012`).
+recovery for those outcomes. The canonical authoring target, session, save, and transport contracts define the
+seven host operations, while `openContextualStudioSession` plans, submits, validates, and reconciles their
+bounded results. Authors must not have to pre-create companion records, copy serialized artifacts between
+tools, or manually reconcile browser- and host-created definitions (`STUDIO-PROD-010` and
+`STUDIO-PROD-012`).
 
 ## Identity and revisions
 

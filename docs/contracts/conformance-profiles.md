@@ -2,8 +2,9 @@
 
 Product conformance is governed by the [Studio product contract](../product-contract.md). The
 `STUDIO-PROD-*` requirements are product outcomes, not claims that the current protocol or shell implements
-them. In particular, `STUDIO-PROD-014` requires every profile and evidence record to distinguish current
-Blueprint-only behavior from the planned coordinated contextual profile.
+or qualifies them. In particular, `STUDIO-PROD-014` requires every profile and evidence record to distinguish
+implemented contextual components, bounded Blueprint/profile evidence, an integrated host journey, and an
+accepted conformance claim.
 
 ## Purpose
 

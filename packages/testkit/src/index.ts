@@ -46,12 +46,43 @@ export {
 
 export {
   createHttpHostAdapter,
+  HTTP_HOST_OPERATION_ROUTES,
+  type ConfiguredHttpHostAdapterOptions,
+  type HttpAuthenticationConfiguration,
+  type HttpAuthenticationRequest,
+  type HttpAuthenticationResolver,
+  type HttpBearerTokenAuthentication,
   type HttpFetchLike,
+  type HttpHeaderTokenAuthentication,
   type HttpHostAdapterOptions,
+  type HttpHostOperationEndpoints,
+  type HttpHostOperationRoute,
+  type HttpHostRoutingConfiguration,
+  type HttpHostTransportConfiguration,
   type HttpRequestInit,
   type HttpResponseLike,
+  type HttpSameOriginSessionAuthentication,
   type HttpTimeoutHandle,
 } from './http-host-adapter.js';
+
+export {
+  AUTHORING_HTTP_OPERATIONS,
+  AUTHORING_HTTP_OPERATIONS_BY_ROUTE,
+  AUTHORING_HTTP_SCHEMA_ID,
+  type AuthoringHttpOperationContract,
+  type AuthoringHttpRoute,
+  type HttpSchemaValidator,
+} from './http-authoring-contract.js';
+
+export {
+  createAuthoringHttpResponder,
+  type AuthoringHttpResponderOptions,
+  type HttpResponderRequest,
+  type HttpResponderResponse,
+  type HttpTransportSecurityDecision,
+  type HttpTransportSecurityInput,
+  type HttpTransportSecurityVerifier,
+} from './http-host-responder.js';
 
 export {
   runAuthoringWebVector,

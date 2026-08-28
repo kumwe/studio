@@ -1,0 +1,16 @@
+{
+  "schema": "host-error.schema.json",
+  "description": "A safe current revision is disclosed only for a conflict.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "host-error",
+    "category": "validation-failed",
+    "correlationId": "requests/invalid-revision",
+    "message": {
+      "key": "studio.host/validation-failed",
+      "defaultMessage": "The request failed validation."
+    },
+    "retryable": false,
+    "revision": "entry-r2"
+  }
+}

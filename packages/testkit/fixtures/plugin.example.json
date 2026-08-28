@@ -15,6 +15,14 @@
   "entryModules": [],
   "contributions": [
     {
+      "kind": "authoring-target",
+      "id": "org.example.catalog/product-content",
+      "version": "1.0.0",
+      "resource": "authoring/product-content.json",
+      "integrity": "sha256-8UXhVSSK8qpAIeINL/EZAeMXvriQ6Xy97BKjuvI2gTU=",
+      "executable": false
+    },
+    {
       "kind": "block",
       "id": "org.example.catalog/price",
       "version": "1.0.0",
@@ -32,6 +40,10 @@
     }
   ],
   "requiredCapabilities": [
+    {
+      "id": "studio.capability/contextual-authoring",
+      "versions": "^1.0.0"
+    },
     {
       "id": "studio.host/artifact",
       "versions": "^1.0.0"

@@ -1,7 +1,8 @@
 # `@kumwe/studio-protocol`
 
-Status: `0.1.0-rc.1` source candidate, still pre-Gate-A and not production-supported. Its draft contracts may
-change and are not a supported protocol.
+Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
+version is in the workspace `studio-release.json`; these draft contracts may change and are not a supported
+protocol.
 
 Serializable contracts shared by Studio hosts, renderers, extensions, and non-JavaScript clients.
 The package deliberately contains no DOM or framework dependency. JSON Schemas are published under
@@ -15,9 +16,9 @@ manifests, and entries. `MediaAsset` describes host-owned library state; the sma
 `contractVersion` and separately negotiate the SemVer wire `protocolVersion`; neither value may be
 inferred from the other or from the `/studio/v1/` schema epoch URI.
 
-The package exports deterministic schema-generated `Generated*` models for all 51 Version 2 protocol
-schemas and every reusable `$defs` definition. `GeneratedProtocolModelMap` binds each schema filename to
-its root model, `GENERATED_PROTOCOL_SCHEMA_FILES` exposes the complete checked registry, and
+The package exports deterministic schema-generated `Generated*` models for all 55 Version 2 protocol schema
+roots and their 253 top-level reusable `$defs` definitions. `GeneratedProtocolModelMap` binds each schema
+filename to its root model, `GENERATED_PROTOCOL_SCHEMA_FILES` exposes the complete checked registry, and
 `GENERATED_TYPESCRIPT_MODEL_METADATA` records generator name/version, schema-manifest digest, schema epoch,
 document contract revision, and supported wire-protocol range. Regenerate with
 `npm run protocol:models:generate`; `npm run protocol:models:check` fails on byte drift.
@@ -32,10 +33,10 @@ declares the corresponding `type`; without it, scalar instances remain valid und
 projection deliberately stays broad. The handwritten protocol interfaces remain the ergonomic runtime/port API
 and may not widen the generated wire shape.
 
-The test lane directly assigns 238 corpus literals to their exact filename-specific generated roots. The two
-maximum-JSON-depth schema-profile vectors are an explicit TypeScript 6 `TS2321` compiler-depth boundary, not a
-cast: the boundary test requires that diagnostic, and the runtime lane schema-validates and round-trips all 240
-documents.
+The test lane directly assigns every manifest-listed applicable positive corpus literal to its exact
+filename-specific generated root except the two maximum-JSON-depth schema-profile vectors. Those vectors are an
+explicit TypeScript 6 `TS2321` compiler-depth boundary, not a cast: the boundary test requires that diagnostic,
+and the runtime lane schema-validates and round-trips the complete manifest-derived inventory.
 
 The contextual authoring foundation is canonical protocol, not a shell-local convention. It exports the
 bounded `AuthoringTargetDeclaration`, host-owned `ReusableContentTypeDefinition`, full
@@ -82,6 +83,6 @@ scrolling, marker, motion, and responsive-visibility choices without carrying CS
 
 `@kumwe/studio-protocol/studio-release.json` is a byte-identical copy of the canonical workspace
 release record. It binds the exact fixed eight-package family to the wire protocol and testkit corpus
-digest. The publication guard requires all eight versions to equal its `release` coordinate. The current
-`0.1.0-rc.1` candidate record lists nine proposed profile claims; listing them is not accepted evidence or a
-production-support claim.
+digest. The publication guard requires all eight versions to equal its `release` coordinate. The abandoned
+historical `0.1.0-rc.1` record listed nine proposed profile claims; it was not accepted evidence or a
+production-support claim. The current beta record deliberately claims none.

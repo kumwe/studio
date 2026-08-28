@@ -6,6 +6,7 @@ import type {
   ContentModelDocument,
   EntryDocument,
   NodeId,
+  QualifiedName,
   Revision,
   SetFieldValueCommand,
   StudioSessionMode,
@@ -15,9 +16,18 @@ import { applyEntryCommand } from './entry-commands.js';
 import { StudioHistory } from './history.js';
 import { applyModelCommand } from './model-commands.js';
 import { assertHybridCommandInBounds, assertModePermitsCommandType } from './modes.js';
+import {
+  assertEntryWithinSessionPolicy,
+  assertModelWithinSessionPolicy,
+  resolveStudioSessionPolicy,
+  type ResolvedStudioSessionPolicy,
+  type StudioCommandPolicyLimits,
+} from './session-policy.js';
 
 export interface StudioSessionOptions {
   document: BlueprintDocument;
+  /** Command-time resource policy. Omitted members use immutable protocol maxima. */
+  limits?: Readonly<Partial<StudioCommandPolicyLimits>>;
   maximumHistoryEntries?: number;
   /**
    * The session mode fixed for the session's lifetime. When omitted it is
@@ -26,6 +36,8 @@ export interface StudioSessionOptions {
    * mode the session historically provided.
    */
   mode?: StudioSessionMode;
+  /** Exact resolved permission projection used by per-node authoring policy. */
+  permissions?: readonly QualifiedName[];
   sessionGeneration: Revision;
   /**
    * The legacy spelling of the read-only axis. Mode `read-only` is the
@@ -49,13 +61,22 @@ export interface StudioSessionOptions {
 export class StudioSession {
   readonly #history: StudioHistory;
   readonly #mode: StudioSessionMode;
+  readonly #policy: Readonly<ResolvedStudioSessionPolicy>;
   readonly #sessionGeneration: Revision;
   #savedRevision: Revision;
   #savedStateVersion = 0;
   #selection: NodeId[] = [];
 
   public constructor(options: Readonly<StudioSessionOptions>) {
-    this.#history = new StudioHistory(options.document, options.maximumHistoryEntries ?? 100);
+    this.#policy = resolveStudioSessionPolicy({
+      ...(options.limits === undefined ? {} : { limits: options.limits }),
+      ...(options.permissions === undefined ? {} : { permissions: options.permissions }),
+    });
+    this.#history = new StudioHistory(
+      options.document,
+      options.maximumHistoryEntries ?? 100,
+      this.#policy,
+    );
     this.#mode = resolveModeOption(options);
     this.#sessionGeneration = options.sessionGeneration;
     this.#savedRevision = options.document.revision;
@@ -132,7 +153,9 @@ export class StudioSession {
         `Command expects revision ${command.expectedRevision}, but the entry holds ${entry.revision}.`,
       );
     }
-    return applyEntryCommand(entry, command);
+    const next = applyEntryCommand(entry, command);
+    assertEntryWithinSessionPolicy(next, this.#policy.limits);
+    return next;
   }
 
   /**
@@ -154,7 +177,9 @@ export class StudioSession {
         `Command expects revision ${command.expectedRevision}, but the model holds ${model.revision}.`,
       );
     }
-    return applyModelCommand(model, command);
+    const next = applyModelCommand(model, command);
+    assertModelWithinSessionPolicy(next, this.#policy.limits);
+    return next;
   }
 
   /**

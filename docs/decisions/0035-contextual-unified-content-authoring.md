@@ -5,11 +5,11 @@
 
 ## Context
 
-Studio's product documentation has consistently described one workspace with Model, Blueprint, and Content
-modes, but its bounded composed host profile currently loads and persists only an existing Blueprint. Model
-projection is read-only, entry and model commands are not mounted as Blueprint-shell controls, and reference
-journeys have described designers preparing reusable Blueprints before content authors subsequently populate
-entries.
+Studio's product documentation had consistently described one workspace with Model, Blueprint, and Content
+modes, but when this decision was recorded its bounded composed host profile loaded and persisted only an
+existing Blueprint. Model projection was read-only, Entry and Model commands were not mounted as
+Blueprint-shell controls, and reference journeys described designers preparing reusable Blueprints before
+content authors subsequently populated Entries.
 
 Those boundaries are honest descriptions of implemented increments, but they were also read as the intended
 product workflow. That interpretation is wrong for Kumwe App. Studio is intended to become the contextual
@@ -47,9 +47,20 @@ Canonical contribution kinds remain `block-definition`, `pattern`, `field-adapte
 `design-vocabulary`, and `migration`. Contextual authoring consumes their active owner-aware generation and
 does not create a parallel extension system.
 
-This decision establishes a target and compatibility direction. It does not claim that the current shell,
-host-session handle, model port, entry persistence, save orchestration, Kumwe App adapter, or acceptance journey
-already implements it.
+This decision establishes a target and compatibility direction. Implementation and qualification status remain
+separate concerns governed by [`docs/roadmap/STATUS.md`](../roadmap/STATUS.md).
+
+## Implementation relationship
+
+The repository now includes the additive `openContextualStudioSession` coordinator, exact
+blank/from-type/existing snapshots, separate Model/Blueprint/Entry draft state, the current Model-field and
+Entry-value commands, a contextual Lit shell, four presentation states, and plan/submit/reconcile behavior for
+the three explicit save outcomes. The configuration-driven browser runtime binds those components to exact
+host routes, while standalone mounting supplies a blank built-in workspace without a host.
+
+Those components implement the Studio side of this decision; they do not certify a Kumwe App adapter, complete
+Model/Entry authoring breadth, host transaction and rendering behavior, the `authoring-web` profile, or the
+`STUDIO-PROD-015` acceptance journey.
 
 ## Consequences
 
@@ -58,8 +69,9 @@ already implements it.
 - Read-only model projection remains valid for discovery and binding. The product additionally needs a
   separately authorized and concurrency-safe definition-draft path; read access must not be widened
   implicitly.
-- Future contract work must define coordinated load/create/save behavior, revisions, idempotency, conflicts,
-  history, recovery, migration, and atomicity without merging artifact identities.
+- Coordinated load/create/save contracts, revisions, idempotency, conflicts, history, recovery, migration, and
+  atomicity must continue to preserve separate artifact identities; implementation evidence may not substitute
+  for host acceptance.
 - Product and roadmap documents must identify legacy forms as migration/recovery fallbacks rather than the
   target default editor.
 - Conformance and host acceptance must exercise the complete `STUDIO-PROD-015` journey, including a clean

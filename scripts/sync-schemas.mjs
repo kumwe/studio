@@ -37,6 +37,11 @@ const hostSequenceVectorTargetDirectory = new URL(
   '../packages/testkit/vectors/host-sequence/',
   import.meta.url,
 );
+const authoringHttpVectorDirectory = new URL('../schemas/vectors/authoring-http/', import.meta.url);
+const authoringHttpVectorTargetDirectory = new URL(
+  '../packages/testkit/vectors/authoring-http/',
+  import.meta.url,
+);
 const previewVectorDirectory = new URL('../schemas/vectors/preview/', import.meta.url);
 const previewVectorTargetDirectory = new URL(
   '../packages/testkit/vectors/preview/',
@@ -85,6 +90,7 @@ await mkdir(bindingProjectionVectorTargetDirectory, { recursive: true });
 await mkdir(mediaVectorTargetDirectory, { recursive: true });
 await mkdir(hostVectorTargetDirectory, { recursive: true });
 await mkdir(hostSequenceVectorTargetDirectory, { recursive: true });
+await mkdir(authoringHttpVectorTargetDirectory, { recursive: true });
 await mkdir(previewVectorTargetDirectory, { recursive: true });
 await mkdir(schemaProfileVectorTargetDirectory, { recursive: true });
 await mkdir(canonicalVectorTargetDirectory, { recursive: true });
@@ -150,6 +156,15 @@ for (const entry of await readdir(hostSequenceVectorDirectory, { withFileTypes: 
     await cp(
       new URL(entry.name, hostSequenceVectorDirectory),
       new URL(entry.name, hostSequenceVectorTargetDirectory),
+    );
+  }
+}
+
+for (const entry of await readdir(authoringHttpVectorDirectory, { withFileTypes: true })) {
+  if (entry.isFile() && entry.name.endsWith('.json')) {
+    await cp(
+      new URL(entry.name, authoringHttpVectorDirectory),
+      new URL(entry.name, authoringHttpVectorTargetDirectory),
     );
   }
 }
@@ -260,6 +275,15 @@ if (hostSequenceVectors.length === 0) {
   );
 }
 
+const authoringHttpVectors = (await readdir(authoringHttpVectorTargetDirectory)).filter((name) =>
+  name.endsWith('.json'),
+);
+if (authoringHttpVectors.length === 0) {
+  throw new Error(
+    `No authoring HTTP vectors were copied to ${join(authoringHttpVectorTargetDirectory.pathname)}.`,
+  );
+}
+
 const previewVectors = (await readdir(previewVectorTargetDirectory)).filter((name) =>
   name.endsWith('.json'),
 );
@@ -344,6 +368,11 @@ const corpusGroups = [
     directory: hostSequenceVectorTargetDirectory,
     name: 'host-sequence-vectors',
     path: 'vectors/host-sequence',
+  },
+  {
+    directory: authoringHttpVectorTargetDirectory,
+    name: 'authoring-http-vectors',
+    path: 'vectors/authoring-http',
   },
   {
     directory: previewVectorTargetDirectory,

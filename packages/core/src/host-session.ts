@@ -31,6 +31,7 @@ import { negotiateCapabilities, type CapabilityNegotiationResult } from './negot
 import { resolveSessionMode } from './modes.js';
 import { compileProfileSchema, type CompiledSchemaValidator } from './profile-validator.js';
 import { StudioSession } from './session.js';
+import { assertBlueprintWithinSessionPolicy } from './session-policy.js';
 
 const ARTIFACT_PORT: QualifiedName = 'studio.port/artifact';
 const MODEL_PORT: QualifiedName = 'studio.port/model';
@@ -232,10 +233,13 @@ export async function openStudioSession(
   }
 
   const document = normalizeLoadedBlueprint(loaded.value, loaded.revision);
+  assertBlueprintWithinSessionPolicy(document, configuration.limits);
   const session = new StudioSession({
     document,
+    limits: configuration.limits,
     maximumHistoryEntries: configuration.limits.maxHistoryEntries,
     mode: resolveSessionMode(configuration),
+    permissions: configuration.permissions,
     sessionGeneration: configuration.sessionGeneration,
   });
   session.markSaved(document.revision);

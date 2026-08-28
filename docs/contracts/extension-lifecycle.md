@@ -25,6 +25,29 @@ Activation MUST verify manifest schema and document contract revision, namespace
 
 Registration is atomic. A failure publishes no partial generation. A successful activation creates a new immutable generation; existing sessions either remain safely pinned under host policy or are required to reopen. Security revocation cannot leave untrusted executable code active merely to preserve session convenience.
 
+### Contextual authoring targets
+
+An extension exposes a contextual Studio surface by declaring an `authoring-target` contribution in its
+canonical plugin manifest and supplying the matching `AuthoringTargetDeclaration` payload. The target payload
+MUST be owned by the exact manifest owner. Because the target is discovery metadata rather than a separately
+versioned artifact, its manifest contribution version is the exact owner release version. Missing payloads,
+undeclared payloads, owner mismatches, namespace violations, duplicate declarations and cross-owner target-ID
+collisions reject activation atomically.
+
+Host-core targets and extension targets enter the same immutable contribution generation. Resolution MUST
+match the qualified target ID, resource surface and type, create/edit intent, requested presentation, optional
+authoring mode and required capability versions. It resolves every required contribution dependency against
+that same generation and version range. A missing required dependency makes the target unavailable; a missing
+optional dependency does not. The result contains only the six composition contributions explicitly admitted
+by the target, never every globally active contribution.
+
+Target resolution remains bounded discovery. It does not authenticate an actor, authorize a resource, mint a
+resource context or permit persistence. The host authoring port performs those operations independently before
+opening or saving a session. Disable and trust revocation remove an extension's targets from new resolution in
+the successor generation, while a safely pinned prior generation remains immutable under host policy.
+Uninstall preserves the owner's target and contribution identities as well as its data; another owner cannot
+claim them unless the separately authorized purge has released that inventory.
+
 ## Disable and revocation
 
 Disable or trust revocation removes commands, panels, inspectors, transforms, blocks, renderers and assets from newly resolved execution immediately. Persisted namespaced definitions, Blueprint nodes, entry values and migration records remain. Studio displays unresolved/inactive-owner diagnostics without interpreting data through another owner.
@@ -64,6 +87,11 @@ activations that leave the active generation untouched, atomic upgrade to new de
 per-kind unresolved-reason reporting (`not-installed`, `incompatible`, `owner-disabled`,
 `owner-revoked`) while documents stay diagnosable. Manifest-only executable kinds remain host-owned
 declarations and are not falsely presented as registered composition payloads.
+
+The contextual-target lifecycle fixture additionally proves identical host-core and extension registration,
+exact surface/resource/intent/presentation/mode/capability matching, target-scoped dependency admission,
+newest-compatible dependency selection, optional dependency degradation, required dependency withdrawal,
+target collision rejection, disable/reactivation, trust revocation and atomic owner-version upgrade.
 
 ## Kumwe App mapping
 
