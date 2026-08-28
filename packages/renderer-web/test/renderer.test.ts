@@ -153,6 +153,10 @@ describe('semantic web renderer', () => {
     }
     expect(output.html).not.toContain('undefined');
     expect(output.css).toContain('prefers-reduced-motion');
+    expect(output.css).not.toMatch(/[\r\n]/u);
+    expect(output.styleElement).toBe(
+      `<style data-studio-renderer="semantic-web">${output.css}</style>`,
+    );
   });
 
   it('escapes rich content, projects media/resources/money, and emits advanced enhancement jobs', async () => {
@@ -206,6 +210,7 @@ describe('semantic web renderer', () => {
     expect(output.html).not.toMatch(/<script|javascript:/iu);
     expect(output.css).toContain('--studio-columns-medium:2');
     expect(output.css).toContain('--studio-columns-expanded:4');
+    expect(output.css).not.toMatch(/\}\s+\[/u);
     expect(output.styleElement).toContain('nonce="abcDEF12+/="');
     expect(output.enhancements.map((item) => item.kind)).toEqual(['chart', 'math', 'diagram']);
   });
@@ -266,7 +271,7 @@ describe('semantic web renderer', () => {
       compileStudioScopedStyleSheet('s1', {
         rules: [{ declarations: { color: '#112233' }, target: 'self' }],
       }),
-    ).toBe('[data-studio-scope="s1"]{color:#112233}');
+    ).toBe('[data-studio-scope=s1]{color:#112233}');
     expect(() =>
       compileStudioScopedStyleSheet('s1', {
         rules: [{ declarations: { background: 'url(javascript:1)' }, target: 'self' }],
@@ -321,11 +326,11 @@ describe('semantic web renderer', () => {
     });
 
     expect(output).toBe(
-      '[data-studio-scope="s1"]{color:#112233}' +
-        '[data-studio-scope="s1"][data-studio-part="heading"]{color:#112233}' +
-        '[data-studio-scope="s1"][data-studio-part="content"]{color:#112233}' +
-        '[data-studio-scope="s1"][data-studio-part="media"]{color:#112233}' +
-        '[data-studio-scope="s1"][data-studio-part="action"]{color:#112233}',
+      '[data-studio-scope=s1]{color:#112233}' +
+        '[data-studio-scope=s1][data-studio-part="heading"]{color:#112233}' +
+        '[data-studio-scope=s1][data-studio-part="content"]{color:#112233}' +
+        '[data-studio-scope=s1][data-studio-part="media"]{color:#112233}' +
+        '[data-studio-scope=s1][data-studio-part="action"]{color:#112233}',
     );
   });
 
@@ -358,8 +363,8 @@ describe('semantic web renderer', () => {
     expect(firstScope).toBeTruthy();
     expect(secondScope).toBeTruthy();
     expect(firstScope).not.toBe(secondScope);
-    expect(output.css).toContain(`[data-studio-scope="${firstScope}"]{color:#112233}`);
-    expect(output.css).toContain(`[data-studio-scope="${secondScope}"]{color:#445566}`);
+    expect(output.css).toContain(`[data-studio-scope=${firstScope}]{color:#112233}`);
+    expect(output.css).toContain(`[data-studio-scope=${secondScope}]{color:#445566}`);
   });
 
   it.each(['toString', 'hasOwnProperty', 'valueOf'])(
@@ -392,7 +397,7 @@ describe('semantic web renderer', () => {
       ?.getAttribute('data-studio-scope');
 
     expect(scope).toBeTruthy();
-    expect(output.css).toContain(`[data-studio-scope="${scope}"]{color:#123456}`);
+    expect(output.css).toContain(`[data-studio-scope=${scope}]{color:#123456}`);
   });
 
   it('keeps enhancement order equal to document order across delayed host resolution', async () => {
@@ -532,6 +537,22 @@ describe('semantic web renderer', () => {
     expect(output.enhancements).toEqual([
       expect.objectContaining({ autoplay: true, kind: 'slideshow', nodeId: 'gallery' }),
     ]);
+  });
+
+  it('does not request the public runtime for empty interactive containers', async () => {
+    const gallery = node('empty-gallery', CORE_PRODUCTION_BLOCK_TYPES.gallery, { items: [] });
+    gallery.properties = { autoplay: true, presentation: 'slideshow' };
+    const tabs = node('empty-tabs', CORE_PRODUCTION_BLOCK_TYPES.tabs, {}, { items: [] });
+    const collection = node('empty-collection', CORE_PRODUCTION_BLOCK_TYPES.contentCollection, {
+      items: [],
+    });
+    collection.properties = { presentation: 'slideshow' };
+
+    const output = await renderStudioWeb({ roots: [gallery, tabs, collection] });
+
+    expect(output.enhancements).toEqual([]);
+    expect(output.html).not.toContain('data-studio-slide-previous');
+    expect(output.html).not.toContain('data-studio-slide-next');
   });
 
   it('renders progressive dialog, popover, and notice variants with semantic accessibility', async () => {

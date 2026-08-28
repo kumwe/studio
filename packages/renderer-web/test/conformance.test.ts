@@ -80,4 +80,30 @@ describe('portable renderer-web corpus', () => {
     expect([...coveredPresentation].sort()).toEqual([...EXPECTED_PRESENTATION]);
     expect([...coveredSecurity].sort()).toEqual([...EXPECTED_SECURITY]);
   });
+
+  it('rejects a public-style record whose path, digest, or byte metadata drifts', async () => {
+    const source = JSON.parse(
+      await readFile(
+        join(process.cwd(), 'schemas/conformance/renderer-web/presentation-capabilities.json'),
+        'utf8',
+      ),
+    ) as RendererWebVector;
+    for (const mutate of [
+      (vector: RendererWebVector) => {
+        vector.expect.publicStyleAsset.path = 'assets/studio-public-0000000000000000.min.css';
+      },
+      (vector: RendererWebVector) => {
+        vector.expect.publicStyleAsset.contentHash = '0'.repeat(64);
+      },
+      (vector: RendererWebVector) => {
+        vector.expect.publicStyleAsset.bytes += 1;
+      },
+    ]) {
+      const vector = structuredClone(source);
+      mutate(vector);
+      const result = await runRendererWebVector(vector);
+      expect(result.passed).toBe(false);
+      expect(result.failures.join('\n')).toContain('Public style asset');
+    }
+  });
 });

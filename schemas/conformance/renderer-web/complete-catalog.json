@@ -558,6 +558,21 @@
   ],
   "media": [],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6670,
+    "cssSha256": "70fe07a971ba06957822200dbea9f45a8cb14f6958543d8900d515ecfa2b4b01",
+    "htmlBytes": 9998,
+    "htmlSha256": "6d6f642b205a7a9b3e566c9437ead74aad325e064aeed464f0945cf6354e7652",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-70fe07a971ba0695.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6670,
+      "budgetBytes": 262144,
+      "contentHash": "70fe07a971ba06957822200dbea9f45a8cb14f6958543d8900d515ecfa2b4b01",
+      "integrity": "sha256-cP4HqXG6BpV4IiANvqn0WoyxT2lYVD2JANUV7PorSwE=",
+      "minified": true
+    },
     "htmlContains": [
       "data-studio-block=\"section\"",
       "data-studio-block=\"stack\"",
@@ -629,6 +644,6 @@
       "data-studio-spinner",
       "prefers-reduced-motion"
     ],
-    "enhancements": ["chart", "countdown", "diagram", "dialog", "math", "popover", "tabs"]
+    "enhancements": ["chart", "countdown", "diagram", "dialog", "math", "popover"]
   }
 }

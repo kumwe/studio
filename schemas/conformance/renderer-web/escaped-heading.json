@@ -20,6 +20,21 @@
   "bindings": [{ "nodeId": "heading", "port": "text", "value": "<script>alert(1)</script>" }],
   "media": [],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6320,
+    "cssSha256": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+    "htmlBytes": 175,
+    "htmlSha256": "5e07f38d13c0b830e6d9f1703ca7e0a5253aa96bcdea4b02153813e2464ed8a6",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-8d4d00dfa489396d.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6320,
+      "budgetBytes": 262144,
+      "contentHash": "8d4d00dfa489396dc0a4207b3d1efa207d7658e325c9db4bba2e74b91a607649",
+      "integrity": "sha256-jU0A36SJOW3ApCB7PR76IH12WOMlydtLui50uRpgdkk=",
+      "minified": true
+    },
     "htmlContains": ["&lt;script&gt;alert(1)&lt;/script&gt;"],
     "htmlExcludes": ["<script"],
     "cssContains": ["prefers-reduced-motion"],

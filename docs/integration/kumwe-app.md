@@ -1,11 +1,24 @@
 # Kumwe App integration playbook
 
-[Kumwe App](https://github.com/kumwe/app) is Studio's first reference host and the hand for which the glove is made. The integration is still
-an adapter: public Studio packages contain no Kumwe App PHP classes, database schema, routes, Twig names, KIS
-internals, extension manifests, or authorization rules.
+[Kumwe App](https://github.com/kumwe/app) is Studio's first reference host and the hand for which the glove is
+made. It will consume Studio through [Kumwe Producer](https://github.com/kumwe/producer), the separate PHP
+realization library for Studio's public wire and rendering contracts. Producer is required to supply the
+digest-pinned PHP contract implementation; Kumwe App supplies the authoritative identity, policy, application
+services, persistence, workflow, publication, and delivery behind it.
+
+This remains an adapter boundary: public Studio packages contain no Producer or Kumwe App PHP classes,
+database schema, routes, Twig names, KIS internals, extension manifests, or authorization rules. Studio never
+imports or special-cases Producer. Producer never changes Studio's host-neutral shapes, and it does not own App
+content or permission decisions.
+
+Terminology in this playbook is exact: “Kumwe App adapter,” “App adapter,” and “App renderer” denote App-owned
+authority, application services, and Twig/KIS delivery supplied behind Producer's reusable PHP realization.
+They do not authorize a direct Studio-to-App wire implementation or a second Studio pin inside the App. This
+first-party composition does not constrain generic hosts: another PHP host may also use Producer, and any host
+may implement the public Studio contract directly.
 
 This playbook reflects the current Kumwe App direction: Joomla Framework DI/events, Laminas/Mezzio delivery,
-Doctrine DBAL, Twig server rendering, focused Lit enhancements, immutable versioned definitions, signed and
+Doctrine DBAL, Twig server rendering, the manifest-pinned Studio enhancement runtime, immutable versioned definitions, signed and
 trusted extensions, owner-aware contributions, immutable runtime generations, strict public/admin/portal
 boundaries, recovery isolation, revision/workflow/translation support, and bounded KIS customization.
 
@@ -20,23 +33,38 @@ The Studio-side integration input includes the eight-package family, canonical c
 authoring operations, `openContextualStudioSession`, `<kumwe-studio-contextual>`, 45 first-party blocks, ten
 patterns, private Editor.js rich-text adapter, media/resource/preview controls, semantic web renderer, immutable
 extension-generation runtime, static-host artifact, and portable conformance corpora. Kumwe App consumes these
-through public contracts; it must not reproduce the catalog, expose Editor.js, fork renderer behavior, or
-invent a second target/contribution protocol.
+through Producer's exact Studio pin; the App must not maintain another independent Studio pin, reproduce the
+catalog, expose Editor.js, fork renderer behavior, or invent a second target/contribution protocol.
+
+Producer MUST vendor one complete Studio release input: the canonical schemas and schema manifest, corpus
+manifest, all claimed conformance vectors, coordinated `studio-release.json`, and the manifest-recorded
+prebuilt browser artifacts. Its PHP proof replays the canonical, renderer-web, and rich-text vector sets. Each
+input is digest-verified; a Studio contract change becomes available to Kumwe App only after a deliberate
+Producer re-pin updates the complete set and passes that PHP replay. Studio workspace files, floating ranges,
+and an automatic partial refresh are not valid Producer inputs.
+
+That paragraph defines the landing contract, not current release status. Producer's founding branch still uses
+a pre-release source pin and has not completed the coordinated release/corpus/prebuilt-asset pin, wire and
+renderer implementation, or full PHP replay. Kumwe App therefore has no qualified Producer-backed Studio
+integration yet.
 
 Studio remains on the governed beta lane while qualification is completed. The required landing order is:
 
 1. merge and publish one exact eight-package Studio coordinate through the protected release train;
-2. atomically pin all eight versions plus the release/corpus digests in Kumwe App;
-3. replay the portable corpora through the real App adapters and Twig renderer; and
-4. qualify the integrated browser, database, security, media, extension, migration, and rollback matrices.
+2. deliberately re-pin that coordinate, its release/schema/corpus records, vectors, and prebuilt assets in
+   Producer and pass Producer's digest checks plus PHP replay;
+3. publish the corresponding Producer increment and atomically update Kumwe App to that exact Producer/Studio
+   pair;
+4. replay the portable corpora through Producer against the real App services and Twig renderer; and
+5. qualify the integrated browser, database, security, media, extension, migration, and rollback matrices.
 
 Until the exact family has accepted qualification evidence, App work is an additive integration candidate
 rather than a supported production dependency. Workspace tarballs, mixed prerelease versions, copied runtime,
 and a green reference host are not substitutes for a published coordinate and reproduced host evidence.
 
-The adapter is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
+The Producer-backed App integration is proven, not asserted. `vectors/host/` in `@kumwe/studio-testkit` is the executable
 assertion set for [`studio.profile/host-baseline`](../contracts/conformance-profiles.md): language-neutral
-JSON that a PHPUnit suite replays against the Kumwe App adapter to prove the persistence and
+JSON that a PHPUnit suite replays through Producer against Kumwe App's authority services to prove the persistence and
 optimistic-concurrency rules, the request-envelope guards, bounded queries, absence handling, authority
 explanation and telemetry discipline. A stale write returning the safe current revision, and an error
 that never discloses private resource existence, are corpus assertions rather than review opinions.
@@ -50,7 +78,7 @@ results, errors, and status mapping, while per-mount configuration supplies Kumw
 The App may use one dispatcher or a closed operation map without changing an application service or wire body.
 A vendored copy of the corpus
 is verifiable rather than assumed: `corpus-manifest.json` carries the digest of every published fixture
-and vector, so a stale or altered copy is detected before it changes what a conformance claim means.
+and vector, so Producer rejects a stale or altered copy before it changes what a conformance claim means.
 
 ## Architectural covenant
 
@@ -172,29 +200,35 @@ binding stores a stable field reference; save commands invoke Kumwe App use case
 
 ## Studio-to-Kumwe App port mapping
 
-| Studio host area   | Kumwe App implementation responsibility                                                                                                                                                                     |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation                                                              |
-| Models             | AP-2 projects existing immutable Content types now; a later separate BusinessRecord adapter applies its own definition and BusinessSecurity rules                                                           |
-| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                                                                         |
-| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                                                                         |
-| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                                                                                |
-| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                                                                                   |
-| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                                                                       |
-| Delivery           | PHP presenters and Twig block renderers produce public/portal/admin output; focused Lit modules enhance only declared interactions                                                                          |
-| Contributions      | Manifest 6 / SPI 4 admits the canonical authoring target plus blocks, patterns, field adapters, inspectors, design vocabulary, and migrations atomically into the existing owner-aware immutable generation |
-| Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client                                                     |
-| Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                                                                        |
-| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                                                                          |
-| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                                                                     |
-| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                                                                           |
+Producer owns the reusable PHP adapters that validate and translate Studio's wire and renderer contracts.
+Kumwe App injects the concrete application services behind those adapters. The following rows are therefore
+App responsibilities exposed through Producer, not duplicate Studio protocol implementations inside the App.
+
+| Studio host area   | Kumwe App implementation responsibility                                                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Session/capability | Application service resolves site/organization, actor, surface, authoring mode, exact revisions, policy, limits and trusted runtime generation                                                                     |
+| Models             | AP-2 projects existing immutable Content types now; a later separate BusinessRecord adapter applies its own definition and BusinessSecurity rules                                                                  |
+| Blueprints         | New versioned Blueprint aggregate/repository with ownership, translations where declared, revisions, migrations and dependency pins                                                                                |
+| Entries            | Existing content entry/revision/workflow services or typed business application services; never direct DBAL from handlers/templates                                                                                |
+| Policy             | Existing capability and record/field/action policy services filter before projection and independently enforce every command                                                                                       |
+| Persistence        | Application commands use expected revision/ETag, idempotency, transaction and audit; accepted state is returned to Studio                                                                                          |
+| Preview            | Dedicated authenticated authoring-preview use case renders the draft through active Twig/KIS/theme renderers with opaque node markers                                                                              |
+| Delivery           | Authorized application projections feed Producer's Studio-contract renderer; App PHP/Twig/KIS chrome delivers public/portal/admin output and includes only manifest-pinned enhancements Producer reports as needed |
+| Contributions      | Manifest 6 / SPI 4 admits the canonical authoring target plus blocks, patterns, field adapters, inspectors, design vocabulary, and migrations atomically into the existing owner-aware immutable generation        |
+| Media              | Kumwe App media service owns stable asset IDs, access, upload/processing, renditions, metadata, retention and audit; Studio supplies the UI/port client                                                            |
+| Localization       | Kumwe App catalogue and locale resolution supply UI/block strings; entry translation groups and fallback policy remain authoritative                                                                               |
+| References         | Policy-aware content/business application queries expose bounded reference/search contracts, never raw SQL or arbitrary DB filters                                                                                 |
+| Recovery           | Current protected core renderer and recovery isolation remain available without installed extension or Studio execution                                                                                            |
+| API/client         | REST/OpenAPI exposes the same authoring use cases and protocol schemas required by the future Dart/Flutter client                                                                                                  |
 
 ## PHP-emitted browser deployment
 
-Kumwe App serves the verified prebuilt Studio ES module from its immutable public asset generation. For every
-content area that should be editable, PHP renders the ordinary target element and one inert, schema-valid
-`StudioDeploymentConfiguration`. The external start module calls `autoMountStudio()`; it contains no App
-route, actor, permission, content, or persistence assumption.
+Once the required Producer increment is complete, Producer verifies and exposes the prebuilt Studio ES module
+and release-bound deployment emitter from its single Studio pin. Kumwe App copies those verified bytes into
+its immutable public asset generation. For every content area that should be editable, App PHP supplies the
+authoritative launch/session data to Producer; Producer renders the ordinary target element and one inert,
+schema-valid `StudioDeploymentConfiguration`. The external start module calls `autoMountStudio()`; it contains
+no App route, actor, permission, content, or persistence assumption.
 
 The configuration is resolved only after Kumwe App's normal session authentication and target/resource policy
 reduction. It supplies required `kind` and `mount`, copies the exact release object from the verified
@@ -209,10 +243,11 @@ never authority.
 
 The reference implementation and full PHP construction are in
 [`examples/php-authoring-host`](../../examples/php-authoring-host/README.md#emit-one-browser-deployment-configuration-per-mount).
-Kumwe App replaces the reference services with its own application boundaries but preserves the emitter's
-schema validation, asset-release agreement, raw-text JSON escaping, body bounds, launch/session context equality,
-and route/capability agreement. A stale cached module paired with configuration for a different release fails
-before selector resolution or any App request.
+That example is Studio conformance/reference code rather than an App production dependency. Producer MUST
+carry the reusable PHP realization before Kumwe App binds it to App application boundaries while preserving
+schema validation, asset-release agreement, raw-text JSON escaping, body bounds, launch/session context
+equality, and route/capability agreement. A stale cached module paired with configuration for a different
+release fails before selector resolution or any App request.
 
 An administrator page can emit several independent Studio pairs, including targets contributed by extensions.
 Each retains its own resource, draft, history, selection, lifecycle, and transport. An inline/maximized
@@ -223,14 +258,15 @@ falls back to that local profile.
 
 ## PHP HTTP endpoint and application-service map
 
-Kumwe App gives Studio exact endpoint URLs through each deployment. An `operation-map` may point different
+Producer emits the exact endpoint URLs that Kumwe App authorizes through each deployment. An `operation-map` may point different
 operations at different Mezzio/PSR-15 routes; a `single-endpoint` may point all calls at one dispatcher using
-the fixed `X-Studio-Operation` discriminator. `/studio/ports/...` is a reasonable App route layout, not a path
+the fixed `X-Studio-Operation` discriminator. `/studio/ports/...` is a reasonable App route layout behind
+Producer, not a path
 that Studio infers. Every call is canonical `POST` JSON. “AJAX” means the browser uses `fetch` against this same
-contract; it does not create a second API. The App's generated OpenAPI document references the vendored Studio
-schemas, including the exact
+contract; it does not create a second API. The App's generated OpenAPI document references the schema closure
+exposed by its exact Producer pin, including the exact
 [`authoring-http.schema.json`](../../schemas/authoring-http.schema.json) exchange definitions, rather than
-paraphrasing them.
+paraphrasing them or maintaining a second App-owned Studio pin.
 
 Delivery handlers are thin Mezzio/PSR-15 adapters. They parse a bounded JSON body, run the common
 authentication/session, exact-origin/CSRF, rate/body-limit, protocol/generation, and correlation middleware,
@@ -291,9 +327,10 @@ base-path expansion belongs exclusively to testkit fixtures.
 
 `@kumwe/studio-testkit` supplies the executable reference responder and language-neutral corpora for PHPUnit
 replay; it is not installed or run as a Kumwe App production service. The
-[`examples/php-authoring-host`](../../examples/php-authoring-host/README.md) boundary is the executable PHP
-starting point; Kumwe App must replace its example services with the real identity, policy, persistence,
-transaction, workflow, renderer, and outbox authorities.
+[`examples/php-authoring-host`](../../examples/php-authoring-host/README.md) boundary is Studio's executable PHP
+reference. Producer realizes and replays that boundary from its exact Studio pin; Kumwe App injects its real
+identity, policy, persistence, transaction, workflow, renderer, and outbox authorities behind Producer rather
+than copying the reference responder or implementing a parallel Studio adapter.
 
 ### Request pipeline and failure contract
 
@@ -328,8 +365,13 @@ These are Kumwe App application concerns outside the closed browser `HostAdapter
   commands perform review, approval, scheduling, translation, publish, and unpublish with their own permission,
   step-up/approval, expected-version, audit, and idempotency rules. Save never silently publishes.
 - **Public delivery:** a normal public/portal/admin PHP route loads the accepted Entry plus pinned Model,
-  Blueprint, theme, renderer, media, and contribution generation. PHP presenters and strict auto-escaped Twig/KIS
-  mappings emit semantic HTML and scoped assets; essential behavior works without Studio or client JavaScript.
+  Blueprint, theme, renderer, media, and contribution generation. Producer applies the pinned Studio renderer
+  contract to that authorized projection and reports the page's required enhancement families. Strict
+  auto-escaped App Twig/KIS chrome emits the semantic result. Producer materializes the renderer's exact compact
+  CSS as a minified, content-hashed stylesheet with SHA-256 SRI, recorded bytes, and a reviewed budget in the
+  immutable delivery manifest. The host links that exact stylesheet and includes the verified deferred
+  enhancement runtime only when Producer reports it is needed. Essential behavior works without Studio or
+  client JavaScript.
 - **Webhooks/integration events:** the save/type/publication transaction writes the existing transactional outbox
   with versioned event ID/type/schema, actor/system and site/organization context, aggregate coordinates,
   correlation/causation, sensitivity, and canonical payload checksum. Leased PHP workers deliver signed
@@ -342,10 +384,28 @@ controller, Twig template, Lit component, webhook worker, or JavaScript client.
 
 ### Static assets and CSP
 
-Build the exact Studio family in CI/release, copy only the verified standalone `dist/` output (or an equivalent
-host build) into Kumwe App's immutable public asset generation, and deploy it atomically with
-`studio-assets.json`/`build-manifest.json`. PHP serves the HTML/manifest and fingerprinted JS/CSS; no production
-image installs Node.js, npm, Vite, or an npm registry client, and no server-side JavaScript process starts.
+Producer's deliberate Studio re-pin MUST verify the exact release record and manifest-recorded prebuilt assets.
+Copy only those Producer-exposed, verified files into Kumwe App's immutable public asset generation and deploy
+the complete generation atomically. PHP serves the HTML/manifests and fingerprinted JS/CSS; no production image
+installs Node.js, npm, Vite, or an npm registry client, and no server-side JavaScript process starts. The App
+must not rebuild, rename, or independently substitute an authoring or public-enhancement asset behind
+Producer's pin.
+
+Producer also treats each renderer-generated stylesheet as a delivery artifact: preserve the canonical compact
+CSS bytes, enforce a reviewed byte budget, write a minified content-hashed filename, record exact bytes/hash/SRI
+in the immutable delivery manifest, and emit an integrity-bearing link. Inline preview CSS, an unhashed
+`public.css`, runtime minification, and App-side regeneration are forbidden production paths.
+
+Authoring and published delivery use two different manifest-governed browser surfaces. App administrator
+authoring uses the `browser-module` and `contentSecurityPolicy.headerTemplate`. A public App/Twig response uses
+only the `enhancement-runtime` member whose path exactly equals `enhancementRuntime.entryPoint`, and only when
+Producer's renderer reports a non-empty intersection with the exact eight-family set. The host emits that
+manifest-selected classic IIFE with the same member's SRI, `crossorigin="anonymous"`, and `defer`; it does not
+load it as a module or reconstruct its content-hashed name. Its exact CSP baseline is
+`default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'`. The public
+page may add only narrow sources required by its semantic CSS/media; the runtime itself requires no connection,
+inline, eval, or Trusted Types policy. The exact tag and policy rules are in the
+[prebuilt asset guide](prebuilt-browser-assets.md#two-browser-surfaces-two-policies).
 
 The authoring response permits only its fingerprinted same-origin assets, required same-origin port calls, and
 explicitly predeclared media-transfer origins needed by host-owned upload grants; signed URLs never widen CSP
@@ -382,10 +442,15 @@ block publication until an explicit migration or compatible template is selected
 The active template, KIS and extension renderer retain their separate ownership:
 
 - template supplies shell and design profile;
-- KIS supplies public component and interaction contracts;
-- extension supplies owned block schema, presenter/renderer and optional focused enhancement;
+- KIS supplies the host page shell and non-Studio application components;
+- extension supplies its owned block schema and trusted server presenter/renderer, but no independent
+  published-page script;
 - Studio supplies visual authoring and typed intent; and
 - Kumwe App application services supply authorized data.
+
+Within Studio-rendered content, renderer-emitted `data-studio-*` attributes and the single manifest-pinned
+Studio enhancement runtime are the only public behavior source. An extension may contribute controlled
+authoring-preview code through the canonical lifecycle, but it cannot ship a second public enhancer.
 
 ## Live preview and CSP
 
@@ -420,7 +485,8 @@ then includes:
 - required capabilities, surface and allowed authoring modes;
 - supported theme/KIS/renderer ranges;
 - trusted presenter/Twig renderer and declared immutable assets;
-- optional focused Lit enhancement or schema-driven inspector;
+- optional controlled authoring-preview integration or schema-driven inspector; never a separate
+  published-page enhancement runtime;
 - migration, compatibility, fallback and unresolved-node policy; and
 - deterministic ordering and diagnostics.
 
@@ -451,15 +517,16 @@ The correction is additive because Kumwe App's frozen generations are compatibil
 | App manifest 5 / SPI 3 | Freeze the accepted manifest bytes, registrar API, runtime-generation behavior, and all six legacy declaration shapes unchanged.                                                                                                                                                      |
 | App manifest 6 / SPI 4 | Add a new generation carrying canonical Studio `authoring-target`, `block-definition`, `pattern`, `field-adapter`, `inspector`, `design-vocabulary`, and `migration` resource documents; a block carries the complete canonical `propertySchema` rather than the legacy property map. |
 | Host bindings          | Keep owner/trust, PHP presenter and Twig renderer bindings, application-service references, and content/media/business reference policy in separate Kumwe App-owned binding metadata; do not invent Studio or JSON Schema keywords for them.                                          |
-| Exact validation       | Validate every resource against its matching published Studio schema, verify the vendored `corpus-manifest.json`, and replay every applicable corpus group, including `vectors/schema-profile/`, before claiming conformance.                                                         |
+| Exact validation       | Producer validates every resource against its matching pinned Studio schema and verifies the vendored `corpus-manifest.json`; App integration proof drives Producer through every applicable corpus group, including `vectors/schema-profile/`, before claiming conformance.          |
 | Legacy adapter         | Translate a manifest 5 / SPI 3 declaration only when the complete mapping is deterministic and lossless. Fail closed and require an explicit manifest 6 / SPI 4 declaration when any canonical meaning would be inferred, defaulted, widened, or discarded.                           |
 | Generation admission   | Admit all canonical resources and host bindings atomically into one immutable owner-aware generation; disagreement rejects the owning contribution rather than publishing a partial translation.                                                                                      |
 
 Blocks and field adapters do not implicitly create a target, an active target admits only its declared
 dependencies, and host binding metadata does not become portable Studio data.
 
-Until manifest 6 / SPI 4, exact schema validation, target declaration, and corpus replay exist in Kumwe App, its composition
-contribution Gate A item is an integration blocker rather than evidence that the Studio profile is implemented.
+Until manifest 6 / SPI 4 and the Producer-backed exact schema validation, target declaration, and corpus replay
+exist in Kumwe App, its composition contribution Gate A item is an integration blocker rather than evidence
+that the Studio profile is implemented.
 Studio does not weaken its portable schema contract to make the older host-specific declaration equivalent.
 
 ## Media integration
@@ -470,8 +537,9 @@ cancel/retry, processing status, stable asset references, metadata, alternative/
 focal points, renditions, replacement/versioning, permissions, lifecycle and audit.
 
 Studio's candidate already supplies the reusable field controller and live authoring controls for those
-workflows. The App adapter provides the authenticated `MediaProvider` and `MediaUploadTransport`; it does not
-build a second picker or let the browser bypass the existing media application service.
+workflows. App media services exposed through Producer provide the authenticated `MediaProvider` and
+`MediaUploadTransport`; they do not build a second picker or let the browser bypass the existing media
+application service.
 
 The authoring document stores the stable media reference and presentation intent. It does not store a temporary
 upload URL, filesystem path, raw byte payload, signed download URL, image-processing command, or private
@@ -488,8 +556,8 @@ path passes Gate B and content migration/rollback evidence. Integration proceeds
 4. make Studio the default create/edit surface for supported declared targets, with the old form retained only
    as the named transitional fallback;
 5. prove save/revision/workflow/translation/permission/media/extension lifecycle;
-6. bind Studio's shipped rich-text/media/resource controls to Kumwe App adapters while Kumwe App continues to
-   own routes, security, persistence and policy; Editor.js remains private to Studio;
+6. bind Studio's shipped rich-text/media/resource controls through Producer to Kumwe App services while Kumwe
+   App continues to own routes, security, persistence and policy; Editor.js remains private to Studio;
 7. qualify old and new paths together; and
 8. retire a legacy editor only after every stored form/content shape has a tested fallback or migration.
 

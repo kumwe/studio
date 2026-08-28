@@ -4,6 +4,12 @@
 
 ### Minor Changes
 
+- Freeze and publish the complete PHP-host integration contract: exact `authoring/*` routes and
+  `studio.operation/authoring.*` operation names, release-bound deployment configuration, standalone locale,
+  successor-context save plans, closed host-error invariants, browser-asset metadata, and the eight-family
+  enhancement need signal. Digest-pinned hosts must migrate error producers and atomically re-pin schemas,
+  corpus, vectors, release record, manifests, archives, and browser bytes; mixed generations are invalid.
+
 - [#48](https://github.com/kumwe/studio/pull/48) [`e82d4fa`](https://github.com/kumwe/studio/commit/e82d4fa28160205db6a0b34a6955a0f7d71ccca9) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the canonical contextual authoring target, reusable-type, coordinated-session, save-plan, and host-port contracts for `STUDIO-PROD-001` through `STUDIO-PROD-006`.
 
 ## 0.1.0-rc.1

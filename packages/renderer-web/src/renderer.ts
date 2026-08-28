@@ -32,53 +32,8 @@ import type {
   StudioWebRenderResult,
 } from './types.js';
 
-const BASE_CSS = `
-[data-studio-block]{box-sizing:border-box;min-inline-size:0}
-.studio-visually-hidden{block-size:1px;clip-path:inset(50%);inline-size:1px;overflow:hidden;position:absolute;white-space:nowrap}
-[data-studio-align="center"]{text-align:center}[data-studio-align="end"]{text-align:end}[data-studio-align="stretch"]{align-self:stretch}
-[data-studio-height="content"]{block-size:fit-content}[data-studio-height="full"]{block-size:100%}[data-studio-height="viewport"]{min-block-size:100dvb}
-[data-studio-inverse="true"]{background:var(--studio-inverse-background,CanvasText);color:var(--studio-inverse-foreground,Canvas)}
-[data-studio-margin="none"]{margin:0}[data-studio-margin="compact"]{margin:.5rem}[data-studio-margin="comfortable"]{margin:1rem}[data-studio-margin="spacious"]{margin:2rem}
-[data-studio-padding="none"]{padding:0}[data-studio-padding="compact"]{padding:.5rem}[data-studio-padding="comfortable"]{padding:1rem}[data-studio-padding="spacious"]{padding:2rem}
-[data-studio-marker="none"]{list-style:none}[data-studio-marker="disc"]{list-style:disc}[data-studio-marker="decimal"]{list-style:decimal}[data-studio-marker="check"]{list-style:"✓  "}
-[data-studio-position="relative"]{position:relative}[data-studio-position="sticky"]{inset-block-start:0;position:sticky;z-index:10}
-[data-studio-scroll="auto"]{overflow:auto}[data-studio-scroll="clip"]{overflow:clip}[data-studio-scroll="snap"]{overflow:auto;scroll-snap-type:block mandatory}
-[data-studio-width="content"]{inline-size:fit-content;max-inline-size:100%}[data-studio-width="full"]{inline-size:100%}
-[data-studio-print="only"]{display:none}[data-studio-visible-compact="hidden"]{display:none}
-[data-studio-motion]{opacity:0;transition:opacity .25s ease,transform .25s ease}[data-studio-motion="scale"]{transform:scale(.98)}[data-studio-motion="slide"]{transform:translateY(1rem)}[data-studio-motion-visible]{opacity:1;transform:none}[data-studio-motion="parallax"]{opacity:1;transform:translateY(var(--studio-parallax-offset,0))}
-@media (min-width:48rem){[data-studio-visible-medium="hidden"]{display:none}[data-studio-visible-medium="visible"]{display:block}}
-@media (min-width:75rem){[data-studio-visible-expanded="hidden"]{display:none}[data-studio-visible-expanded="visible"]{display:block}}
-@media print{[data-studio-print="hide"]{display:none!important}[data-studio-print="only"]{display:block}}
-[data-studio-layout="section"]{inline-size:100%}
-[data-studio-layout="stack"]{display:flex;flex-direction:column;gap:var(--studio-space,1rem)}
-[data-studio-layout="grid"],[data-studio-layout="columns"]{display:grid;gap:var(--studio-space,1rem);grid-template-columns:repeat(var(--studio-columns-compact,1),minmax(0,1fr))}
-@media (min-width:48rem){[data-studio-layout="grid"],[data-studio-layout="columns"]{grid-template-columns:repeat(var(--studio-columns-medium,var(--studio-columns-compact,1)),minmax(0,1fr))}}
-@media (min-width:75rem){[data-studio-layout="grid"],[data-studio-layout="columns"]{grid-template-columns:repeat(var(--studio-columns-expanded,var(--studio-columns-medium,var(--studio-columns-compact,1))),minmax(0,1fr))}}
-[data-studio-gallery="grid"]{display:grid;gap:1rem;grid-template-columns:repeat(var(--studio-gallery-columns,1),minmax(0,1fr))}
-[data-studio-gallery="slideshow"] [data-studio-slide]{scroll-snap-align:start}
-[data-studio-gallery="slideshow"] [data-studio-part="content"]{display:flex;overflow-x:auto;scroll-snap-type:x mandatory}
-[data-studio-gallery] figure{margin:0}
-[data-studio-block="drawing"] svg,[data-studio-part="media"]{block-size:auto;max-inline-size:100%}
-[data-studio-block="tabs"] [data-studio-tab-list][hidden]{display:none}
-[data-studio-dialog],[data-studio-popover]{position:relative}
-[data-studio-dialog] summary,[data-studio-popover] summary{cursor:pointer}
-[data-studio-dialog-panel],[data-studio-popover-panel]{background:Canvas;border:1px solid currentColor;color:CanvasText;max-block-size:min(80vh,50rem);max-inline-size:min(90vw,50rem);overflow:auto;padding:1rem}
-[data-studio-dialog][open][data-studio-dialog-modal="true"] [data-studio-dialog-panel]{inset:50% auto auto 50%;position:fixed;transform:translate(-50%,-50%);z-index:1000}
-[data-studio-dialog-presentation="offcanvas"][open] [data-studio-dialog-panel]{block-size:100dvb;inset:0 0 0 auto;max-block-size:none;max-inline-size:min(90vw,30rem);position:fixed;transform:none;z-index:1000}
-[data-studio-dialog-presentation="overlay"][open] [data-studio-dialog-panel]{inset:auto 1rem 1rem;max-inline-size:none;position:fixed;z-index:1000}
-[data-studio-popover-panel]{inset-block-start:100%;inset-inline-start:0;position:absolute;z-index:100}
-[data-studio-popover-placement="top"] [data-studio-popover-panel]{inset-block:auto 100%}
-[data-studio-notice]{border-inline-start:.25rem solid currentColor;padding:.75rem 1rem}
-[data-studio-cover]{display:grid;isolation:isolate;min-block-size:20rem;overflow:hidden;place-items:center;position:relative}[data-studio-cover] img{block-size:100%;inline-size:100%;inset:0;object-fit:cover;position:absolute;z-index:-2}[data-studio-cover]::after{background:rgb(0 0 0/var(--studio-cover-overlay,.35));content:"";inset:0;position:absolute;z-index:-1}
-[data-studio-navigation] ul{display:flex;flex-wrap:wrap;gap:.75rem;list-style:none;margin:0;padding:0}[data-studio-navigation="breadcrumbs"] li+li::before{content:"/";margin-inline-end:.75rem}[data-studio-navigation="navbar"]{align-items:center;display:flex;justify-content:space-between}
-[data-studio-badge],[data-studio-label]{border-radius:.25rem;display:inline-block;padding:.15em .5em}[data-studio-badge="soft"]{opacity:.85}[data-studio-badge="outline"]{border:1px solid currentColor}
-[data-studio-spinner]{animation:studio-spin 1s linear infinite;border:.2em solid currentColor;border-inline-end-color:transparent;border-radius:50%;block-size:1.5em;display:inline-block;inline-size:1.5em}@keyframes studio-spin{to{transform:rotate(1turn)}}
-[data-studio-lightbox-dialog]{background:Canvas;color:CanvasText;inline-size:min(90vw,70rem);max-block-size:90dvb;padding:1rem}[data-studio-lightbox-dialog] img{block-size:auto;max-block-size:75dvb;max-inline-size:100%}
-[data-studio-chart-table]{border-collapse:collapse;inline-size:100%}
-[data-studio-chart-table] th,[data-studio-chart-table] td{border:1px solid currentColor;padding:.35rem;text-align:end}
-[data-studio-chart-table] th:first-child{text-align:start}
-@media (prefers-reduced-motion:reduce){[data-studio-gallery="slideshow"] [data-studio-part="content"]{scroll-behavior:auto}[data-studio-motion]{opacity:1!important;transform:none!important;transition:none!important}}
-`.trim();
+const BASE_CSS =
+  '[data-studio-block]{box-sizing:border-box;min-inline-size:0}.studio-visually-hidden{clip-path:inset(50%);white-space:nowrap;block-size:1px;inline-size:1px;position:absolute;overflow:hidden}[data-studio-align=center]{text-align:center}[data-studio-align=end]{text-align:end}[data-studio-align=stretch]{align-self:stretch}[data-studio-height=content]{block-size:fit-content}[data-studio-height=full]{block-size:100%}[data-studio-height=viewport]{min-block-size:100dvb}[data-studio-inverse=true]{background:var(--studio-inverse-background,CanvasText);color:var(--studio-inverse-foreground,Canvas)}[data-studio-margin=none]{margin:0}[data-studio-margin=compact]{margin:.5rem}[data-studio-margin=comfortable]{margin:1rem}[data-studio-margin=spacious]{margin:2rem}[data-studio-padding=none]{padding:0}[data-studio-padding=compact]{padding:.5rem}[data-studio-padding=comfortable]{padding:1rem}[data-studio-padding=spacious]{padding:2rem}[data-studio-marker=none]{list-style:none}[data-studio-marker=disc]{list-style:outside}[data-studio-marker=decimal]{list-style:decimal}[data-studio-marker=check]{list-style:"✓  "}[data-studio-position=relative]{position:relative}[data-studio-position=sticky]{z-index:10;position:sticky;inset-block-start:0}[data-studio-scroll=auto]{overflow:auto}[data-studio-scroll=clip]{overflow:clip}[data-studio-scroll=snap]{scroll-snap-type:block mandatory;overflow:auto}[data-studio-width=content]{inline-size:fit-content;max-inline-size:100%}[data-studio-width=full]{inline-size:100%}[data-studio-print=only],[data-studio-visible-compact=hidden]{display:none}[data-studio-motion]{opacity:0;transition:opacity .25s,transform .25s}[data-studio-motion=scale]{transform:scale(.98)}[data-studio-motion=slide]{transform:translateY(1rem)}[data-studio-motion-visible]{opacity:1;transform:none}[data-studio-motion=parallax]{opacity:1;transform:translateY(var(--studio-parallax-offset,0))}@media (width>=48rem){[data-studio-visible-medium=hidden]{display:none}[data-studio-visible-medium=visible]{display:block}}@media (width>=75rem){[data-studio-visible-expanded=hidden]{display:none}[data-studio-visible-expanded=visible]{display:block}}@media print{[data-studio-print=hide]{display:none!important}[data-studio-print=only]{display:block}}[data-studio-layout=section]{inline-size:100%}[data-studio-layout=stack]{gap:var(--studio-space,1rem);flex-direction:column;display:flex}[data-studio-layout=grid],[data-studio-layout=columns]{gap:var(--studio-space,1rem);grid-template-columns:repeat(var(--studio-columns-compact,1),minmax(0,1fr));display:grid}@media (width>=48rem){[data-studio-layout=grid],[data-studio-layout=columns]{grid-template-columns:repeat(var(--studio-columns-medium,var(--studio-columns-compact,1)),minmax(0,1fr))}}@media (width>=75rem){[data-studio-layout=grid],[data-studio-layout=columns]{grid-template-columns:repeat(var(--studio-columns-expanded,var(--studio-columns-medium,var(--studio-columns-compact,1))),minmax(0,1fr))}}[data-studio-gallery=grid]{grid-template-columns:repeat(var(--studio-gallery-columns,1),minmax(0,1fr));gap:1rem;display:grid}[data-studio-gallery=slideshow] [data-studio-slide]{scroll-snap-align:start}[data-studio-gallery=slideshow] [data-studio-part=content]{scroll-snap-type:x mandatory;display:flex;overflow-x:auto}[data-studio-gallery] figure{margin:0}[data-studio-block=drawing] svg,[data-studio-part=media]{block-size:auto;max-inline-size:100%}[data-studio-block=tabs] [data-studio-tab-list][hidden]{display:none}[data-studio-dialog],[data-studio-popover]{position:relative}[data-studio-dialog] summary,[data-studio-popover] summary{cursor:pointer}[data-studio-dialog-panel],[data-studio-popover-panel]{color:canvastext;background:canvas;border:1px solid;max-block-size:min(80vh,50rem);max-inline-size:min(90vw,50rem);padding:1rem;overflow:auto}[data-studio-dialog][open][data-studio-dialog-modal=true] [data-studio-dialog-panel]{z-index:1000;position:fixed;inset:50% auto auto 50%;transform:translate(-50%,-50%)}[data-studio-dialog-presentation=offcanvas][open] [data-studio-dialog-panel]{z-index:1000;block-size:100dvb;max-block-size:none;max-inline-size:min(90vw,30rem);position:fixed;inset:0 0 0 auto;transform:none}[data-studio-dialog-presentation=overlay][open] [data-studio-dialog-panel]{z-index:1000;max-inline-size:none;position:fixed;inset:auto 1rem 1rem}[data-studio-popover-panel]{z-index:100;position:absolute;inset-block-start:100%;inset-inline-start:0}[data-studio-popover-placement=top] [data-studio-popover-panel]{inset-block:auto 100%}[data-studio-notice]{border-inline-start:.25rem solid;padding:.75rem 1rem}[data-studio-cover]{isolation:isolate;place-items:center;min-block-size:20rem;display:grid;position:relative;overflow:hidden}[data-studio-cover] img{object-fit:cover;z-index:-2;block-size:100%;inline-size:100%;position:absolute;inset:0}[data-studio-cover]:after{background:rgb(0 0 0/var(--studio-cover-overlay,.35));content:"";z-index:-1;position:absolute;inset:0}[data-studio-navigation] ul{flex-wrap:wrap;gap:.75rem;margin:0;padding:0;list-style:none;display:flex}[data-studio-navigation=breadcrumbs] li+li:before{content:"/";margin-inline-end:.75rem}[data-studio-navigation=navbar]{justify-content:space-between;align-items:center;display:flex}[data-studio-badge],[data-studio-label]{border-radius:.25rem;padding:.15em .5em;display:inline-block}[data-studio-badge=soft]{opacity:.85}[data-studio-badge=outline]{border:1px solid}[data-studio-spinner]{border:.2em solid;border-inline-end-color:#0000;border-radius:50%;block-size:1.5em;inline-size:1.5em;animation:1s linear infinite studio-spin;display:inline-block}@keyframes studio-spin{to{transform:rotate(1turn)}}[data-studio-lightbox-dialog]{color:canvastext;background:canvas;max-block-size:90dvb;inline-size:min(90vw,70rem);padding:1rem}[data-studio-lightbox-dialog] img{block-size:auto;max-block-size:75dvb;max-inline-size:100%}[data-studio-chart-table]{border-collapse:collapse;inline-size:100%}[data-studio-chart-table] th,[data-studio-chart-table] td{text-align:end;border:1px solid;padding:.35rem}[data-studio-chart-table] th:first-child{text-align:start}@media (prefers-reduced-motion:reduce){[data-studio-gallery=slideshow] [data-studio-part=content]{scroll-behavior:auto}[data-studio-motion]{opacity:1!important;transition:none!important;transform:none!important}}';
 
 interface RenderState {
   context: Readonly<StudioWebRenderContext>;
@@ -93,7 +48,7 @@ export async function renderStudioWeb(
 ): Promise<StudioWebRenderResult> {
   const state: RenderState = { context, css: [], enhancements: [] };
   const html = (await renderNodes(document.roots, state)).join('');
-  const css = [BASE_CSS, ...state.css].filter((value) => value.length > 0).join('\n');
+  const css = [BASE_CSS, ...state.css].filter((value) => value.length > 0).join('');
   let nonce = '';
   if (context.cspNonce !== undefined) {
     assertCspNonce(context.cspNonce);
@@ -264,7 +219,7 @@ async function responsiveLayout(
   const medium = integerProperty(node.responsive?.columns?.medium, 1, 12, compact);
   const expanded = integerProperty(node.responsive?.columns?.expanded, 1, 12, medium);
   state.css.push(
-    `[data-studio-scope="${scope}"]{--studio-columns-compact:${compact};--studio-columns-medium:${medium};--studio-columns-expanded:${expanded}}`,
+    `[data-studio-scope=${scope}]{--studio-columns-compact:${compact};--studio-columns-medium:${medium};--studio-columns-expanded:${expanded}}`,
   );
   return `<div data-studio-layout="${kind}" data-studio-part="content">${await children(node, 'items', state)}</div>`;
 }
@@ -308,11 +263,12 @@ async function gallery(
   ).filter((item): item is ResolvedWebMedia => item !== undefined);
   const presentation = node.properties.presentation === 'slideshow' ? 'slideshow' : 'grid';
   const lightbox = node.properties.lightbox === true;
+  const autoplay = node.properties.autoplay === true;
   const columns = integerProperty(node.properties.columns, 1, 12, 4);
-  state.css.push(`[data-studio-scope="${scope}"]{--studio-gallery-columns:${columns}}`);
-  if (presentation === 'slideshow') {
+  state.css.push(`[data-studio-scope=${scope}]{--studio-gallery-columns:${columns}}`);
+  if (presentation === 'slideshow' && media.length > 0) {
     state.enhancements.push({
-      autoplay: node.properties.autoplay === true,
+      autoplay,
       kind: 'slideshow',
       nodeId: node.id,
       scope,
@@ -327,7 +283,7 @@ async function gallery(
         `<figure data-studio-slide="${index}">${lightbox ? `<a data-studio-lightbox-open="${index}" href="${escapeAttribute(item.src)}">` : ''}<img data-studio-part="media" src="${escapeAttribute(item.src)}" alt="${escapeAttribute(item.altText)}"${mediaDimensions(item)}>${lightbox ? '</a>' : ''}${item.caption === undefined ? '' : `<figcaption>${escapeHtml(item.caption)}</figcaption>`}</figure>`,
     )
     .join('');
-  return `<section data-studio-gallery="${presentation}" aria-label="Media gallery"><div data-studio-part="content">${items}</div>${presentation === 'slideshow' ? '<p><button type="button" data-studio-slide-previous>Previous</button><button type="button" data-studio-slide-next>Next</button></p>' : ''}</section>`;
+  return `<section data-studio-gallery="${presentation}"${presentation === 'slideshow' ? ` data-studio-slideshow-autoplay="${String(autoplay)}"` : ''} aria-label="Media gallery"><div data-studio-part="content">${items}</div>${presentation === 'slideshow' && media.length > 0 ? '<p><button type="button" data-studio-slide-previous>Previous</button><button type="button" data-studio-slide-next>Next</button></p>' : ''}</section>`;
 }
 
 async function video(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -483,15 +439,17 @@ async function tabs(
   state: RenderState,
 ): Promise<string> {
   const activation = node.properties.activation === 'manual' ? 'manual' : 'automatic';
-  state.enhancements.push({ activation, kind: 'tabs', nodeId: node.id, scope });
   const tabNodes = node.slots.items ?? [];
+  if (tabNodes.length > 0) {
+    state.enhancements.push({ activation, kind: 'tabs', nodeId: node.id, scope });
+  }
   const buttons = await Promise.all(
     tabNodes.map(
       async (tabNode, index) =>
         `<button type="button" data-studio-tab="${index}">${escapeHtml(stringValue(await bindingValue(tabNode, 'title', state)))}</button>`,
     ),
   );
-  return `<div data-studio-tabs><div data-studio-tab-list hidden>${buttons.join('')}</div><div data-studio-part="content">${(await renderNodes(tabNodes, state)).join('')}</div></div>`;
+  return `<div data-studio-tabs data-studio-tabs-activation="${activation}"><div data-studio-tab-list hidden>${buttons.join('')}</div><div data-studio-part="content">${(await renderNodes(tabNodes, state)).join('')}</div></div>`;
 }
 
 async function tab(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -540,9 +498,9 @@ async function contentCollection(
   const presentation = ['cards', 'grid', 'list', 'slideshow'].includes(candidatePresentation)
     ? candidatePresentation
     : 'cards';
-  if (presentation === 'slideshow')
+  if (presentation === 'slideshow' && resources.length > 0)
     state.enhancements.push({ autoplay: false, kind: 'slideshow', nodeId: node.id, scope });
-  return `<div data-studio-collection="${presentation}" data-studio-part="content">${resources.map((resource, index) => `<article${presentation === 'slideshow' ? ` data-studio-slide="${index}"` : ''}>${renderResource(resource, true)}</article>`).join('')}</div>`;
+  return `<div data-studio-collection="${presentation}"${presentation === 'slideshow' ? ' data-studio-slideshow-autoplay="false"' : ''} data-studio-part="content">${resources.map((resource, index) => `<article${presentation === 'slideshow' ? ` data-studio-slide="${index}"` : ''}>${renderResource(resource, true)}</article>`).join('')}</div>`;
 }
 
 async function money(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -602,7 +560,7 @@ async function popover(
     presentation,
     scope,
   });
-  return `<details data-studio-popover data-studio-popover-placement="${placement}" data-studio-popover-presentation="${presentation}"><summary data-studio-popover-trigger>${escapeHtml(trigger)}</summary><aside data-studio-popover-panel role="${presentation === 'tooltip' ? 'tooltip' : 'region'}" aria-labelledby="${scope}-popover-title" tabindex="-1">${title.length === 0 ? `<span class="studio-visually-hidden" id="${scope}-popover-title">${escapeHtml(trigger)}</span>` : `<h3 data-studio-part="heading" id="${scope}-popover-title">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></aside></details>`;
+  return `<details data-studio-popover data-studio-popover-placement="${placement}" data-studio-popover-presentation="${presentation}" data-studio-popover-dismiss-on-blur="${String(node.properties['dismiss-on-blur'] !== false)}"><summary data-studio-popover-trigger>${escapeHtml(trigger)}</summary><aside data-studio-popover-panel role="${presentation === 'tooltip' ? 'tooltip' : 'region'}" aria-labelledby="${scope}-popover-title" tabindex="-1">${title.length === 0 ? `<span class="studio-visually-hidden" id="${scope}-popover-title">${escapeHtml(trigger)}</span>` : `<h3 data-studio-part="heading" id="${scope}-popover-title">${escapeHtml(title)}</h3>`}<div data-studio-part="content">${await children(node, 'content', state)}</div></aside></details>`;
 }
 
 async function article(node: Readonly<BlueprintNode>, state: RenderState): Promise<string> {
@@ -644,7 +602,7 @@ async function countdown(
     scope,
     target: targetIso,
   });
-  return `<time data-studio-countdown datetime="${targetIso}" aria-live="polite"><span data-studio-countdown-value>${escapeHtml(targetIso)}</span><span data-studio-countdown-complete hidden>${escapeHtml(completionMessage)}</span></time>`;
+  return `<time data-studio-countdown data-studio-countdown-display="${display}" data-studio-countdown-expired-behavior="${expiredBehavior}" datetime="${targetIso}" aria-live="polite"><span data-studio-countdown-value>${escapeHtml(targetIso)}</span><span data-studio-countdown-complete hidden>${escapeHtml(completionMessage)}</span></time>`;
 }
 
 async function cover(
@@ -656,7 +614,7 @@ async function cover(
   const overlay = stringProperty(node.properties.overlay, 'medium');
   const opacity =
     overlay === 'none' ? 0 : overlay === 'light' ? 0.2 : overlay === 'strong' ? 0.65 : 0.4;
-  state.css.push(`[data-studio-scope="${scope}"]{--studio-cover-overlay:${opacity}}`);
+  state.css.push(`[data-studio-scope=${scope}]{--studio-cover-overlay:${opacity}}`);
   const alignment = ['center', 'end', 'start'].includes(
     stringProperty(node.properties.alignment, ''),
   )

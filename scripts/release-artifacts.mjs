@@ -7,7 +7,13 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
+import { RELEASE_PACKAGE_BUDGETS } from './release-asset-policy.mjs';
 import { assertCoordinatedRelease } from './release-record.mjs';
+import { assertPublishedPackageDistMinified } from './minify-package-dist.mjs';
+import {
+  assertPackagedStudioEnhancementRuntime,
+  buildStudioEnhancementRuntimeAssets,
+} from './studio-enhancement-artifacts.mjs';
 import {
   assertApprovedBrowserArtifact,
   assertApprovedBrowserArtifactFiles,
@@ -30,17 +36,58 @@ export async function buildApprovedReleaseArtifacts(
   assertCoordinatedRelease(record);
   // Build first: the exact same self-contained browser module is then present
   // in @kumwe/studio's tarball and in the non-npm release archive.
+  const firstBrowser = assertApprovedBrowserArtifact(
+    await buildBrowserArtifact(root),
+    record.release,
+  );
   const browser = assertApprovedBrowserArtifact(await buildBrowserArtifact(root), record.release);
+  for (const member of ['assetManifestSha256', 'integrity', 'sha256', 'sha512', 'size']) {
+    if (firstBrowser[member] !== browser[member]) {
+      throw new Error(`Two clean Studio browser archive builds differ (${member}).`);
+    }
+  }
+  const firstEnhancement = await buildStudioEnhancementRuntimeAssets(root);
+  const secondEnhancement = await buildStudioEnhancementRuntimeAssets(root);
+  if (!firstEnhancement.bytes.equals(secondEnhancement.bytes)) {
+    throw new Error('Two clean Studio enhancement runtime builds differ.');
+  }
+  const browserManifest = JSON.parse(
+    await readFile(new URL('packages/studio-lit/dist/browser/studio-assets.json', root), 'utf8'),
+  );
+  const expectedEnhancement = browserManifest.assets?.find(
+    (asset) => asset?.role === 'enhancement-runtime',
+  );
+  const packagedEnhancement = await assertPackagedStudioEnhancementRuntime(
+    root,
+    expectedEnhancement,
+  );
+  if (!packagedEnhancement.bytes.equals(secondEnhancement.bytes)) {
+    throw new Error('Renderer-web and authoring-archive enhancement runtime bytes differ.');
+  }
   const packages = {};
   for (const { directory, name } of STUDIO_RELEASE_PACKAGES) {
-    const path = approvedArtifactPath(directory);
-    const artifact = await packPackage({
-      directory: fileURLToPath(new URL(`packages/${directory}/`, root)),
+    const packageDirectory = fileURLToPath(new URL(`packages/${directory}/`, root));
+    await assertPublishedPackageDistMinified(packageDirectory);
+    const packInput = {
+      directory: packageDirectory,
       name,
-      outputPath: fileURLToPath(new URL(path, root)),
+      outputDirectory: fileURLToPath(new URL(`${APPROVED_ARTIFACT_DIRECTORY}/`, root)),
       version: record.release,
-    });
-    packages[name] = normalizeArtifact({ ...artifact, path }, name, record.release, path);
+    };
+    const firstArtifact = await packPackage(packInput);
+    const artifact = await packPackage(packInput);
+    for (const member of ['integrity', 'sha256', 'sha512', 'shasum', 'size', 'version']) {
+      if (firstArtifact[member] !== artifact[member]) {
+        throw new Error(`Two clean npm package builds for ${name} differ (${member}).`);
+      }
+    }
+    const path = approvedArtifactPath(directory, artifact.sha256);
+    packages[name] = normalizeArtifact(
+      { ...artifact, budgetBytes: RELEASE_PACKAGE_BUDGETS[name], path },
+      name,
+      record.release,
+      path,
+    );
   }
   return {
     browser,
@@ -79,7 +126,7 @@ export function assertApprovedReleaseArtifacts(document, record) {
       document.packages[name],
       name,
       record.release,
-      approvedArtifactPath(directory),
+      approvedArtifactPath(directory, document.packages[name]?.sha256),
     );
   }
 }
@@ -95,7 +142,7 @@ export async function assertApprovedReleaseArtifactFiles(document, record, root 
 export async function assertApprovedReleaseArtifactFile(approved, name, root = repositoryRoot) {
   const bytes = await readFile(new URL(approved.path, root));
   const actual = artifactFromBytes(bytes, approved.version);
-  for (const member of ['integrity', 'sha512', 'shasum', 'size', 'version']) {
+  for (const member of ['integrity', 'sha256', 'sha512', 'shasum', 'size', 'version']) {
     if (actual[member] !== approved[member]) {
       throw new Error(
         `Retained tarball for ${name}@${approved.version} changed after local approval (${member}).`,
@@ -151,7 +198,7 @@ export async function writeApprovedReleaseArtifacts(root = repositoryRoot) {
   return document;
 }
 
-async function packPackageWithNpm({ directory, name, outputPath, version }) {
+async function packPackageWithNpm({ directory, name, outputDirectory, version }) {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), 'studio-approved-pack-'));
   try {
     const { stdout } = await execFileAsync(
@@ -175,9 +222,14 @@ async function packPackageWithNpm({ directory, name, outputPath, version }) {
       throw new Error(`npm pack returned unsafe filename ${String(result?.filename)}.`);
     }
     const bytes = await readFile(join(temporaryDirectory, fileName));
+    const artifact = artifactFromBytes(bytes, version);
+    const outputPath = join(
+      outputDirectory,
+      `${basename(directory)}-${artifact.sha256.slice(0, 16)}.tgz`,
+    );
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, bytes);
-    return artifactFromBytes(bytes, version);
+    return artifact;
   } finally {
     await rm(temporaryDirectory, { force: true, recursive: true });
   }
@@ -186,6 +238,7 @@ async function packPackageWithNpm({ directory, name, outputPath, version }) {
 export function artifactFromBytes(bytes, version) {
   return {
     integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
+    sha256: createHash('sha256').update(bytes).digest('hex'),
     sha512: createHash('sha512').update(bytes).digest('hex'),
     shasum: createHash('sha1').update(bytes).digest('hex'),
     size: bytes.byteLength,
@@ -200,12 +253,16 @@ function normalizeArtifact(artifact, name, version, expectedPath) {
     Array.isArray(artifact) ||
     artifact.version !== version ||
     artifact.path !== expectedPath ||
+    artifact.budgetBytes !== RELEASE_PACKAGE_BUDGETS[name] ||
+    artifact.size > artifact.budgetBytes ||
     !/^sha512-[A-Za-z0-9+/]+={0,2}$/u.test(artifact.integrity) ||
+    !/^[a-f0-9]{64}$/u.test(artifact.sha256) ||
     !/^[a-f0-9]{128}$/u.test(artifact.sha512) ||
     !/^[a-f0-9]{40}$/u.test(artifact.shasum) ||
     !Number.isSafeInteger(artifact.size) ||
     artifact.size <= 0 ||
-    Object.keys(artifact).sort().join('\n') !== 'integrity\npath\nsha512\nshasum\nsize\nversion'
+    Object.keys(artifact).sort().join('\n') !==
+      'budgetBytes\nintegrity\npath\nsha256\nsha512\nshasum\nsize\nversion'
   ) {
     throw new Error(`Approved artifact for ${name}@${version} has an invalid closed shape.`);
   }
@@ -216,8 +273,11 @@ function normalizeArtifact(artifact, name, version, expectedPath) {
   return { ...artifact };
 }
 
-function approvedArtifactPath(directory) {
-  return `${APPROVED_ARTIFACT_DIRECTORY}/${directory}.tgz`;
+function approvedArtifactPath(directory, sha256) {
+  if (!/^[a-f0-9]{64}$/u.test(sha256)) {
+    return `${APPROVED_ARTIFACT_DIRECTORY}/${directory}-invalid.tgz`;
+  }
+  return `${APPROVED_ARTIFACT_DIRECTORY}/${directory}-${sha256.slice(0, 16)}.tgz`;
 }
 
 async function readOptionalNpmManifest(name, version) {

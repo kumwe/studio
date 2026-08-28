@@ -12,15 +12,24 @@ same-origin HTTP Content Security Policy template. Verify the manifest and asset
 generation. Serve fingerprinted assets immutably, use a controlled revalidation policy for HTML/manifests, and
 deploy/rollback one complete directory atomically.
 
+Schema validation is the first gate, not the last. The manifest must contain exactly one
+`browser-module` asset and exactly one `enhancement-runtime` asset. After schema validation, consumers MUST
+also reject duplicate asset paths and require `module.entryPoint` and `enhancementRuntime.entryPoint` to equal
+the paths of their respective single role-bearing assets. Studio's archive builder applies those same semantic
+checks before publication; Producer must apply them before admitting a deliberately re-pinned generation.
+
 Copy `studio-assets.json.release` unchanged into every emitted deployment object. The browser module carries a
 release identity compiled from the same coordinated release record and compares both `version` and
 `corpusManifestDigest` before resolving a selector, constructing a runtime, or making a request. That check
 catches stale cached JavaScript paired with newly emitted host configuration without fetching the manifest in
 the browser. Configless standalone mounting emits no deployment object and performs no manifest fetch.
 
-The package copy is available at `@kumwe/studio/dist/browser/`; npm consumers may import the self-contained
-module through `@kumwe/studio/browser-bundle`. RC and stable GitHub releases attach a deterministic
-`studio-browser-<version>.tar` plus its detached SHA-256 file for hosts that do not consume npm packages.
+The package copy is available at `@kumwe/studio/dist/browser/`; npm consumers resolve its manifest through
+`@kumwe/studio/browser-assets` or read `dist/browser/studio-assets.json` directly. There is deliberately no
+fixed browser-module export: the manifest's content-hashed `module.entryPoint` is the only deployable authoring
+module name. RC and stable GitHub releases attach a deterministic
+`studio-browser-<version>-<archive-hash>.tar` plus its detached SHA-256 file for hosts that do not consume npm
+packages.
 The package directory and release archive also contain the deployment guide and contract, the complete local
 JSON Schema closure for browser deployment and authoring HTTP, and the framework-neutral PHP reference. Every
 one of those files is covered by `studio-assets.json`; none adds a production process or package installation.
@@ -35,7 +44,7 @@ ordinary opted-in target and an explicit call from the host's external module:
 
 ```js
 // start-studio.js
-import { autoMountStudio } from './assets/studio-browser-<fingerprint>.js';
+import { autoMountStudio } from './assets/studio-browser-<fingerprint>.min.js';
 
 const report = await autoMountStudio();
 // Later: await report.handles[0]?.dispose();
@@ -78,7 +87,33 @@ depth 16. When server-rendering the raw-text JSON block, escape at least `<` as 
 the same pinned CSP/SRI policy as the browser asset. After schema validation, the bootstrap rejects any
 deployment whose release identity differs from the one compiled into the loaded module.
 
-## Exact Content Security Policy
+## Two browser surfaces, two policies
+
+The manifest governs two independent browser surfaces. They MUST NOT be treated as one bundle or one CSP
+profile:
+
+| Surface                    | Manifest selector                                                                                  | Loading model                                        | Policy source                              |
+| -------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
+| Contextual authoring       | `module.entryPoint`, bound to the one `assets[].role === "browser-module"` member                  | Host-controlled ES module; mounting is explicit      | `contentSecurityPolicy.headerTemplate`     |
+| Published-page enhancement | `enhancementRuntime.entryPoint`, bound to the one `assets[].role === "enhancement-runtime"` member | Classic self-contained IIFE with `defer`; no imports | `enhancementRuntime.contentSecurityPolicy` |
+
+The same manifest publishes `publicRenderer.style`, the exact server-rendered stylesheet materialization rule.
+Its `outputSchema` names
+`https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json#/$defs/publicStyleAsset`, the normative
+closed record a PHP host places in its immutable per-page delivery manifest.
+Producer writes the renderer's canonical UTF-8 CSS bytes unchanged, derives the content-hashed `.min.css` name
+and SRI with SHA-256, records the byte size, and refuses the 262,144-byte budget. The renderer-web corpus fixes
+`htmlBytes`, `htmlSha256`, `cssBytes`, and `cssSha256` for every vector so PHP and TypeScript prove the same
+canonical markup topology and stylesheet output. Its exact `publicStyleAsset` expectation additionally proves
+that path, full content hash, SRI, bytes, budget, role, media type, and minification flag all bind those same
+CSS bytes; validating the closed output shape alone is insufficient.
+
+The authoring module may contact only configured host operations and needs the authoring policy below. The
+published runtime never mounts Studio, reads an authoring configuration, contacts an endpoint, or creates a
+Trusted Types policy. It enhances only renderer-emitted `data-studio-*` attributes. Loading one surface never
+authorizes loading the other.
+
+### Authoring surface CSP
 
 For an archive and authoring operations served by the same PHP origin, emit the
 `studio-assets.json.contentSecurityPolicy.headerTemplate` value after replacing its single
@@ -102,6 +137,48 @@ uses permitted cross-origin operation URLs, append the distinct exact HTTPS orig
 `media-src` only when the admitted session needs them. Never use a wildcard, a scheme-wide source,
 `unsafe-eval`, `unsafe-inline`, or a nonce on the inert JSON block. Preview frames keep a separate response
 policy and are not enabled by this archive profile.
+
+### Published enhancement CSP and exact load
+
+For the public enhancement runtime, preserve this exact manifest-recorded baseline:
+
+```http
+Content-Security-Policy: default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'
+```
+
+That value is `studio-assets.json.enhancementRuntime.contentSecurityPolicy`, not the authoring
+`contentSecurityPolicy.headerTemplate`. It proves that the runtime itself needs no connection, inline script,
+inline style, eval, or Trusted Types policy. A published response may append only the exact `style-src`,
+`img-src`, `font-src`, or other content sources required by its server-rendered semantic page; those additions
+must not weaken or replace the four runtime directives above. In particular, the public runtime does not
+justify `unsafe-inline`, `unsafe-eval`, a wildcard source, `connect-src`, or `trusted-types lit-html`.
+
+Select and verify the file entirely from the admitted manifest:
+
+1. require exactly one `assets` member whose `role` is `enhancement-runtime`;
+2. require its `path` to equal `enhancementRuntime.entryPoint`;
+3. verify its recorded `bytes`, `budgetBytes`, `contentHash`, `integrity`, and `minified: true` against the
+   immutable file before activation;
+4. intersect the renderer result's `enhancements` with the manifest's closed `enhancementRuntime.enhancements`
+   array; and
+5. emit the following classic-script shape only when that intersection is non-empty.
+
+```html
+<script
+  src="/immutable-studio/<manifest-selected enhancement-runtime path>"
+  integrity="<matching assets member integrity>"
+  crossorigin="anonymous"
+  defer
+></script>
+```
+
+Both placeholders MUST come from the same verified manifest member; a filename, digest, or integrity value
+must never be reconstructed, guessed, or copied from another release. Do not add `type="module"`: the file's
+manifest-fixed format is `iife`, and `defer` is its published loading contract. The runtime is safe to include
+unconditionally, but the renderer's exact eight-family intersection is the sole contractual per-page need
+signal and is the normal inclusion gate. An empty intersection requires omission. Producer computes that
+signal from its conforming PHP renderer and returns it to the host; the host owns the final response and emits
+this manifest-selected tag.
 
 An omitted transport creates a blank, in-memory standalone page builder with JSON project import/download and
 save-intent download; it performs no endpoint or authentication request. A configured HTTP deployment is

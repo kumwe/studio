@@ -88,7 +88,7 @@ export async function enhanceStudioWeb(
   };
 }
 
-function enhanceTabs(
+export function enhanceTabs(
   container: HTMLElement,
   enhancement: Extract<StudioWebEnhancement, { kind: 'tabs' }>,
 ): () => void {
@@ -143,11 +143,27 @@ function enhanceTabs(
     });
   });
   activate(0, false);
-  return () =>
+  return () => {
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+    list.hidden = true;
+    list.removeAttribute('role');
+    buttons.forEach((button) => {
+      button.removeAttribute('aria-controls');
+      button.removeAttribute('aria-selected');
+      button.removeAttribute('id');
+      button.removeAttribute('role');
+      button.removeAttribute('tabindex');
+    });
+    panels.forEach((panel) => {
+      panel.hidden = false;
+      panel.removeAttribute('aria-labelledby');
+      panel.removeAttribute('id');
+      panel.removeAttribute('role');
+    });
+  };
 }
 
-function enhanceDialog(container: HTMLElement): () => void {
+export function enhanceDialog(container: HTMLElement): () => void {
   const disclosure = container.querySelector<HTMLDetailsElement>('[data-studio-dialog]');
   if (disclosure === null) return () => undefined;
   const trigger = disclosure.querySelector<HTMLElement>('[data-studio-dialog-trigger]');
@@ -200,10 +216,11 @@ function enhanceDialog(container: HTMLElement): () => void {
   return () => {
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
     disclosure.open = false;
+    trigger.removeAttribute('aria-expanded');
   };
 }
 
-function enhanceNotice(container: HTMLElement): () => void {
+export function enhanceNotice(container: HTMLElement): () => void {
   const notice = container.querySelector<HTMLElement>('[data-studio-notice]');
   if (notice === null) return () => undefined;
   const dismiss = notice.querySelector<HTMLButtonElement>('[data-studio-notice-dismiss]');
@@ -218,7 +235,7 @@ function enhanceNotice(container: HTMLElement): () => void {
   };
 }
 
-function enhancePopover(
+export function enhancePopover(
   container: HTMLElement,
   enhancement: Extract<StudioWebEnhancement, { kind: 'popover' }>,
 ): () => void {
@@ -259,8 +276,11 @@ function enhancePopover(
     listen(listeners, disclosure, 'focusout', close);
   }
   trigger.setAttribute('aria-expanded', String(disclosure.open));
-  return () =>
+  return () => {
     listeners.forEach(({ listener, target, type }) => target.removeEventListener(type, listener));
+    disclosure.open = false;
+    trigger.removeAttribute('aria-expanded');
+  };
 }
 
 function enhanceMotion(
@@ -307,7 +327,7 @@ function enhanceMotion(
   };
 }
 
-function enhanceCountdown(
+export function enhanceCountdown(
   container: HTMLElement,
   enhancement: Extract<StudioWebEnhancement, { kind: 'countdown' }>,
 ): () => void {
@@ -350,7 +370,7 @@ function enhanceCountdown(
   };
 }
 
-function enhanceLightbox(container: HTMLElement): () => void {
+export function enhanceLightbox(container: HTMLElement): () => void {
   const links = [...container.querySelectorAll<HTMLAnchorElement>('[data-studio-lightbox-open]')];
   if (links.length === 0) return () => undefined;
   const dialog = document.createElement('dialog');
@@ -412,7 +432,7 @@ function enhanceLightbox(container: HTMLElement): () => void {
   };
 }
 
-function enhanceNavigation(container: HTMLElement): () => void {
+export function enhanceNavigation(container: HTMLElement): () => void {
   const toggles = [
     ...container.querySelectorAll<HTMLButtonElement>('[data-studio-navigation-toggle]'),
   ];
@@ -449,7 +469,7 @@ function enhanceNavigation(container: HTMLElement): () => void {
   };
 }
 
-function enhanceSlideshow(
+export function enhanceSlideshow(
   container: HTMLElement,
   enhancement: Extract<StudioWebEnhancement, { kind: 'slideshow' }>,
 ): () => void {

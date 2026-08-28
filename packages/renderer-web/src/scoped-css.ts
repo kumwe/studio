@@ -46,7 +46,7 @@ export function compileStudioScopedStyleSheet(
     throw new TypeError('Scoped CSS scope must be a bounded CSS-safe identifier.');
   }
   if (sheet.rules.length > 100) throw new RangeError('Scoped stylesheet exceeds 100 rules.');
-  const base = `[data-studio-scope="${scope}"]`;
+  const base = `[data-studio-scope=${scope}]`;
   return sheet.rules
     .map((rule) => {
       if (!Object.hasOwn(TARGETS, rule.target)) {

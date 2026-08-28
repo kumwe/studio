@@ -181,6 +181,37 @@ describe('isHostPortError', () => {
     void message;
     expect(isHostPortError(withoutMessage)).toBe(false);
   });
+
+  it('enforces the schema-bound conflict and retry invariants', () => {
+    expect(isHostPortError({ ...hostError(), category: 'validation-failed' })).toBe(false);
+    expect(
+      isHostPortError({
+        ...hostError(),
+        category: 'unavailable',
+        retryable: true,
+        revision: undefined,
+        retryAfterMilliseconds: 1_000,
+      }),
+    ).toBe(true);
+    expect(
+      isHostPortError({
+        ...hostError(),
+        category: 'unavailable',
+        retryable: false,
+        revision: undefined,
+        retryAfterMilliseconds: 1_000,
+      }),
+    ).toBe(false);
+    expect(
+      isHostPortError({
+        ...hostError(),
+        category: 'validation-failed',
+        retryable: true,
+        revision: undefined,
+        retryAfterMilliseconds: 1_000,
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('HostPortFailure', () => {

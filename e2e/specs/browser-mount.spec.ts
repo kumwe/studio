@@ -4,22 +4,24 @@ import { expect, test, type Locator } from '@playwright/test';
 import { STUDIO_CONTRACT_VERSION } from '@kumwe/studio-protocol';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
+const browserAssetManifest = JSON.parse(
+  await readFile(
+    resolve(repositoryRoot, 'packages/studio-lit/dist/browser/studio-assets.json'),
+    'utf8',
+  ),
+) as {
+  module: { entryPoint: string };
+  release: { corpusManifestDigest: string; version: string };
+};
 const browserModule = resolve(
   repositoryRoot,
   'packages',
   'studio-lit',
   'dist',
   'browser',
-  'studio-browser.js',
+  browserAssetManifest.module.entryPoint,
 );
-const browserRelease = (
-  JSON.parse(
-    await readFile(
-      resolve(repositoryRoot, 'packages/studio-lit/dist/browser/studio-assets.json'),
-      'utf8',
-    ),
-  ) as { release: { corpusManifestDigest: string; version: string } }
-).release;
+const browserRelease = browserAssetManifest.release;
 const policy = [
   "default-src 'none'",
   "script-src 'self'",

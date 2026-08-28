@@ -114,15 +114,15 @@ its required matrix passes.
 
 ## Version 3 delivery sequence
 
-| Version 3 point      | Dart/Flutter outcome                                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Contract candidate   | Generator evaluation, package/API boundaries, Flutter interaction specification, and exact native profiles are reviewed  |
-| Generated models     | Dart and TypeScript round-trip the applicable canonical corpus; capability and error mappings are frozen                 |
-| Headless SDK         | Dart command, validation, migration, serialization, and host core pass `studio.profile/engine-dart`                      |
-| Native shell         | Flutter completes the semantic command set, responsive layout, and accessible non-drag routes                            |
-| Host integration     | Native media, rich text, extension/theme handling, preview, and a Kumwe App transport adapter are integrated             |
-| Qualification        | Cross-runtime, supported-platform, accessibility, performance, upgrade/recovery, and clean-registry evidence is produced |
-| Native profile claim | Dart/Flutter packages ship as one tested Version 3 set; unsupported capabilities remain explicit                         |
+| Version 3 point      | Dart/Flutter outcome                                                                                                          |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Contract candidate   | Generator evaluation, package/API boundaries, Flutter interaction specification, and exact native profiles are reviewed       |
+| Generated models     | Dart and TypeScript round-trip the applicable canonical corpus; capability and error mappings are frozen                      |
+| Headless SDK         | Dart command, validation, migration, serialization, and host core pass `studio.profile/engine-dart`                           |
+| Native shell         | Flutter completes the semantic command set, responsive layout, and accessible non-drag routes                                 |
+| Host integration     | Native media, rich text, extension/theme handling, preview, and the Producer-backed Kumwe App HTTP realization are integrated |
+| Qualification        | Cross-runtime, supported-platform, accessibility, performance, upgrade/recovery, and clean-registry evidence is produced      |
+| Native profile claim | Dart/Flutter packages ship as one tested Version 3 set; unsupported capabilities remain explicit                              |
 
 ## Gate evidence
 

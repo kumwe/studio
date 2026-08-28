@@ -12,6 +12,8 @@ Start with:
 
 - [`generic-host.md`](generic-host.md) for the implementation-neutral integration sequence and conformance
   obligations;
+- [Kumwe Producer](https://github.com/kumwe/producer) for the reusable PHP realization of Studio's public
+  wire and rendering contracts;
 - [`kumwe-app.md`](kumwe-app.md) for the first-party Kumwe App profile;
 - [`../../examples/php-authoring-host/README.md`](../../examples/php-authoring-host/README.md) for the executable,
   framework-neutral PHP boundary for all seven authoring operations;
@@ -24,12 +26,57 @@ Start with:
 - [`../portability/README.md`](../portability/README.md) for language/runtime rules; and
 - [`../media/README.md`](../media/README.md) for the media ownership boundary.
 
+## Studio, Producer, and Kumwe App
+
+Studio designs the host-neutral authoring, wire, rendering, and release contracts. [Kumwe
+Producer](https://github.com/kumwe/producer) is the separate PHP realization layer whose contract is to consume
+one exact Studio release and make it usable inside a PHP host. Kumwe App will consume Studio **through
+Producer** and supply the authoritative application services, policy, persistence, workflow, publication, and
+public delivery behind it.
+
+That relationship does not make Producer a Studio dependency. No Studio package imports Producer, recognizes
+its PHP namespaces, assumes its service container, or special-cases its routes or storage. Producer implements
+the same public boundary available to every other host; a non-PHP host can implement that boundary directly.
+Producer also does not become the content authority: it translates the Studio wire and rendering contract into
+PHP calls, while the integrating host independently authenticates, authorizes, validates, transacts, stores,
+versions, audits, publishes, and renders.
+
+In older planning text, “Kumwe App adapter” or “App renderer” means the App-owned authority and application
+services supplied **behind Producer's reusable PHP adapters**. It does not mean a direct Studio-to-App PHP
+integration, a second App-owned copy of the Studio wire contract, or an exception to generic-host neutrality.
+This terminology rule applies only to the first-party App mapping: another PHP host may use Producer, and any
+host may implement the public Studio contract independently.
+
+Before a Producer release can carry Studio into a host, it MUST vendor this closed, digest-verified input set
+from one coordinated release:
+
+| Studio release input                                                            | Producer consumption rule                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Canonical JSON Schemas and `@kumwe/studio-protocol/schemas/manifest.json`       | Vendor the complete referenced schema closure and validate PHP requests, results, artifacts, and renderer inputs against those exact bytes.                                                                                                                                                                                                                                                                            |
+| `@kumwe/studio-testkit/corpus-manifest.json`                                    | Verify the manifest digest recorded by the coordinated release before trusting any vendored fixture or vector.                                                                                                                                                                                                                                                                                                         |
+| Published conformance vectors                                                   | Replay at least the canonical (`vectors/canonical/`), renderer-web (`conformance/renderer-web/`), and rich-text (`conformance/rich-text/`) sets in PHP; replay every additional profile Producer claims.                                                                                                                                                                                                               |
+| Coordinated `studio-release.json`                                               | Pin one exact eight-package family, protocol version, corpus digest, and `browserArtifacts` locator set as a single unit. `authoringArchive.archiveStem` locates the content-hashed `browser-module` archive through approved release metadata; deferred `enhancementRuntime` resolves from `@kumwe/studio-renderer-web` under `packageBasePath: "dist/browser/"`. Never combine files from different Studio releases. |
+| `browserArtifacts.manifest.name` (`studio-assets.json`) and its prebuilt assets | Resolve the manifest only through the release record, then verify every recorded byte size, content hash, SRI value, budget, minification assertion, and release identity before exposing the authoring archive or `enhancement-runtime` to a host. Production only serves those prebuilt files.                                                                                                                       |
+
+This is the required consumption contract, not a claim that Producer is already published or qualified. Its
+founding work currently remains on a pre-release source pin; completion of the coordinated release re-pin,
+corpus-manifest verification, prebuilt-asset consumption, PHP wire/renderer implementation, and conformance
+replay belongs to Producer's own status and proof. Studio's reference PHP example does not make those Producer
+steps complete.
+
+A Studio contract change reaches Producer only through an explicit Producer change that deliberately replaces
+that complete pin, verifies all vendored digests, replays the PHP corpus, and records the new coordinated
+release. Floating package ranges, automatic workspace copying, and a partial schema or artifact refresh are
+not upgrades. Until that re-pin passes, Producer and every App deployment using it remain on the previous
+complete verified pin, or unavailable when no such Producer release exists yet.
+
 ## One integration path
 
-Every host follows this sequence. Kumwe App uses the same sequence with PHP application services and PHP HTTP
-endpoints.
+Every host follows this sequence. PHP hosts may use Producer to realize it; Kumwe App will do so and keep its
+PHP application services and PHP HTTP endpoints authoritative behind Producer.
 
-1. Pin one exact eight-package family and verify `studio-release.json` plus its corpus digest.
+1. Pin one exact eight-package family and verify `studio-release.json` plus its corpus digest. When using
+   Producer, select the Producer release whose digest-verified Studio pin names exactly that family.
 2. Build the browser bundle outside production, then deploy only immutable static assets. Production never installs or
    runs Node.js, npm, Vite, or a JavaScript application server.
 3. Admit trusted `authoring-target` declarations and their six canonical contribution families into one immutable,
@@ -48,7 +95,8 @@ endpoints.
 
 [`generic-host.md`](generic-host.md) is the complete implementation-neutral playbook, including the endpoint
 map, launch/save sequence, browser boundary, and acceptance checklist. [`kumwe-app.md`](kumwe-app.md) maps the
-same path onto Kumwe App's PHP services, extension generation, media, Twig/KIS rendering, workflow, and outbox.
+same path through Producer onto Kumwe App's PHP services, extension generation, media, Twig/KIS chrome,
+workflow, and outbox.
 
 ## Current Studio-side integration surface
 
@@ -70,19 +118,24 @@ repository, or a reference-host demonstration is not by itself an RC, host-suppo
 ## Cross-repository landing sequence
 
 1. Complete and verify `STUDIO-PROD-001`–`015` on the governed beta-development lane.
-2. In the host, update one exact release record and corpus digest atomically. Never combine an old Studio
-   package with the new renderer, vendor workspace builds, or reconstruct the catalog inside the host.
-3. Bind contextual resource launch, session, preview, media, resource, renderer, localization, contribution,
+2. In Producer, deliberately re-pin one exact Studio release record, schema/corpus closure, vectors, and
+   prebuilt artifacts; replay its canonical, renderer-web, and rich-text corpora in PHP and publish only the
+   verified Producer increment.
+3. In Kumwe App, update to that exact Producer increment and its transitive Studio coordinate atomically. The
+   App must not carry a second independent Studio pin. Other hosts update one exact Studio release record and
+   corpus digest directly. Never combine an old Studio package with a new renderer, vendor workspace builds,
+   or reconstruct the catalog inside a host.
+4. Bind contextual resource launch, session, preview, media, resource, renderer, localization, contribution,
    and persistence seams to host-owned authority. The host never imports or configures Editor.js.
-4. Replay every applicable portable corpus through the real host adapters and renderer, then run the
+5. Replay every applicable portable corpus through the real host adapters and renderer, then run the
    integrated browser/security/accessibility/rollback matrix.
-5. Promote a channel only for the exact immutable family whose profile evidence was accepted.
+6. Promote a channel only for the exact immutable family whose profile evidence was accepted.
 
 ## Integration principle
 
 Studio owns authoring intent and deterministic composition operations. The host owns authority and durable
-effects. Kumwe App implements every authoritative effect through PHP application services and HTTP endpoints
-(`STUDIO-PROD-010`); compiled browser assets require no Node.js or npm in production
+effects. Kumwe App will expose every authoritative effect behind Producer through App PHP application services
+and HTTP endpoints (`STUDIO-PROD-010`); compiled browser assets require no Node.js or npm in production
 (`STUDIO-PROD-011`).
 
 | Studio owns                                           | Host owns                                                      |

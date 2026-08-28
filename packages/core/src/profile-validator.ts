@@ -13,7 +13,7 @@ import type { JsonSchema } from '@kumwe/studio-protocol';
  *
  * Supported keywords are exactly the profile's closed set — types, `enum`,
  * `const`, `required`/`properties`/`additionalProperties`/`propertyNames`/
- * `dependentRequired`, `items`/`prefixItems` and array bounds, string and
+ * `dependentRequired`, `items`/`prefixItems`/`contains` and array bounds, string and
  * number bounds, `allOf`/`anyOf`/`oneOf`/`not`/`if`/`then`/`else`,
  * within-registry `$defs`/`$ref`, and the profile's annotations — plus two
  * canonical-schema affordances the profile contract reserves for reviewed
@@ -54,6 +54,7 @@ const SUPPORTED_KEYWORDS = new Set([
   'allOf',
   'anyOf',
   'const',
+  'contains',
   'default',
   'dependentRequired',
   'description',
@@ -65,10 +66,12 @@ const SUPPORTED_KEYWORDS = new Set([
   'if',
   'items',
   'maxItems',
+  'maxContains',
   'maxLength',
   'maxProperties',
   'maximum',
   'minItems',
+  'minContains',
   'minLength',
   'minProperties',
   'minimum',
@@ -281,6 +284,7 @@ function walkDocument(
           walkSchemaMap(operand, appendPointer(pointer, keyword));
           break;
         case 'additionalProperties':
+        case 'contains':
         case 'else':
         case 'if':
         case 'items':
@@ -328,9 +332,11 @@ function walkDocument(
           }
           break;
         case 'maxItems':
+        case 'maxContains':
         case 'maxLength':
         case 'maxProperties':
         case 'minItems':
+        case 'minContains':
         case 'minLength':
         case 'minProperties':
           if (typeof operand !== 'number' || !Number.isInteger(operand) || operand < 0) {
@@ -369,6 +375,19 @@ function walkDocument(
         default:
           throw new TypeError(`${keywordLocation} is not interpretable.`);
       }
+    }
+    if (
+      (value.minContains !== undefined || value.maxContains !== undefined) &&
+      value.contains === undefined
+    ) {
+      throw new TypeError(`${location} declares contains bounds without contains.`);
+    }
+    if (
+      typeof value.minContains === 'number' &&
+      typeof value.maxContains === 'number' &&
+      value.minContains > value.maxContains
+    ) {
+      throw new TypeError(`${location} declares minContains greater than maxContains.`);
     }
   };
 
@@ -830,6 +849,33 @@ function validateArrayKeywords(
         'uniqueItems',
         `must NOT have duplicate items (items ## ${duplicate[0]} and ${duplicate[1]} are identical)`,
       );
+    }
+  }
+  if (schema.contains !== undefined) {
+    const minimum = typeof schema.minContains === 'number' ? schema.minContains : 1;
+    const maximum = typeof schema.maxContains === 'number' ? schema.maxContains : Infinity;
+    let matches = 0;
+    for (let index = 0; index < instance.length; index += 1) {
+      const scratch: SchemaValidationError[] = [];
+      if (
+        validateSubschema(
+          schema.contains as Subschema,
+          instance[index],
+          `${path}/${index}`,
+          scratch,
+          program,
+          new Set(),
+          memo,
+        )
+      ) {
+        matches += 1;
+      }
+    }
+    if (matches < minimum || matches > maximum) {
+      const range = Number.isFinite(maximum)
+        ? `between ${minimum} and ${maximum}`
+        : `at least ${minimum}`;
+      fail('contains', `must contain ${range} matching items`);
     }
   }
   return valid;

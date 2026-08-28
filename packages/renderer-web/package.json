@@ -37,7 +37,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b && node ../../scripts/minify-package-dist.mjs --package packages/renderer-web && node ../../scripts/build-studio-enhancement-runtime.mjs"
   },
   "dependencies": {
     "@kumwe/studio-core": "0.1.0-beta.2",

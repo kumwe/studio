@@ -235,12 +235,15 @@ idempotency key, revision, credential, CSRF value, or authored document in a URL
 `Cache-Control: no-store`, and `X-Content-Type-Options: nosniff`; hosts enforce a bounded request size before
 schema validation.
 
-For Kumwe App, these routes terminate in PHP application services. The Studio client is compiled browser code;
+For Kumwe App, Producer realizes these routes from one deliberately pinned Studio contract and dispatches them
+into App-owned PHP application services. Producer translates the wire boundary but owns neither authority nor
+storage. The Studio client is compiled browser code;
 serving it and accepting these HTTP calls requires no production Node/npm process or package installation
 (`STUDIO-PROD-010`, `STUDIO-PROD-011`). `@kumwe/studio-core` publishes the platform-neutral production
 adapter, `@kumwe/studio` supplies its compiled-browser binding, and `@kumwe/studio-testkit` publishes the
-reference responder and compatibility facade for conformance. A PHP host implements the same schemas and
-semantics directly rather than running that responder in production.
+reference responder and compatibility facade for conformance. A generic PHP host may implement the same
+schemas and semantics directly, or consume a qualified Producer release, rather than running that responder in
+production. Studio itself imports and special-cases neither path.
 
 Workflow transitions, public rendering, and outbound webhooks are host-owned application seams. They are not
 browser authoring ports and this binding does not invent routes for them. Studio may save content that the host

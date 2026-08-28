@@ -9,9 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 interface StaticAssetRecord {
+  budgetBytes?: number;
   bytes: number;
+  contentHash?: string;
   integrity: string;
   mediaType: string;
+  minified?: true;
   path: string;
   role: string;
 }
@@ -94,6 +97,14 @@ describe('standalone static deployment', () => {
       expect(asset.integrity, asset.path).toBe(
         `sha256-${createHash('sha256').update(content).digest('base64')}`,
       );
+      if (asset.mediaType === 'text/javascript' || asset.mediaType === 'text/css') {
+        const contentHash = createHash('sha256').update(content).digest('hex');
+        expect(asset.contentHash, asset.path).toBe(contentHash);
+        expect(asset.path, asset.path).toContain(contentHash.slice(0, 16));
+        expect(asset.path, asset.path).toMatch(/\.min\.(?:css|js)$/u);
+        expect(asset.minified, asset.path).toBe(true);
+        expect(asset.bytes, asset.path).toBeLessThanOrEqual(asset.budgetBytes ?? 0);
+      }
     }
   });
 
@@ -107,7 +118,7 @@ describe('standalone static deployment', () => {
     expect(document.match(/integrity="sha256-[A-Za-z0-9+/]+={0,2}"/gu)).toHaveLength(3);
     expect(document.match(/crossorigin="anonymous"/gu)).toHaveLength(3);
     expect(entry.length).toBeGreaterThan(10_000);
-    expect(entry).toMatch(/from"\.\/studio-browser-[a-f0-9]{16}\.js"/u);
+    expect(entry).toMatch(/from"\.\/studio-browser-[a-f0-9]{16}\.min\.js"/u);
     expect(entry).not.toMatch(/(?:from\s*|import\s*\()['"](?:node:|@kumwe\/|lit(?:\/|['"]))/u);
     expect(browserModule.length).toBeGreaterThan(100_000);
     expect(browserModule).not.toMatch(/\b(?:import|export)\s+(?:[^"'();]*?\sfrom\s*)?["']/u);
@@ -130,6 +141,11 @@ describe('standalone static deployment', () => {
     expect(html).toContain('<noscript>');
     expect(html).not.toMatch(/<script(?:\s|>)/iu);
     expect(css).toContain('[data-studio-block]');
+    expect(manifest.publicRenderer.styleSheet).toMatch(
+      /^assets\/studio-public-[a-f0-9]{16}\.min\.css$/u,
+    );
+    expect(css.endsWith('\n')).toBe(false);
+    expect(html).toContain(`integrity="sha256-`);
   });
 
   it('serves the complete deployment from a process whose executable path contains no Node tooling', async () => {
@@ -254,7 +270,7 @@ function request(
 
 function browserDistributionAsset(): StaticAssetRecord {
   const asset = manifest.assets.find((candidate) =>
-    /^assets\/studio-browser-[a-f0-9]{16}\.js$/u.test(candidate.path),
+    /^assets\/studio-browser-[a-f0-9]{16}\.min\.js$/u.test(candidate.path),
   );
   if (asset === undefined) {
     throw new Error('The deployment manifest has no fingerprinted Studio browser module.');

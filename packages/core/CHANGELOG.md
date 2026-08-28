@@ -4,6 +4,11 @@
 
 ### Minor Changes
 
+- Complete the beta.2 host-neutral authoring runtime: configuration-first standalone and hosted deployment,
+  local import/download fallback, contextual extension targets, the exact seven-operation AJAX adapter, and
+  host-minted successor-context advancement after accepted saves. Deployment documents now require `kind`,
+  `mount`, and a release identity copied from the verified browser-assets manifest.
+
 - [#48](https://github.com/kumwe/studio/pull/48) [`d20928d`](https://github.com/kumwe/studio/commit/d20928d00ec4e2126122e09345b28c3861583d25) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the DOM-free contextual host session that resolves resource-bound targets, hydrates exact Model, Blueprint, and Entry drafts, dispatches their commands behind independent revision fences, and plans and reconciles the three explicit save outcomes without losing excluded local work.
 
 ### Patch Changes

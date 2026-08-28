@@ -247,9 +247,10 @@ or production-policy coverage.
 
 ## Reference implementation requirements
 
-The Kumwe App adapter must call PHP application services rather than querying Doctrine, resolving the DI
-container dynamically, or putting business rules in browser TypeScript. Twig renderers remain server-side.
-Studio is delivered to Kumwe App as compiled browser assets; a production server MUST NOT install or run Node,
-npm, a JavaScript application server, or a package-registry client (`STUDIO-PROD-010`, `STUDIO-PROD-011`).
-Node/npm may remain build, test, and release tools outside the production runtime. Flutter and other hosts can
-implement the same behavior through HTTP or a native bridge.
+For Kumwe App, Producer's reusable PHP adapter must call App PHP application services rather than querying
+Doctrine, resolving the DI container dynamically, or putting business rules in browser TypeScript. App Twig
+renderers remain server-side behind that boundary. Studio is delivered to Kumwe App as compiled browser
+assets; a production server MUST NOT install or run Node, npm, a JavaScript application server, or a
+package-registry client (`STUDIO-PROD-010`, `STUDIO-PROD-011`). Node/npm may remain build, test, and release
+tools outside the production runtime. Producer is a PHP realization choice, not part of the host-neutral
+contract; Flutter and other hosts can implement the same behavior through HTTP or a native bridge.

@@ -1,5 +1,15 @@
 export { enhanceStudioWeb } from './enhance.js';
 export {
+  STUDIO_PUBLIC_ENHANCEMENT_FAMILIES,
+  autoEnhancePublishedStudio,
+  enhancePublishedStudio,
+  needsStudioPublicEnhancementRuntime,
+} from './enhancement-runtime.js';
+export type {
+  StudioPublishedEnhancementHandle,
+  StudioPublicEnhancementFamily,
+} from './enhancement-runtime.js';
+export {
   runRendererWebVector,
   type RendererWebVector,
   type RendererWebVectorBinding,

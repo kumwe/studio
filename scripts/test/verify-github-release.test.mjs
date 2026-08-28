@@ -5,8 +5,8 @@ import { collectGithubReleaseFailures } from '../verify-github-release.mjs';
 
 const notes = '# Studio 0.1.0-rc.2\n\nImmutable release notes.\n';
 const assets = [
-  { name: 'studio-browser-0.1.0-rc.2.tar', size: 123_456 },
-  { name: 'studio-browser-0.1.0-rc.2.tar.sha256', size: 106 },
+  { name: 'studio-browser-0.1.0-rc.2-0123456789abcdef.tar', size: 123_456 },
+  { name: 'studio-browser-0.1.0-rc.2-0123456789abcdef.tar.sha256', size: 123 },
 ];
 
 function metadata(overrides = {}) {

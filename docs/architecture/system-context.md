@@ -99,12 +99,17 @@ still the required end-to-end host acceptance flow, not a claim that a real host
 3. A trusted renderer maps typed nodes and semantic design choices to output.
 4. Optional progressive enhancement loads independently of Studio.
 
-## Kumwe App as reference host
+## Producer-backed Kumwe App as reference host
 
-Kumwe App should implement the host and renderer contracts while preserving its own inward dependency direction. Studio packages must not import Kumwe App PHP, Twig, route, database, or extension types. Kumwe App should adapt its content definitions, business definitions, contribution registry, media service, authorization, workflows, revisions, and Twig presentation into the public Studio contracts.
+Kumwe App consumes Studio through Kumwe Producer, which realizes the pinned host and renderer contracts in PHP
+while preserving the App's inward dependency direction. Studio packages must not import Producer or Kumwe App
+PHP, Twig, route, database, or extension types. Kumwe App supplies its content definitions, business
+definitions, contribution registry, media service, authorization, workflows, revisions, and Twig presentation
+as authoritative services behind Producer's public-contract adapters. Other hosts remain free to implement the
+same host-neutral contracts directly.
 
 For business records, a blueprint binds to typed fields and authorized query or action references. The blueprint is presentation metadata; it is not the authoritative business record store.
 
-Kumwe App's PHP application services, exposed through PHP HTTP endpoints, remain authoritative for every
+Kumwe App's PHP application services, exposed behind Producer through PHP HTTP endpoints, remain authoritative for every
 contextual launch and save outcome. Studio is delivered to the browser as compiled assets; neither Node.js nor
 npm is a Kumwe App production-runtime dependency (`STUDIO-PROD-010` and `STUDIO-PROD-011`).

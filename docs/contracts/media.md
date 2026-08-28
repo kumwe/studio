@@ -119,4 +119,7 @@ the responsibility of the Studio shell/custom field using this headless state ma
 complete browser accessibility and host-specific media-policy conformance remains a release-gate
 obligation and is not inferred from this implementation.
 
-Kumwe App will implement the authoritative media operations with its media application services. A separate media repository is unnecessary unless a future independent media service develops a lifecycle and audience beyond Studio.
+Kumwe App will expose authoritative media operations from its media application services through Producer's
+PHP realization. Producer translates the pinned Studio contract but owns neither media authority nor storage.
+A separate media repository is unnecessary unless a future independent media service develops a lifecycle and
+audience beyond Studio; generic hosts may implement the same public media contract without Producer.

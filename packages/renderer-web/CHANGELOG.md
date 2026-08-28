@@ -2,6 +2,13 @@
 
 ## 0.1.0-beta.2
 
+### Minor Changes
+
+- Publish the exact tabs, dialog, popover, notice, slideshow, lightbox, countdown, and navigation enhancement
+  families as one self-contained deterministic minified browser runtime. The renderer's `enhancements` output is
+  the sole per-page need signal; activation uses only renderer-emitted data attributes and preserves semantic
+  no-JavaScript fallbacks.
+
 ### Patch Changes
 
 - Updated dependencies [[`e82d4fa`](https://github.com/kumwe/studio/commit/e82d4fa28160205db6a0b34a6955a0f7d71ccca9), [`d20928d`](https://github.com/kumwe/studio/commit/d20928d00ec4e2126122e09345b28c3861583d25)]:

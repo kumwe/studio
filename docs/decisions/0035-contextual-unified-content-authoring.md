@@ -42,9 +42,11 @@ route. Inline, minimized, maximized, and full-screen presentations are projectio
 authoring state, not different persistence workflows.
 
 Host authority is unchanged. Studio requests effects through declared ports; the host authenticates,
-authorizes, validates, persists, versions, audits, migrates, previews, and publishes. Kumwe App implements those
-server effects through PHP application services and PHP HTTP endpoints. Node.js and npm remain build, test, and
-release tools only; production deploys prebuilt browser assets and no server-side JavaScript authority.
+authorizes, validates, persists, versions, audits, migrates, previews, and publishes. Kumwe App exposes those
+server effects from App PHP application services and PHP HTTP endpoints behind Producer's reusable PHP
+realization. Studio does not special-case that first-party composition; another host may implement the same
+public contract directly. Node.js and npm remain build, test, and release tools only; production deploys
+prebuilt browser assets and no server-side JavaScript authority.
 
 Canonical contribution kinds remain `block-definition`, `pattern`, `field-adapter`, `inspector`,
 `design-vocabulary`, and `migration`. Contextual authoring consumes their active owner-aware generation and
@@ -62,7 +64,7 @@ the three explicit save outcomes, including exact host-successor-context adoptio
 configuration-driven browser runtime binds those components to exact host routes, while standalone mounting
 supplies a blank built-in workspace without a host.
 
-Those components implement the Studio side of this decision; they do not certify a Kumwe App adapter, complete
+Those components implement the Studio side of this decision; they do not certify a Producer-backed Kumwe App integration, complete
 Model/Entry authoring breadth, host transaction and rendering behavior, the `authoring-web` profile, or the
 `STUDIO-PROD-015` acceptance journey.
 

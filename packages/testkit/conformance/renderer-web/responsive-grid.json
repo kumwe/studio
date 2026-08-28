@@ -21,6 +21,21 @@
   "bindings": [],
   "media": [],
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6431,
+    "cssSha256": "bfb9fa95aad407e06ae5ec49a5863341df1079aa56e2f515935a68d987760952",
+    "htmlBytes": 154,
+    "htmlSha256": "4bca41bccfa6449af8b716b896bea4d3b7b5f26de4492c76d3b7e55a704c4fda",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-bfb9fa95aad407e0.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6431,
+      "budgetBytes": 262144,
+      "contentHash": "bfb9fa95aad407e06ae5ec49a5863341df1079aa56e2f515935a68d987760952",
+      "integrity": "sha256-v7n6larUB+Bq5exJpYYzQd8QeapW4vUVk1po2Yd2CVI=",
+      "minified": true
+    },
     "htmlContains": ["data-studio-layout=\"grid\""],
     "htmlExcludes": ["<script"],
     "cssContains": [

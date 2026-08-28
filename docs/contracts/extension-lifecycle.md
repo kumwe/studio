@@ -95,4 +95,7 @@ target collision rejection, disable/reactivation, trust revocation and atomic ow
 
 ## Kumwe App mapping
 
-Kumwe App should compile Studio contributions through its existing trusted, owner-aware immutable runtime generation. Studio must not introduce a parallel extension authority. The adapter translates Kumwe App contribution lifecycle into this portable state vocabulary.
+Kumwe App should compile Studio contributions through its existing trusted, owner-aware immutable runtime
+generation. Studio must not introduce a parallel extension authority. Producer's exact pinned PHP adapter
+translates this portable lifecycle vocabulary into the App-owned generation; Producer owns neither extension
+authority nor storage, and Studio imports or special-cases neither Producer nor App.

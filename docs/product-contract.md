@@ -100,8 +100,10 @@ native state as a host contract, or persist dependency-native Editor.js data as 
   effect through declared host ports and APIs. The host MUST independently authenticate, authorize, validate,
   transact, version, audit, and apply every load, create, save, type-definition, migration, workflow, media,
   preview, webhook, publication, and rendering operation. Kumwe App MUST implement those server operations in
-  PHP application services exposed through PHP HTTP endpoints; browser JavaScript MUST NOT become a parallel
-  server authority or bypass PHP policy and persistence. A host MAY provide Studio's mount, resource launch,
+  PHP application services exposed through PHP HTTP endpoints behind the exact digest-pinned Kumwe Producer
+  realization. Producer translates Studio's wire and rendering contracts into PHP but MUST NOT become the
+  authority or storage owner. Browser JavaScript MUST NOT become a parallel server authority or bypass PHP
+  policy and persistence. Studio remains host-neutral and MUST NOT import or special-case Producer. A host MAY provide Studio's mount, resource launch,
   capability bounds, endpoint routing, and standard authentication transport as bounded declarative JSON. That
   browser-readable configuration is routing and presentation input only: it MUST NOT contain a long-lived
   credential, grant permission, or replace the server's per-request checks. A configured endpoint's
@@ -181,7 +183,8 @@ journey:
     unresolved, upgrade, and migration behavior.
 13. Prove equivalent pointer, keyboard, structural-control, and required assistive-technology outcomes.
 14. Record that every accepted durable effect passed through the authoritative host API and, for Kumwe App,
-    through PHP application services and PHP HTTP endpoints.
+    through the exact pinned Producer realization into App-owned PHP application services and PHP HTTP
+    endpoints.
 
 ## Current implementation relationship
 

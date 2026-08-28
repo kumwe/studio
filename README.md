@@ -2,7 +2,11 @@
 
 Kumwe Studio is a portable, schema-aware visual composition platform for building reusable blueprints and populating structured content without requiring authors to hand-code a page. Safe HTML import is normalized into Studio's bounded structural markup, styling is expressed through semantic presentation intent or a separately governed scoped-style boundary, and authored JavaScript or template code is never persisted.
 
-Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe App](https://github.com/kumwe/app) is the first reference host, not a hard-coded dependency.
+Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and
+host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe
+App](https://github.com/kumwe/app) is the first reference host and will consume Studio through [Kumwe
+Producer](https://github.com/kumwe/producer), the separate digest-pinned PHP realization layer now under
+founding development. Neither Producer nor Kumwe App is a hard-coded Studio dependency.
 
 The normative product target is the [Studio product contract](docs/product-contract.md): creating or editing
 managed content opens Studio for that exact resource, where an authorized author can start from a blank canvas
@@ -90,7 +94,8 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
 2. Read the [architecture](docs/architecture/README.md) and [normative contracts](docs/contracts/README.md).
 3. Walk through the [authoring experience](docs/experience/README.md) and its implementable workspace specification.
 4. Check the [programme status](docs/roadmap/STATUS.md) and [dependency roadmap](docs/roadmap/README.md).
-5. Choose the [generic host](docs/integration/generic-host.md) or [Kumwe App](docs/integration/kumwe-app.md) integration path.
+5. Choose the [generic host](docs/integration/generic-host.md) path, or the
+   [Producer-backed Kumwe App](docs/integration/kumwe-app.md) path for the first-party PHP integration.
 6. Follow [contribution requirements](CONTRIBUTING.md) and the repository instructions in [AGENTS.md](AGENTS.md).
 
 ## Embed Studio
@@ -108,7 +113,7 @@ The smallest deployment is a backendless page builder:
 
 ```js
 // /assets/start-studio.js
-import { autoMountStudio } from './studio-browser-<fingerprint>.js';
+import { autoMountStudio } from './assets/studio-browser-<fingerprint>.min.js';
 
 await autoMountStudio();
 ```
@@ -140,7 +145,8 @@ Follow the [prebuilt browser asset guide](docs/integration/prebuilt-browser-asse
 
 Node.js and npm are contributor, build, test, and release tools only. Official browser assets are compiled
 before deployment. A production host serves those assets and implements authoritative operations through its
-own server application; Kumwe App does so through PHP application services and PHP HTTP endpoints. Production
+own server application; Kumwe App will do so through Producer, backed by App PHP application services and PHP
+HTTP endpoints, once the exact Studio/Producer pair is implemented and qualified. Production
 operators and content authors do not install or run Node.js, npm, Vite, or another JavaScript server to use
 Studio.
 

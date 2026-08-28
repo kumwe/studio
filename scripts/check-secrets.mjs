@@ -52,7 +52,18 @@ for (const path of repositoryFiles) {
     continue;
   }
   const absolutePath = join(repositoryRoot, path);
-  if ((await stat(absolutePath)).size > maximumFileBytes) {
+  let metadata;
+  try {
+    metadata = await stat(absolutePath);
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') {
+      // `git ls-files --cached` includes tracked files deleted in the current
+      // release worktree. There are no remaining bytes to scan.
+      continue;
+    }
+    throw error;
+  }
+  if (metadata.size > maximumFileBytes) {
     skippedFileCount += 1;
     continue;
   }

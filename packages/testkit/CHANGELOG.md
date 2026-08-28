@@ -4,6 +4,10 @@
 
 ### Minor Changes
 
+- Publish the PHP-replayable deployment, authoring transport, successor-context, renderer-web, rich-text, and
+  eight-family interactive-behavior vectors behind the coordinated corpus manifest. Digest-pinned realization
+  layers can verify the complete beta.2 contract without executing Studio TypeScript.
+
 - [#48](https://github.com/kumwe/studio/pull/48) [`f78b000`](https://github.com/kumwe/studio/commit/f78b00006a58222f2b28621fc5c5d963e2f865f4) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Add the fixture-driven contextual authoring host port and HTTP mapping, plus a selector-neutral first-stride
   runner for exact launches, coordinated Model/Blueprint/Entry commands, and host-authoritative save boundaries.
   The runner explicitly remains partial and does not make a complete authoring-web conformance claim.

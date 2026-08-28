@@ -175,7 +175,22 @@ async function consumesChangesets(base) {
   }
   // A version commit deletes the changesets it applies, except in pre mode,
   // where it moves them into .changeset/pre/ instead; both count as consumed.
-  return nameStatus.split('\n').some((line) => {
+  // An unpublished prerelease may be amended before its first registry publish.
+  // In that case a changeset created only on the feature branch has no tracked
+  // top-level source to delete: the generated release diff contains only the
+  // added .changeset/pre/ record. Accept that generated shape only after every
+  // top-level changeset has been consumed.
+  const worktreeStatus = await git(['status', '--porcelain', '--untracked-files=all']);
+  const worktreeLines = worktreeStatus.split('\n').flatMap((line) => {
+    if (line.length < 4) return [];
+    const status = line.slice(0, 2);
+    const path = line.slice(3);
+    if (status === '??' || status.includes('A')) return [`A\t${path}`];
+    if (status.includes('D')) return [`D\t${path}`];
+    return [];
+  });
+  const lines = [...nameStatus.split('\n'), ...worktreeLines];
+  const consumesTrackedChangeset = lines.some((line) => {
     const [status, source] = line.split('\t');
     if (status === undefined || source === undefined) {
       return false;
@@ -184,6 +199,16 @@ async function consumesChangesets(base) {
       return false;
     }
     return /^\.changeset\/[^/]+\.md$/u.test(source) && !source.endsWith('/README.md');
+  });
+  if (consumesTrackedChangeset) {
+    return true;
+  }
+  if (unconsumedChangesets.length > 0) {
+    return false;
+  }
+  return lines.some((line) => {
+    const [status, path] = line.split('\t');
+    return status === 'A' && /^\.changeset\/pre\/[^/]+\.md$/u.test(path ?? '');
   });
 }
 

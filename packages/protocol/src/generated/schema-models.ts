@@ -30,7 +30,7 @@ export const GENERATED_TYPESCRIPT_MODEL_METADATA: GeneratedTypeScriptModelMetada
   }),
   schemaCount: 55,
   schemaEpoch: 'https://schemas.kumwe.org/studio/v1/',
-  schemaManifestDigest: 'sha256-zkKU3uaMsVS+D3lxGu23Ih135EIuMjcAKe0ftjRhndM=',
+  schemaManifestDigest: 'sha256-t9QdbL5xp3D0M93OEr3NVYKivgJJGR9IRa1SeAef9uk=',
   supportedWireProtocolRange: '0.1.0-draft.2',
 });
 
@@ -2418,7 +2418,17 @@ export type GeneratedRendererWebVector = {
     port: GeneratedCommonLocalName;
     value: GeneratedCommonJsonValue;
   }[];
-  context?: { allowBlobMedia?: boolean };
+  context?: {
+    allowBlobMedia?: boolean;
+    scopedStyles?: {
+      [key: string]: {
+        rules: {
+          declarations: { [key: string]: string };
+          target: 'action' | 'content' | 'heading' | 'media' | 'self';
+        }[];
+      };
+    };
+  };
   coverage: {
     behaviors: (
       | 'accordion-native'
@@ -2453,7 +2463,10 @@ export type GeneratedRendererWebVector = {
     )[];
   };
   expect: {
+    activationMarkers: string[];
+    cssBytes: number;
     cssContains: string[];
+    cssSha256: string;
     enhancements: (
       | 'chart'
       | 'countdown'
@@ -2468,8 +2481,11 @@ export type GeneratedRendererWebVector = {
       | 'slideshow'
       | 'tabs'
     )[];
+    htmlBytes: number;
     htmlContains: string[];
     htmlExcludes: string[];
+    htmlSha256: string;
+    publicStyleAsset: GeneratedStudioBrowserAssetsPublicStyleAsset;
   };
   id: GeneratedCommonStableId;
   media: {
@@ -2830,6 +2846,29 @@ export type GeneratedSchemaProfileTypeName =
 export type GeneratedStudioBrowserAssets = {
   assets: [GeneratedStudioBrowserAssetsAsset, ...GeneratedStudioBrowserAssetsAsset[]];
   contentSecurityPolicy: GeneratedStudioBrowserAssetsContentSecurityPolicy;
+  enhancementRuntime: {
+    activation: 'renderer-data-attributes';
+    contentSecurityPolicy: "default-src 'none'; script-src 'self'; require-trusted-types-for 'script'; trusted-types 'none'";
+    enhancements: [
+      'countdown',
+      'dialog',
+      'lightbox',
+      'navigation',
+      'notice',
+      'popover',
+      'slideshow',
+      'tabs',
+    ];
+    entryPoint: GeneratedStudioBrowserAssetsPath;
+    format: 'iife';
+    loading: 'defer';
+    needSignal: {
+      rule: 'closed-family-intersection-non-empty';
+      source: 'renderer-web.enhancements';
+    };
+    noJavaScriptFallback: 'semantic-renderer-output';
+    safeToIncludeUnconditionally: true;
+  };
   kind: 'studio-browser-assets';
   module: {
     entryPoint: GeneratedStudioBrowserAssetsPath;
@@ -2858,16 +2897,39 @@ export type GeneratedStudioBrowserAssets = {
     requires: string[];
     servingModel: 'static-files';
   };
+  publicRenderer: {
+    style: {
+      budgetBytes: 262144;
+      contentHashAlgorithm: 'sha256';
+      fileNameTemplate: 'studio-public-{{CONTENT_HASH_16}}.min.css';
+      integrityAlgorithm: 'sha256';
+      materialization: 'exact-utf8-bytes';
+      mediaType: 'text/css';
+      minified: true;
+      outputSchema: 'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json#/$defs/publicStyleAsset';
+      source: 'renderer-web.css';
+    };
+  };
   release: GeneratedStudioBrowserAssetsRelease;
   schemaVersion: 1;
 };
 
 export type GeneratedStudioBrowserAssetsAsset = {
+  budgetBytes?: number;
   bytes: number;
+  contentHash?: string;
   integrity: string;
   mediaType: 'text/javascript' | 'text/plain' | 'text/markdown' | 'application/json';
+  minified?: true;
   path: GeneratedStudioBrowserAssetsPath;
-  role: 'browser-module' | 'license' | 'notice' | 'release-record' | 'documentation' | 'schema';
+  role:
+    | 'browser-module'
+    | 'enhancement-runtime'
+    | 'license'
+    | 'notice'
+    | 'release-record'
+    | 'documentation'
+    | 'schema';
 };
 
 export type GeneratedStudioBrowserAssetsContentSecurityPolicy = {
@@ -2883,6 +2945,18 @@ export type GeneratedStudioBrowserAssetsContentSecurityPolicy = {
 };
 
 export type GeneratedStudioBrowserAssetsPath = string;
+
+/** The closed per-page delivery-manifest record for exact canonical renderer-web CSS materialized by Producer or another server renderer. */
+export type GeneratedStudioBrowserAssetsPublicStyleAsset = {
+  budgetBytes: 262144;
+  bytes: number;
+  contentHash: string;
+  integrity: string;
+  mediaType: 'text/css';
+  minified: true;
+  path: string;
+  role: 'public-style';
+};
 
 /** The exact coordinated Studio release identity copied into every deployment configuration served with this asset generation. */
 export type GeneratedStudioBrowserAssetsRelease = { corpusManifestDigest: string; version: string };
@@ -3120,6 +3194,19 @@ export type GeneratedStudioPresentation = {
 
 /** Studio coordinated release record */
 export type GeneratedStudioRelease = {
+  browserArtifacts: {
+    authoringArchive: { archiveStem: string; assetRole: 'browser-module'; loading: 'module' };
+    enhancementRuntime: {
+      assetRole: 'enhancement-runtime';
+      loading: 'defer';
+      package: '@kumwe/studio-renderer-web';
+      packageBasePath: 'dist/browser/';
+    };
+    manifest: {
+      name: 'studio-assets.json';
+      schema: 'https://schemas.kumwe.org/studio/v1/studio-browser-assets.schema.json';
+    };
+  };
   claimedProfiles: GeneratedCommonQualifiedName[];
   contractVersion: GeneratedCommonContractVersion;
   corpusManifestDigest: GeneratedCommonIntegrity;

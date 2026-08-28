@@ -46,7 +46,34 @@
   ],
   "bindings": [{ "nodeId": "presentation", "port": "text", "value": "Presentation" }],
   "media": [],
+  "context": {
+    "scopedStyles": {
+      "presentation": {
+        "rules": [
+          {
+            "target": "self",
+            "declarations": { "font-weight": "700", "color": "#123456" }
+          }
+        ]
+      }
+    }
+  },
   "expect": {
+    "activationMarkers": [],
+    "cssBytes": 6396,
+    "cssSha256": "71a06ec1f946881ef7b3dd0a2ce40281b749c70d5a2244c90e35191c2364e774",
+    "htmlBytes": 588,
+    "htmlSha256": "6a2e806f511a09bac4508c13ae6a91d0bb6e0456e740255c09f4740e70cf1350",
+    "publicStyleAsset": {
+      "path": "assets/studio-public-71a06ec1f946881e.min.css",
+      "role": "public-style",
+      "mediaType": "text/css",
+      "bytes": 6396,
+      "budgetBytes": 262144,
+      "contentHash": "71a06ec1f946881ef7b3dd0a2ce40281b749c70d5a2244c90e35191c2364e774",
+      "integrity": "sha256-caBuwflGiB73s90KLOQCgbdJxw1aIkTJDjUZHCNk53Q=",
+      "minified": true
+    },
     "htmlContains": [
       "data-studio-align=\"center\"",
       "data-studio-animation=\"slide\"",
@@ -65,11 +92,12 @@
     ],
     "htmlExcludes": ["style=", "<script"],
     "cssContains": [
-      "data-studio-position=\"sticky\"",
+      "data-studio-position=sticky",
+      "color:#123456;font-weight:700",
       "data-studio-motion",
       "@media print",
-      "min-width:48rem",
-      "min-width:75rem"
+      "width>=48rem",
+      "width>=75rem"
     ],
     "enhancements": ["motion"]
   }
