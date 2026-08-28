@@ -127,7 +127,7 @@ test('the one prebuilt public runtime activates actual renderer output under str
   await page.locator('[data-studio-dialog-close]').click();
   await expect(page.locator('[data-studio-dialog]')).not.toHaveAttribute('open', '');
 
-  await page.locator('[data-studio-popover-trigger]').click();
+  await page.locator('[data-studio-popover-trigger]').hover();
   await expect(page.locator('[data-studio-popover]')).toHaveAttribute('open', '');
   await page.getByRole('heading', { name: 'Published page' }).click();
   await expect(page.locator('[data-studio-popover]')).not.toHaveAttribute('open', '');

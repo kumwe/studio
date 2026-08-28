@@ -119,6 +119,10 @@ describe('prebuilt public enhancement runtime source', () => {
     expect(dialogTrigger?.getAttribute('aria-expanded')).toBe('true');
     dialogPanel?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
     expect(dialog?.open).toBe(false);
+    popoverTrigger?.dispatchEvent(new MouseEvent('mouseenter'));
+    expect(popover?.open).toBe(true);
+    popover?.dispatchEvent(new MouseEvent('mouseleave', { relatedTarget: document.body }));
+    expect(popover?.open).toBe(false);
     popover?.setAttribute('open', '');
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     expect(popover?.open).toBe(false);
