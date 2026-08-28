@@ -1,13 +1,29 @@
 import { readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
-import {
-  renderStudioWeb,
-  type RendererWebVector,
-  type StudioWebRenderResult,
+import type {
+  RendererWebVector,
+  StudioWebRenderContext,
+  StudioWebRenderResult,
 } from '../../packages/renderer-web/src/index.js';
+import type { BlueprintDocument } from '../../packages/protocol/src/index.js';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
+interface RendererWebModule {
+  renderStudioWeb: (
+    document: Pick<BlueprintDocument, 'roots'>,
+    context?: Readonly<StudioWebRenderContext>,
+  ) => Promise<StudioWebRenderResult>;
+}
+const rendererModuleUrl = pathToFileURL(
+  resolve(repositoryRoot, 'packages/renderer-web/dist/index.js'),
+).href;
+const rendererModule: unknown = await import(rendererModuleUrl);
+if (!isRendererWebModule(rendererModule)) {
+  throw new Error('The built renderer package does not expose renderStudioWeb.');
+}
+const { renderStudioWeb } = rendererModule;
 const vector = JSON.parse(
   await readFile(
     resolve(repositoryRoot, 'schemas/conformance/renderer-web/interactive-behaviors.json'),
@@ -46,7 +62,7 @@ if (manifest.enhancementRuntime.contentSecurityPolicy !== runtimePolicy) {
   throw new Error('The built enhancement runtime does not carry the frozen CSP contract.');
 }
 const policy = `${runtimePolicy}; img-src 'self'`;
-const rendered = renderInteractiveVector(vector);
+const rendered = await renderInteractiveVector(vector);
 if (
   rendered.enhancements.map(({ kind }) => kind).join('\n') !==
   ['tabs', 'dialog', 'popover', 'notice', 'slideshow', 'lightbox', 'countdown', 'navigation'].join(
@@ -61,6 +77,15 @@ if (
 interface RecordedViolation {
   blockedURI: string;
   directive: string;
+}
+
+function isRendererWebModule(value: unknown): value is RendererWebModule {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'renderStudioWeb' in value &&
+    typeof value.renderStudioWeb === 'function'
+  );
 }
 
 declare global {
@@ -162,14 +187,14 @@ test('actual server-rendered fallbacks remain complete with JavaScript disabled'
   }
 });
 
-function renderInteractiveVector(input: RendererWebVector): StudioWebRenderResult {
+async function renderInteractiveVector(input: RendererWebVector): Promise<StudioWebRenderResult> {
   const bindings = new Map(
     input.bindings.map(({ nodeId, port, value }) => [`${nodeId}\u0000${port}`, value]),
   );
   const media = new Map(
     input.media.map((item) => [item.assetId, { ...item, src: '/public-enhancement-slide.gif' }]),
   );
-  return renderStudioWeb(
+  return await renderStudioWeb(
     { roots: input.roots },
     {
       resolveBinding: (node, port) => bindings.get(`${node.id}\u0000${port}`),
