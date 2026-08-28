@@ -189,7 +189,7 @@ test('publish workflows prove new registry bits before moving distribution tags'
         : 'name: Verify the complete published release set, provenance, and beta tag',
     );
     const cleanup = source.indexOf(
-      'name: Remove the non-channel staging tag after complete success',
+      'name: Clean or report retained non-channel staging tags after complete success',
     );
     assert.ok(stagingPublication >= 0, `${name} has no staging-only publication step`);
     assert.ok(preTagVerification >= 0, `${name} has no pre-tag artifact verification`);
@@ -200,9 +200,19 @@ test('publish workflows prove new registry bits before moving distribution tags'
     assert.ok(preTagVerification < reconciliation, `${name} moves the tag before bit verification`);
     assert.ok(reconciliation < finalVerification, `${name} does not verify the reconciled tag`);
     assert.ok(finalVerification < cleanup, `${name} cleans staging before the final channel proof`);
+    const reconciliationName =
+      name === 'release.yml'
+        ? 'name: Reconcile the channel distribution tag'
+        : 'name: Reconcile the beta dist-tag';
+    const reconciliationBlock = source
+      .split(reconciliationName)[1]
+      .split(
+        name === 'release.yml'
+          ? 'name: Verify the complete registry release, provenance, and channel tag'
+          : 'name: Verify the complete published release set, provenance, and beta tag',
+      )[0];
+    assert.match(reconciliationBlock, /STUDIO_EXPECTED_MAIN_SHA:/u);
     if (name === 'release.yml') {
-      const reconciliationBlock = source.split('name: Reconcile the channel distribution tag')[1];
-      assert.match(reconciliationBlock, /STUDIO_EXPECTED_MAIN_SHA:/u);
       const githubReleaseBlock = source.split('name: Create or verify the GitHub release')[1];
       assert.match(githubReleaseBlock, /EXPECTED_MAIN_SHA:/u);
       assert.match(githubReleaseBlock, /git ls-remote --exit-code origin refs\/heads\/main/u);

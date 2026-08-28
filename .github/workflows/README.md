@@ -78,11 +78,14 @@ bundle authenticity. Missing packages upload directly from the retained tarballs
 `studio-stage-*` tag. An already-present registry version is skipped only when its bits equal the approved local
 tarball and it has source-bound provenance; arbitrary integrity metadata is a hard failure. Only after all eight
 packages verify does the job repair `beta`, `rc`, or `latest`, verify the complete family again, create or
-verify the exact GitHub release where applicable, and remove its staging tag. Beta never assigns `latest`; it
-removes only legacy prerelease `latest` drift and preserves a stable `latest`. Partial publication and
-token-rotation retries are idempotent. Re-dispatch with the same immutable candidate and evidence and the exact
-current `main` SHA; a superseded candidate, revoked gate, stale input, conflicting staging tag, or malformed
-existing release fails closed.
+verify the exact GitHub release where applicable, and clean its staging tag. When npm refuses the final
+version-scoped dist-tag `DELETE`, the workflow re-reads the exact tag and reports it as retained only when it
+still identifies the verified release; mismatches and unverified failures remain fatal. The beta lane rechecks
+the live `main` SHA immediately before moving `beta`, so rerunning a superseded push cannot roll the channel
+back. Beta never assigns `latest`; it removes only legacy prerelease `latest` drift and preserves a stable
+`latest`. Partial publication and token-rotation retries are idempotent. Re-dispatch with the same immutable
+candidate and evidence and the exact current `main` SHA; a superseded candidate, revoked gate, stale input,
+conflicting staging tag, or malformed existing release fails closed.
 
 | Administrative operation   | Required `NPM_TOKEN` location                                                       | Credential boundary                                                                |
 | -------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |

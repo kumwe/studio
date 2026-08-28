@@ -196,6 +196,7 @@ describe('non-channel staged publication', () => {
       removeTag: async (...args) => removed.push(args),
     });
     assert.equal(result.removed.length, 1);
+    assert.deepEqual(result.retained, []);
     assert.deepEqual(removed, [[STUDIO_RELEASE_PACKAGES[0].name, result.stagingTag]]);
 
     await assert.rejects(
@@ -204,6 +205,91 @@ describe('non-channel staged publication', () => {
         removeTag: async () => assert.fail('conflicting staging tag must not be removed'),
       }),
       /points to 9\.9\.9/u,
+    );
+  });
+
+  it('reports an exact staging tag retained by npm DELETE policy without failing publication', async () => {
+    const version = '0.1.0-beta.9';
+    const record = releaseRecord(version);
+    const packageName = STUDIO_RELEASE_PACKAGES[0].name;
+    const reads = new Map();
+    const refusal = Object.assign(
+      new Error(`Command failed: npm dist-tag rm ${packageName} studio-stage-0-1-0-beta-9`),
+      {
+        stderr:
+          `npm error code E403\n` +
+          `npm error 403 403 Forbidden - DELETE https://registry.npmjs.org/-/package/${packageName}/dist-tags/studio-stage-0-1-0-beta-9`,
+      },
+    );
+
+    const result = await cleanupStagingTags(record, {
+      npmValue: async (name) => {
+        reads.set(name, (reads.get(name) ?? 0) + 1);
+        return name === packageName ? version : undefined;
+      },
+      removeTag: async () => {
+        throw refusal;
+      },
+    });
+
+    assert.deepEqual(result.removed, []);
+    assert.deepEqual(result.retained, [`${packageName}@${version}`]);
+    assert.equal(reads.get(packageName), 2);
+  });
+
+  it('keeps non-DELETE and unverifiable staging cleanup errors fatal', async () => {
+    const version = '0.1.0-beta.9';
+    const record = releaseRecord(version);
+    const packageName = STUDIO_RELEASE_PACKAGES[0].name;
+    const genericForbidden = Object.assign(new Error('registry request failed'), {
+      stderr:
+        'npm error code E403\n' +
+        `npm error 403 403 Forbidden - GET https://registry.npmjs.org/${packageName}`,
+    });
+
+    await assert.rejects(
+      cleanupStagingTags(record, {
+        npmValue: async (name) => (name === packageName ? version : undefined),
+        removeTag: async () => {
+          throw genericForbidden;
+        },
+      }),
+      /registry request failed/u,
+    );
+
+    let packageReads = 0;
+    const deleteForbidden = Object.assign(new Error('npm dist-tag DELETE forbidden'), {
+      stderr:
+        'npm error code E403\n' +
+        `npm error 403 403 Forbidden - DELETE https://registry.npmjs.org/-/package/${packageName}/dist-tags/studio-stage-0-1-0-beta-9`,
+    });
+    await assert.rejects(
+      cleanupStagingTags(record, {
+        npmValue: async (name) => {
+          if (name !== packageName) return undefined;
+          packageReads += 1;
+          return packageReads === 1 ? version : '9.9.9';
+        },
+        removeTag: async () => {
+          throw deleteForbidden;
+        },
+      }),
+      /resolved to 9\.9\.9, not 0\.1\.0-beta\.9/u,
+    );
+
+    packageReads = 0;
+    await assert.rejects(
+      cleanupStagingTags(record, {
+        npmValue: async (name) => {
+          if (name !== packageName) return undefined;
+          packageReads += 1;
+          return packageReads === 1 ? version : undefined;
+        },
+        removeTag: async () => {
+          throw deleteForbidden;
+        },
+      }),
+      /resolved to no version, not 0\.1\.0-beta\.9/u,
     );
   });
 });

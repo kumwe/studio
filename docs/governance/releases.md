@@ -248,6 +248,10 @@ when released as a patch.
 - On a partial quarantine upload or token failure, retry the stage operation with the same frozen RC SHA and
   coordinate. Missing packages are uploaded, matching packages are reused, and a conflicting staging tag or
   immutable version fails closed. Do not clean the stage tag before evidence acceptance.
+- A final staging-tag cleanup is housekeeping after the complete release and official channel have already
+  been verified. If npm refuses that version-scoped dist-tag `DELETE`, the workflow may report the exact tag
+  as retained only after re-reading it and proving that it still identifies the verified release. A mismatch,
+  unverifiable result, or any other cleanup failure remains fatal.
 - The npm attestation endpoint is checked for the exact package/version/tarball subject and expected GitHub
   workflow repository, path, ref, and commit. This structural source binding does not replace independent
   cryptographic verification: the registry verifies attestations at publication, and npm's supported

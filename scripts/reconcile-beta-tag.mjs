@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 
+import { assertLiveMain } from './reconcile-release-tag.mjs';
 import { STUDIO_RELEASE_PACKAGES } from './release-family.mjs';
 
 const execFileAsync = promisify(execFile);
@@ -89,6 +90,7 @@ async function main() {
   if (process.argv.length !== 2) {
     throw new Error('Usage: node scripts/reconcile-beta-tag.mjs');
   }
+  await assertLiveMain(process.env.STUDIO_EXPECTED_MAIN_SHA);
   const packages = await Promise.all(
     STUDIO_RELEASE_PACKAGES.map(async ({ directory, name }) => {
       const manifest = JSON.parse(
