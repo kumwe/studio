@@ -531,7 +531,7 @@ jobs:
           git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
           [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
 
-      - name: Remove the non-channel staging tag after complete success
+      - name: Clean or report retained non-channel staging tags after complete success
         run: npm run release:cleanup-staging
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

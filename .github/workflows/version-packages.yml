@@ -153,6 +153,7 @@ jobs:
         run: node scripts/reconcile-beta-tag.mjs
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          STUDIO_EXPECTED_MAIN_SHA: ${{ github.sha }}
 
       - name: Verify the complete published release set, provenance, and beta tag
         if: steps.plan.outputs.operation == 'publish'
@@ -165,7 +166,7 @@ jobs:
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
 
-      - name: Remove the non-channel staging tag after complete success
+      - name: Clean or report retained non-channel staging tags after complete success
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:cleanup-staging
         env:
