@@ -187,7 +187,8 @@ requires evidence and release-note classification, not a quiet test edit.
 | Nightly           | Scheduled/current main | Full Version 2 browsers, property/fuzz/mutation, dependency scan, integration failures, localization/RTL, accessibility automation, compatibility matrix, and benchmarks; Dart/Flutter joins when the Version 3 lane exists |
 | Release candidate | Immutable RC           | Full supported matrix, manual accessibility/security/usability, generic/Kumwe App lifecycles, migrations/recovery, reproducible builds, SBOM/provenance/signatures, registry clean consumers                                |
 
-The pull-request lane's secret scan is implemented by `scripts/check-secrets.mjs`, which executes in
+The pull-request lane's secret scan is implemented by `scripts/check-secrets.mjs`, which scans tracked and
+untracked, non-ignored repository files and executes in
 the repository check lane through `npm run contracts:check`.
 
 Skipped tests are failures unless the environment is outside the published profile and the skip is validated by

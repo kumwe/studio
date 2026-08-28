@@ -139,7 +139,7 @@
       "credentials": "same-origin",
       "csrf": {
         "headerName": "X-CSRF-Token",
-        "token": "example-csrf-token-replace-per-session"
+        "token": "<csrf-token>"
       }
     },
     "requestTimeoutMilliseconds": 10000,

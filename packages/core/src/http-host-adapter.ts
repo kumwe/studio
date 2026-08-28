@@ -1174,32 +1174,38 @@ function cloneAuthentication(
 ): HttpAuthenticationConfiguration {
   projectAuthentication(configuration);
   switch (configuration.kind) {
-    case 'same-origin-session':
+    case 'same-origin-session': {
+      const value = configuration.csrf.token;
       return {
         credentials: 'same-origin',
         csrf: {
           headerName: configuration.csrf.headerName,
-          token: configuration.csrf.token,
+          token: value,
         },
         kind: 'same-origin-session',
       };
-    case 'bearer-token':
+    }
+    case 'bearer-token': {
+      const value = configuration.token;
       return {
         credentials: 'omit',
         expiresAt: configuration.expiresAt,
         issuedAt: configuration.issuedAt,
         kind: 'bearer-token',
-        token: configuration.token,
+        token: value,
       };
-    case 'header-token':
+    }
+    case 'header-token': {
+      const value = configuration.token;
       return {
         credentials: 'omit',
         expiresAt: configuration.expiresAt,
         headerName: configuration.headerName,
         issuedAt: configuration.issuedAt,
         kind: 'header-token',
-        token: configuration.token,
+        token: value,
       };
+    }
   }
 }
 

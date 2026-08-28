@@ -56,18 +56,20 @@ const PLACEHOLDER_PATTERNS = Object.freeze([
 export function scanSecretLine(line) {
   const findings = [];
   for (const detector of DETECTORS) {
-    const match = detector.pattern.exec(line);
-    if (match === null) continue;
-    const values = (detector.valueGroups ?? [])
-      .map((index) => match[index])
-      .filter((value) => typeof value === 'string');
-    if (
-      values.length > 0 &&
-      values.every((value) => PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value)))
-    ) {
-      continue;
+    const pattern = new RegExp(detector.pattern.source, `${detector.pattern.flags}g`);
+    for (const match of line.matchAll(pattern)) {
+      const values = (detector.valueGroups ?? [])
+        .map((index) => match[index])
+        .filter((value) => typeof value === 'string');
+      if (
+        values.length > 0 &&
+        values.every((value) => PLACEHOLDER_PATTERNS.some((placeholder) => placeholder.test(value)))
+      ) {
+        continue;
+      }
+      findings.push(detector.name);
+      break;
     }
-    findings.push(detector.name);
   }
   return findings;
 }

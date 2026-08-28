@@ -34,15 +34,19 @@ const binaryExtensions = new Set([
 ]);
 
 const detectorCount = assertSecretDetectorSelfTest();
-const trackedOutput = execFileSync('git', ['ls-files', '-z'], {
-  cwd: repositoryRoot,
-  encoding: 'utf8',
-});
-const trackedFiles = trackedOutput.split('\0').filter((path) => path.length > 0);
+const repositoryOutput = execFileSync(
+  'git',
+  ['ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+  {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  },
+);
+const repositoryFiles = repositoryOutput.split('\0').filter((path) => path.length > 0);
 const failures = [];
 let scannedFileCount = 0;
 let skippedFileCount = 0;
-for (const path of trackedFiles) {
+for (const path of repositoryFiles) {
   if (ALLOWLIST.includes(path) || binaryExtensions.has(extname(path).toLowerCase())) {
     skippedFileCount += 1;
     continue;
@@ -67,7 +71,7 @@ if (failures.length > 0) {
 
 console.log(
   `${detectorCount} secret patterns passed the embedded self-check; ${scannedFileCount} ` +
-    `tracked files scanned (${skippedFileCount} skipped) with no secrets detected.`,
+    `tracked and untracked repository files scanned (${skippedFileCount} skipped) with no secrets detected.`,
 );
 
 export { scanSecretLine as scanLine } from './lib/secret-detector.mjs';

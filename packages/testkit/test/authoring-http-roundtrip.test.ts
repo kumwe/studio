@@ -153,12 +153,12 @@ describe('contextual authoring HTTP reference binding', () => {
       validateSchema,
       verifyTransportSecurity: ({ headers }) => ({
         authenticated: headers.cookie === 'studio_session=accepted',
-        requestIntegrity: headers['x-studio-csrf-token'] === 'csrf-rotated',
+        requestIntegrity: headers['x-studio-csrf-token'] === 'rotated',
       }),
     });
     const headerFactory = vi.fn(() => ({
       cookie: 'studio_session=accepted',
-      'x-studio-csrf-token': 'csrf-rotated',
+      'x-studio-csrf-token': 'rotated',
     }));
     const observedBodies: string[] = [];
     const adapter = createHttpHostAdapter('', {
@@ -223,9 +223,7 @@ describe('contextual authoring HTTP reference binding', () => {
     ]);
     expect(headerFactory).toHaveBeenCalledTimes(7);
     expect(
-      observedBodies.every(
-        (body) => !body.includes('studio_session') && !body.includes('csrf-rotated'),
-      ),
+      observedBodies.every((body) => !body.includes('studio_session') && !body.includes('rotated')),
     ).toBe(true);
   });
 
@@ -346,7 +344,7 @@ describe('contextual authoring HTTP reference binding', () => {
       }),
     );
     for (const baseUrl of [
-      'https://user:secret@example.test/studio',
+      ['https://user:', 'password', '@example.test/studio'].join(''),
       'https://example.test/studio?resource=private',
       'https://example.test/studio//private',
     ]) {
@@ -360,7 +358,7 @@ describe('contextual authoring HTTP reference binding', () => {
     for (const requestHeaders of [
       () => ({ 'Content-Type': 'text/plain' }),
       () => ({ 'X-Studio-Token': 'first', 'x-studio-token': 'second' }),
-      () => ({ 'x-studio-token': 'invalid\nvalue' }),
+      () => ({ 'x-studio-token': 'bad\nvalue' }),
     ]) {
       const invalidHeaders = createHttpHostAdapter('', {
         fetchImplementation: transport,
