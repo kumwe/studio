@@ -488,8 +488,20 @@ jobs:
           tag_status=0
           git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?
           if [[ "$tag_status" == "2" ]]; then
+            # A GITHUB_TOKEN has Contents write but cannot create a reference
+            # directly at an older commit when that commit carries a different
+            # workflow tree. Create the governed annotated tag object first;
+            # the reference then targets that object while still dereferencing
+            # to the exact immutable publication source below.
+            tag_object_sha="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+              -f tag="$tag" \
+              -f message="Studio ${VERSION} (${PUBLISH_SOURCE_SHA})" \
+              -f object="$PUBLISH_SOURCE_SHA" \
+              -f type=commit \
+              --jq .sha)"
+            [[ "$tag_object_sha" =~ ^[a-f0-9]{40}$ ]]
             if ! gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-              -f ref="$tag_ref" -f sha="$PUBLISH_SOURCE_SHA" >/dev/null; then
+              -f ref="$tag_ref" -f sha="$tag_object_sha" >/dev/null; then
               # A concurrent creator is acceptable only when it produced the exact governed tag.
               tag_status=0
               git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?
