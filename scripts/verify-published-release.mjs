@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { appendFile, readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -9,6 +9,7 @@ import { APPROVED_ARTIFACT_PATH, assertApprovedReleaseArtifacts } from './releas
 import { assertCoordinatedRelease } from './release-record.mjs';
 
 const execFileAsync = promisify(execFile);
+const shaPattern = /^[a-f0-9]{40}$/u;
 
 // The public npm registry is eventually consistent: a freshly published
 // version or a just-moved dist-tag can 404 or read stale on some replicas for
@@ -43,6 +44,7 @@ export async function collectRegistryEvidence(
   const propagationDeadline = now() + propagationWindowMs;
   const failures = [];
   const packages = [];
+  const provenanceCommits = [];
   for (const { name } of STUDIO_RELEASE_PACKAGES) {
     const version = record.packages[name];
     let manifest;
@@ -109,16 +111,18 @@ export async function collectRegistryEvidence(
           }
         }
         if (attestationDocument !== undefined) {
-          failures.push(
-            ...(await collectProvenanceFailures(attestationDocument, {
-              acceptProvenanceCommit,
-              approved,
-              name,
-              provenanceCommit,
-              version,
-              workflowPath: provenanceWorkflow,
-            })),
-          );
+          const provenance = await collectProvenanceEvidence(attestationDocument, {
+            acceptProvenanceCommit,
+            approved,
+            name,
+            provenanceCommit,
+            version,
+            workflowPath: provenanceWorkflow,
+          });
+          failures.push(...provenance.failures);
+          if (provenance.sourceCommit !== undefined) {
+            provenanceCommits.push(provenance.sourceCommit);
+          }
         }
       }
     }
@@ -153,14 +157,22 @@ export async function collectRegistryEvidence(
       });
     }
   }
-  return { failures, packages };
+  const coordinatedProvenanceCommits = [...new Set(provenanceCommits)].sort();
+  if (requireProvenance && !skipMissing && coordinatedProvenanceCommits.length !== 1) {
+    failures.push('Studio package provenance does not bind one coordinated publication source');
+  }
+  return { failures, packages, provenanceCommits: coordinatedProvenanceCommits };
 }
 
 export async function collectRegistryFailures(record, options = {}) {
   return (await collectRegistryEvidence(record, options)).failures;
 }
 
-export async function collectProvenanceFailures(
+export async function collectProvenanceFailures(document, options) {
+  return (await collectProvenanceEvidence(document, options)).failures;
+}
+
+export async function collectProvenanceEvidence(
   document,
   { acceptProvenanceCommit, approved, name, provenanceCommit, version, workflowPath },
 ) {
@@ -188,7 +200,7 @@ export async function collectProvenanceFailures(
   );
   if (statement === undefined) {
     failures.push(`${name}@${version} provenance subject does not bind the approved tarball`);
-    return failures;
+    return { failures, sourceCommit: undefined };
   }
   const workflow = statement.predicate?.buildDefinition?.externalParameters?.workflow;
   if (
@@ -199,24 +211,38 @@ export async function collectProvenanceFailures(
     failures.push(`${name}@${version} provenance does not name the governed main release workflow`);
   }
   const dependencies = statement.predicate?.buildDefinition?.resolvedDependencies;
-  const mainCommits = (Array.isArray(dependencies) ? dependencies : [])
-    .filter(
-      (dependency) =>
-        dependency.uri === 'git+https://github.com/kumwe/studio@refs/heads/main' &&
-        typeof dependency.digest?.gitCommit === 'string',
-    )
-    .map((dependency) => dependency.digest.gitCommit);
-  let boundToAcceptedCommit = false;
-  for (const commit of mainCommits) {
-    if (await acceptCommit(commit)) {
-      boundToAcceptedCommit = true;
-      break;
+  const mainCommits = [
+    ...new Set(
+      (Array.isArray(dependencies) ? dependencies : [])
+        .filter(
+          (dependency) =>
+            dependency.uri === 'git+https://github.com/kumwe/studio@refs/heads/main' &&
+            typeof dependency.digest?.gitCommit === 'string',
+        )
+        .map((dependency) => dependency.digest.gitCommit),
+    ),
+  ];
+  let sourceCommit;
+  if (mainCommits.length !== 1) {
+    failures.push(`${name}@${version} provenance must bind exactly one governed main commit`);
+  } else if (!shaPattern.test(mainCommits[0])) {
+    failures.push(`${name}@${version} provenance source commit is not a lowercase full SHA`);
+  } else {
+    try {
+      if (await acceptCommit(mainCommits[0])) {
+        sourceCommit = mainCommits[0];
+      } else {
+        failures.push(
+          `${name}@${version} provenance does not bind dispatch commit ${provenanceCommit}`,
+        );
+      }
+    } catch (error) {
+      failures.push(
+        `${name}@${version} provenance source could not be accepted: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
-  }
-  if (!boundToAcceptedCommit) {
-    failures.push(
-      `${name}@${version} provenance does not bind dispatch commit ${provenanceCommit}`,
-    );
   }
   if (
     !String(statement.predicate?.runDetails?.builder?.id).startsWith(
@@ -225,7 +251,7 @@ export async function collectProvenanceFailures(
   ) {
     failures.push(`${name}@${version} provenance does not identify a GitHub-hosted runner`);
   }
-  return failures;
+  return { failures, sourceCommit: failures.length === 0 ? sourceCommit : undefined };
 }
 
 async function defaultSleep(milliseconds) {
@@ -304,7 +330,7 @@ async function main() {
       commit === process.env.RELEASE_PROVENANCE_COMMIT ||
       (await isAncestorOfCheckedOutHead(commit));
   }
-  const failures = await collectRegistryFailures(record, {
+  const evidence = await collectRegistryEvidence(record, {
     acceptProvenanceCommit,
     approvedArtifacts,
     distTag: process.env.RELEASE_DIST_TAG,
@@ -313,9 +339,24 @@ async function main() {
     provenanceWorkflow: process.env.RELEASE_PROVENANCE_WORKFLOW,
     requireProvenance: process.env.RELEASE_REQUIRE_PROVENANCE === 'true',
   });
-  if (failures.length > 0) {
+  if (evidence.failures.length > 0) {
     throw new Error(
-      `The coordinated Studio registry release is incomplete:\n- ${failures.join('\n- ')}`,
+      `The coordinated Studio registry release is incomplete:\n- ${evidence.failures.join('\n- ')}`,
+    );
+  }
+
+  if (process.env.RELEASE_WRITE_PROVENANCE_OUTPUT === 'true') {
+    if (
+      process.env.GITHUB_OUTPUT === undefined ||
+      process.env.GITHUB_OUTPUT.length === 0 ||
+      evidence.provenanceCommits.length !== 1
+    ) {
+      throw new Error('A single verified provenance commit and GITHUB_OUTPUT are required.');
+    }
+    await appendFile(
+      process.env.GITHUB_OUTPUT,
+      `provenance_commit=${evidence.provenanceCommits[0]}\nversion=${record.release}\n`,
+      'utf8',
     );
   }
 

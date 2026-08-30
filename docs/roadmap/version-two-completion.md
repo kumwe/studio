@@ -146,8 +146,9 @@ leaves manual/external requirements explicitly pending rather than inferred.
    repository-executable.
 5. Reproduce and accept Gate A evidence before publishing the official `rc`; complete Gate B before stable.
 
-Any changed candidate receives a new coordinate and affected evidence. Historical `0.1.0-rc.1`, a workspace
-tree, a mixed package family, a profile label, or a reference-host screenshot cannot substitute for this path.
+Any changed candidate receives a new coordinate and affected evidence. Historical quarantined
+`0.1.0-rc.1` is immutable and cannot be reused; neither it, a workspace tree, a mixed package family, a profile
+label, nor a reference-host screenshot can substitute for this path.
 
 ## Commit and review discipline
 

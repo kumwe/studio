@@ -103,9 +103,10 @@ changelogs, and all three release-record copies.
 
 Source `829694efb25374d3b498f2d46856d2c39650728a` records the coordinated `0.1.0-rc.1` candidate and all nine
 proposed Version 2 profile names. Product review subsequently withdrew that RC maturity decision because
-`STUDIO-PROD-001`–`015` are incomplete. The coordinate remains immutable history and MUST NOT be staged,
-published, overwritten, or described as current maturity. The governed beta lane below is the only development
-route to a new, product-complete candidate.
+`STUDIO-PROD-001`–`015` are incomplete. That family was published only under npm quarantine tags; it never
+opened the official `rc` channel or a coordinated GitHub release. The immutable coordinate MUST NOT be
+re-staged, promoted, overwritten, reused, or described as current maturity. The governed beta lane below is
+the only development route to a new, product-complete candidate.
 
 ```mermaid
 flowchart TD
@@ -114,7 +115,7 @@ flowchart TD
     C --> D["Merge generated version PR"]
     D --> E["Publish and verify beta.N"]
     E --> F["Pin exact family in hosts"]
-    F --> G["Prepare immutable rc.1 PR"]
+    F --> G["Prepare immutable rc.2 PR"]
     G --> H["Quarantine exact rc.N"]
     H --> I["Reproduce and accept Gate A evidence"]
     I --> J["Open official rc channel"]
@@ -130,7 +131,9 @@ flowchart TD
 3. Merging that generated PR consumes the Changesets. The next train run authenticates, accepts only a
    coordinated numeric `beta.N`, uploads the exact approved tarballs under a version-scoped
    `studio-stage-*` tag, verifies the complete set and provenance from npm, and only then repairs the `beta`
-   tag. Changesets never publishes, creates a Git tag, or creates a GitHub release.
+   tag. After final registry and provenance verification, the workflow creates or verifies one source-bound
+   `studio-v<version>` GitHub prerelease with the approved browser archive and checksum. Changesets itself
+   never publishes, creates a Git tag, or creates a GitHub release.
 4. If a run was deleted or failed after credential rotation, manually dispatch **Beta development train** from
    branch `main` with the exact current 40-character `main` SHA. A stale SHA or another branch fails closed.
 5. Hosts pin that exact release and verify `studio-release.json` plus the corpus digest before integration
@@ -139,8 +142,10 @@ flowchart TD
    the closed product-implementation inventory in `STATUS.md` and the profile assertion registry. It refuses
    to continue until every `STUDIO-PROD-001`–`015` row is `repository-verified` and every member of the fixed
    nine-profile Version 2 surface has non-empty executable inputs and lanes. It then generates a reviewable PR
-   for all eight packages. The explicit numeric transform makes any `0.1.0-beta.N` become `0.1.0-rc.1`;
-   changing only the Changesets tag is forbidden because it carries the beta counter forward.
+   for all eight packages. Because npm already contains the withdrawn immutable `0.1.0-rc.1`, the explicit
+   numeric transform makes any `0.1.0-beta.N` become `0.1.0-rc.2`; changing only the Changesets tag is
+   forbidden because it carries the beta counter forward. A later semantic base with no reserved RC starts at
+   `rc.1`.
 7. After the promotion PR merges, dispatch the same workflow with the exact RC `expected_main_sha`,
    `channel=rc`, and empty profiles/evidence SHAs. The protected `studio-rc` job publishes the immutable
    tarballs only under the coordinate-scoped `studio-stage-*` quarantine tag, verifies exact bits and source
@@ -184,7 +189,7 @@ flowchart TD
 
 | Intent                      | `expected_main_sha`                                        | `channel` | `profiles`                                         | `candidate_sha` / `gate_record_sha`             |
 | --------------------------- | ---------------------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------------------------- |
-| Prepare a train's `rc.1`    | Exact product-complete beta-train `main`                   | `rc`      | Empty (defaults to fixed nine) or exact fixed nine | Both empty                                      |
+| Prepare this train's `rc.2` | Exact product-complete beta-train `main`                   | `rc`      | Empty (defaults to fixed nine) or exact fixed nine | Both empty                                      |
 | Prepare `rc.N+1` correction | Exact current RC `main` with Changesets                    | `rc`      | Empty                                              | Both empty                                      |
 | Stage RC for Gate A proof   | Exact current frozen RC candidate at `main`                | `rc`      | Empty                                              | Both empty                                      |
 | Publish RC                  | Exact current `main` containing the accepted Gate A record | `rc`      | Empty                                              | Exact RC candidate, then later evidence commit  |

@@ -46,8 +46,10 @@ is not assessed and Gate B is blocked, so the official `rc` and stable channels 
 
 At source `829694efb25374d3b498f2d46856d2c39650728a`, `studio-release.json` coordinated all eight packages at
 `0.1.0-rc.1` and recorded nine proposed Version 2 profile names. Product review withdrew that maturity decision
-after confirming the contextual authoring gap. The coordinate and commit remain immutable provenance, but the
-candidate is abandoned and MUST NOT be staged, published, overwritten, or treated as current maturity.
+after confirming the contextual authoring gap. The family had been published only under npm quarantine tags;
+the official `rc` tag and coordinated GitHub release never opened. The coordinate and commit remain immutable
+provenance, but the candidate is abandoned and MUST NOT be re-staged, promoted, overwritten, reused, or treated
+as current maturity.
 Generated versioning has since exited that stale RC state, entered the numeric beta train, cleared proposed
 claims, and coordinated the source family at `0.1.0-beta.2`. Every publisher still verifies all eight exact
 registry versions and provenance before a channel tag moves.
@@ -102,9 +104,11 @@ The contracts lane regenerates the record from package manifests, protocol const
 fails on drift, an extra/missing package, a stale copy, an invalid schema, or a changed fixed group. The beta
 version command runs Changesets first and regenerates the record. Explicit promotion generation transforms all
 manifests, internal dependency pins, the lockfile, changelogs, prerelease state, profile claims, and all three
-record copies together. The first transition resets `beta.N` to `rc.1`; a correction Changeset creates
-`rc.N+1`; Gate B promotion removes the suffix without changing runtime code. Post-stable Changesets
-automatically enter a new beta train. Therefore a partial or staggered set cannot be treated as a release.
+record copies together. For the current `0.1.0` base, the first transition resets `beta.N` to `rc.2` because
+the withdrawn immutable `rc.1` already exists on npm; a semantic base with no reserved RC starts at `rc.1`.
+A correction Changeset creates `rc.N+1`; Gate B promotion removes the suffix without changing runtime code.
+Post-stable Changesets automatically enter a new beta train. Therefore a partial or staggered set cannot be
+treated as a release.
 
 Qualification evidence associated with the release record additionally records:
 
@@ -174,11 +178,13 @@ requires any already-present registry artifact to match those exact bytes, reval
 `main` candidate state, and is idempotent after a partial registry publish or token rotation. It verifies all eight exact
 registry artifacts, source-bound provenance, embedded release records, and a clean unauthenticated consumer,
 then retains the quarantine tags for evidence without moving `rc` or creating a release. Changesets owns
-version calculation and version PRs only. Official RC publication requires every coordinate to exist already;
-after Gate A it verifies the same candidate provenance, moves `rc`, creates the source-bound GitHub prerelease,
-verifies again, and only then removes the quarantine tags. Stable publication uses the same retained-tarball
-discipline. Beta never assigns `latest`; legacy prerelease `latest` drift is removed without changing a stable
-`latest`.
+version calculation and version PRs only. After a beta family and its `beta` dist-tag pass complete registry
+and provenance proof, the beta workflow creates or verifies one source-bound coordinated GitHub prerelease and
+its approved browser archive/checksum, then removes its quarantine tags. Official RC publication requires every
+coordinate to exist already; after Gate A it verifies the same candidate provenance, moves `rc`, creates the
+source-bound GitHub prerelease, verifies again, and only then removes the quarantine tags. Stable publication
+uses the same retained-tarball discipline. Beta never assigns `latest`; legacy prerelease `latest` drift is
+removed without changing a stable `latest`.
 
 `NPM_TOKEN` placement is channel-specific. The beta workflow declares no GitHub environment and can read only
 a repository Actions secret or an organization Actions secret explicitly granted to `kumwe/studio`. RC and

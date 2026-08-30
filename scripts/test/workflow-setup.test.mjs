@@ -56,6 +56,13 @@ test('one candidate qualification command owns repository, PHP, and browser proo
     manifest.scripts['release:readiness'],
     'node scripts/verify-release-gate.mjs && npm run qualify:candidate',
   );
+  for (const name of ['build', 'check']) {
+    assert.ok(
+      manifest.scripts[name].lastIndexOf('npm run build:packages:minify') >
+        manifest.scripts[name].lastIndexOf('npm run build:browser'),
+      `${name} can leave source maps regenerated after the final package minification pass`,
+    );
+  }
 });
 
 test('beta publication qualifies the exact source before artifacts or credentials', async () => {
@@ -220,21 +227,67 @@ test('publish workflows prove new registry bits before moving distribution tags'
         source.indexOf('node scripts/verify-github-release.mjs') < cleanup,
         'release.yml cleans staging before exact GitHub release recovery verification',
       );
+    } else {
+      const githubRelease = source.indexOf(
+        'name: Create or verify the coordinated beta GitHub prerelease',
+      );
+      assert.ok(
+        finalVerification < githubRelease && githubRelease < cleanup,
+        'version-packages.yml does not reconcile GitHub after final registry proof and before cleanup',
+      );
+      const finalVerificationBlock = source
+        .split('name: Verify the complete published release set, provenance, and beta tag')[1]
+        .split('name: Generate immutable beta GitHub release notes')[0];
+      assert.match(finalVerificationBlock, /RELEASE_WRITE_PROVENANCE_OUTPUT: 'true'/u);
+      assert.match(finalVerificationBlock, /id: verified_beta/u);
     }
   }
 });
 
-test('official GitHub releases recover exact browser assets without overwrite', async () => {
-  const source = await readFile(`${workflowRoot}release.yml`, 'utf8');
-  const releaseBlock = source.split('name: Create or verify the GitHub release')[1];
-  assert.match(releaseBlock, /approved\.browser\.path/u);
-  assert.match(releaseBlock, /approved\.browser\.checksumPath/u);
-  assert.match(releaseBlock, /sha256sum --check/u);
-  assert.match(releaseBlock, /gh release create .*"\$archive" "\$checksum"/u);
-  assert.match(releaseBlock, /gh release download/u);
-  assert.match(releaseBlock, /cmp --silent/u);
-  assert.match(releaseBlock, /--json assets,body,isDraft,isPrerelease,name,tagName/u);
-  assert.doesNotMatch(releaseBlock, /--clobber/u);
+test('GitHub releases recover exact browser assets without overwrite', async () => {
+  for (const [name, step] of [
+    ['release.yml', 'name: Create or verify the GitHub release'],
+    ['version-packages.yml', 'name: Create or verify the coordinated beta GitHub prerelease'],
+  ]) {
+    const source = await readFile(`${workflowRoot}${name}`, 'utf8');
+    const releaseBlock = source.split(step)[1];
+    assert.match(releaseBlock, /approved\.browser\.path/u);
+    assert.match(releaseBlock, /approved\.browser\.checksumPath/u);
+    assert.match(releaseBlock, /sha256sum --check/u);
+    assert.match(releaseBlock, /gh release create .*"\$archive" "\$checksum"/u);
+    assert.match(releaseBlock, /gh release download/u);
+    assert.match(releaseBlock, /cmp --silent/u);
+    assert.match(releaseBlock, /--json assets,body,isDraft,isPrerelease,name,tagName/u);
+    assert.doesNotMatch(releaseBlock, /--clobber/u);
+  }
+});
+
+test('beta GitHub prerelease is exact-source, fail-closed, and token-scoped', async () => {
+  const source = await readFile(`${workflowRoot}version-packages.yml`, 'utf8');
+  const releaseBlock = source
+    .split('name: Create or verify the coordinated beta GitHub prerelease')[1]
+    .split('name: Clean or report retained non-channel staging tags')[0];
+  assert.match(
+    source,
+    /permissions:\n\s+contents: write\n\s+id-token: write\n\s+pull-requests: write/u,
+  );
+  assert.match(releaseBlock, /GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/u);
+  assert.match(
+    releaseBlock,
+    /PUBLISH_SOURCE_SHA: \$\{\{ steps\.verified_beta\.outputs\.provenance_commit \}\}/u,
+  );
+  assert.match(
+    releaseBlock,
+    /git merge-base --is-ancestor "\$PUBLISH_SOURCE_SHA" "\$EXPECTED_MAIN_SHA"/u,
+  );
+  assert.match(releaseBlock, /git ls-remote --exit-code origin "refs\/tags\/\$tag"/u);
+  assert.match(releaseBlock, /--prerelease/u);
+  assert.ok(
+    releaseBlock.indexOf('[[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]') <
+      releaseBlock.indexOf('gh release upload'),
+    'existing beta tags are not verified before release mutation',
+  );
+  assert.doesNotMatch(releaseBlock, /NODE_AUTH_TOKEN/u);
 });
 
 test('Changesets action is version-PR-only and cannot publish tags or GitHub releases', async () => {
@@ -246,6 +299,11 @@ test('Changesets action is version-PR-only and cannot publish tags or GitHub rel
   assert.match(source, /run: npm run release:publish-prerelease/u);
   const publishBlock = source.split('name: Publish missing approved tarballs')[1];
   assert.match(publishBlock, /STUDIO_EXPECTED_MAIN_SHA: \$\{\{ github\.sha \}\}/u);
+  const titleCorrection = source.split(
+    'name: Keep the generated version pull request labeled beta',
+  )[1];
+  assert.match(titleCorrection, /steps\.release\.outputs\['pr-number'\]/u);
+  assert.match(titleCorrection, /chore: version Studio packages \(beta\)/u);
 });
 
 test('npm credentials stay in their channel-specific GitHub secret boundaries', async () => {

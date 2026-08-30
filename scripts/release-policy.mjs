@@ -4,6 +4,13 @@ const betaVersionPattern =
 const rcVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-rc\.(0|[1-9][0-9]*)$/u;
 const stableVersionPattern = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/u;
 
+// npm coordinates are immutable. The withdrawn 0.1.0-rc.1 family was
+// published under quarantine tags before its maturity claim was withdrawn,
+// so no later promotion may attempt to reuse that ordinal.
+const withdrawnRcOrdinalsByBase = Object.freeze({
+  '0.1.0': 1,
+});
+
 export const STUDIO_PRODUCT_REQUIREMENTS = Object.freeze(
   Array.from({ length: 15 }, (_, index) => `STUDIO-PROD-${String(index + 1).padStart(3, '0')}`),
 );
@@ -51,8 +58,11 @@ export function promotionTargetVersion(channel, sourceVersion) {
       throw new Error('RC preparation requires a coordinated numeric beta source release.');
     }
     // The counter is intentionally reset. Retagging beta.9 as rc would let
-    // Changesets carry the prerelease counter forward and produce rc.10.
-    return `${match[1]}.${match[2]}.${match[3]}-rc.1`;
+    // Changesets carry the prerelease counter forward and produce rc.10. The
+    // first available ordinal also skips any withdrawn immutable coordinate.
+    const base = `${match[1]}.${match[2]}.${match[3]}`;
+    const targetOrdinal = (withdrawnRcOrdinalsByBase[base] ?? 0) + 1;
+    return `${base}-rc.${targetOrdinal}`;
   }
   if (channel === 'stable') {
     const match = rcVersionPattern.exec(sourceVersion);

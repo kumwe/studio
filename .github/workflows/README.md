@@ -19,13 +19,16 @@ Actions-screen synopsis.
    the withdrawn `0.1.0-rc.1` decision generates the complete RC-exit/beta-enter transition and resets proposed
    profile claims; no coordinate file is hand-edited.
 3. Merging that version PR makes the next run publish all eight approved tarballs at one `beta` coordinate and
-   verify the registry. The Changesets action only maintains version PRs; it cannot publish packages, push Git
-   tags, or create GitHub releases.
+   verify the registry. Only after the complete family, provenance, and `beta` dist-tag pass does the workflow
+   create or verify one source-bound `studio-v<version>` GitHub prerelease with the approved browser archive and
+   checksum. The Changesets action only maintains version PRs; it cannot publish packages, push Git tags, or
+   create GitHub releases.
 4. Only after every machine-checked `STUDIO-PROD-001`–`015` status row is `repository-verified`, dispatch
    **Governed RC and stable promotion** with current beta `expected_main_sha`, `channel=rc`, empty
    `profiles` (which selects the exact fixed nine) or the exact fixed nine, and empty evidence SHAs. It creates
-   `rc.1` metadata as a PR; any `beta.N` resets to `rc.1` rather than carrying its counter forward. A blank
-   first-RC profile input never means zero profiles or an inferred subset.
+   `rc.2` metadata as a PR for the current `0.1.0` base; the withdrawn immutable `0.1.0-rc.1` is never reused,
+   and the beta counter is not carried forward. A blank first-RC profile input never means zero profiles or an
+   inferred subset.
 5. After that PR merges, dispatch promotion again at the exact RC `main` SHA with empty profiles and evidence
    SHAs. The protected `studio-rc` job publishes only to its `studio-stage-*` quarantine tag and proves exact
    provenance plus a credential-free clean npm install. It leaves `rc`, `latest`, Git tags, and GitHub releases

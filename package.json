@@ -14,13 +14,13 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "tsc -b && npm run build:packages:minify && npm run build:enhancements && npm run build:browser && npm run build --workspace @kumwe/studio-reference-host && npm run build:static-host",
+    "build": "tsc -b && npm run build:enhancements && npm run build:browser && npm run build --workspace @kumwe/studio-reference-host && npm run build:static-host && npm run build:packages:minify",
     "build:browser": "node scripts/build-studio-browser.mjs",
     "build:enhancements": "node scripts/build-studio-enhancement-runtime.mjs",
     "build:packages:minify": "node scripts/minify-package-dist.mjs",
     "build:static-host": "node scripts/build-standalone-static-host.mjs",
     "changeset": "changeset",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build:packages:minify && npm run build:enhancements && npm run build:browser && npm run contracts:check && npm run test && npm run build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build:enhancements && npm run build:browser && npm run build:packages:minify && npm run contracts:check && npm run test && npm run build",
     "check:a11y": "npm run build && playwright test --config e2e/playwright.config.ts",
     "check:php-reference": "node scripts/check-php-reference.mjs",
     "check:public-runtime": "npm run build && playwright test --config e2e/playwright.public.config.ts",

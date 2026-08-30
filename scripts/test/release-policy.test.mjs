@@ -28,9 +28,10 @@ const completeProfiles = [
 const subsetProfile = 'studio.profile/engine-core';
 
 describe('governed release policy', () => {
-  it('resets the prerelease counter for beta.9 -> rc.1', () => {
-    assert.equal(promotionTargetVersion('rc', '0.1.0-beta.9'), '0.1.0-rc.1');
+  it('resets the prerelease counter and skips the withdrawn immutable rc.1', () => {
+    assert.equal(promotionTargetVersion('rc', '0.1.0-beta.9'), '0.1.0-rc.2');
     assert.notEqual(promotionTargetVersion('rc', '0.1.0-beta.9'), '0.1.0-rc.10');
+    assert.equal(promotionTargetVersion('rc', '0.2.0-beta.9'), '0.2.0-rc.1');
   });
 
   it('advances corrections and removes the RC suffix for stable', () => {

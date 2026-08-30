@@ -5,7 +5,7 @@ import { STUDIO_RELEASE_PACKAGES, STUDIO_RELEASE_PACKAGE_NAMES } from '../releas
 import { artifactFromBytes } from '../release-artifacts.mjs';
 import { RELEASE_PACKAGE_BUDGETS } from '../release-asset-policy.mjs';
 import { browserArtifactFromBytes } from '../studio-browser-artifacts.mjs';
-import { collectRegistryFailures } from '../verify-published-release.mjs';
+import { collectRegistryEvidence, collectRegistryFailures } from '../verify-published-release.mjs';
 
 const version = '0.1.0-rc.1';
 const provenanceCommit = 'a'.repeat(40);
@@ -34,7 +34,7 @@ const approvedArtifacts = {
 
 describe('post-publication registry verification', () => {
   it('requires exact approved bits, provenance source, and the requested tag', async () => {
-    const failures = await collectRegistryFailures(record, {
+    const evidence = await collectRegistryEvidence(record, {
       approvedArtifacts,
       distTag: 'rc',
       fetchAttestations: async (url) => {
@@ -45,7 +45,27 @@ describe('post-publication registry verification', () => {
       provenanceCommit,
       requireProvenance: true,
     });
-    assert.deepEqual(failures, []);
+    assert.deepEqual(evidence.failures, []);
+    assert.deepEqual(evidence.provenanceCommits, [provenanceCommit]);
+  });
+
+  it('rejects a family whose valid attestations name different publication sources', async () => {
+    const otherCommit = 'b'.repeat(40);
+    const evidence = await collectRegistryEvidence(record, {
+      acceptProvenanceCommit: async (commit) =>
+        commit === provenanceCommit || commit === otherCommit,
+      approvedArtifacts,
+      fetchAttestations: async (url) => {
+        const name = decodeURIComponent(new URL(url).searchParams.get('name'));
+        const commit = name === STUDIO_RELEASE_PACKAGE_NAMES[0] ? otherCommit : provenanceCommit;
+        return provenance(name, approvedArtifacts.packages[name], commit);
+      },
+      npmJson: registryManifest,
+      provenanceCommit,
+      requireProvenance: true,
+    });
+    assert.deepEqual(evidence.provenanceCommits, [provenanceCommit, otherCommit]);
+    assert.match(evidence.failures.at(-1), /one coordinated publication source/u);
   });
 
   it('rejects arbitrary valid-looking integrity during partial-publish recovery', async () => {
@@ -135,7 +155,7 @@ describe('post-publication registry verification', () => {
           : { dist: { integrity: 'sha512-b2s=' }, version },
       requireProvenance: true,
     });
-    assert.equal(failures.length, 16);
+    assert.equal(failures.length, 17);
   });
 
   it('tolerates registry propagation lag before declaring a package absent', async () => {

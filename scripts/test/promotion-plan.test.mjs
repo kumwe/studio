@@ -25,7 +25,7 @@ describe('promotion plan', () => {
     const root = await fixture('0.1.0-beta.9', { mode: 'pre', tag: 'beta' });
     const plan = await inspectPromotionPlan(root, { channel: 'rc' });
     assert.equal(plan.operation, 'prepare');
-    assert.equal(plan.targetVersion, '0.1.0-rc.1');
+    assert.equal(plan.targetVersion, '0.1.0-rc.2');
     assert.deepEqual(plan.profiles, VERSION_TWO_RELEASE_PROFILES);
   });
 

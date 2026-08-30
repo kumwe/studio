@@ -125,6 +125,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Changesets reads prerelease state before running version-script. During
+      # the historical rc-to-beta reset it would otherwise append "(rc)" to a
+      # PR whose generated contents are explicitly beta.
+      - name: Keep the generated version pull request labeled beta
+        if: steps.plan.outputs.operation == 'version' && steps.release.outputs['pr-number'] != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.release.outputs['pr-number'] }}
+        run: |
+          set -euo pipefail
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]
+          gh pr edit "$PR_NUMBER" --title 'chore: version Studio packages (beta)'
+          [[ "$(gh pr view "$PR_NUMBER" --json title --jq .title)" == 'chore: version Studio packages (beta)' ]]
+
       - name: Publish missing approved tarballs to a non-channel staging tag
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:publish-prerelease
@@ -156,6 +171,7 @@ jobs:
           STUDIO_EXPECTED_MAIN_SHA: ${{ github.sha }}
 
       - name: Verify the complete published release set, provenance, and beta tag
+        id: verified_beta
         if: steps.plan.outputs.operation == 'publish'
         run: npm run release:verify-published
         env:
@@ -165,6 +181,100 @@ jobs:
           RELEASE_PROVENANCE_COMMIT: ${{ github.sha }}
           RELEASE_PROVENANCE_WORKFLOW: .github/workflows/version-packages.yml
           RELEASE_REQUIRE_PROVENANCE: 'true'
+          RELEASE_WRITE_PROVENANCE_OUTPUT: 'true'
+
+      - name: Generate immutable beta GitHub release notes
+        if: steps.plan.outputs.operation == 'publish'
+        run: npm run release:notes > release-notes.md
+        env:
+          PROMOTION_CHANNEL: beta
+          PROMOTION_EXPECTED_VERSION: ${{ steps.verified_beta.outputs.version }}
+          PROMOTION_PUBLISH_SOURCE_SHA: ${{ steps.verified_beta.outputs.provenance_commit }}
+
+      # Reconcile one source-bound GitHub prerelease only after the registry
+      # family, provenance, and beta dist-tag have all passed final proof.
+      - name: Create or verify the coordinated beta GitHub prerelease
+        if: steps.plan.outputs.operation == 'publish'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_RELEASE_CHANNEL: beta
+          GITHUB_RELEASE_VERSION: ${{ steps.verified_beta.outputs.version }}
+          EXPECTED_MAIN_SHA: ${{ github.sha }}
+          PUBLISH_SOURCE_SHA: ${{ steps.verified_beta.outputs.provenance_commit }}
+          VERSION: ${{ steps.verified_beta.outputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-beta\.(0|[1-9][0-9]*)$ ]]
+          [[ "$PUBLISH_SOURCE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          remote_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          [[ "$remote_main" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
+          git cat-file -e "${PUBLISH_SOURCE_SHA}^{commit}"
+          git merge-base --is-ancestor "$PUBLISH_SOURCE_SHA" "$EXPECTED_MAIN_SHA"
+          tag="studio-v${VERSION}"
+          mapfile -t release_assets < <(node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const approved = JSON.parse(readFileSync(".release-artifacts/approved-package-integrities.json", "utf8"));
+            console.log(approved.browser.path);
+            console.log(approved.browser.checksumPath);
+          ')
+          [[ "${#release_assets[@]}" -eq 2 ]]
+          archive="${release_assets[0]}"
+          checksum="${release_assets[1]}"
+          [[ -f "$archive" && -f "$checksum" ]]
+          (cd "$(dirname "$archive")" && sha256sum --check "$(basename "$checksum")")
+
+          tag_exists=false
+          if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
+            tag_exists=true
+            git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+            [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
+          fi
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md --prerelease)
+            if [[ "$tag_exists" == "true" ]]; then
+              release_args+=(--verify-tag)
+            else
+              release_args+=(--target "$PUBLISH_SOURCE_SHA")
+            fi
+            gh release create "${release_args[@]}" "$archive" "$checksum"
+          else
+            [[ "$tag_exists" == "true" ]]
+            gh release view "$tag" --json body,isDraft,isPrerelease,name,tagName \
+              > .release-artifacts/github-release.json
+            GITHUB_RELEASE_REQUIRE_ASSETS=false node scripts/verify-github-release.mjs
+            recovery_dir="$RUNNER_TEMP/studio-beta-release-recovery"
+            mkdir -p "$recovery_dir"
+            for asset in "$archive" "$checksum"; do
+              asset_name="$(basename "$asset")"
+              count="$(gh release view "$tag" --json assets --jq \
+                "[.assets[] | select(.name == \"$asset_name\")] | length")"
+              if [[ "$count" == "0" ]]; then
+                gh release upload "$tag" "$asset"
+              elif [[ "$count" == "1" ]]; then
+                gh release download "$tag" --pattern "$asset_name" --dir "$recovery_dir"
+                cmp --silent "$asset" "$recovery_dir/$asset_name"
+              else
+                echo "::error::GitHub release contains duplicate asset name $asset_name"
+                exit 1
+              fi
+            done
+          fi
+
+          gh release view "$tag" --json assets,body,isDraft,isPrerelease,name,tagName \
+            > .release-artifacts/github-release.json
+          node scripts/verify-github-release.mjs
+          verification_dir="$RUNNER_TEMP/studio-beta-release-verification"
+          mkdir -p "$verification_dir"
+          for asset in "$archive" "$checksum"; do
+            asset_name="$(basename "$asset")"
+            gh release download "$tag" --pattern "$asset_name" --dir "$verification_dir"
+            cmp --silent "$asset" "$verification_dir/$asset_name"
+          done
+          git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
+          [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
 
       - name: Clean or report retained non-channel staging tags after complete success
         if: steps.plan.outputs.operation == 'publish'

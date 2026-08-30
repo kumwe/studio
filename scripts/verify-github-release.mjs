@@ -7,6 +7,9 @@ import { assertApprovedBrowserArtifact } from './studio-browser-artifacts.mjs';
 export function collectGithubReleaseFailures(metadata, notes, { assets, channel, version }) {
   const expectedTag = `studio-v${version}`;
   const failures = [];
+  if (!['beta', 'rc', 'stable'].includes(channel)) {
+    failures.push(`unsupported release channel ${String(channel)}`);
+  }
   if (metadata?.tagName !== expectedTag) {
     failures.push(`tagName is ${String(metadata?.tagName)}, expected ${expectedTag}`);
   }
@@ -16,7 +19,7 @@ export function collectGithubReleaseFailures(metadata, notes, { assets, channel,
   if (metadata?.isDraft !== false) {
     failures.push('release must not be a draft');
   }
-  if (metadata?.isPrerelease !== (channel === 'rc')) {
+  if (metadata?.isPrerelease !== (channel === 'beta' || channel === 'rc')) {
     failures.push(`prerelease state does not match ${channel}`);
   }
   if (String(metadata?.body ?? '') !== notes) {

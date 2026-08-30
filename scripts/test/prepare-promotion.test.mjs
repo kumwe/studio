@@ -16,7 +16,7 @@ import { resetReleaseProfileClaims } from '../version-packages.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../../', import.meta.url));
 
-test('promotion generation transforms all eight packages beta -> rc.1 -> stable', async (t) => {
+test('promotion generation transforms all eight packages beta -> rc.2 -> stable', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'studio-prepare-promotion-'));
   t.after(() => rm(directory, { force: true, recursive: true }));
   const root = pathToFileURL(`${directory}/`);
@@ -69,8 +69,8 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
     channel: 'rc',
     profiles: [...VERSION_TWO_RELEASE_PROFILES],
   });
-  assert.equal(rcPlan.targetVersion, '0.1.0-rc.1');
-  assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0-rc.1' });
+  assert.equal(rcPlan.targetVersion, '0.1.0-rc.2');
+  assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0-rc.2' });
   assert.deepEqual(JSON.parse(await readFile(new URL('.changeset/pre.json', root))), {
     mode: 'pre',
     tag: 'rc',
@@ -79,7 +79,7 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
     kind: 'studio-release-profile-claims',
     profiles: VERSION_TWO_RELEASE_PROFILES,
   });
-  await assertRecordCopies(root, '0.1.0-rc.1');
+  await assertRecordCopies(root, '0.1.0-rc.2');
 
   await writeFile(
     new URL('.changeset/rc-correction.md', root),
@@ -87,9 +87,9 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
   );
   const correctionPlan = await preparePromotion(root, { channel: 'rc', profiles: [] });
   assert.equal(correctionPlan.operation, 'correct');
-  assert.equal(correctionPlan.targetVersion, '0.1.0-rc.2');
-  assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0-rc.2' });
-  await assertRecordCopies(root, '0.1.0-rc.2');
+  assert.equal(correctionPlan.targetVersion, '0.1.0-rc.3');
+  assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0-rc.3' });
+  await assertRecordCopies(root, '0.1.0-rc.3');
 
   const evidenceDirectory = await mkdtemp(join(tmpdir(), 'studio-prepare-evidence-'));
   t.after(() => rm(evidenceDirectory, { force: true, recursive: true }));
@@ -103,7 +103,7 @@ test('promotion generation transforms all eight packages beta -> rc.1 -> stable'
     evidenceSha: 'b'.repeat(40),
     profiles: [],
   });
-  assert.equal(stablePlan.sourceVersion, '0.1.0-rc.2');
+  assert.equal(stablePlan.sourceVersion, '0.1.0-rc.3');
   assert.equal(stablePlan.targetVersion, '0.1.0');
   assert.deepEqual(await checkReleasePins(root), { packageCount: 8, version: '0.1.0' });
   await assert.rejects(readFile(new URL('.changeset/pre.json', root)), /ENOENT/u);

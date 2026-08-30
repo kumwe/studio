@@ -11,9 +11,10 @@ export function buildReleaseNotes(
   record,
   { candidateSha, channel, expectedVersion = record.release, gateRecordSha },
 ) {
+  const requiresGateRecord = channel === 'rc' || channel === 'stable';
   if (
     !shaPattern.test(candidateSha) ||
-    !shaPattern.test(gateRecordSha) ||
+    (requiresGateRecord && !shaPattern.test(gateRecordSha)) ||
     classifyReleaseVersion(record.release) !== channel ||
     record.release !== expectedVersion
   ) {
@@ -21,22 +22,32 @@ export function buildReleaseNotes(
       'Release-note inputs do not identify the published channel and immutable commits.',
     );
   }
+  const description =
+    channel === 'beta'
+      ? 'Coordinated beta development release of all eight Studio packages.'
+      : `Coordinated ${channel === 'stable' ? 'stable' : 'release-candidate'} release of all eight Studio packages.`;
+  const claimedProfiles =
+    record.claimedProfiles.length === 0
+      ? 'None; beta carries no conformance claim.'
+      : record.claimedProfiles.map((profile) => `\`${profile}\``).join(', ');
   return [
     `# Studio ${record.release}`,
     '',
-    `Coordinated ${channel === 'stable' ? 'stable' : 'release-candidate'} release of all eight Studio packages.`,
+    description,
     '',
     `- Publication source: \`${candidateSha}\``,
-    `- Gate/evidence record: \`${gateRecordSha}\``,
+    ...(requiresGateRecord ? [`- Gate/evidence record: \`${gateRecordSha}\``] : []),
     `- Protocol: \`${record.protocolVersion}\``,
     `- Corpus: \`${record.corpusManifestDigest}\``,
-    `- Claimed profiles: ${record.claimedProfiles.map((profile) => `\`${profile}\``).join(', ')}`,
+    `- Claimed profiles: ${claimedProfiles}`,
     '',
     '## Package family',
     '',
     ...STUDIO_RELEASE_PACKAGE_NAMES.map((name) => `- \`${name}@${record.packages[name]}\``),
     '',
-    'See the package changelogs and the immutable evidence commit for detailed changes, limitations, and review records.',
+    channel === 'beta'
+      ? 'Beta is incomplete development maturity. See the package changelogs for detailed changes and limitations; this release is not Gate A/B evidence or an RC claim.'
+      : 'See the package changelogs and the immutable evidence commit for detailed changes, limitations, and review records.',
     '',
   ].join('\n');
 }

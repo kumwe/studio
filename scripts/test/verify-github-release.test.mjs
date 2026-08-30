@@ -33,6 +33,24 @@ describe('GitHub release recovery guard', () => {
     );
   });
 
+  it('requires a coordinated beta release to remain a prerelease', () => {
+    const betaNotes = '# Studio 0.1.0-beta.2\n';
+    assert.deepEqual(
+      collectGithubReleaseFailures(
+        {
+          body: betaNotes,
+          isDraft: false,
+          isPrerelease: true,
+          name: 'Studio 0.1.0-beta.2',
+          tagName: 'studio-v0.1.0-beta.2',
+        },
+        betaNotes,
+        { channel: 'beta', version: '0.1.0-beta.2' },
+      ),
+      [],
+    );
+  });
+
   it('rejects a malformed existing release instead of silently reusing it', () => {
     const failures = collectGithubReleaseFailures(
       metadata({
