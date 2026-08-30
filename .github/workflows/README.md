@@ -21,11 +21,11 @@ Actions-screen synopsis.
 3. Merging that version PR makes the next run publish all eight approved tarballs at one `beta` coordinate and
    verify the registry. Only after the complete family, provenance, and `beta` dist-tag pass does the workflow
    create or verify one source-bound `studio-v<version>` GitHub prerelease with the approved browser archive and
-   checksum. The release controller first creates or verifies an annotated tag object that dereferences to the
-   exact publication source, then creates its Git reference and the release with `--verify-tag`. That two-step
-   tag keeps recovery of an older publication source out of GitHub's workflow-file `target_commitish`
-   restriction. The Changesets action only maintains
-   version PRs; it cannot publish packages, push Git tags, or create GitHub releases.
+   checksum. The release controller first creates or verifies a tag that dereferences to the exact publication
+   source, then creates the release with `--verify-tag`. A historical publication source requires either an
+   exact pre-created tag or the narrowly scoped `STUDIO_RELEASE_TOKEN`; the built-in workflow token is never
+   treated as capable of writing historical workflow refs. The Changesets action only maintains version PRs;
+   it cannot publish packages, push Git tags, or create GitHub releases.
 4. Only after every machine-checked `STUDIO-PROD-001`–`015` status row is `repository-verified`, dispatch
    **Governed RC and stable promotion** with current beta `expected_main_sha`, `channel=rc`, empty
    `profiles` (which selects the exact fixed nine) or the exact fixed nine, and empty evidence SHAs. It creates
@@ -92,6 +92,12 @@ back. Beta never assigns `latest`; it removes only legacy prerelease `latest` dr
 `latest`. Partial publication and token-rotation retries are idempotent. Re-dispatch with the same immutable
 candidate and evidence and the exact current `main` SHA; a superseded candidate, revoked gate, stale input,
 conflicting staging tag, or malformed existing release fails closed.
+
+Historical source-bound Git tags need `STUDIO_RELEASE_TOKEN` as a repository Actions secret (and, if an
+environment overrides it, in both `studio-rc` and `studio-stable`). Use a fine-grained token scoped only to
+`kumwe/studio` with **Contents: write** and **Workflows: write**. The workflow falls back to its built-in token
+only when the tag targets the exact running `main` commit or when the exact historical tag already exists. The
+privileged token is read only by the final Git tag/release step, after package, provenance, and channel proof.
 
 | Administrative operation   | Required `NPM_TOKEN` location                                                       | Credential boundary                                                                |
 | -------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |

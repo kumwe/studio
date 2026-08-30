@@ -181,9 +181,9 @@ then retains the quarantine tags for evidence without moving `rc` or creating a 
 version calculation and version PRs only. After a beta family and its `beta` dist-tag pass complete registry
 and provenance proof, the beta workflow creates or verifies one source-bound coordinated GitHub prerelease and
 its approved browser archive/checksum, then removes its quarantine tags. The controller creates or verifies an
-annotated Git tag object that dereferences to the exact publication source, creates the corresponding ref, and
-always uses `--verify-tag`; GitHub's release endpoint is never asked to synthesize a tag at an older commit whose
-workflow tree differs from current `main`. Official RC
+exact Git tag that dereferences to the publication source and always uses `--verify-tag`; GitHub's release
+endpoint is never asked to synthesize the tag. A missing historical tag requires `STUDIO_RELEASE_TOKEN` with
+Contents and Workflows write permissions, while an exact pre-created tag needs no privileged token. Official RC
 publication requires every coordinate to exist already; after Gate A it verifies the same candidate provenance,
 moves `rc`, creates the source-bound GitHub prerelease, verifies again, and only then removes the quarantine tags. Stable publication
 uses the same retained-tarball discipline. Beta never assigns `latest`; legacy prerelease `latest` drift is
@@ -194,6 +194,12 @@ a repository Actions secret or an organization Actions secret explicitly granted
 stable jobs read environment secrets from protected `studio-rc` and `studio-stable` respectively. Actions
 variables do not satisfy `${{ secrets.NPM_TOKEN }}`, and a token configured only on an environment is therefore
 invisible to beta.
+
+`STUDIO_RELEASE_TOKEN` is a separate fine-grained token scoped only to `kumwe/studio`, with Contents and
+Workflows write permissions, and is used only by the final source-bound Git tag/release step. Store it as a
+repository Actions secret for beta; protected environment values may replace it for RC/stable. The built-in
+workflow token remains sufficient when a new tag targets the exact running `main`, or when an exact historical
+tag already exists and the workflow is only recovering its release.
 
 Both protected environments define `STUDIO_REVIEWER_AUTHORITY_SHA256` as the exact SHA-256 SRI of the
 candidate's `evidence/reviewer-authorities.json`; it must also equal the candidate's checked-in

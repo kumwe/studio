@@ -197,10 +197,11 @@ jobs:
         if: steps.plan.outputs.operation == 'publish'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.STUDIO_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_RELEASE_CHANNEL: beta
           GITHUB_RELEASE_VERSION: ${{ steps.verified_beta.outputs.version }}
           EXPECTED_MAIN_SHA: ${{ github.sha }}
+          PRIVILEGED_RELEASE_TOKEN: ${{ secrets.STUDIO_RELEASE_TOKEN != '' }}
           PUBLISH_SOURCE_SHA: ${{ steps.verified_beta.outputs.provenance_commit }}
           VERSION: ${{ steps.verified_beta.outputs.version }}
         run: |
@@ -229,20 +230,12 @@ jobs:
           tag_status=0
           git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?
           if [[ "$tag_status" == "2" ]]; then
-            # A GITHUB_TOKEN has Contents write but cannot create a reference
-            # directly at an older commit when that commit carries a different
-            # workflow tree. Create the governed annotated tag object first;
-            # the reference then targets that object while still dereferencing
-            # to the exact immutable publication source below.
-            tag_object_sha="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
-              -f tag="$tag" \
-              -f message="Studio ${VERSION} (${PUBLISH_SOURCE_SHA})" \
-              -f object="$PUBLISH_SOURCE_SHA" \
-              -f type=commit \
-              --jq .sha)"
-            [[ "$tag_object_sha" =~ ^[a-f0-9]{40}$ ]]
+            if [[ "$PUBLISH_SOURCE_SHA" != "$EXPECTED_MAIN_SHA" && "$PRIVILEGED_RELEASE_TOKEN" != "true" ]]; then
+              echo "::error::Historical source tag $tag requires STUDIO_RELEASE_TOKEN with Contents and Workflows write permissions, or an exact pre-created tag."
+              exit 1
+            fi
             if ! gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-              -f ref="$tag_ref" -f sha="$tag_object_sha" >/dev/null; then
+              -f ref="$tag_ref" -f sha="$PUBLISH_SOURCE_SHA" >/dev/null; then
               # A concurrent creator is acceptable only when it produced the exact governed tag.
               tag_status=0
               git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?

@@ -260,10 +260,15 @@ test('GitHub releases recover exact browser assets without overwrite', async () 
     assert.match(releaseBlock, /approved\.browser\.checksumPath/u);
     assert.match(releaseBlock, /sha256sum --check/u);
     assert.match(releaseBlock, /gh release create .*"\$archive" "\$checksum"/u);
-    assert.match(releaseBlock, /gh api --method POST "repos\/\$\{GITHUB_REPOSITORY\}\/git\/tags"/u);
     assert.match(releaseBlock, /gh api --method POST "repos\/\$\{GITHUB_REPOSITORY\}\/git\/refs"/u);
-    assert.match(releaseBlock, /-f object="\$PUBLISH_SOURCE_SHA"/u);
-    assert.match(releaseBlock, /-f ref="\$tag_ref" -f sha="\$tag_object_sha"/u);
+    assert.match(releaseBlock, /-f ref="\$tag_ref" -f sha="\$PUBLISH_SOURCE_SHA"/u);
+    assert.match(releaseBlock, /PRIVILEGED_RELEASE_TOKEN:/u);
+    assert.match(releaseBlock, /PUBLISH_SOURCE_SHA" != "\$EXPECTED_MAIN_SHA"/u);
+    assert.match(
+      releaseBlock,
+      /STUDIO_RELEASE_TOKEN with Contents and Workflows write permissions/u,
+    );
+    assert.doesNotMatch(releaseBlock, /\/git\/tags/u);
     assert.match(releaseBlock, /--verify-tag/u);
     assert.doesNotMatch(releaseBlock, /--target/u);
     assert.match(releaseBlock, /gh release download/u);
@@ -282,7 +287,10 @@ test('beta GitHub prerelease is exact-source, fail-closed, and token-scoped', as
     source,
     /permissions:\n\s+contents: write\n\s+id-token: write\n\s+pull-requests: write/u,
   );
-  assert.match(releaseBlock, /GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/u);
+  assert.match(
+    releaseBlock,
+    /GH_TOKEN: \$\{\{ secrets\.STUDIO_RELEASE_TOKEN \|\| secrets\.GITHUB_TOKEN \}\}/u,
+  );
   assert.match(
     releaseBlock,
     /PUBLISH_SOURCE_SHA: \$\{\{ steps\.verified_beta\.outputs\.provenance_commit \}\}/u,
@@ -294,10 +302,11 @@ test('beta GitHub prerelease is exact-source, fail-closed, and token-scoped', as
   assert.match(releaseBlock, /tag_ref="refs\/tags\/\$tag"/u);
   assert.match(releaseBlock, /git ls-remote --exit-code origin "\$tag_ref"/u);
   assert.match(releaseBlock, /tag_status" == "2"/u);
-  assert.match(releaseBlock, /repos\/\$\{GITHUB_REPOSITORY\}\/git\/tags/u);
-  assert.match(releaseBlock, /-f object="\$PUBLISH_SOURCE_SHA"/u);
-  assert.match(releaseBlock, /-f ref="\$tag_ref" -f sha="\$tag_object_sha"/u);
-  assert.doesNotMatch(releaseBlock, /-f ref="\$tag_ref" -f sha="\$PUBLISH_SOURCE_SHA"/u);
+  assert.match(
+    releaseBlock,
+    /PRIVILEGED_RELEASE_TOKEN: \$\{\{ secrets\.STUDIO_RELEASE_TOKEN != '' \}\}/u,
+  );
+  assert.match(releaseBlock, /-f ref="\$tag_ref" -f sha="\$PUBLISH_SOURCE_SHA"/u);
   assert.match(releaseBlock, /--prerelease/u);
   assert.ok(
     releaseBlock.indexOf('[[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]') <
