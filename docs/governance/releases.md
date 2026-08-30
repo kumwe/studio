@@ -180,9 +180,11 @@ registry artifacts, source-bound provenance, embedded release records, and a cle
 then retains the quarantine tags for evidence without moving `rc` or creating a release. Changesets owns
 version calculation and version PRs only. After a beta family and its `beta` dist-tag pass complete registry
 and provenance proof, the beta workflow creates or verifies one source-bound coordinated GitHub prerelease and
-its approved browser archive/checksum, then removes its quarantine tags. Official RC publication requires every
-coordinate to exist already; after Gate A it verifies the same candidate provenance, moves `rc`, creates the
-source-bound GitHub prerelease, verifies again, and only then removes the quarantine tags. Stable publication
+its approved browser archive/checksum, then removes its quarantine tags. The controller creates or verifies the
+exact lightweight Git ref before release creation and always uses `--verify-tag`; GitHub's release endpoint is
+never asked to synthesize a tag at an older commit whose workflow tree differs from current `main`. Official RC
+publication requires every coordinate to exist already; after Gate A it verifies the same candidate provenance,
+moves `rc`, creates the source-bound GitHub prerelease, verifies again, and only then removes the quarantine tags. Stable publication
 uses the same retained-tarball discipline. Beta never assigns `latest`; legacy prerelease `latest` drift is
 removed without changing a stable `latest`.
 

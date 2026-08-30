@@ -484,15 +484,24 @@ jobs:
           checksum="${release_assets[1]}"
           [[ -f "$archive" && -f "$checksum" ]]
           (cd "$(dirname "$archive")" && sha256sum --check "$(basename "$checksum")")
-          if ! gh release view "$tag" >/dev/null 2>&1; then
-            release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md)
-            if git ls-remote --exit-code origin "refs/tags/$tag" >/dev/null 2>&1; then
-              git fetch --force --no-tags origin "refs/tags/$tag:refs/tags/$tag"
-              [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
-              release_args+=(--verify-tag)
-            else
-              release_args+=(--target "$PUBLISH_SOURCE_SHA")
+          tag_ref="refs/tags/$tag"
+          tag_status=0
+          git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?
+          if [[ "$tag_status" == "2" ]]; then
+            if ! gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f ref="$tag_ref" -f sha="$PUBLISH_SOURCE_SHA" >/dev/null; then
+              # A concurrent creator is acceptable only when it produced the exact governed tag.
+              tag_status=0
+              git ls-remote --exit-code origin "$tag_ref" >/dev/null 2>&1 || tag_status=$?
+              [[ "$tag_status" == "0" ]]
             fi
+          else
+            [[ "$tag_status" == "0" ]]
+          fi
+          git fetch --force --no-tags origin "$tag_ref:$tag_ref"
+          [[ "$(git rev-list -n 1 "$tag")" == "$PUBLISH_SOURCE_SHA" ]]
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            release_args=("$tag" --title "Studio ${VERSION}" --notes-file release-notes.md --verify-tag)
             if [[ "$CHANNEL" == "rc" ]]; then
               release_args+=(--prerelease)
             fi

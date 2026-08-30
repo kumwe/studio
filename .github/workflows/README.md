@@ -21,8 +21,10 @@ Actions-screen synopsis.
 3. Merging that version PR makes the next run publish all eight approved tarballs at one `beta` coordinate and
    verify the registry. Only after the complete family, provenance, and `beta` dist-tag pass does the workflow
    create or verify one source-bound `studio-v<version>` GitHub prerelease with the approved browser archive and
-   checksum. The Changesets action only maintains version PRs; it cannot publish packages, push Git tags, or
-   create GitHub releases.
+   checksum. The release controller first creates or verifies the exact lightweight tag through the Git
+   references API, then creates the release with `--verify-tag`; this keeps recovery of an older publication
+   source out of GitHub's workflow-file `target_commitish` restriction. The Changesets action only maintains
+   version PRs; it cannot publish packages, push Git tags, or create GitHub releases.
 4. Only after every machine-checked `STUDIO-PROD-001`–`015` status row is `repository-verified`, dispatch
    **Governed RC and stable promotion** with current beta `expected_main_sha`, `channel=rc`, empty
    `profiles` (which selects the exact fixed nine) or the exact fixed nine, and empty evidence SHAs. It creates
