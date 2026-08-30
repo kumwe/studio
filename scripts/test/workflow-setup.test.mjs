@@ -58,6 +58,11 @@ test('one candidate qualification command owns repository, PHP, and browser proo
   );
   for (const name of ['build', 'check']) {
     assert.ok(
+      manifest.scripts[name].indexOf('npm run build:packages:minify') <
+        manifest.scripts[name].indexOf('npm run build:browser'),
+      `${name} must preserve the minified dependency inputs that define published browser bytes`,
+    );
+    assert.ok(
       manifest.scripts[name].lastIndexOf('npm run build:packages:minify') >
         manifest.scripts[name].lastIndexOf('npm run build:browser'),
       `${name} can leave source maps regenerated after the final package minification pass`,
