@@ -1,5 +1,23 @@
 # @kumwe/studio
 
+## 0.1.0-beta.3
+
+### Patch Changes
+
+- [`09961a5`](https://github.com/kumwe/studio/commit/09961a540ac4940b6f0a6c03dd672e87493ba90b) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Publish the coordinated beta from the current source head so the governed GitHub prerelease carries
+  the verified browser archive and detached checksum. The previous beta's npm family is fully
+  published and provenance-verified, but its prerelease reconciliation is blocked: the publication
+  source commit is historical, and workflow tokens cannot create tags at historical commits whose
+  workflow files differ from the current branch. Releasing from the current head lets the release
+  controller tag its own publication source, closing the recovery gap without privileged credentials.
+- Updated dependencies []:
+  - @kumwe/studio-core@0.1.0-beta.3
+  - @kumwe/studio-media@0.1.0-beta.3
+  - @kumwe/studio-preview@0.1.0-beta.3
+  - @kumwe/studio-protocol@0.1.0-beta.3
+  - @kumwe/studio-renderer-web@0.1.0-beta.3
+  - @kumwe/studio-rich-text@0.1.0-beta.3
+
 ## 0.1.0-beta.2
 
 ### Minor Changes

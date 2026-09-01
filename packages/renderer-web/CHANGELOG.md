@@ -1,5 +1,14 @@
 # @kumwe/studio-renderer-web
 
+## 0.1.0-beta.3
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kumwe/studio-core@0.1.0-beta.3
+  - @kumwe/studio-protocol@0.1.0-beta.3
+  - @kumwe/studio-rich-text@0.1.0-beta.3
+
 ## 0.1.0-beta.2
 
 ### Minor Changes
