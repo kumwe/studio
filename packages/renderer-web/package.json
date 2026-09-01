@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio-renderer-web",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -40,9 +40,9 @@
     "build": "tsc -b && node ../../scripts/minify-package-dist.mjs --package packages/renderer-web && node ../../scripts/build-studio-enhancement-runtime.mjs"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-beta.2",
-    "@kumwe/studio-protocol": "0.1.0-beta.2",
-    "@kumwe/studio-rich-text": "0.1.0-beta.2"
+    "@kumwe/studio-core": "0.1.0-beta.3",
+    "@kumwe/studio-protocol": "0.1.0-beta.3",
+    "@kumwe/studio-rich-text": "0.1.0-beta.3"
   },
   "peerDependencies": {
     "chart.js": "4.5.1",
