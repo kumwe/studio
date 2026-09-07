@@ -163,10 +163,11 @@ export class MediaUploadController {
     });
 
     try {
-      const plan = await this.#transport.authorize(request, controller.signal);
+      const grantedPlan = await this.#transport.authorize(request, controller.signal);
       if (controller.signal.aborted) {
         return this.session;
       }
+      const plan = parseUploadPlan(grantedPlan);
       if (totalBytes > plan.maximumBytes) {
         this.#setSession({
           ...base,
@@ -194,7 +195,7 @@ export class MediaUploadController {
         progress: { totalBytes, transferredBytes: 0 },
         state: 'transferring',
       });
-      const chunkBytes = Math.max(1, plan.chunkBytes ?? totalBytes);
+      const chunkBytes = plan.chunkBytes ?? totalBytes;
       let transferredBytes = 0;
       while (transferredBytes < totalBytes) {
         const data = file.slice(
@@ -247,4 +248,55 @@ export class MediaUploadController {
       listener(this.session);
     }
   }
+}
+
+/** Enforce media-upload-session.schema.json#/$defs/plan before any bytes move. */
+function parseUploadPlan(value: MediaUploadPlan): MediaUploadPlan {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('The host returned an invalid bounded upload plan.');
+  }
+  const prototype: unknown = Object.getPrototypeOf(value);
+  if (
+    (prototype !== Object.prototype && prototype !== null) ||
+    Object.getOwnPropertySymbols(value).length !== 0
+  ) {
+    throw new TypeError('The host returned an invalid bounded upload plan.');
+  }
+  const descriptors = Object.getOwnPropertyDescriptors(value);
+  if (
+    !Object.hasOwn(descriptors, 'maximumBytes') ||
+    !Object.hasOwn(descriptors, 'resumable') ||
+    Object.keys(descriptors).some(
+      (key) => !['chunkBytes', 'maximumBytes', 'resumable'].includes(key),
+    ) ||
+    Object.values(descriptors).some(
+      (descriptor) => !('value' in descriptor) || !descriptor.enumerable,
+    )
+  ) {
+    throw new TypeError('The host returned an invalid bounded upload plan.');
+  }
+  const maximumBytes: unknown = descriptors.maximumBytes?.value;
+  const resumable: unknown = descriptors.resumable?.value;
+  const chunkBytes: unknown = Object.hasOwn(descriptors, 'chunkBytes')
+    ? descriptors.chunkBytes?.value
+    : undefined;
+  if (
+    typeof maximumBytes !== 'number' ||
+    !Number.isInteger(maximumBytes) ||
+    maximumBytes < 1 ||
+    maximumBytes > 1099511627776 ||
+    typeof resumable !== 'boolean' ||
+    (Object.hasOwn(descriptors, 'chunkBytes') &&
+      (typeof chunkBytes !== 'number' ||
+        !Number.isInteger(chunkBytes) ||
+        chunkBytes < 1024 ||
+        chunkBytes > 1073741824))
+  ) {
+    throw new TypeError('The host returned an invalid bounded upload plan.');
+  }
+  return {
+    maximumBytes,
+    resumable,
+    ...(typeof chunkBytes === 'number' ? { chunkBytes } : {}),
+  };
 }

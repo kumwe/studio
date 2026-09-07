@@ -86,6 +86,109 @@ function fileOfBytes(size: number): Blob {
 }
 
 describe('MediaUploadController', () => {
+  it.each([
+    ['non-finite chunk', { chunkBytes: NaN }],
+    ['infinite chunk', { chunkBytes: Infinity }],
+    ['zero chunk', { chunkBytes: 0 }],
+    ['fractional chunk', { chunkBytes: 1024.5 }],
+    ['undersized chunk', { chunkBytes: 1023 }],
+    ['oversized chunk', { chunkBytes: 1073741825 }],
+    ['non-finite maximum', { maximumBytes: NaN }],
+    ['infinite maximum', { maximumBytes: Infinity }],
+    ['zero maximum', { maximumBytes: 0 }],
+    ['negative maximum', { maximumBytes: -1 }],
+    ['fractional maximum', { maximumBytes: 2500.5 }],
+    ['oversized maximum', { maximumBytes: 1099511627777 }],
+    ['non-boolean resumable', { resumable: 'yes' }],
+    ['unknown member', { ungoverned: true }],
+  ])('refuses a %s host plan before transfer or completion', async (_name, changes) => {
+    const transport = new FakeTransport();
+    transport.plan = { ...transport.plan, ...changes } as MediaUploadPlan;
+    // Bound this regression even if a broken controller attempts empty chunks forever.
+    transport.transfer = (chunk): Promise<void> => {
+      transport.transferCalls.push({
+        offset: chunk.offset,
+        sessionId: chunk.sessionId,
+        size: chunk.data.size,
+      });
+      return Promise.reject(new Error('A malformed plan must never reach byte transfer.'));
+    };
+    const controller = createController(transport);
+    const snapshots = collectSnapshots(controller);
+    const session = await controller.upload(fileOfBytes(2500), uploadRequest);
+    expect(transport.transferCalls).toEqual([]);
+    expect(transport.finalizeCalls).toEqual([]);
+    expect(snapshots.map((snapshot) => snapshot.state)).toEqual(['requested', 'failed']);
+    expect(session.failure?.code).toBe('studio.media/upload-failed');
+    expect(session.plan).toBeUndefined();
+    expectValidSnapshots(snapshots);
+  });
+
+  it('accepts the exact schema ceilings without changing the granted plan', async () => {
+    const transport = new FakeTransport();
+    transport.plan = { chunkBytes: 1073741824, maximumBytes: 1099511627776, resumable: true };
+    const controller = createController(transport);
+    const snapshots = collectSnapshots(controller);
+    const session = await controller.upload(fileOfBytes(2500), uploadRequest);
+    expect(session.state).toBe('complete');
+    expect(session.plan).toEqual(transport.plan);
+    expect(transport.transferCalls.map((chunk) => chunk.size)).toEqual([2500]);
+    expectValidSnapshots(snapshots);
+  });
+
+  it.each(['maximumBytes', 'chunkBytes', 'resumable'] as const)(
+    'refuses a %s accessor before invoking it or transferring bytes',
+    async (field) => {
+      const transport = new FakeTransport();
+      const plan = { ...transport.plan };
+      let reads = 0;
+      Object.defineProperty(plan, field, {
+        enumerable: true,
+        get: () => {
+          reads += 1;
+          return reads < 6 ? transport.plan[field] : NaN;
+        },
+      });
+      transport.authorize = () => Promise.resolve(plan);
+      transport.transfer = (chunk) => {
+        transport.transferCalls.push({
+          offset: chunk.offset,
+          sessionId: chunk.sessionId,
+          size: chunk.data.size,
+        });
+        return Promise.reject(new Error('An accessor plan must never reach byte transfer.'));
+      };
+      const controller = createController(transport);
+      const snapshots = collectSnapshots(controller);
+      const session = await controller.upload(fileOfBytes(2500), uploadRequest);
+      expect(reads).toBe(0);
+      expect(transport.transferCalls).toEqual([]);
+      expect(transport.finalizeCalls).toEqual([]);
+      expect(session.state).toBe('failed');
+      expect(session.failure?.code).toBe('studio.media/upload-failed');
+      expectValidSnapshots(snapshots);
+    },
+  );
+
+  it('keeps an accepted plan stable when the transport mutates its response during transfer', async () => {
+    const transport = new FakeTransport();
+    const granted = { ...transport.plan };
+    transport.authorize = () => Promise.resolve(transport.plan);
+    const transfer = transport.transfer.bind(transport);
+    transport.transfer = (chunk) => {
+      transport.plan.maximumBytes = 1;
+      transport.plan.chunkBytes = NaN;
+      return transfer(chunk);
+    };
+    const controller = createController(transport);
+    const snapshots = collectSnapshots(controller);
+    const session = await controller.upload(fileOfBytes(2500), uploadRequest);
+    expect(session.state).toBe('complete');
+    expect(session.plan).toEqual(granted);
+    expect(transport.transferCalls.map((chunk) => chunk.size)).toEqual([1024, 1024, 452]);
+    expectValidSnapshots(snapshots);
+  });
+
   it('drives requested → authorized → transferring → verifying → complete with per-chunk progress', async () => {
     const transport = new FakeTransport();
     const controller = createController(transport);

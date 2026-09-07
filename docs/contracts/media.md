@@ -43,6 +43,11 @@ The media port supports negotiated subsets of:
 
 Failed or abandoned upload sessions do not create an accepted asset identity. A rejected or quarantined accepted asset remains stably identifiable for diagnostics and authorized replacement, but is not thereby usable or publishable.
 
+The upload controller checks the returned plan against the existing closed plan shape and integer bounds
+in `media-upload-session.schema.json` before entering `authorized` or transferring bytes. A malformed plan
+produces the generic `studio.media/upload-failed` refusal without transfer or completion. The accepted
+plan is detached from the host response so later adapter mutation cannot change the active byte budget.
+
 ## Canonical policy vectors
 
 Upload policy behaviour carries canonical vectors in [`schemas/vectors/media/`](../../schemas/vectors/media/), published verbatim through `@kumwe/studio-testkit` under `vectors/media/`. A vector fixes one host-declared upload policy, one upload request, and either the deterministic policy-derived upload plan or a stable failure code from the closed media failure vocabulary; vectors additionally fix cancellation legality per session state and retry-under-a-fresh-session legality. Rejection vectors may pin raw request values — byte counts, declared media types, filenames — that the user-facing failure message MUST NOT echo; oversize byte counts travel only as machine-readable diagnostic parameters. The TypeScript reference replays the whole corpus (`packages/media/test/media-vectors.test.ts`); every conforming implementation, in any language, MUST reproduce the same outcomes.

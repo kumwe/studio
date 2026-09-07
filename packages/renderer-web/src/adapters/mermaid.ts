@@ -50,7 +50,7 @@ function parseSafeSvg(source: string): SVGElement {
   ) {
     throw new TypeError('Mermaid returned unsafe or malformed SVG.');
   }
-  for (const element of [...root.querySelectorAll('*')]) {
+  for (const element of [root, ...root.querySelectorAll('*')]) {
     for (const attribute of [...element.attributes]) {
       if (/^on/iu.test(attribute.name))
         throw new TypeError('Mermaid SVG contains an event attribute.');

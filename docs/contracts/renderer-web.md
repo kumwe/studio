@@ -93,7 +93,8 @@ immutable per-page delivery manifest; a locally invented asset record is not con
 
 The Chart.js 4.5.1, Mermaid 11.17.1, and KaTeX 0.18.4 subpaths are optional lazy peers. Version
 mismatch fails closed. Mermaid runs strict mode and its returned SVG is parsed and inspected before
-DOM insertion. KaTeX disables trust and uses strict parsing. Chart.js receives a newly built options
+DOM insertion. Event attributes and external references are refused on the SVG root and every descendant;
+safe root labels and local fragment references are preserved. KaTeX disables trust and uses strict parsing. Chart.js receives a newly built options
 object from a parsed `StudioChartSpec`; an artifact cannot override it.
 
 Those adapters and `enhanceStudioWeb` exist only for controlled authoring-preview, direct library, and test
