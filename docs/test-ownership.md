@@ -1,0 +1,65 @@
+# Package test ownership
+
+This audit inspected the eight implemented packages at source
+`42b149251a9f17a2ef8f32db0d9dd1ac2fcfec8a`, including public entrypoints, runtime implementation,
+test bodies and corpus replay. It identifies responsibility by public contract group; it does not
+claim exhaustive branch coverage, accepted conformance profiles, released qualification or App adoption.
+
+## Source and executable evidence
+
+All eight package suites are discovered by `vitest.config.ts` under
+`packages/*/test/**/*.test.ts`. `npm run test` executes those suites and the workspace's Node tests.
+The paths below are relative to each package unless they start with `schemas/` or `scripts/`.
+
+| Package                        | Public contract and behavior owned here                                                                                                                                                                                                                                                                                                                                                                                | Refusal and conformance evidence owned here                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core`                         | `src/index.ts` exports canonical serialization, commands/history, owner generations, session/contextual/HTTP coordination, capability negotiation, migrations, typed production values, schemas and URL policy. `test/core.test.ts`, `session.test.ts`, `contributions.test.ts`, `contextual-session.test.ts`, `http-host-adapter.test.ts` and `production-values.test.ts` exercise the corresponding implementations. | `session-policy.test.ts`, `url-policy.test.ts`, `deployment-validation.test.ts` and the four `fuzz-*.test.ts` files exercise refusal and preserved state. `canonical-vectors.test.ts` compares exact bytes and independently recorded digests; `command-vectors.test.ts` checks results, inverses and immutable input against Testkit vectors. `profile-validator.test.ts` and `schema-profile-parity.test.ts` compare the interpreter and canonical schema profile with the reference validator. |
+| `media`                        | `src/index.ts` exports the library, rendition choice, upload controller/policy, field controller and crop validator. `test/media-library.test.ts`, `upload-controller.test.ts`, `media-field.test.ts` and `validate-media-reference.test.ts` directly exercise those contracts.                                                                                                                                        | Upload failure, cancellation, retry, diagnostic privacy, malformed host-plan refusal and crop bounds belong here. `test/media-vectors.test.ts` replays `schemas/vectors/media/` through both policy evaluation and actual upload orchestration. Crop validation explicitly assumes structural schema validation has already passed.                                                                                                                                                               |
+| `preview`                      | `src/index.ts` exports client/host channels and canonical draft identity/marker helpers. `test/preview-client.test.ts`, `preview-host.test.ts`, `preview-identity.test.ts` and `preview-measure.test.ts` exercise handshake, digest/marker ordering, rendering and geometry.                                                                                                                                           | These suites reject wrong origin/source/channel, replayed sequence, stale or mismatched draft/request identity, invented markers, invalid geometry and late results after cancellation/disposal. Identity uses portable `schemas/vectors/preview/`; `test/preview-vocabulary.test.ts` checks the closed interaction/revocation vocabulary.                                                                                                                                                        |
+| `protocol`                     | `src/index.ts` exports schema documents, generated and handwritten contract types, release identity, message guards and typed host failures. `test/artifact-types.test.ts` and `contextual-authoring-types.test.ts` check public declarations and operation bindings.                                                                                                                                                  | `test/guards.test.ts` directly checks bounded payloads, unsafe keys, sparse/augmented arrays, conflict/retry invariants and typed error wrapping. `test/generated-models.test.ts` checks canonical-schema projection and every applicable positive fixture's schema validation/JSON round-trip. Exported `schemas/*` and release JSON are checked by the workspace contract/release gates.                                                                                                        |
+| `renderer-web`                 | `src/index.ts` exports rendering, scoped CSS, safe markup, enhancement lifecycle and the renderer vector runner. The `adapters/chart-js`, `adapters/katex` and `adapters/mermaid` subpaths have direct tests in `test/adapters.test.ts`. `renderer.test.ts`, `interactions.test.ts` and `public-runtime.test.ts` exercise rendering and disposal/activation behavior.                                                  | Escaping, URL/media refusals, typed-data fallback, scoped style bounds and returned SVG root/descendant inspection belong here. `test/conformance.test.ts` replays all eight `schemas/conformance/renderer-web/` vectors, checks actual node types against claimed coverage, covers the production block catalog and verifies emitted style path/digest/byte metadata. This is repository replay, not independent deployed-renderer qualification.                                                |
+| `rich-text`                    | `src/index.ts` exports the canonical parser/projection, profiles, Markdown/safe-HTML codecs and private-editor adapters. `test/rich-text.test.ts`, `authoring-foundation.test.ts`, `first-party-tools.test.ts` and `strict-csp-surface.test.ts` exercise those interfaces.                                                                                                                                             | Grammar/hard-limit/prototype refusals, executable HTML removal, invalid-editor-state preservation and strict-CSP/read-only lifecycle stay here. `test/fuzz.test.ts` mutates hostile input; `profile-sync.test.ts` checks profile/schema agreement; `projection-conformance.test.ts` compares every published Testkit rich-text projection while preserving input.                                                                                                                                 |
+| `studio-lit` (`@kumwe/studio`) | `src/index.ts` owns browser mounting, standalone/contextual shells, hosted composition, authoring/resource/media controls and messages. `test/browser-mount.test.ts`, `standalone-runtime.test.ts`, `contextual-authoring.test.ts`, `hosted-runtime.test.ts` and the control suites exercise them. The `./http` export is tested in `browser-http-host-adapter.test.ts`.                                               | Tests check isolated mounts, disposal, malformed deployment, exact contribution locks, authoritative host refusal without local fallback, dynamic-binding immutability, save reconciliation, scoped CSS refusal and keyboard command paths. Browser-assets/catalog exports have workspace manifest/archive/message checks. Real browser/accessibility and PHP-host qualification are additional repository lanes; Node DOM tests do not replace them.                                             |
+| `testkit`                      | `src/index.ts` exports fixture builders, assertion/error helpers, host/HTTP testbed and contextual/web/schema/binding conformance runners. `test/testkit.test.ts`, `host-testbed.test.ts`, `http-transport.test.ts`, `authoring-web-conformance.test.ts` and `contextual-authoring-conformance.test.ts` exercise their behavior.                                                                                       | `test/testkit.test.ts` pins typed Blueprint refusal, diagnostic wording/order and constructor snapshot isolation. `http-authority-order.test.ts` checks refusal before dispatch. Host/host-sequence/preview/schema/binding vectors, incomplete-profile refusals and wire freeze remain Testkit-owned. Its exported `fixtures/*`, `invalid/*`, `vectors/*`, `conformance/*`, corpus manifest and release JSON are checked by workspace contract/release gates.                                     |
+
+## Refusal gaps closed by this correction
+
+- Mermaid's SVG inspection visited descendants but skipped the root, allowing an event handler or
+  external reference on the returned root. The adapter now applies the same refusal checks to both;
+  package tests cover root and descendant attributes and preserve safe labels/fragment references.
+- An upload plan with `chunkBytes: NaN` produced repeated empty transfers without progress. The
+  upload controller now checks the closed plan and the existing schema's finite integer bounds before
+  emitting an authorized state or calling transfer/finalize, and snapshots the accepted plan.
+  Tests check malformed values, exact ceilings and schema-valid failure snapshots.
+- Testkit's public Blueprint assertion had only a successful-input test. Its typed refusal and error
+  diagnostic contract now have direct package tests; the runtime contract is unchanged.
+
+These corrections enforce existing renderer/media contracts and schema bounds. They introduce no new
+serialized shape, authority, browser feature, published coordinate or conformance profile.
+
+## Host boundary and future changes
+
+Kumwe App must test its real authenticated policy, persistence, revision/audit/transaction, media custody,
+publication, recovery and browser delivery adapters. It must not serve as the sole test owner for the
+portable implementations above. Existing Studio-host integration tests are not removable merely because
+these package suites pass. This audit identifies no current App test file for whole-file deletion.
+
+Every new or changed public export, schema/resource subpath and portable refusal must update its owning
+package's executable behavior/boundary tests and the applicable portable corpus. Add the corresponding
+ownership row when a package is introduced. Testkit may distribute shared vectors; each implementing
+package must replay its applicable vectors. Run the repository's single `npm run verify` gate before
+review, preserve the required CI gates, and record unavailable browser/external/manual evidence honestly.
+The existing boundary, contract, model, corpus, package and release checks remain authoritative; this
+reviewed map is not a substitute for executing them.
+
+## Validation scope
+
+The exact audited main source has successful CI at
+<https://github.com/kumwe/studio/actions/runs/33502196553>. Local review used the pinned Node 24/npm
+11.9.0 lockfile install and ran TypeScript checks, package tests and focused hostile-input reproductions.
+The baseline package run executed 94 files and 1,299 tests: 1,298 passed. The remaining Core
+all-schema parity test exceeded its existing five-second limit locally, including an isolated retry;
+no timeout setting was changed. Media (46), Preview (68), Protocol (32), Renderer Web (41),
+Rich Text (94), Studio Lit (237) and Testkit (174) baseline tests all passed; Core passed 606 of 607.
+Correction validation and any environmental limits are recorded in the correction PR. No release,
+Gate A/B, full product completion or deployed App acceptance is asserted here.
