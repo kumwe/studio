@@ -1,5 +1,17 @@
 # @kumwe/studio-renderer-web
 
+## 0.1.0-beta.4
+
+### Patch Changes
+
+- [#55](https://github.com/kumwe/studio/pull/55) [`30c2f82`](https://github.com/kumwe/studio/commit/30c2f8246a346da554bb974842fbc71dde2685b4) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Refuse malformed upload plans before transferring bytes and inspect Mermaid SVG root attributes alongside
+  descendants. Add package-owned regressions for these boundaries and Testkit's public conformance error,
+  and document executable test ownership across all eight packages.
+- Updated dependencies []:
+  - @kumwe/studio-core@0.1.0-beta.4
+  - @kumwe/studio-protocol@0.1.0-beta.4
+  - @kumwe/studio-rich-text@0.1.0-beta.4
+
 ## 0.1.0-beta.3
 
 ### Patch Changes

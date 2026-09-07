@@ -1,5 +1,12 @@
 # @kumwe/studio-core
 
+## 0.1.0-beta.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @kumwe/studio-protocol@0.1.0-beta.4
+
 ## 0.1.0-beta.3
 
 ### Patch Changes
