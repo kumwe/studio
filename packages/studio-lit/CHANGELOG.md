@@ -1,5 +1,17 @@
 # @kumwe/studio
 
+## 0.1.0-beta.4
+
+### Patch Changes
+
+- Updated dependencies [[`30c2f82`](https://github.com/kumwe/studio/commit/30c2f8246a346da554bb974842fbc71dde2685b4)]:
+  - @kumwe/studio-media@0.1.0-beta.4
+  - @kumwe/studio-renderer-web@0.1.0-beta.4
+  - @kumwe/studio-core@0.1.0-beta.4
+  - @kumwe/studio-preview@0.1.0-beta.4
+  - @kumwe/studio-protocol@0.1.0-beta.4
+  - @kumwe/studio-rich-text@0.1.0-beta.4
+
 ## 0.1.0-beta.3
 
 ### Patch Changes
