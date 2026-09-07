@@ -47,19 +47,22 @@ class Provider implements MediaProvider {
 }
 
 class UploadTransport implements MediaUploadTransport {
+  public readonly transferredSizes: number[] = [];
+
   public abort(): Promise<void> {
     return Promise.resolve();
   }
 
   public authorize(): Promise<MediaUploadPlan> {
-    return Promise.resolve({ chunkBytes: 2, maximumBytes: 1_000, resumable: true });
+    return Promise.resolve({ chunkBytes: 1_024, maximumBytes: 4_096, resumable: true });
   }
 
   public finalize(): Promise<MediaUploadAcceptedAsset> {
     return Promise.resolve({ id: ASSET.id, revision: ASSET.revision, state: 'ready' });
   }
 
-  public transfer(): Promise<void> {
+  public transfer(chunk: { data: Blob }): Promise<void> {
+    this.transferredSizes.push(chunk.data.size);
     return Promise.resolve();
   }
 }
@@ -157,12 +160,13 @@ describe('StudioMediaFieldController', () => {
 
   it('integrates host-authorized upload progress and selects the accepted asset', async () => {
     const provider = new Provider();
+    const transport = new UploadTransport();
     const field = new StudioMediaFieldController({
       provider,
-      uploadTransport: new UploadTransport(),
+      uploadTransport: transport,
       usage: 'studio.media/upload',
     });
-    const file = new File([new Uint8Array([1, 2, 3, 4, 5])], 'windhoek.jpg', {
+    const file = new File([new Uint8Array(2_049)], 'windhoek.jpg', {
       type: 'image/jpeg',
     });
 
@@ -170,10 +174,11 @@ describe('StudioMediaFieldController', () => {
 
     expect(field.state.status).toBe('ready');
     expect(field.state.upload).toMatchObject({
-      progress: { totalBytes: 5, transferredBytes: 5 },
+      progress: { totalBytes: 2_049, transferredBytes: 2_049 },
       state: 'complete',
     });
     expect(field.state.value?.assetId).toBe('media-1');
+    expect(transport.transferredSizes).toEqual([1_024, 1_024, 1]);
     field.dispose();
   });
 });
