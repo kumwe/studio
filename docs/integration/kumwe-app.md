@@ -43,12 +43,31 @@ input is digest-verified; a Studio contract change becomes available to Kumwe Ap
 Producer re-pin updates the complete set and passes that PHP replay. Studio workspace files, floating ranges,
 and an automatic partial refresh are not valid Producer inputs.
 
-That paragraph defines the landing contract, not current release status. Producer's founding branch still uses
-a pre-release source pin and has not completed the coordinated release/corpus/prebuilt-asset pin, wire and
-renderer implementation, or full PHP replay. Kumwe App therefore has no qualified Producer-backed Studio
-integration yet.
+That paragraph defines the landing contract. Producer 0.3.0 vendors the complete `0.1.0-beta.3` release
+input (55 schemas, 301 corpus members, the browser-asset manifest with its SRI values) and adds a
+`Deployment` layer — a browser-asset locator for the npm package layout, a `studio-deployment` emitter
+proven against the pinned schema and release, the manifest policies widened only by exact origins, and
+same-origin fetch admission — so a PHP host emits the per-mount configuration without re-implementing the
+contract. Kumwe App composes exactly that: its Content create/edit screen opens an opaque authoring context
+and a hybrid host session per mount, emits the Producer-proven deployment as the inert JSON block, loads the
+pinned browser module from the configured npm CDN (or a mirror keeping the package layout) with the manifest
+integrity, and answers the seven authoring operations through PHP application services behind Producer's
+wire. App keeps no Studio package bytes in its repository: the eight packages resolve from the registry at
+their exact versions, and its readiness gate binds the registry pin, Producer's package provenance and the
+reviewed host qualification before a mount is offered.
 
-Studio remains on the governed beta lane while qualification is completed. The required landing order is:
+One App-owned record sits beside that pin. Studio's hosted runtime admits a first-party block only when the
+session locks its exact version and revision, and Producer's published rendering executes only exactly
+registered coordinates, but neither Studio nor Producer publishes the compiled first-party block and pattern
+coordinates as data. App therefore materializes `resources/studio-contract/core-catalog.json` from the
+installed exact `@kumwe/studio-core` (`createCoreProductionBlockDefinitions()` and
+`createCoreProductionPatterns()`) and proves it against that package in its release gate. This is a
+coordinate record, not a catalog reproduction: no definition, control or renderer is copied. Publishing the
+same coordinates from the release record or the browser-asset manifest would let App drop the materialized
+file; until then the App record is the sanctioned shape.
+
+Studio remains on the governed beta lane while qualification is completed. The required landing order for
+each further coordinate is:
 
 1. merge and publish one exact eight-package Studio coordinate through the protected release train;
 2. deliberately re-pin that coordinate, its release/schema/corpus records, vectors, and prebuilt assets in
