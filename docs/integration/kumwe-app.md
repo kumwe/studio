@@ -1,7 +1,6 @@
 # Kumwe App integration playbook
 
-[Kumwe App](https://github.com/kumwe/app) is Studio's first reference host and the hand for which the glove is
-made. It will consume Studio through [Kumwe Producer](https://github.com/kumwe/producer), the separate PHP
+[Kumwe App](https://github.com/kumwe/app) integrates Studio through [Kumwe Producer](https://github.com/kumwe/producer), the separate PHP
 realization library for Studio's public wire and rendering contracts. Producer is required to supply the
 digest-pinned PHP contract implementation; Kumwe App supplies the authoritative identity, policy, application
 services, persistence, workflow, publication, and delivery behind it.
@@ -43,7 +42,7 @@ input is digest-verified; a Studio contract change becomes available to Kumwe Ap
 Producer re-pin updates the complete set and passes that PHP replay. Studio workspace files, floating ranges,
 and an automatic partial refresh are not valid Producer inputs.
 
-That paragraph defines the landing contract. Producer 0.3.0 vendors the complete `0.1.0-beta.3` release
+Producer 0.3.0 vendors the complete `0.1.0-beta.3` release
 input (55 schemas, 301 corpus members, the browser-asset manifest with its SRI values) and adds a
 `Deployment` layer — a browser-asset locator for the npm package layout, a `studio-deployment` emitter
 proven against the pinned schema and release, the manifest policies widened only by exact origins, and

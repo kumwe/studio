@@ -1,5 +1,19 @@
 # `@kumwe/studio`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, not an RC or production-supported release. The contextual
 Model/Blueprint/Entry runtime and standalone browser distribution are implemented; complete host integration,
 profile evidence, and release qualification remain open. The exact coordinated version is in the workspace
@@ -50,7 +64,7 @@ first-party block and pattern catalog but no `HostAdapter`, endpoint, authentica
 Each mount owns isolated in-element state and loses that state when the page reloads or closes. Its accessible
 toolbar imports/downloads a lossless canonical `AuthoringSessionSnapshot` project separately from the exact,
 outcome-specific `AuthoringSaveIntent` dataset that host mode would submit. Downloading an intent does not save,
-authorize, version, or publish it. See the [standalone local integration guide](../../docs/integration/standalone-local.md).
+authorize, version, or publish it. See the [standalone local integration guide](https://github.com/kumwe/studio/blob/main/docs/integration/standalone-local.md).
 
 ### Configuration-driven browser mounting
 
@@ -77,8 +91,8 @@ compilation, and rejects executable/external script elements, invalid canonical 
 2,097,152 UTF-8 bytes, JSON depth above 16, and missing or ambiguous selectors before starting any runtime. No
 transport means no fetch and a local blank project. A configured HTTP refusal is propagated and never
 converted to local work. See the
-[deployment contract](../../docs/contracts/studio-deployment.md) and
-[prebuilt asset guide](../../docs/integration/prebuilt-browser-assets.md).
+[deployment contract](https://github.com/kumwe/studio/blob/main/docs/contracts/studio-deployment.md) and
+[prebuilt asset guide](https://github.com/kumwe/studio/blob/main/docs/integration/prebuilt-browser-assets.md).
 
 ### Configuration-driven HTTP host binding
 
@@ -148,9 +162,9 @@ artifact, localization, model-discovery, permission, recovery, and telemetry por
 Studio call them. This boundary is explicit so a PHP integration does not mistake protocol availability for a
 finished browser workflow.
 
-See the [deployment contract](../../docs/contracts/studio-deployment.md),
-[transport contract](../../docs/contracts/host-transport.md), and
-[generic host guide](../../docs/integration/generic-host.md) for the exact documents and round trip. The
+See the [deployment contract](https://github.com/kumwe/studio/blob/main/docs/contracts/studio-deployment.md),
+[transport contract](https://github.com/kumwe/studio/blob/main/docs/contracts/host-transport.md), and
+[generic host guide](https://github.com/kumwe/studio/blob/main/docs/integration/generic-host.md) for the exact documents and round trip. The
 backend implements those language-neutral schemas in PHP or another host language; Node.js/npm is a build-time
 concern only.
 
@@ -190,7 +204,7 @@ identifiers in `STUDIO_AUTHORING_CONTROL_IDS`. It accepts canonical Studio
 values and editor-neutral injected services; hosts never configure or receive
 Editor.js, code-editor, chart, equation, or diagram runtime objects. Dynamic
 bindings are read-only and invalid transient input preserves the last canonical
-value. See the [normative control contract](../../docs/contracts/authoring-controls.md).
+value. See the [normative control contract](https://github.com/kumwe/studio/blob/main/docs/contracts/authoring-controls.md).
 
 The live inspector mounts these controls directly from each block definition's
 `propertyControls` and port `authoring` metadata. Static port edits dispatch the
@@ -335,3 +349,11 @@ Model ID/version/revision drift, removed fields and kind/cardinality changes sur
 `studio.binding/*` diagnostics while preserving the stored binding. When model reads are advertised but no
 active projection is supplied, field choices stay disabled and the shell does not reopen its legacy free-form
 JSON binding editor. Read-only sessions show the same projection with every binding mutation disabled.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md

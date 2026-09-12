@@ -21,7 +21,7 @@ shape too: routes, bodies and status mapping are normative in the
 [host transport binding](../contracts/host-transport.md).
 
 A PHP host may consume a qualified release of [Kumwe Producer](https://github.com/kumwe/producer), the separate
-PHP realization of this public boundary now under founding development. Producer's release contract requires
+published PHP realization of this public boundary. Producer's release contract requires
 one complete Studio pin, verified schemas/corpus/prebuilt assets, and replay of the applicable conformance
 vectors in PHP. It is an implementation option, not a Studio runtime dependency: Studio never imports or
 recognizes Producer, and another PHP or non-PHP host may implement the same contract directly. In every case,

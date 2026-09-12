@@ -1,7 +1,21 @@
 # `@kumwe/studio-preview`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio-preview@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
-version is in the workspace `studio-release.json`; this channel is an executable contract implementation,
+version is in the [coordinated release record](https://github.com/kumwe/studio/blob/main/studio-release.json); this channel is an executable contract implementation,
 not a qualified host adapter.
 
 An exact-origin, typed request channel between Studio and a host-rendered preview surface. A host can
@@ -83,3 +97,11 @@ unknown entries must exactly partition the requested markers.
 Version negotiation currently requires the exact draft wire version on both sides: schema filtering
 accepts only `STUDIO_WIRE_PROTOCOL_VERSION`, so a ready announcement from a host speaking any other
 version is discarded and `ready()` times out instead of resolving against an incompatible host.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio-preview/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio-preview
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md

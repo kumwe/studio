@@ -1,7 +1,21 @@
 # `@kumwe/studio-core`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio-core@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
-version is in the workspace `studio-release.json`; the implemented kernel does not claim product or
+version is in the [coordinated release record](https://github.com/kumwe/studio/blob/main/studio-release.json); the implemented kernel does not claim product or
 host-integration completeness.
 
 The framework-neutral state engine for Studio. It registers versioned blocks, validates blueprint
@@ -93,14 +107,14 @@ preserve the document, history, selection, and saved baseline.
 synthesize or reconcile recovery envelopes. A
 `studio.host/stale-session-generation` diagnostic invalidates the complete handle. `dispose()` is
 local and idempotent and does not imply host teardown or preview cleanup. See
-[ADR 0020](../../docs/decisions/0020-blueprint-host-session-composition.md) for the deliberate scope.
+[ADR 0020](https://github.com/kumwe/studio/blob/main/docs/decisions/0020-blueprint-host-session-composition.md) for the deliberate scope.
 
 `StudioHostSessionHandle.models` is present only when the negotiated model port and adapter both implement
 `list` and `get`. Results are canonical-schema validated, exact-coordinate checked and detached before they
 leave the boundary; stale generation invalidates the whole handle. The surface is deliberately read-only.
 Pass an authorized active model to `projectBlueprintFieldBindings(blueprint, model, definitions)` to derive
 portable candidates and diagnostics without changing any input. See
-[ADR 0024](../../docs/decisions/0024-read-only-model-binding-projection.md).
+[ADR 0024](https://github.com/kumwe/studio/blob/main/docs/decisions/0024-read-only-model-binding-projection.md).
 
 `StudioHostSessionHandle.resources` is present only when the negotiated resource port advertises
 `studio.operation/resource.search` and the adapter implements it. `search` validates and clones bounded
@@ -108,3 +122,11 @@ queries before allocating a request, then accepts only detached pages whose stab
 qualified message references match the requested resource type. Malformed adapter output becomes a safe
 `studio.host/unexpected-resource-result` failure. This is a read-only discovery surface: hosts still own
 authorization and resolution, and first-party dynamic resource/query bindings remain read-only in Studio.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio-core/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio-core
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md

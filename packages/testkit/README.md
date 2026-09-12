@@ -1,10 +1,24 @@
 # `@kumwe/studio-testkit`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio-testkit@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
-version is in the workspace `studio-release.json`; these conformance helpers do not by themselves constitute
+version is in the [coordinated release record](https://github.com/kumwe/studio/blob/main/studio-release.json); these conformance helpers do not by themselves constitute
 gate evidence.
 
-The current candidate combines fixture builders and `assertBlueprintConforms` with deterministic host and HTTP
+The package combines fixture builders and `assertBlueprintConforms` with deterministic host and HTTP
 testbeds plus executable command, canonical, host, host-sequence, media, preview, property-schema,
 binding-projection, renderer-web, rich-text, and authoring-web corpus runners. Those helpers let another
 implementation replay the same portable assertions without adopting Studio internals. A green repository
@@ -162,3 +176,11 @@ accessibility, localization, and the applicable Version 2 TypeScript profile. Ei
 declared executable in the repository; `studio.profile/authoring-web` alone remains a target until its complete
 real-shell assertion set and manual matrix exist. None is claimed by the current release record, and this beta
 development tree must not be cited as accepted gate evidence. Dart/Flutter parity belongs to Version 3.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio-testkit/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio-testkit
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md

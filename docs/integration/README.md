@@ -58,11 +58,11 @@ from one coordinated release:
 | Coordinated `studio-release.json`                                               | Pin one exact eight-package family, protocol version, corpus digest, and `browserArtifacts` locator set as a single unit. `authoringArchive.archiveStem` locates the content-hashed `browser-module` archive through approved release metadata; deferred `enhancementRuntime` resolves from `@kumwe/studio-renderer-web` under `packageBasePath: "dist/browser/"`. Never combine files from different Studio releases. |
 | `browserArtifacts.manifest.name` (`studio-assets.json`) and its prebuilt assets | Resolve the manifest only through the release record, then verify every recorded byte size, content hash, SRI value, budget, minification assertion, and release identity before exposing the authoring archive or `enhancement-runtime` to a host. Production only serves those prebuilt files.                                                                                                                       |
 
-This is the required consumption contract, not a claim that Producer is already published or qualified. Its
-founding work currently remains on a pre-release source pin; completion of the coordinated release re-pin,
-corpus-manifest verification, prebuilt-asset consumption, PHP wire/renderer implementation, and conformance
-replay belongs to Producer's own status and proof. Studio's reference PHP example does not make those Producer
-steps complete.
+[Producer 0.3.0](https://github.com/kumwe/producer/releases/tag/v0.3.0) implements the exact Studio
+`0.1.0-beta.3` contract, with 55 schemas, 301 corpus members, browser assets and PHP wire, renderer and
+deployment helpers. Its [host agreement](https://github.com/kumwe/producer/blob/main/docs/host-agreement.md)
+and package checks define that implementation boundary. Qualification of an integrated host remains a
+separate requirement; the Studio PHP example does not establish Producer or Core deployment evidence.
 
 A Studio contract change reaches Producer only through an explicit Producer change that deliberately replaces
 that complete pin, verifies all vendored digests, replays the PHP corpus, and records the new coordinated

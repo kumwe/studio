@@ -1,7 +1,21 @@
 # `@kumwe/studio-protocol`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio-protocol@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, still pre-Gate-A and not production-supported. The exact coordinated
-version is in the workspace `studio-release.json`; these draft contracts may change and are not a supported
+version is in the [coordinated release record](https://github.com/kumwe/studio/blob/main/studio-release.json); these draft contracts may change and are not a supported
 protocol.
 
 Serializable contracts shared by Studio hosts, renderers, extensions, and non-JavaScript clients.
@@ -86,3 +100,11 @@ release record. It binds the exact fixed eight-package family to the wire protoc
 digest. The publication guard requires all eight versions to equal its `release` coordinate. The abandoned
 historical `0.1.0-rc.1` record listed nine proposed profile claims; it was not accepted evidence or a
 production-support claim. The current beta record deliberately claims none.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio-protocol/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio-protocol
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md
