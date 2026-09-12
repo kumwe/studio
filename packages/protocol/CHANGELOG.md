@@ -1,5 +1,13 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-beta.5
+
+### Patch Changes
+
+- [#60](https://github.com/kumwe/studio/pull/60) [`f248f0f`](https://github.com/kumwe/studio/commit/f248f0f2bb37a452133ef7ec8bf208e80e42f09b) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Document live beta versions, current installation and the continuing host integration contract in each
+  published package README. Preserve the exact coordinated release pins, runtime contracts, profile claims
+  and qualification requirements.
+
 ## 0.1.0-beta.4
 
 ## 0.1.0-beta.3
