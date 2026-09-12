@@ -1,7 +1,21 @@
 # `@kumwe/studio-renderer-web`
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
+For build-time beta evaluation, install an exact resolved version:
+
+```sh
+npm install --save-exact @kumwe/studio-renderer-web@beta
+```
+
+Keep all Studio packages on the same coordinated release. Hosts deploy prebuilt browser assets;
+Node.js and npm are contributor and build tools. [Integration guidance][integration] describes
+host authority, the release pin and qualification requirements.
+
 Status: governed beta development, not an RC or production-supported release. The exact coordinated version
-is in the workspace `studio-release.json`; renderer conformance and host support still require accepted
+is in the [coordinated release record](https://github.com/kumwe/studio/blob/main/studio-release.json); renderer conformance and host support still require accepted
 evidence.
 
 Portable semantic HTML and the single prebuilt progressive-enhancement runtime for the Studio production
@@ -54,7 +68,7 @@ This is the published-page enhancement policy, not Studio authoring's separate `
 A real page may add narrow content directives for its server-rendered CSS, images, or fonts, but the runtime
 requires no `connect-src`, inline source, eval source, or Trusted Types policy. The complete selection, CSP,
 and immutable-deployment recipe is in
-[`docs/integration/prebuilt-browser-assets.md`](../../docs/integration/prebuilt-browser-assets.md#two-browser-surfaces-two-policies).
+[`docs/integration/prebuilt-browser-assets.md`](https://github.com/kumwe/studio/blob/main/docs/integration/prebuilt-browser-assets.md#two-browser-surfaces-two-policies).
 
 Every block may carry the closed Studio `design` intent for alignment, responsive visibility,
 spacing, sizing, scrolling, print selection, sticky positioning, and reduced-motion-aware
@@ -81,3 +95,11 @@ all 45 block types, every Studio-owned progressive behavior and presentation cap
 security fallbacks. Browser and server renderers must replay the same corpus. This prevents a
 PHP/Twig host, for example, from re-inventing Studio semantics while still allowing it to use native
 templates and caching internally.
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio-renderer-web/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio-renderer-web
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: https://github.com/kumwe/studio/blob/main/LICENSE
+[integration]: https://github.com/kumwe/studio/blob/main/docs/integration/README.md

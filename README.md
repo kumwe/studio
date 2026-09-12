@@ -1,12 +1,15 @@
 # Kumwe Studio
 
+[![npm beta][version-badge]][package]
+[![Build][build-badge]][build]
+[![License][license-badge]][license]
+
 Kumwe Studio is a portable, schema-aware visual composition platform for building reusable blueprints and populating structured content without requiring authors to hand-code a page. Safe HTML import is normalized into Studio's bounded structural markup, styling is expressed through semantic presentation intent or a separately governed scoped-style boundary, and authored JavaScript or template code is never persisted.
 
 Studio brings content models, visual layout, responsive behaviour, theme capabilities, media, extensions, and
 host rendering into one authoring experience while keeping their contracts independently versioned. [Kumwe
-App](https://github.com/kumwe/app) is the first reference host and will consume Studio through [Kumwe
-Producer](https://github.com/kumwe/producer), the separate digest-pinned PHP realization layer now under
-founding development. Neither Producer nor Kumwe App is a hard-coded Studio dependency.
+App](https://github.com/kumwe/app) integrates Studio through [Kumwe
+Producer](https://github.com/kumwe/producer), the published PHP realization library for an exact Studio pin. Neither Producer nor Kumwe App is a hard-coded Studio dependency.
 
 The normative product target is the [Studio product contract](docs/product-contract.md): creating or editing
 managed content opens Studio for that exact resource, where an authorized author can start from a blank canvas
@@ -98,6 +101,29 @@ docs/             Normative architecture, contracts, integration, roadmap, and q
    [Producer-backed Kumwe App](docs/integration/kumwe-app.md) path for the first-party PHP integration.
 6. Follow [contribution requirements](CONTRIBUTING.md) and the repository instructions in [AGENTS.md](AGENTS.md).
 
+## Published packages
+
+The eight packages share one exact release. The badges track the npm `beta` channel; package
+publication does not establish a conformance profile or supported production host. Use the
+[coordinated release record](studio-release.json) and [published browser assets][releases] to
+select and verify the same family throughout a deployment.
+
+| Package                                                                                | Beta version                                                                                                                      | Responsibility                                 |
+| -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| [@kumwe/studio-core](https://www.npmjs.com/package/@kumwe/studio-core)                 | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-core/beta)](https://www.npmjs.com/package/@kumwe/studio-core)                 | DOM-free state, commands and validation        |
+| [@kumwe/studio-media](https://www.npmjs.com/package/@kumwe/studio-media)               | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-media/beta)](https://www.npmjs.com/package/@kumwe/studio-media)               | Host-neutral media orchestration               |
+| [@kumwe/studio-preview](https://www.npmjs.com/package/@kumwe/studio-preview)           | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-preview/beta)](https://www.npmjs.com/package/@kumwe/studio-preview)           | Host preview messaging                         |
+| [@kumwe/studio-protocol](https://www.npmjs.com/package/@kumwe/studio-protocol)         | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-protocol/beta)](https://www.npmjs.com/package/@kumwe/studio-protocol)         | Portable schemas and generated models          |
+| [@kumwe/studio-renderer-web](https://www.npmjs.com/package/@kumwe/studio-renderer-web) | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-renderer-web/beta)](https://www.npmjs.com/package/@kumwe/studio-renderer-web) | Semantic rendering and progressive enhancement |
+| [@kumwe/studio-rich-text](https://www.npmjs.com/package/@kumwe/studio-rich-text)       | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-rich-text/beta)](https://www.npmjs.com/package/@kumwe/studio-rich-text)       | Bounded rich-text authoring                    |
+| [@kumwe/studio](https://www.npmjs.com/package/@kumwe/studio)                           | [![Beta](https://img.shields.io/npm/v/@kumwe/studio/beta)](https://www.npmjs.com/package/@kumwe/studio)                           | Browser authoring application                  |
+| [@kumwe/studio-testkit](https://www.npmjs.com/package/@kumwe/studio-testkit)           | [![Beta](https://img.shields.io/npm/v/@kumwe/studio-testkit/beta)](https://www.npmjs.com/package/@kumwe/studio-testkit)           | Portable fixtures and conformance assertions   |
+
+For build-time evaluation, `npm install --save-exact @kumwe/studio@beta` resolves the current
+beta to an exact dependency. Production hosts serve prebuilt assets and use their qualified release
+pin. Producer 0.3.0 deliberately implements Studio `0.1.0-beta.3`; selecting a newer Studio family
+requires the reviewed re-pin and host verification described in the [Core integration playbook](docs/integration/kumwe-app.md).
+
 ## Embed Studio
 
 Studio has one browser-deployment path: serve the prebuilt ES module, identify one or more ordinary HTML
@@ -145,8 +171,8 @@ Follow the [prebuilt browser asset guide](docs/integration/prebuilt-browser-asse
 
 Node.js and npm are contributor, build, test, and release tools only. Official browser assets are compiled
 before deployment. A production host serves those assets and implements authoritative operations through its
-own server application; Kumwe App will do so through Producer, backed by App PHP application services and PHP
-HTTP endpoints, once the exact Studio/Producer pair is implemented and qualified. Production
+own server application. Kumwe App binds Producer to PHP application services and HTTP endpoints; each
+exact Studio/Producer pair requires host qualification. Production
 operators and content authors do not install or run Node.js, npm, Vite, or another JavaScript server to use
 Studio.
 
@@ -162,7 +188,7 @@ npx playwright install chromium
 npm run doctor
 ```
 
-Hand work off only after the single contributor gate passes:
+Submit changes after the single contributor gate passes:
 
 ```bash
 npm run verify
@@ -230,3 +256,11 @@ verification remain required before stable release.
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change. Report vulnerabilities through the process in [SECURITY.md](SECURITY.md); do not disclose them in public issues.
 
 Kumwe Studio is available under the [MIT License](LICENSE).
+
+[version-badge]: https://img.shields.io/npm/v/@kumwe/studio/beta
+[package]: https://www.npmjs.com/package/@kumwe/studio
+[build-badge]: https://github.com/kumwe/studio/actions/workflows/ci.yml/badge.svg?branch=main
+[build]: https://github.com/kumwe/studio/actions/workflows/ci.yml?query=branch%3Amain
+[license-badge]: https://img.shields.io/github/license/kumwe/studio
+[license]: LICENSE
+[releases]: https://github.com/kumwe/studio/releases
