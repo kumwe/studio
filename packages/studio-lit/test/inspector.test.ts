@@ -297,7 +297,7 @@ describe('inspector property editing', () => {
     element.remove();
   });
 
-  it('exposes the documented Tab order across the editing controls', async () => {
+  it('orders ordinary layout controls before the advanced editing controls', async () => {
     const element = await mountShell({ viewports: themeViewports() });
     viewportButton(element, 'narrow').click();
     await element.updateComplete;
@@ -307,6 +307,10 @@ describe('inspector property editing', () => {
       ...inspectorRegion(element).querySelectorAll<HTMLElement>('input, button'),
     ].map((control) => control.className);
     expect(controls).toEqual([
+      'layout-role-input',
+      'layout-role-unset',
+      'layout-role-input',
+      'layout-role-unset',
       'inspector-property-input',
       'inspector-property-unset',
       'inspector-property-input',
@@ -325,10 +329,6 @@ describe('inspector property editing', () => {
       'inspector-add-override-name',
       'inspector-add-override-value',
       'inspector-add-override-submit',
-      'layout-role-input',
-      'layout-role-unset',
-      'layout-role-input',
-      'layout-role-unset',
     ]);
     element.remove();
   });

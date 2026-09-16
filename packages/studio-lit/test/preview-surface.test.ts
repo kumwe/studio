@@ -854,7 +854,7 @@ describe('shell preview surface', () => {
     element.remove();
   });
 
-  it('paints the selected measured region last so nested containers remain directly manipulable', async () => {
+  it('paints parent regions before their children so a selected parent cannot mask nested selection', async () => {
     const client = new FakePreviewClient();
     const sharedRect = [{ height: 100, width: 300, x: 0, y: 0 }];
     client.rectsByNode['section-a'] = sharedRect;
@@ -895,8 +895,9 @@ describe('shell preview surface', () => {
     const regions = [
       ...(element.shadowRoot?.querySelectorAll<SVGRectElement>('.preview-canvas-region') ?? []),
     ];
-    expect(regions.map((region) => region.dataset.nodeId)).toEqual(['text-1', 'section-a']);
-    expect(regions.at(-1)?.dataset.selected).toBe('true');
+    expect(regions.map((region) => region.dataset.nodeId)).toEqual(['section-a', 'text-1']);
+    expect(regions[0]?.dataset.selected).toBe('true');
+    expect(regions.at(-1)?.dataset.selected).toBe('false');
     element.remove();
   });
 
