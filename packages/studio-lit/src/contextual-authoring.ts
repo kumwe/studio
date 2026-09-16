@@ -53,6 +53,7 @@ import {
 import type { KumweStudioElement, StudioDocumentChangeDetail } from './kumwe-studio.js';
 import { dispatchStudioContextualReturnRequest } from './hosted-return.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
+import type { StudioLocalCanvasContext } from './local-canvas.js';
 import type { StudioPreviewBinding } from './preview-surface.js';
 import type { StudioResourceSearchService } from './resource-authoring-control.js';
 
@@ -185,6 +186,7 @@ export class KumweStudioContextualElement extends LitElement {
     configuration: { attribute: false },
     contextualSession: { attribute: false },
     designControls: { attribute: false },
+    localCanvasContext: { attribute: false },
     messages: { attribute: false },
     mode: { attribute: false, state: true },
     patterns: { attribute: false },
@@ -453,6 +455,7 @@ export class KumweStudioContextualElement extends LitElement {
    */
   declare public contextualSession: StudioContextualSession | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
+  declare public localCanvasContext: StudioLocalCanvasContext | undefined;
   declare public messages: StudioMessageOverrides | undefined;
   declare public patterns: PatternDocument[] | undefined;
   declare public previewBinding: StudioPreviewBinding | undefined;
@@ -874,6 +877,7 @@ export class KumweStudioContextualElement extends LitElement {
               .contentModel=${draft.model}
               .designControls=${this.designControls}
               .document=${this.#blueprintDraft ?? session.state.blueprint}
+              .localCanvasContext=${this.localCanvasContext === undefined ? undefined : { ...this.localCanvasContext, entry: draft.entry }}
               .messages=${this.messages}
               .patterns=${this.patterns}
               .previewBinding=${this.previewBinding}

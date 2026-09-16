@@ -139,6 +139,20 @@ test('mounts the shipped standalone runtime with isolated state and zero runtime
   ]);
   expect(firstRoots).toEqual([{ id: 'studio-local-node-1', type: 'studio.core/section' }]);
   expect(secondRoots).toEqual([]);
+  const canvas = first.locator('.local-canvas-host');
+  await expect(first.locator('.local-canvas-region')).toHaveAttribute(
+    'data-local-canvas-state',
+    'current',
+  );
+  await expect(canvas.locator('[data-studio-node="studio-local-node-1"]')).toBeVisible();
+  await expect(first.locator('.structural-canvas-fallback')).toHaveCount(0);
+  // Exercise real content through a shipped pattern, not a test-only renderer.
+  await first.locator('button.pattern-apply[data-pattern-id="studio.pattern/hero"]').click();
+  await expect(canvas.getByRole('heading', { name: 'Build something meaningful' })).toBeVisible();
+  await expect(canvas.getByText('A portable Studio page.', { exact: true })).toBeVisible();
+  await expect(second.locator('.local-canvas-host [data-studio-node]')).toHaveCount(0);
+  await expect(first.locator('.preview-canvas-overlay')).toBeVisible();
+
   expect(pageErrors).toEqual([]);
   expect([...new Set(requests)].sort()).toEqual(
     [

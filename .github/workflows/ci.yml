@@ -24,29 +24,6 @@ jobs:
       - name: Set up Studio
         uses: ./.github/actions/setup-studio
 
-      - name: Prepare temporary canvas development snapshot
-        if: github.head_ref == 'feature/canvas-authoring-completion'
-        shell: bash
-        run: |
-          set -euo pipefail
-          snapshot="$RUNNER_TEMP/studio-canvas-development"
-          mkdir -p "$snapshot"
-          git bundle create "$snapshot/source.bundle" --all
-          git rev-parse HEAD > "$snapshot/source-sha.txt"
-          tar -czf "$snapshot/locked-node-modules.tar.gz" node_modules
-          node_root="$(dirname "$(dirname "$(command -v node)")")"
-          tar -czf "$snapshot/node-toolchain.tar.gz" -C "$node_root" bin lib
-          sha256sum "$snapshot/"* > "$snapshot/SHA256SUMS"
-
-      - name: Upload temporary canvas development snapshot
-        if: github.head_ref == 'feature/canvas-authoring-completion'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: studio-canvas-development
-          path: ${{ runner.temp }}/studio-canvas-development
-          retention-days: 1
-          compression-level: 0
-
       - name: Run quality gate
         run: npm run check
 
