@@ -1,0 +1,135 @@
+diff --git a/docs/contracts/studio-deployment.md b/docs/contracts/studio-deployment.md
+index b507660..70970b6 100644
+--- a/docs/contracts/studio-deployment.md
++++ b/docs/contracts/studio-deployment.md
+@@ -113,2 +113,15 @@ top-level `locale` is invalid.
+ 
++Standalone mounting supplies an isolated rendered canvas using the built-in semantic web renderer. It
++labels this projection as local, not host-authoritative. The editor uses measured node identity for
++selection and movement and preserves the typed document as the source of truth. Responsive preview
++widths represent the authored page, not the outer embedding width. Local output, styles, measurements,
++and asynchronous rendering are instance-owned and disposed with the mount. No network or host adapter is
++required to see the built-in composition. A configured hosted preview failure never selects this path.
++
++The low-level shell accepts an explicit trusted browser `localCanvasContext` for local projection and
++exposes `canvasReady` for render settlement. Raw HTML is not an input. Ordinary palette insertion works
++without a host event listener: `studio-insert-request` is cancelable; an adapter taking ownership must
++prevent its default action. A synchronous legacy listener that already changes the command session is
++not followed by a second insertion. These browser APIs do not change the portable wire or host authority.
++
+ Standalone keeps work in browser memory. It MUST expose two explicit, non-equivalent interchange operations:
+diff --git a/docs/decisions/0036-public-local-canvas.md b/docs/decisions/0036-public-local-canvas.md
+new file mode 100644
+index 0000000..fffe429
+--- /dev/null
++++ b/docs/decisions/0036-public-local-canvas.md
+@@ -0,0 +1,45 @@
++# ADR 0036: Public standalone mounting owns its rendered canvas
++
++- Status: proposed
++- Scope: standalone authoring, insertion ownership, local rendering, preview isolation
++
++## Context
++
++The standalone mount composed valid Model, Blueprint, and Entry state but did not bind a rendered
++surface. Only a separately assembled reference host supplied visual geometry. Consequently a passing
++mount/import test could coexist with a structural list presented where the page canvas belonged.
++The public hosted mount also exposed palette clicks without the insertion listener supplied by the
++reference and older App adapters.
++
++## Decision
++
++The standalone runtime explicitly enables a local projection using the existing semantic web renderer.
++It does not enable a host preview capability, invent a host adapter, or claim persistence. The local
++canvas has its own shadow root, constructed stylesheets, responsive target width, render generation,
++abort lifecycle, and measured node inventory. It renders only the canonical renderer's freshly escaped
++output through Lit's existing Trusted Types policy. There is no public HTML setter and no second block
++renderer. Local CSS adapts the renderer's declared responsive widths into an isolated named container;
++no editor geometry or CSS is stored in a Blueprint.
++
++The shell consumes local measurements through the same node-oriented selection and movement overlay as
++an authoritative preview. Geometry never determines permissions or valid slots. Entry-field bindings
++resolve against a detached Entry snapshot; updating a value does not convert a binding to a static
++Blueprint value. Unsupported host queries and transforms are not executed locally.
++
++A local canvas is an explicit browser context, never a fallback for an enabled or failed hosted preview.
++Host preview continues to require its configured capabilities and exact binding. Disposal, a newer
++draft, or rendering failure invalidates geometry, and late asynchronous work cannot restore it.
++
++Palette clicks dispatch a cancelable insertion request before the shell's canonical insertion command.
++A listener may take ownership with `preventDefault()`. Existing synchronous adapters remain compatible:
++if they already changed the current command session, the shell does not insert a duplicate. Without a
++listener the normal palette is functional, not dependent on reference-host-only behavior.
++
++## Consequences and proof
++
++Standalone public mounting gains a visible page without changing wire shape or persistence authority.
++The public shell gains an explicit local context and a `canvasReady` settlement promise. Required
++coverage includes rendered content, escaping, independent mounts, Entry-bound value changes,
++import/export, selection, insertion cancellation/legacy compatibility, and the compiled distribution
++under restrictive CSP with zero runtime network. This increment does not claim complete canvas UX,
++qualified hosted preview, conformance profiles, or Gate A/B acceptance.
+diff --git a/docs/decisions/README.md b/docs/decisions/README.md
+index 3ca0ed7..2884dca 100644
+--- a/docs/decisions/README.md
++++ b/docs/decisions/README.md
+@@ -41,2 +41,3 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
+ | [0035](0035-contextual-unified-content-authoring.md) | Contextual authoring coordinates separate artifacts in one journey | Proposed |
++| [0036](0036-public-local-canvas.md)                  | Public standalone mounting owns the canonical local canvas         | Proposed |
+ 
+diff --git a/docs/experience/workspace.md b/docs/experience/workspace.md
+index 48d6333..6f44203 100644
+--- a/docs/experience/workspace.md
++++ b/docs/experience/workspace.md
+@@ -125,14 +125,14 @@ mount API and distributed browser entry point, not only a test harness that supp
+ 
+-| Journey | Observable result |
+-| --- | --- |
+-| Open an ordinary standalone mount | A genuine empty rendered workspace appears, ready to insert into; a structural list is not its visual canvas. |
+-| Insert a section, heading, image, and button | Palette clicks, keyboard insertion, and palette-to-canvas drops produce visible rendered blocks and the same valid document operations. |
+-| Select a nested rendered block | Canvas, layer tree, parent breadcrumb, and contextual inspector identify the same stable node. |
+-| Edit a bound value or static block content | The canvas stays visible, displays the changed value, and preserves binding identity and artifact authority. |
+-| Move or resize a block | Placement respects slots and policy; resizing selects supported semantic values at the active viewport. A cancelled gesture changes nothing. |
+-| Undo and redo | One completed gesture is one reversible semantic operation; DOM snapshots and pointer coordinates are not saved artifacts. |
+-| Change viewport or presentation | The intended responsive output changes without losing selection, history, pending edits, or the resource context. |
+-| Export and reopen locally | The same visible composition and values return in a fresh isolated instance without network access. |
+-| Save, reopen, and publish through a real host | Host-accepted artifacts reproduce the authored content, layout, theme, and responsive behavior through the public renderer. |
+-| Refuse a host operation or contribution | The error is explicit, unsaved work remains recoverable under policy, and no substitute authority or renderer is fabricated. |
++| Journey                                       | Observable result                                                                                                                            |
++| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
++| Open an ordinary standalone mount             | A genuine empty rendered workspace appears, ready to insert into; a structural list is not its visual canvas.                                |
++| Insert a section, heading, image, and button  | Palette clicks, keyboard insertion, and palette-to-canvas drops produce visible rendered blocks and the same valid document operations.      |
++| Select a nested rendered block                | Canvas, layer tree, parent breadcrumb, and contextual inspector identify the same stable node.                                               |
++| Edit a bound value or static block content    | The canvas stays visible, displays the changed value, and preserves binding identity and artifact authority.                                 |
++| Move or resize a block                        | Placement respects slots and policy; resizing selects supported semantic values at the active viewport. A cancelled gesture changes nothing. |
++| Undo and redo                                 | One completed gesture is one reversible semantic operation; DOM snapshots and pointer coordinates are not saved artifacts.                   |
++| Change viewport or presentation               | The intended responsive output changes without losing selection, history, pending edits, or the resource context.                            |
++| Export and reopen locally                     | The same visible composition and values return in a fresh isolated instance without network access.                                          |
++| Save, reopen, and publish through a real host | Host-accepted artifacts reproduce the authored content, layout, theme, and responsive behavior through the public renderer.                  |
++| Refuse a host operation or contribution       | The error is explicit, unsaved work remains recoverable under policy, and no substitute authority or renderer is fabricated.                 |
+ 
+diff --git a/packages/studio-lit/test/messages.test.ts b/packages/studio-lit/test/messages.test.ts
+index 50a1271..c59a9f3 100644
+--- a/packages/studio-lit/test/messages.test.ts
++++ b/packages/studio-lit/test/messages.test.ts
+@@ -1 +1,2 @@
++import { readFile } from 'node:fs/promises';
+ import { describe, expect, it } from 'vitest';
+@@ -6,4 +7,9 @@ import {
+   type StudioMessageKey,
++  type StudioMessageCatalog,
+ } from '../src/index.js';
+ 
++const canonical = JSON.parse(
++  await readFile('schemas/examples/authoring-message-catalog.en.json', 'utf8'),
++) as StudioMessageCatalog;
++
+ describe('authoring message catalog', () => {
+@@ -11,5 +17,5 @@ describe('authoring message catalog', () => {
+     expect(studioMessageCatalog.kind).toBe('authoring-message-catalog');
+-    expect(studioMessageCatalog.catalogVersion).toBe('1.7.0');
++    expect(studioMessageCatalog).toEqual(canonical);
+     expect(studioMessageCatalog.locale).toBe('en');
+-    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(271);
++    expect(Object.keys(studioMessageCatalog.messages).length).toBeGreaterThan(0);
+     expect(Object.keys(studioMessages)).toEqual(Object.keys(studioMessageCatalog.messages));
