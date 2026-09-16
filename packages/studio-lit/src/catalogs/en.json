@@ -557,6 +557,10 @@
       "defaultMessage": "interacting with the rendered preview",
       "parameters": []
     },
+    "studio.shell/canvas-pane": {
+      "defaultMessage": "Canvas",
+      "parameters": []
+    },
     "studio.shell/command-apply-pattern": {
       "defaultMessage": "Apply pattern {pattern}",
       "parameters": ["pattern"]
@@ -647,6 +651,10 @@
     },
     "studio.shell/inspector-add-property-value-label": {
       "defaultMessage": "New property value as JSON",
+      "parameters": []
+    },
+    "studio.shell/inspector-advanced": {
+      "defaultMessage": "Advanced properties and bindings",
       "parameters": []
     },
     "studio.shell/inspector-binding-accepts": {
@@ -889,6 +897,10 @@
       "defaultMessage": "Unset {property}",
       "parameters": ["property"]
     },
+    "studio.shell/library-search": {
+      "defaultMessage": "Search blocks and patterns",
+      "parameters": []
+    },
     "studio.shell/local-canvas-description": {
       "defaultMessage": "Local rendering · not an authoritative host preview.",
       "parameters": []
@@ -1036,6 +1048,10 @@
     "studio.shell/visual-drop-target": {
       "defaultMessage": "Moving {label} to {destination}",
       "parameters": ["destination", "label"]
+    },
+    "studio.shell/workspace-panels": {
+      "defaultMessage": "Workspace panels",
+      "parameters": []
     },
     "studio.standalone/change-local": {
       "defaultMessage": "{artifact} changed in this browser session only.",

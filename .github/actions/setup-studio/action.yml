@@ -37,24 +37,3 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       run: ./node_modules/.bin/playwright install --with-deps chromium
-
-    - name: Export current canvas development source
-      if: ${{ github.job == 'quality' && github.head_ref == 'feature/canvas-authoring-completion' }}
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      run: |
-        set -euo pipefail
-        snapshot="$RUNNER_TEMP/studio-canvas-continuation"
-        mkdir -p "$snapshot"
-        git bundle create "$snapshot/source.bundle" HEAD
-        git rev-parse HEAD > "$snapshot/source-sha.txt"
-        (cd "$snapshot" && sha256sum source.bundle source-sha.txt > SHA256SUMS)
-
-    - name: Retain source-only continuation snapshot
-      if: ${{ github.job == 'quality' && github.head_ref == 'feature/canvas-authoring-completion' }}
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-      with:
-        name: studio-canvas-continuation
-        path: ${{ runner.temp }}/studio-canvas-continuation
-        retention-days: 1
-        compression-level: 0
