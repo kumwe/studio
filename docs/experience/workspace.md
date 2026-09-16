@@ -84,6 +84,12 @@ For a four-column region, the document might express `wide: 4`, `medium: 2`, and
 | Design      | Declare semantic presentation hints only where the host permits   | Select profile recipes, tokens, and responsive roles | Choose only exposed editorial variants          |
 | Publication | Publish a new host definition version                             | Publish an immutable blueprint version               | Save or advance the entry through host workflow |
 
+Modes select permitted controls and the artifact targeted by a command. They do not replace the rendered page
+with a separate form as the ordinary content-editing experience. The same canvas, selected node, viewport,
+history, and unsaved draft remain visible and continuous while compatible content and design controls change.
+A bound value edit targets the Entry field; it must not silently replace that binding with a static value in
+the Blueprint. Definition-wide changes remain explicitly identified as Model or reusable-type work.
+
 ## Explicit save outcomes
 
 The target host bar presents distinct actions rather than an ambiguous universal Save
@@ -105,3 +111,32 @@ revisioning, audit, publication, and failure recovery remain host responsibiliti
 ## Preview
 
 The preferred web preview is rendered by the host in a separately secured, same-origin context and coordinated through the versioned preview protocol. Studio sends bounded draft artifacts; the host revalidates, resolves bindings, and renders its real template stack. A static local projection may help while disconnected, but must be labeled non-authoritative.
+
+Standalone mounting must supply a local rendered canvas for its admitted catalog without an application
+adapter, persistence service, network request, or reference-host-only initialization. Local rendering is not
+an authoritative host preview. Configured hosted failures must never silently create a standalone session,
+claim a host save, or display a local projection as accepted host output.
+
+## Observable canvas acceptance
+
+These checks refine the existing `STUDIO-PROD-002`, `003`, `007`, `012`, `013`, and `015` outcomes; they do not
+replace the canonical acceptance journey or constitute accepted gate evidence. Run them against the public
+mount API and distributed browser entry point, not only a test harness that supplies missing editor behavior.
+
+| Journey | Observable result |
+| --- | --- |
+| Open an ordinary standalone mount | A genuine empty rendered workspace appears, ready to insert into; a structural list is not its visual canvas. |
+| Insert a section, heading, image, and button | Palette clicks, keyboard insertion, and palette-to-canvas drops produce visible rendered blocks and the same valid document operations. |
+| Select a nested rendered block | Canvas, layer tree, parent breadcrumb, and contextual inspector identify the same stable node. |
+| Edit a bound value or static block content | The canvas stays visible, displays the changed value, and preserves binding identity and artifact authority. |
+| Move or resize a block | Placement respects slots and policy; resizing selects supported semantic values at the active viewport. A cancelled gesture changes nothing. |
+| Undo and redo | One completed gesture is one reversible semantic operation; DOM snapshots and pointer coordinates are not saved artifacts. |
+| Change viewport or presentation | The intended responsive output changes without losing selection, history, pending edits, or the resource context. |
+| Export and reopen locally | The same visible composition and values return in a fresh isolated instance without network access. |
+| Save, reopen, and publish through a real host | Host-accepted artifacts reproduce the authored content, layout, theme, and responsive behavior through the public renderer. |
+| Refuse a host operation or contribution | The error is explicit, unsaved work remains recoverable under policy, and no substitute authority or renderer is fabricated. |
+
+The representative browser page must contain nested layout and content, not only an empty section. Automated
+accessibility checks supplement keyboard, focus, touch, RTL, zoom, and visual review; they do not substitute
+for proving the rendered interactions above. Interface-ready status requires an operational canvas or a
+usable empty canvas, not merely attachment of a chooser or custom element.
