@@ -42,6 +42,8 @@ import type {
   FieldDefinition,
   InsertNodeCommand,
   JsonValue,
+  JsonSchema,
+  LocalName,
   MessageReference,
   MoveNodeCommand,
   NodeId,
@@ -77,6 +79,12 @@ import type {
   UnsetSizeRolePayload,
 } from '@kumwe/studio-protocol';
 import { StudioLocalCanvas, type StudioLocalCanvasContext } from './local-canvas.js';
+import {
+  isScalarControlSchema,
+  renderScalarControl,
+  type StudioEntryValueAdapter,
+} from './scalar-controls.js';
+import { canvasWorkspaceStyles } from './workspace-styles.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 import {
   allocateDuplicateIdMap,
@@ -246,6 +254,10 @@ export class KumweStudioElement extends LitElement {
     contentModel: { attribute: false },
     designControls: { attribute: false },
     document: { attribute: false },
+    inspectorMode: { attribute: false },
+    entryValues: { attribute: false },
+    libraryQuery: { attribute: false, state: true },
+    activePane: { attribute: false, state: true },
     localCanvasContext: { attribute: false },
     localCanvasState: { attribute: false, state: true },
     messages: { attribute: false },
@@ -852,6 +864,8 @@ export class KumweStudioElement extends LitElement {
       }
     }
 
+    ${canvasWorkspaceStyles}
+
     /* SR-019: no chrome motion is essential, so a reduced-motion preference
        zeroes every animation and transition the shell declares now or later. */
     @media (prefers-reduced-motion: reduce) {
@@ -880,6 +894,12 @@ export class KumweStudioElement extends LitElement {
   declare public contentModel: ContentModelDocument | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
+  /** Presentation only; command policy remains owned by the configured session. */
+  declare public inspectorMode: 'blueprint' | 'content' | 'model' | undefined;
+  declare public entryValues: StudioEntryValueAdapter | undefined;
+  declare protected libraryQuery: string;
+  #lastEmittedSelection: NodeId | undefined;
+  declare protected activePane: 'canvas' | 'library' | 'outline' | 'inspector';
   /** Explicit local projection. It never enables or substitutes for a host preview. */
   declare public localCanvasContext: StudioLocalCanvasContext | undefined;
   declare protected localCanvasState: 'current' | 'rendering' | 'unavailable' | undefined;
@@ -938,6 +958,12 @@ export class KumweStudioElement extends LitElement {
   readonly #resourceBindingControls = new Map<string, MountedResourceBindingControl>();
   #session: StudioSession | undefined;
   #sessionGeneration: Revision = '';
+
+  public constructor() {
+    super();
+    this.libraryQuery = '';
+    this.activePane = 'canvas';
+  }
 
   public get activeViewport(): ThemeViewport | undefined {
     const ordered = this.#orderedViewports();
@@ -1024,6 +1050,10 @@ export class KumweStudioElement extends LitElement {
    * use this seam to give palette insertion the same Inspector, outline and preview-selection parity
    * as commands Studio can construct locally. Invalid identifiers are refused by the core session.
    */
+  public revealInspector(): void {
+    this.activePane = 'inspector';
+  }
+
   public selectNode(nodeId: NodeId | undefined): void {
     const session = this.#session;
     if (session === undefined) {
@@ -1166,6 +1196,16 @@ export class KumweStudioElement extends LitElement {
 
   protected override updated(changed: PropertyValues<this>): void {
     this.#synchronizeLocalCanvas(changed);
+    if (this.selectedNodeId !== this.#lastEmittedSelection) {
+      this.#lastEmittedSelection = this.selectedNodeId;
+      this.dispatchEvent(
+        new CustomEvent<{ nodeId: NodeId | undefined }>('studio-selection-change', {
+          bubbles: true,
+          composed: true,
+          detail: { nodeId: this.selectedNodeId },
+        }),
+      );
+    }
     if (changed.has('authoringControlRegistry')) {
       this.#destroyAuthoringControls();
     }
@@ -1237,26 +1277,58 @@ export class KumweStudioElement extends LitElement {
     return html`
       <div
         class="workspace"
+        data-pane=${this.activePane}
+        data-contextual=${this.inspectorMode === undefined ? 'false' : 'true'}
         @keydown=${(event: KeyboardEvent): void => {
           this.#onWorkspaceKeydown(event);
         }}
       >
-        <aside class="panel" aria-label=${this.#text('studio.shell/palette-label')}>
+        <nav class="pane-switcher" aria-label=${this.#text('studio.shell/workspace-panels')}>
+          ${(['canvas', 'library', 'outline', 'inspector'] as const).map(
+            (pane) =>
+              html` <button
+                type="button"
+                aria-pressed=${this.activePane === pane ? 'true' : 'false'}
+                @click=${(): void => {
+                  this.activePane = pane;
+                }}
+              >
+                ${this.#text(PANE_LABELS[pane])}
+              </button>`,
+          )}
+        </nav>
+        <aside class="panel library" aria-label=${this.#text('studio.shell/palette-label')}>
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
+          <label class="library-search">
+            ${this.#text('studio.shell/library-search')}
+            <input
+              type="search"
+              .value=${this.libraryQuery}
+              @input=${(event: Event): void => {
+                if (event.currentTarget instanceof HTMLInputElement)
+                  this.libraryQuery = event.currentTarget.value;
+              }}
+            />
+          </label>
           <ul class="palette">
-            ${this.#activeDefinitions().map(
-              (definition) => html`
-                <li>
-                  <button
-                    type="button"
-                    ?disabled=${!this.#canInsertDefinition(definition)}
-                    @click=${(): void => this.#requestInsert(definition)}
-                  >
-                    ${referenceText(definition.label)}
-                  </button>
-                </li>
-              `,
-            )}
+            ${this.#activeDefinitions()
+              .filter((entry) => this.#matchesLibrary(referenceText(entry.label)))
+              .map(
+                (definition) => html`
+                  <li>
+                    <button
+                      type="button"
+                      ?disabled=${!this.#canInsertDefinition(definition)}
+                      @click=${(): void => this.#requestInsert(definition)}
+                    >
+                      <span class="block-symbol" aria-hidden="true"
+                        >${definition.slots.length > 0 ? '⊞' : referenceText(definition.label).slice(0, 1)}</span
+                      >
+                      ${referenceText(definition.label)}
+                    </button>
+                  </li>
+                `,
+              )}
           </ul>
           ${
             this.#activePatterns().length === 0
@@ -1264,23 +1336,25 @@ export class KumweStudioElement extends LitElement {
               : html`
                   <h2 class="pattern-heading">${this.#text('studio.shell/patterns-heading')}</h2>
                   <ul class="palette pattern-palette">
-                    ${this.#activePatterns().map(
-                      (pattern) => html`
-                        <li>
-                          <button
-                            type="button"
-                            class="pattern-apply"
-                            data-pattern-id=${pattern.id}
-                            ?disabled=${this.#patternDestination(pattern) === undefined}
-                            @click=${(): void => {
-                              this.#applyPattern(pattern);
-                            }}
-                          >
-                            ${referenceText(pattern.label)}
-                          </button>
-                        </li>
-                      `,
-                    )}
+                    ${this.#activePatterns()
+                      .filter((entry) => this.#matchesLibrary(referenceText(entry.label)))
+                      .map(
+                        (pattern) => html`
+                          <li>
+                            <button
+                              type="button"
+                              class="pattern-apply"
+                              data-pattern-id=${pattern.id}
+                              ?disabled=${this.#patternDestination(pattern) === undefined}
+                              @click=${(): void => {
+                                this.#applyPattern(pattern);
+                              }}
+                            >
+                              ${referenceText(pattern.label)}
+                            </button>
+                          </li>
+                        `,
+                      )}
                   </ul>
                 `
           }
@@ -1300,39 +1374,45 @@ export class KumweStudioElement extends LitElement {
             this.#onCanvasPointerCancel(event);
           }}
         >
-          ${this.#renderViewportSwitcher()} ${this.#renderBreadcrumb()} ${this.#renderPreview()}
-          <button
-            type="button"
-            class="command-palette-toggle"
-            aria-expanded=${this.paletteOpen === true ? 'true' : 'false'}
-            @click=${(event: Event): void => {
-              this.#togglePalette(event);
-            }}
-          >
-            ${this.#text('studio.shell/command-palette-toggle')}
-          </button>
-          ${this.#renderCommandPalette()}
-          <div class="toolbar" role="group" aria-label=${this.#text('studio.shell/history-label')}>
+          <div class="canvas-toolbar">
+            ${this.#renderViewportSwitcher()}
             <button
               type="button"
-              ?disabled=${session?.canUndo !== true || readOnly}
-              @click=${(): void => {
-                this.undo();
+              class="command-palette-toggle"
+              aria-expanded=${this.paletteOpen === true ? 'true' : 'false'}
+              @click=${(event: Event): void => {
+                this.#togglePalette(event);
               }}
             >
-              ${this.#text('studio.shell/undo')}
+              ${this.#text('studio.shell/command-palette-toggle')}
             </button>
-            <button
-              type="button"
-              ?disabled=${session?.canRedo !== true || readOnly}
-              @click=${(): void => {
-                this.redo();
-              }}
+            ${this.#renderCommandPalette()}
+            <div
+              class="toolbar"
+              role="group"
+              aria-label=${this.#text('studio.shell/history-label')}
             >
-              ${this.#text('studio.shell/redo')}
-            </button>
+              <button
+                type="button"
+                ?disabled=${session?.canUndo !== true || readOnly}
+                @click=${(): void => {
+                  this.undo();
+                }}
+              >
+                ${this.#text('studio.shell/undo')}
+              </button>
+              <button
+                type="button"
+                ?disabled=${session?.canRedo !== true || readOnly}
+                @click=${(): void => {
+                  this.redo();
+                }}
+              >
+                ${this.#text('studio.shell/redo')}
+              </button>
+            </div>
           </div>
-          ${this.#renderDropIndicator()}
+          ${this.#renderBreadcrumb()} ${this.#renderPreview()} ${this.#renderDropIndicator()}
           ${
             roots.length === 0
               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
@@ -1359,15 +1439,22 @@ export class KumweStudioElement extends LitElement {
 
         <aside class="panel inspector" aria-label=${this.#text('studio.shell/inspector-heading')}>
           <h2>${this.#text('studio.shell/inspector-heading')}</h2>
-          ${
-            selected === undefined
-              ? html`<p>${this.#text('studio.shell/inspector-empty')}</p>`
-              : this.#renderInspector(selected)
-          }
+          <slot class="inspector-slot" name="contextual-inspector"></slot>
+          <div
+            class="inspector-default"
+            ?hidden=${this.inspectorMode !== undefined && this.inspectorMode !== 'blueprint'}
+          >
+            ${
+              selected === undefined
+                ? html`<p>${this.#text('studio.shell/inspector-empty')}</p>`
+                : this.#renderInspector(selected)
+            }
+          </div>
         </aside>
 
         <section
           class="panel diagnostics"
+          data-empty=${diagnostics.length === 0 ? 'true' : 'false'}
           aria-label=${this.#text('studio.shell/diagnostics-heading')}
         >
           <h2>${this.#text('studio.shell/diagnostics-heading')}</h2>
@@ -1398,6 +1485,10 @@ export class KumweStudioElement extends LitElement {
         </footer>
       </div>
     `;
+  }
+
+  #matchesLibrary(label: string): boolean {
+    return label.toLocaleLowerCase().includes(this.libraryQuery.trim().toLocaleLowerCase());
   }
 
   #addOverride(node: BlueprintNode, viewport: ThemeViewport): void {
@@ -1805,6 +1896,7 @@ export class KumweStudioElement extends LitElement {
     };
     if (this.#runShellCommand(command)) {
       this.#selectNode(nodeId);
+      this.activePane = 'canvas';
       this.#pendingFocusNodeId = nodeId;
       this.#announce('studio.shell/announce-inserted', {
         label: referenceText(definition.label),
@@ -3103,32 +3195,138 @@ export class KumweStudioElement extends LitElement {
   #renderInspector(node: BlueprintNode): TemplateResult {
     const readOnly = this.#isReadOnly();
     return html`
-      <dl>
-        <div>
-          <dt>${this.#text('studio.shell/inspector-identifier')}</dt>
-          <dd>${node.id}</dd>
-        </div>
-        <div>
-          <dt>${this.#text('studio.shell/inspector-type')}</dt>
-          <dd>${node.type}@${node.version}</dd>
-        </div>
-      </dl>
-      ${
-        readOnly
-          ? html`<p class="hint inspector-read-only">
-              ${this.#text('studio.shell/inspector-read-only')}
-            </p>`
-          : html`<p class="hint">${this.#text('studio.shell/inspector-hint')}</p>`
-      }
+      <h3 class="inspector-selection">${this.#nodeLabel(node)}</h3>
+      ${readOnly ? html`<p class="hint inspector-read-only">${this.#text('studio.shell/inspector-read-only')}</p>` : nothing}
+      ${this.#renderScalarPorts(node, readOnly)}
+      ${this.#renderInspectorAuthoringControls(node, readOnly)}
+      ${this.#renderScalarProperties(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorRecipes(node, !this.#permits('studio.command/batch'))}
       ${this.#renderInspectorDesign(node, !this.#permits('studio.command/set-property'))}
-      ${this.#renderInspectorProperties(node, !this.#permits('studio.command/set-property'))}
-      ${this.#renderInspectorAuthoringControls(node, readOnly)}
-      ${this.#renderInspectorResourceBindings(node, !this.#permits('studio.command/set-binding'))}
-      ${this.#renderInspectorBindings(node, !this.#permits('studio.command/set-binding'))}
-      ${this.#renderInspectorOverrides(node, !this.#permits('studio.command/set-property'))}
       ${this.#renderInspectorLayout(node, !this.#permits('studio.command/set-size-role'))}
+      ${this.#renderInspectorResourceBindings(node, !this.#permits('studio.command/set-binding'))}
+      <details class="inspector-advanced">
+        <summary>${this.#text('studio.shell/inspector-advanced')}</summary>
+        <dl>
+          <div>
+            <dt>${this.#text('studio.shell/inspector-identifier')}</dt>
+            <dd>${node.id}</dd>
+          </div>
+          <div>
+            <dt>${this.#text('studio.shell/inspector-type')}</dt>
+            <dd>${node.type}@${node.version}</dd>
+          </div>
+        </dl>
+        ${this.#renderInspectorProperties(node, !this.#permits('studio.command/set-property'))}
+        ${this.#renderInspectorBindings(node, !this.#permits('studio.command/set-binding'))}
+        ${this.#renderInspectorOverrides(node, !this.#permits('studio.command/set-property'))}
+      </details>
     `;
+  }
+
+  #renderScalarProperties(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    const definition = this.#findDefinition(node);
+    const properties = definition?.propertySchema.properties;
+    const registry = this.authoringControlRegistry ?? this.#defaultAuthoringControlRegistry;
+    const schemaMap =
+      properties !== null && typeof properties === 'object' && !Array.isArray(properties)
+        ? properties
+        : {};
+    return html`<section class="scalar-properties">
+      ${(definition?.propertyControls ?? [])
+        .filter((metadata) => !registry.supports(metadata.control))
+        .map((metadata) => {
+          const schema = schemaMap[metadata.property];
+          if (!isScalarControlSchema(schema)) return nothing;
+          const viewport = this.#propertyTargetViewport();
+          const value =
+            viewport === undefined
+              ? node.properties[metadata.property]
+              : (node.responsive?.[metadata.property]?.[viewport.id] ??
+                node.properties[metadata.property]);
+          return renderScalarControl({
+            key: 'property:' + metadata.property,
+            label:
+              metadata.label === undefined
+                ? metadata.property.replaceAll('-', ' ')
+                : referenceText(metadata.label),
+            schema,
+            value,
+            readOnly,
+            onChange: (next) => {
+              this.#setNodeProperty(node, metadata.property, next, viewport);
+            },
+          });
+        })}
+    </section>`;
+  }
+
+  #renderScalarPorts(node: BlueprintNode, readOnly: boolean): TemplateResult {
+    return html`<section class="scalar-ports">
+      ${(this.#findDefinition(node)?.ports ?? []).map((port) => {
+        const control = port.authoring?.control;
+        if (
+          port.multiple ||
+          ![
+            'studio.control/single-line-text',
+            'studio.control/multi-line-text',
+            'studio.control/switch',
+            'studio.control/number',
+            'studio.control/integer',
+          ].includes(control ?? '')
+        )
+          return nothing;
+        const binding = node.bindings[port.id];
+        const entry = binding?.source.kind === 'entry-field' ? binding.source : undefined;
+        const editableEntry = entry !== undefined && this.#canEditEntryField(entry.fieldPath);
+        const value = entry
+          ? this.entryValues?.read(entry.fieldPath)
+          : binding?.source.kind === 'static-value'
+            ? binding.source.value
+            : undefined;
+        const schema: JsonSchema = {
+          type:
+            port.valueType === 'boolean'
+              ? 'boolean'
+              : port.valueType === 'integer'
+                ? 'integer'
+                : port.valueType === 'number'
+                  ? 'number'
+                  : 'string',
+        };
+        return renderScalarControl({
+          key: 'port:' + port.id,
+          label: referenceText(port.label),
+          schema,
+          value,
+          multiline: control === 'studio.control/multi-line-text',
+          readOnly:
+            readOnly ||
+            port.authoring?.readOnly === true ||
+            (binding !== undefined && binding.source.kind !== 'static-value' && !editableEntry) ||
+            (!entry && !this.#permits('studio.command/set-binding')),
+          onChange: (next) => {
+            this.#setAuthoringPortValue(node, port.id, next);
+          },
+        });
+      })}
+    </section>`;
+  }
+
+  #canEditEntryField(path: readonly LocalName[]): boolean {
+    if (this.entryValues === undefined || this.#isReadOnly()) return false;
+    let fields = this.contentModel?.fields;
+    let field: FieldDefinition | undefined;
+    for (const id of path) {
+      field = fields?.find((candidate) => candidate.id === id);
+      if (
+        field === undefined ||
+        field.authoring?.readOnly === true ||
+        field.authoring?.hidden === true
+      )
+        return false;
+      fields = field.fields;
+    }
+    return field !== undefined;
   }
 
   /**
@@ -3205,11 +3403,13 @@ export class KumweStudioElement extends LitElement {
       }
       const binding = node.bindings[port.id];
       const value =
-        binding?.source.kind === 'static-value'
-          ? binding.source.value
-          : isStudioAuthoringControlId(metadata.control)
-            ? defaultAuthoringControlValue(metadata.control)
-            : undefined;
+        binding?.source.kind === 'entry-field' && this.entryValues !== undefined
+          ? this.entryValues.read(binding.source.fieldPath)
+          : binding?.source.kind === 'static-value'
+            ? binding.source.value
+            : isStudioAuthoringControlId(metadata.control)
+              ? defaultAuthoringControlValue(metadata.control)
+              : undefined;
       targets.push({
         ...(binding === undefined ? {} : { binding }),
         control: metadata.control,
@@ -3222,7 +3422,12 @@ export class KumweStudioElement extends LitElement {
         readOnly:
           readOnly ||
           metadata.readOnly === true ||
-          (binding !== undefined && binding.source.kind !== 'static-value'),
+          (binding !== undefined &&
+            binding.source.kind !== 'static-value' &&
+            !(
+              binding.source.kind === 'entry-field' &&
+              this.#canEditEntryField(binding.source.fieldPath)
+            )),
         value,
       });
     }
@@ -3377,6 +3582,19 @@ export class KumweStudioElement extends LitElement {
 
   #setAuthoringPortValue(node: BlueprintNode, port: string, input: unknown): boolean {
     const current = node.bindings[port];
+    if (current?.source.kind === 'entry-field') {
+      const value = toJsonValue(input);
+      if (value === undefined || !this.#canEditEntryField(current.source.fieldPath)) return false;
+      try {
+        this.entryValues?.write(current.source.fieldPath, value);
+        return true;
+      } catch (error) {
+        this.#announce('studio.shell/announce-command-failed', {
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return false;
+      }
+    }
     if (current !== undefined && current.source.kind !== 'static-value') return false;
     if (input === undefined) {
       if (current === undefined) return true;
@@ -4800,9 +5018,10 @@ export class KumweStudioElement extends LitElement {
     const indicator =
       this.#previewDrag?.active === true ? this.#previewDrag.target?.indicator : undefined;
     const measurements = Object.entries(geometry.measurements).sort(([left], [right]) => {
-      const leftSelected = left === this.selectedNodeId ? 1 : 0;
-      const rightSelected = right === this.selectedNodeId ? 1 : 0;
-      return leftSelected - rightSelected;
+      // Paint ancestors before descendants. Bringing the selected parent to
+      // the front would make every nested block impossible to click.
+      const roots = this.document?.roots ?? [];
+      return findAncestry(roots, left).length - findAncestry(roots, right).length;
     });
     return html`
       <svg
@@ -5149,6 +5368,9 @@ export class KumweStudioElement extends LitElement {
       detail,
     });
     this.dispatchEvent(request);
+    if (this.#session === session && session?.stateVersion !== stateVersion) {
+      this.activePane = 'canvas';
+    }
     // Existing synchronous host adapters may already have inserted. Async
     // adapters take ownership with preventDefault; otherwise Studio supplies
     // its own canonical command, including on an ordinary hosted mount.
@@ -6053,3 +6275,10 @@ function isSizeRoleIdentifier(text: string): boolean {
 function referenceText(reference: MessageReference): string {
   return reference.defaultMessage ?? reference.key;
 }
+
+const PANE_LABELS = {
+  canvas: 'studio.shell/canvas-pane',
+  library: 'studio.shell/palette-heading',
+  outline: 'studio.shell/outline-heading',
+  inspector: 'studio.shell/inspector-heading',
+} as const satisfies Record<string, StudioMessageKey>;

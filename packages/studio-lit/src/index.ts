@@ -185,3 +185,5 @@ declare global {
 }
 
 export type { StudioLocalCanvasContext } from './local-canvas.js';
+
+export type { StudioEntryValueAdapter } from './scalar-controls.js';
