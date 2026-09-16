@@ -1,0 +1,390 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 3ff9fe1..9f0c1b7 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -26,25 +26,2 @@ jobs:
+ 
+-      - name: Prepare temporary canvas development snapshot
+-        if: github.head_ref == 'feature/canvas-authoring-completion'
+-        shell: bash
+-        run: |
+-          set -euo pipefail
+-          snapshot="$RUNNER_TEMP/studio-canvas-development"
+-          mkdir -p "$snapshot"
+-          git bundle create "$snapshot/source.bundle" --all
+-          git rev-parse HEAD > "$snapshot/source-sha.txt"
+-          tar -czf "$snapshot/locked-node-modules.tar.gz" node_modules
+-          node_root="$(dirname "$(dirname "$(command -v node)")")"
+-          tar -czf "$snapshot/node-toolchain.tar.gz" -C "$node_root" bin lib
+-          sha256sum "$snapshot/"* > "$snapshot/SHA256SUMS"
+-
+-      - name: Upload temporary canvas development snapshot
+-        if: github.head_ref == 'feature/canvas-authoring-completion'
+-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+-        with:
+-          name: studio-canvas-development
+-          path: ${{ runner.temp }}/studio-canvas-development
+-          retention-days: 1
+-          compression-level: 0
+-
+       - name: Run quality gate
+diff --git a/e2e/specs/browser-mount.spec.ts b/e2e/specs/browser-mount.spec.ts
+index 6f82ec8..3893422 100644
+--- a/e2e/specs/browser-mount.spec.ts
++++ b/e2e/specs/browser-mount.spec.ts
+@@ -141,2 +141,16 @@ test('mounts the shipped standalone runtime with isolated state and zero runtime
+   expect(secondRoots).toEqual([]);
++  const canvas = first.locator('.local-canvas-host');
++  await expect(first.locator('.local-canvas-region')).toHaveAttribute(
++    'data-local-canvas-state',
++    'current',
++  );
++  await expect(canvas.locator('[data-studio-node="studio-local-node-1"]')).toBeVisible();
++  await expect(first.locator('.structural-canvas-fallback')).toHaveCount(0);
++  // Exercise real content through a shipped pattern, not a test-only renderer.
++  await first.locator('button.pattern-apply[data-pattern-id="studio.pattern/hero"]').click();
++  await expect(canvas.getByRole('heading', { name: 'Build something meaningful' })).toBeVisible();
++  await expect(canvas.getByText('A portable Studio page.', { exact: true })).toBeVisible();
++  await expect(second.locator('.local-canvas-host [data-studio-node]')).toHaveCount(0);
++  await expect(first.locator('.preview-canvas-overlay')).toBeVisible();
++
+   expect(pageErrors).toEqual([]);
+diff --git a/packages/protocol/studio-release.json b/packages/protocol/studio-release.json
+index 7792cb5..ce7fe43 100644
+--- a/packages/protocol/studio-release.json
++++ b/packages/protocol/studio-release.json
+@@ -32,3 +32,3 @@
+   "protocolVersion": "0.1.0-draft.2",
+-  "corpusManifestDigest": "sha256-PupdZVv+htI0wd7bnFtwVdFzhYVB7DxTXh+viiBClNM=",
++  "corpusManifestDigest": "sha256-x5tbWMNf6fran4IS/VjLDxHyEJ13JXKsQWQXA8ecj+w=",
+   "claimedProfiles": []
+diff --git a/packages/studio-lit/src/catalogs/en.json b/packages/studio-lit/src/catalogs/en.json
+index 3640418..835ce41 100644
+--- a/packages/studio-lit/src/catalogs/en.json
++++ b/packages/studio-lit/src/catalogs/en.json
+@@ -891,2 +891,14 @@
+     },
++    "studio.shell/local-canvas-description": {
++      "defaultMessage": "Local rendering · not an authoritative host preview.",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-label": {
++      "defaultMessage": "Page canvas",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-unavailable": {
++      "defaultMessage": "The local canvas could not render this draft. The document and structural controls remain available.",
++      "parameters": []
++    },
+     "studio.shell/move-destination-label": {
+diff --git a/packages/studio-lit/src/contextual-authoring.ts b/packages/studio-lit/src/contextual-authoring.ts
+index 47a4c09..9f67992 100644
+--- a/packages/studio-lit/src/contextual-authoring.ts
++++ b/packages/studio-lit/src/contextual-authoring.ts
+@@ -55,2 +55,3 @@ import { dispatchStudioContextualReturnRequest } from './hosted-return.js';
+ import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
++import type { StudioLocalCanvasContext } from './local-canvas.js';
+ import type { StudioPreviewBinding } from './preview-surface.js';
+@@ -187,2 +188,3 @@ export class KumweStudioContextualElement extends LitElement {
+     designControls: { attribute: false },
++    localCanvasContext: { attribute: false },
+     messages: { attribute: false },
+@@ -455,2 +457,3 @@ export class KumweStudioContextualElement extends LitElement {
+   declare public designControls: ThemeDesignControl[] | undefined;
++  declare public localCanvasContext: StudioLocalCanvasContext | undefined;
+   declare public messages: StudioMessageOverrides | undefined;
+@@ -876,2 +879,3 @@ export class KumweStudioContextualElement extends LitElement {
+               .document=${this.#blueprintDraft ?? session.state.blueprint}
++              .localCanvasContext=${this.localCanvasContext === undefined ? undefined : { ...this.localCanvasContext, entry: draft.entry }}
+               .messages=${this.messages}
+diff --git a/packages/studio-lit/src/index.ts b/packages/studio-lit/src/index.ts
+index 3261b9d..b5332d2 100644
+--- a/packages/studio-lit/src/index.ts
++++ b/packages/studio-lit/src/index.ts
+@@ -185 +185,3 @@ declare global {
+ }
++
++export type { StudioLocalCanvasContext } from './local-canvas.js';
+diff --git a/packages/studio-lit/src/kumwe-studio.ts b/packages/studio-lit/src/kumwe-studio.ts
+index 22fedfe..7a0ba5a 100644
+--- a/packages/studio-lit/src/kumwe-studio.ts
++++ b/packages/studio-lit/src/kumwe-studio.ts
+@@ -78,2 +78,3 @@ import type {
+ } from '@kumwe/studio-protocol';
++import { StudioLocalCanvas, type StudioLocalCanvasContext } from './local-canvas.js';
+ import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
+@@ -247,2 +248,4 @@ export class KumweStudioElement extends LitElement {
+     document: { attribute: false },
++    localCanvasContext: { attribute: false },
++    localCanvasState: { attribute: false, state: true },
+     messages: { attribute: false },
+@@ -879,2 +882,8 @@ export class KumweStudioElement extends LitElement {
+   declare public document: BlueprintDocument | undefined;
++  /** Explicit local projection. It never enables or substitutes for a host preview. */
++  declare public localCanvasContext: StudioLocalCanvasContext | undefined;
++  declare protected localCanvasState: 'current' | 'rendering' | 'unavailable' | undefined;
++  #localCanvas: StudioLocalCanvas | undefined;
++  #localCanvasHolder: HTMLElement | undefined;
++  #localCanvasViewport: string | undefined;
+   declare public messages: StudioMessageOverrides | undefined;
+@@ -970,2 +979,7 @@ export class KumweStudioElement extends LitElement {
+ 
++  /** Resolves when the latest local visual projection has settled. */
++  public get canvasReady(): Promise<void> {
++    return this.#localCanvas?.ready ?? Promise.resolve();
++  }
++
+   /** The single mode resolved from the wire configuration for this session. */
+@@ -1049,2 +1063,3 @@ export class KumweStudioElement extends LitElement {
+     this.#previewSurface?.refreshGeometry();
++    this.#localCanvas?.refreshGeometry();
+   }
+@@ -1064,2 +1079,3 @@ export class KumweStudioElement extends LitElement {
+   public override disconnectedCallback(): void {
++    this.#disposeLocalCanvas();
+     this.#destroyAuthoringControls();
+@@ -1074,2 +1090,3 @@ export class KumweStudioElement extends LitElement {
+     this.ownerDocument.addEventListener('keydown', this.#onDocumentKeydown, true);
++    this.requestUpdate();
+   }
+@@ -1150,2 +1167,3 @@ export class KumweStudioElement extends LitElement {
+   protected override updated(changed: PropertyValues<this>): void {
++    this.#synchronizeLocalCanvas(changed);
+     if (changed.has('authoringControlRegistry')) {
+@@ -1320,3 +1338,4 @@ export class KumweStudioElement extends LitElement {
+               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
+-              : this.#previewCapabilityAvailable() && this.previewBinding !== undefined
++              : this.#usesLocalCanvas() ||
++                  (this.#previewCapabilityAvailable() && this.previewBinding !== undefined)
+                 ? nothing
+@@ -4703,2 +4722,3 @@ export class KumweStudioElement extends LitElement {
+   #renderPreview(): TemplateResult {
++    if (this.#usesLocalCanvas()) return this.#renderLocalCanvas();
+     const available = this.#previewCapabilityAvailable() && this.previewBinding !== undefined;
+@@ -5122,9 +5142,21 @@ export class KumweStudioElement extends LitElement {
+     }
+-    this.dispatchEvent(
+-      new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
+-        bubbles: true,
+-        composed: true,
+-        detail,
+-      }),
+-    );
++    const session = this.#session;
++    const stateVersion = session?.stateVersion;
++    const request = new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
++      bubbles: true,
++      cancelable: true,
++      composed: true,
++      detail,
++    });
++    this.dispatchEvent(request);
++    // Existing synchronous host adapters may already have inserted. Async
++    // adapters take ownership with preventDefault; otherwise Studio supplies
++    // its own canonical command, including on an ordinary hosted mount.
++    if (
++      !request.defaultPrevented &&
++      this.#session === session &&
++      session?.stateVersion === stateVersion
++    ) {
++      this.#insertDefinition(definition);
++    }
+   }
+@@ -5269,2 +5301,84 @@ export class KumweStudioElement extends LitElement {
+    */
++  #usesLocalCanvas(): boolean {
++    // A failed configured preview must not become local output. Local mode
++    // is explicit, with host preview disabled and no pending binding.
++    return (
++      this.localCanvasContext !== undefined &&
++      this.previewBinding === undefined &&
++      this.configuration?.session.preview.enabled !== true
++    );
++  }
++
++  #renderLocalCanvas(): TemplateResult {
++    const state = this.localCanvasState ?? 'rendering';
++    return html`
++      <section
++        class="preview-region local-canvas-region"
++        data-local-canvas-state=${state}
++        aria-label=${this.#text('studio.shell/local-canvas-label')}
++      >
++        <h2>${this.#text('studio.shell/local-canvas-label')}</h2>
++        <p class="preview-status">
++          ${this.#text(state === 'unavailable' ? 'studio.shell/local-canvas-unavailable' : 'studio.shell/local-canvas-description')}
++        </p>
++        <div class="preview-stage" tabindex="0">
++          <div class="local-canvas-host"></div>
++          ${this.#renderPreviewCanvasOverlay()}
++        </div>
++        ${this.#renderPreviewCanvasStatus()}
++      </section>
++    `;
++  }
++
++  #synchronizeLocalCanvas(changed: PropertyValues<this>): void {
++    const holder = this.#usesLocalCanvas()
++      ? this.shadowRoot?.querySelector<HTMLElement>('.local-canvas-host')
++      : undefined;
++    const draft = this.document;
++    const context = this.localCanvasContext;
++    if (holder == null || draft === undefined || context === undefined) {
++      this.#disposeLocalCanvas();
++      return;
++    }
++    let created = false;
++    if (this.#localCanvasHolder !== holder || this.#localCanvas === undefined) {
++      this.#disposeLocalCanvas();
++      this.#localCanvasHolder = holder;
++      this.#localCanvas = new StudioLocalCanvas(holder, {
++        onActivated: (nodeId): void => {
++          this.#selectNode(nodeId, false);
++        },
++        onGeometry: (geometry): void => {
++          this.canvasGeometry = geometry;
++          if (geometry === undefined) {
++            this.#hoveredPreviewNodeId = undefined;
++            this.#cancelDrag();
++          }
++        },
++        onState: (state): void => {
++          this.localCanvasState = state;
++        },
++      });
++      this.canvasDirectManipulation = true;
++      created = true;
++    }
++    const viewport = this.activeViewport;
++    if (
++      created ||
++      changed.has('document') ||
++      changed.has('localCanvasContext') ||
++      this.#localCanvasViewport !== viewport?.id
++    ) {
++      this.#localCanvasViewport = viewport?.id;
++      void this.#localCanvas.update(draft, context, viewport?.previewWidth ?? 1440);
++    }
++  }
++
++  #disposeLocalCanvas(): void {
++    this.#localCanvas?.dispose();
++    this.#localCanvas = undefined;
++    this.#localCanvasHolder = undefined;
++    this.#localCanvasViewport = undefined;
++  }
++
+   #previewCapabilityAvailable(): boolean {
+diff --git a/packages/studio-lit/src/standalone-runtime.ts b/packages/studio-lit/src/standalone-runtime.ts
+index 9d80aea..074619d 100644
+--- a/packages/studio-lit/src/standalone-runtime.ts
++++ b/packages/studio-lit/src/standalone-runtime.ts
+@@ -29,2 +29,3 @@ import {
+   type StudioLimits,
++  type ThemeViewport,
+ } from '@kumwe/studio-protocol';
+@@ -37,2 +38,3 @@ import {
+ import { KumweStudioElement, type StudioInsertRequestDetail } from './kumwe-studio.js';
++import type { StudioLocalCanvasContext } from './local-canvas.js';
+ import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
+@@ -362,2 +364,26 @@ export class KumweStudioStandaloneElement extends LitElement {
+   #sequence = 0;
++  readonly #localCanvasContext: StudioLocalCanvasContext = Object.freeze({});
++  readonly #viewports: ThemeViewport[] = [
++    {
++      base: true,
++      id: 'compact',
++      label: { key: 'studio.local/compact', defaultMessage: 'Mobile' },
++      order: 0,
++      previewWidth: 360,
++    },
++    {
++      base: false,
++      id: 'medium',
++      label: { key: 'studio.local/medium', defaultMessage: 'Tablet' },
++      order: 1,
++      previewWidth: 768,
++    },
++    {
++      base: false,
++      id: 'expanded',
++      label: { key: 'studio.local/expanded', defaultMessage: 'Desktop' },
++      order: 2,
++      previewWidth: 1440,
++    },
++  ];
+ 
+@@ -492,2 +518,4 @@ export class KumweStudioStandaloneElement extends LitElement {
+         <kumwe-studio-contextual
++          .localCanvasContext=${this.#localCanvasContext}
++          .viewports=${this.#viewports}
+           .configuration=${this.#configuration}
+@@ -741,2 +769,3 @@ function standaloneConfiguration(
+         enabled: false,
++        initialViewport: 'expanded',
+         sameOriginRequired: true,
+diff --git a/packages/testkit/corpus-manifest.json b/packages/testkit/corpus-manifest.json
+index 24a5103..eb22b22 100644
+--- a/packages/testkit/corpus-manifest.json
++++ b/packages/testkit/corpus-manifest.json
+@@ -6,3 +6,3 @@
+         {
+-          "digest": "sha256-YuNbHhSY0b4oz/98G3cHYkhNguXAFniLaGjp8dLbrQM=",
++          "digest": "sha256-UD1NT69R0xIDoEQ+LYs2bvhYugV9F7sYIFG90OUAFtA=",
+           "file": "authoring-message-catalog.en.json"
+diff --git a/packages/testkit/fixtures/authoring-message-catalog.en.json b/packages/testkit/fixtures/authoring-message-catalog.en.json
+index 3640418..835ce41 100644
+--- a/packages/testkit/fixtures/authoring-message-catalog.en.json
++++ b/packages/testkit/fixtures/authoring-message-catalog.en.json
+@@ -891,2 +891,14 @@
+     },
++    "studio.shell/local-canvas-description": {
++      "defaultMessage": "Local rendering · not an authoritative host preview.",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-label": {
++      "defaultMessage": "Page canvas",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-unavailable": {
++      "defaultMessage": "The local canvas could not render this draft. The document and structural controls remain available.",
++      "parameters": []
++    },
+     "studio.shell/move-destination-label": {
+diff --git a/packages/testkit/studio-release.json b/packages/testkit/studio-release.json
+index 7792cb5..ce7fe43 100644
+--- a/packages/testkit/studio-release.json
++++ b/packages/testkit/studio-release.json
+@@ -32,3 +32,3 @@
+   "protocolVersion": "0.1.0-draft.2",
+-  "corpusManifestDigest": "sha256-PupdZVv+htI0wd7bnFtwVdFzhYVB7DxTXh+viiBClNM=",
++  "corpusManifestDigest": "sha256-x5tbWMNf6fran4IS/VjLDxHyEJ13JXKsQWQXA8ecj+w=",
+   "claimedProfiles": []
+diff --git a/schemas/examples/authoring-message-catalog.en.json b/schemas/examples/authoring-message-catalog.en.json
+index 3640418..835ce41 100644
+--- a/schemas/examples/authoring-message-catalog.en.json
++++ b/schemas/examples/authoring-message-catalog.en.json
+@@ -891,2 +891,14 @@
+     },
++    "studio.shell/local-canvas-description": {
++      "defaultMessage": "Local rendering · not an authoritative host preview.",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-label": {
++      "defaultMessage": "Page canvas",
++      "parameters": []
++    },
++    "studio.shell/local-canvas-unavailable": {
++      "defaultMessage": "The local canvas could not render this draft. The document and structural controls remain available.",
++      "parameters": []
++    },
+     "studio.shell/move-destination-label": {
+diff --git a/studio-release.json b/studio-release.json
+index 7792cb5..ce7fe43 100644
+--- a/studio-release.json
++++ b/studio-release.json
+@@ -32,3 +32,3 @@
+   "protocolVersion": "0.1.0-draft.2",
+-  "corpusManifestDigest": "sha256-PupdZVv+htI0wd7bnFtwVdFzhYVB7DxTXh+viiBClNM=",
++  "corpusManifestDigest": "sha256-x5tbWMNf6fran4IS/VjLDxHyEJ13JXKsQWQXA8ecj+w=",
+   "claimedProfiles": []
