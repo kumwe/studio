@@ -889,6 +889,18 @@
       "defaultMessage": "Unset {property}",
       "parameters": ["property"]
     },
+    "studio.shell/local-canvas-description": {
+      "defaultMessage": "Local rendering · not an authoritative host preview.",
+      "parameters": []
+    },
+    "studio.shell/local-canvas-label": {
+      "defaultMessage": "Page canvas",
+      "parameters": []
+    },
+    "studio.shell/local-canvas-unavailable": {
+      "defaultMessage": "The local canvas could not render this draft. The document and structural controls remain available.",
+      "parameters": []
+    },
     "studio.shell/move-destination-label": {
       "defaultMessage": "Move block to another position or slot",
       "parameters": []

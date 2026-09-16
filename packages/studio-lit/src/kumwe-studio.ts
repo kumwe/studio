@@ -76,6 +76,7 @@ import type {
   UnsetSizeRoleCommand,
   UnsetSizeRolePayload,
 } from '@kumwe/studio-protocol';
+import { StudioLocalCanvas, type StudioLocalCanvasContext } from './local-canvas.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 import {
   allocateDuplicateIdMap,
@@ -245,6 +246,8 @@ export class KumweStudioElement extends LitElement {
     contentModel: { attribute: false },
     designControls: { attribute: false },
     document: { attribute: false },
+    localCanvasContext: { attribute: false },
+    localCanvasState: { attribute: false, state: true },
     messages: { attribute: false },
     patterns: { attribute: false },
     paletteFilter: { attribute: false, state: true },
@@ -877,6 +880,12 @@ export class KumweStudioElement extends LitElement {
   declare public contentModel: ContentModelDocument | undefined;
   declare public designControls: ThemeDesignControl[] | undefined;
   declare public document: BlueprintDocument | undefined;
+  /** Explicit local projection. It never enables or substitutes for a host preview. */
+  declare public localCanvasContext: StudioLocalCanvasContext | undefined;
+  declare protected localCanvasState: 'current' | 'rendering' | 'unavailable' | undefined;
+  #localCanvas: StudioLocalCanvas | undefined;
+  #localCanvasHolder: HTMLElement | undefined;
+  #localCanvasViewport: string | undefined;
   declare public messages: StudioMessageOverrides | undefined;
   declare public patterns: PatternDocument[] | undefined;
   declare public theme: ThemeDocument | undefined;
@@ -968,6 +977,11 @@ export class KumweStudioElement extends LitElement {
     return this.#authoringControlsReady;
   }
 
+  /** Resolves when the latest local visual projection has settled. */
+  public get canvasReady(): Promise<void> {
+    return this.#localCanvas?.ready ?? Promise.resolve();
+  }
+
   /** The single mode resolved from the wire configuration for this session. */
   public get sessionMode(): StudioSessionMode | undefined {
     return this.#session?.mode;
@@ -1047,6 +1061,7 @@ export class KumweStudioElement extends LitElement {
    */
   public refreshPreviewGeometry(): void {
     this.#previewSurface?.refreshGeometry();
+    this.#localCanvas?.refreshGeometry();
   }
 
   /**
@@ -1062,6 +1077,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   public override disconnectedCallback(): void {
+    this.#disposeLocalCanvas();
     this.#destroyAuthoringControls();
     this.#destroyResourceBindingControls();
     this.ownerDocument.removeEventListener('keydown', this.#onDocumentKeydown, true);
@@ -1072,6 +1088,7 @@ export class KumweStudioElement extends LitElement {
   public override connectedCallback(): void {
     super.connectedCallback();
     this.ownerDocument.addEventListener('keydown', this.#onDocumentKeydown, true);
+    this.requestUpdate();
   }
 
   /**
@@ -1148,6 +1165,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override updated(changed: PropertyValues<this>): void {
+    this.#synchronizeLocalCanvas(changed);
     if (changed.has('authoringControlRegistry')) {
       this.#destroyAuthoringControls();
     }
@@ -1318,7 +1336,8 @@ export class KumweStudioElement extends LitElement {
           ${
             roots.length === 0
               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
-              : this.#previewCapabilityAvailable() && this.previewBinding !== undefined
+              : this.#usesLocalCanvas() ||
+                  (this.#previewCapabilityAvailable() && this.previewBinding !== undefined)
                 ? nothing
                 : html`<ul class="tree structural-canvas-fallback">
                     ${roots.map((node) => this.#renderCanvasNode(node))}
@@ -4701,6 +4720,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   #renderPreview(): TemplateResult {
+    if (this.#usesLocalCanvas()) return this.#renderLocalCanvas();
     const available = this.#previewCapabilityAvailable() && this.previewBinding !== undefined;
     const state = available ? (this.previewState ?? 'connecting') : 'unavailable';
     const statusKey: StudioMessageKey =
@@ -5120,13 +5140,25 @@ export class KumweStudioElement extends LitElement {
     if (destination.slot !== undefined) {
       detail.slot = destination.slot;
     }
-    this.dispatchEvent(
-      new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
-        bubbles: true,
-        composed: true,
-        detail,
-      }),
-    );
+    const session = this.#session;
+    const stateVersion = session?.stateVersion;
+    const request = new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      detail,
+    });
+    this.dispatchEvent(request);
+    // Existing synchronous host adapters may already have inserted. Async
+    // adapters take ownership with preventDefault; otherwise Studio supplies
+    // its own canonical command, including on an ordinary hosted mount.
+    if (
+      !request.defaultPrevented &&
+      this.#session === session &&
+      session?.stateVersion === stateVersion
+    ) {
+      this.#insertDefinition(definition);
+    }
   }
 
   /**
@@ -5267,6 +5299,88 @@ export class KumweStudioElement extends LitElement {
    * with render and cancellation operations, and a concrete browser binding
    * must all agree before the shell opens a channel.
    */
+  #usesLocalCanvas(): boolean {
+    // A failed configured preview must not become local output. Local mode
+    // is explicit, with host preview disabled and no pending binding.
+    return (
+      this.localCanvasContext !== undefined &&
+      this.previewBinding === undefined &&
+      this.configuration?.session.preview.enabled !== true
+    );
+  }
+
+  #renderLocalCanvas(): TemplateResult {
+    const state = this.localCanvasState ?? 'rendering';
+    return html`
+      <section
+        class="preview-region local-canvas-region"
+        data-local-canvas-state=${state}
+        aria-label=${this.#text('studio.shell/local-canvas-label')}
+      >
+        <h2>${this.#text('studio.shell/local-canvas-label')}</h2>
+        <p class="preview-status">
+          ${this.#text(state === 'unavailable' ? 'studio.shell/local-canvas-unavailable' : 'studio.shell/local-canvas-description')}
+        </p>
+        <div class="preview-stage" tabindex="0">
+          <div class="local-canvas-host"></div>
+          ${this.#renderPreviewCanvasOverlay()}
+        </div>
+        ${this.#renderPreviewCanvasStatus()}
+      </section>
+    `;
+  }
+
+  #synchronizeLocalCanvas(changed: PropertyValues<this>): void {
+    const holder = this.#usesLocalCanvas()
+      ? this.shadowRoot?.querySelector<HTMLElement>('.local-canvas-host')
+      : undefined;
+    const draft = this.document;
+    const context = this.localCanvasContext;
+    if (holder == null || draft === undefined || context === undefined) {
+      this.#disposeLocalCanvas();
+      return;
+    }
+    let created = false;
+    if (this.#localCanvasHolder !== holder || this.#localCanvas === undefined) {
+      this.#disposeLocalCanvas();
+      this.#localCanvasHolder = holder;
+      this.#localCanvas = new StudioLocalCanvas(holder, {
+        onActivated: (nodeId): void => {
+          this.#selectNode(nodeId, false);
+        },
+        onGeometry: (geometry): void => {
+          this.canvasGeometry = geometry;
+          if (geometry === undefined) {
+            this.#hoveredPreviewNodeId = undefined;
+            this.#cancelDrag();
+          }
+        },
+        onState: (state): void => {
+          this.localCanvasState = state;
+        },
+      });
+      this.canvasDirectManipulation = true;
+      created = true;
+    }
+    const viewport = this.activeViewport;
+    if (
+      created ||
+      changed.has('document') ||
+      changed.has('localCanvasContext') ||
+      this.#localCanvasViewport !== viewport?.id
+    ) {
+      this.#localCanvasViewport = viewport?.id;
+      void this.#localCanvas.update(draft, context, viewport?.previewWidth ?? 1440);
+    }
+  }
+
+  #disposeLocalCanvas(): void {
+    this.#localCanvas?.dispose();
+    this.#localCanvas = undefined;
+    this.#localCanvasHolder = undefined;
+    this.#localCanvasViewport = undefined;
+  }
+
   #previewCapabilityAvailable(): boolean {
     const session = this.configuration?.session;
     if (session?.preview.enabled !== true) {

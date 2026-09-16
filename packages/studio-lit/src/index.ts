@@ -183,3 +183,5 @@ declare global {
     'kumwe-studio': KumweStudioElement;
   }
 }
+
+export type { StudioLocalCanvasContext } from './local-canvas.js';
