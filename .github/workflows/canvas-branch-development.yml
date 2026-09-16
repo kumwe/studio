@@ -52,8 +52,8 @@ jobs:
             test "$(wc -c < "$input")" -le 16777216
             test "$(sha256sum "$input" | cut -d ' ' -f 1)" = "$digest"
           fi
-          git apply --check "$input"
-          git apply --index "$input"
+          git apply --recount --check "$input"
+          git apply --recount --index "$input"
           git rm -- "$patch"
           git config user.name 'eWɘyn'
           git config user.email '5607939+Llewellynvdm@users.noreply.github.com'
