@@ -111,6 +111,19 @@ The top-level `locale` belongs only to standalone deployment. Hosted deployments
 requested/resolved locale, direction, fallbacks, and time zone exclusively from `session.locale`; a hosted
 top-level `locale` is invalid.
 
+Standalone mounting supplies an isolated rendered canvas using the built-in semantic web renderer. It
+labels this projection as local, not host-authoritative. The editor uses measured node identity for
+selection and movement and preserves the typed document as the source of truth. Responsive preview
+widths represent the authored page, not the outer embedding width. Local output, styles, measurements,
+and asynchronous rendering are instance-owned and disposed with the mount. No network or host adapter is
+required to see the built-in composition. A configured hosted preview failure never selects this path.
+
+The low-level shell accepts an explicit trusted browser `localCanvasContext` for local projection and
+exposes `canvasReady` for render settlement. Raw HTML is not an input. Ordinary palette insertion works
+without a host event listener: `studio-insert-request` is cancelable; an adapter taking ownership must
+prevent its default action. A synchronous legacy listener that already changes the command session is
+not followed by a second insertion. These browser APIs do not change the portable wire or host authority.
+
 Standalone keeps work in browser memory. It MUST expose two explicit, non-equivalent interchange operations:
 
 - lossless project download/import uses the canonical `AuthoringSessionSnapshot` representation needed to

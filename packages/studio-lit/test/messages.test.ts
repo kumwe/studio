@@ -1,17 +1,23 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import {
   messageText,
   studioMessageCatalog,
   studioMessages,
   type StudioMessageKey,
+  type StudioMessageCatalog,
 } from '../src/index.js';
+
+const canonical = JSON.parse(
+  await readFile('schemas/examples/authoring-message-catalog.en.json', 'utf8'),
+) as StudioMessageCatalog;
 
 describe('authoring message catalog', () => {
   it('publishes the complete canonical English catalog', () => {
     expect(studioMessageCatalog.kind).toBe('authoring-message-catalog');
-    expect(studioMessageCatalog.catalogVersion).toBe('1.7.0');
+    expect(studioMessageCatalog).toEqual(canonical);
     expect(studioMessageCatalog.locale).toBe('en');
-    expect(Object.keys(studioMessageCatalog.messages)).toHaveLength(271);
+    expect(Object.keys(studioMessageCatalog.messages).length).toBeGreaterThan(0);
     expect(Object.keys(studioMessages)).toEqual(Object.keys(studioMessageCatalog.messages));
   });
 

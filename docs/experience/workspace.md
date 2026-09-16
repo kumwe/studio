@@ -123,18 +123,18 @@ These checks refine the existing `STUDIO-PROD-002`, `003`, `007`, `012`, `013`, 
 replace the canonical acceptance journey or constitute accepted gate evidence. Run them against the public
 mount API and distributed browser entry point, not only a test harness that supplies missing editor behavior.
 
-| Journey | Observable result |
-| --- | --- |
-| Open an ordinary standalone mount | A genuine empty rendered workspace appears, ready to insert into; a structural list is not its visual canvas. |
-| Insert a section, heading, image, and button | Palette clicks, keyboard insertion, and palette-to-canvas drops produce visible rendered blocks and the same valid document operations. |
-| Select a nested rendered block | Canvas, layer tree, parent breadcrumb, and contextual inspector identify the same stable node. |
-| Edit a bound value or static block content | The canvas stays visible, displays the changed value, and preserves binding identity and artifact authority. |
-| Move or resize a block | Placement respects slots and policy; resizing selects supported semantic values at the active viewport. A cancelled gesture changes nothing. |
-| Undo and redo | One completed gesture is one reversible semantic operation; DOM snapshots and pointer coordinates are not saved artifacts. |
-| Change viewport or presentation | The intended responsive output changes without losing selection, history, pending edits, or the resource context. |
-| Export and reopen locally | The same visible composition and values return in a fresh isolated instance without network access. |
-| Save, reopen, and publish through a real host | Host-accepted artifacts reproduce the authored content, layout, theme, and responsive behavior through the public renderer. |
-| Refuse a host operation or contribution | The error is explicit, unsaved work remains recoverable under policy, and no substitute authority or renderer is fabricated. |
+| Journey                                       | Observable result                                                                                                                            |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Open an ordinary standalone mount             | A genuine empty rendered workspace appears, ready to insert into; a structural list is not its visual canvas.                                |
+| Insert a section, heading, image, and button  | Palette clicks, keyboard insertion, and palette-to-canvas drops produce visible rendered blocks and the same valid document operations.      |
+| Select a nested rendered block                | Canvas, layer tree, parent breadcrumb, and contextual inspector identify the same stable node.                                               |
+| Edit a bound value or static block content    | The canvas stays visible, displays the changed value, and preserves binding identity and artifact authority.                                 |
+| Move or resize a block                        | Placement respects slots and policy; resizing selects supported semantic values at the active viewport. A cancelled gesture changes nothing. |
+| Undo and redo                                 | One completed gesture is one reversible semantic operation; DOM snapshots and pointer coordinates are not saved artifacts.                   |
+| Change viewport or presentation               | The intended responsive output changes without losing selection, history, pending edits, or the resource context.                            |
+| Export and reopen locally                     | The same visible composition and values return in a fresh isolated instance without network access.                                          |
+| Save, reopen, and publish through a real host | Host-accepted artifacts reproduce the authored content, layout, theme, and responsive behavior through the public renderer.                  |
+| Refuse a host operation or contribution       | The error is explicit, unsaved work remains recoverable under policy, and no substitute authority or renderer is fabricated.                 |
 
 The representative browser page must contain nested layout and content, not only an empty section. Automated
 accessibility checks supplement keyboard, focus, touch, RTL, zoom, and visual review; they do not substitute

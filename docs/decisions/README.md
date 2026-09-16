@@ -39,6 +39,7 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
 | [0029](0029-governed-controls.md)                    | Govern advanced controls behind Studio-owned seams                 | Proposed |
 | [0034](0034-editorjs-private-authoring-adapter.md)   | Editor.js stays behind Studio's canonical authoring boundary       | Proposed |
 | [0035](0035-contextual-unified-content-authoring.md) | Contextual authoring coordinates separate artifacts in one journey | Proposed |
+| [0036](0036-public-local-canvas.md)                  | Public standalone mounting owns the canonical local canvas         | Proposed |
 
 ¹ The bounded behavior remains valid, but its interpretation as the complete product target is partially
 superseded by [ADR 0035](0035-contextual-unified-content-authoring.md).
