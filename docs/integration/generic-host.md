@@ -189,6 +189,13 @@ grant transfer, or a capability/route mismatch rejects that mount and never acti
 current Model needs no extra service bridge because the authoritative coordinated Model is part of
 `authoring/start`.
 
+Because the configured HTTP mount declares no host preview, the shell renders the admitted composition in
+its isolated local canvas through the public semantic renderer, labelled as local and non-authoritative,
+so authors see and manipulate the page they are composing. That projection resolves Entry-field bindings
+against the current draft only; it runs no host query or transform, requests no media or resource, and is
+never presented as host-rendered output. Authoritative preview remains the dedicated host preview response
+described below.
+
 The ordinary contextual mount consumes the complete authoring route family, `resource/search`, media
 `get`/`list`, and the three upload lifecycle routes above. Media `upload-status` and `import-external`, plus
 artifact, localization, model-discovery, permission, recovery, and telemetry ports, remain lower-level
@@ -505,7 +512,8 @@ the lifetime of that binding. The host owns every authorization, staging, render
 The canonical shell does not create a frame from a URL: URLs and sandbox grants are host policy, and creating
 one before the client is pinned would open an unbound surface. Replacing a binding or session generation
 tears down the old channel. Removing preview authority renders the textual fallback and does not create a
-browser-storage or direct-rendering fallback.
+browser-storage or direct-rendering fallback; the local canvas belongs only to sessions that never
+enabled preview.
 
 ## 7. Integrate extensions and themes
 

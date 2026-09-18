@@ -5,6 +5,12 @@ Standalone local mode mounts the same contextual Model/Blueprint/Entry page buil
 built-in block catalog and patterns. It is not an authenticated content session and cannot save, publish, upload,
 resolve protected resources, or make any other durable change.
 
+Standalone mounting renders the page it is composing: the built-in semantic web renderer draws the
+current Blueprint, resolved against the in-memory Entry values, into an isolated canvas inside the mount,
+with measured selection, palette-to-canvas insertion, block movement, and Mobile/Tablet/Desktop widths. The
+canvas is labelled as local rendering, not an authoritative host preview, and needs no network request,
+adapter, or reference-host initialization.
+
 Normal integrations enter local mode through the same canonical deployment API as hosted Studio. Omitting the
 configuration selects the blank standalone profile:
 

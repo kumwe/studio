@@ -34,6 +34,8 @@ npm run test:static-host
 ```
 
 This proves static delivery, asset integrity, browser entry-point portability, and renderer independence. Its
-authoring page directly composes a contextual custom element; it does not prove the canonical ordinary-element
+authoring page directly composes a contextual custom element and, because it declares no host preview, gives
+that element the explicit local canvas: the public semantic renderer draws the exact draft inside the mount,
+labelled as local and non-authoritative. It does not prove the canonical ordinary-element
 `mountStudio()`/configuration path, isolated multiple mounts, authentication, persistence, publication, a PHP
 implementation, the complete `authoring-web` profile, or the full `STUDIO-PROD-015` host journey.

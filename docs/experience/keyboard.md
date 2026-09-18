@@ -60,17 +60,41 @@ path releases capture, announces cancellation and dispatches no command. Read-on
 sessions expose no move target. The structural chip canvas retains its tested same-collection drag only as
 the degraded fallback when no bound preview is available.
 
+A block-palette entry can also be carried onto the measured canvas. A press stays an ordinary click; four
+CSS pixels of movement begin the carry, the same drop indicator and textual status name the destination,
+and the drop dispatches `insert-node` at the geometry-ranked position among the destinations the palette
+click, command palette, and outline already admit (document roots outside hybrid composition, plus every
+slot whose accepted types, hybrid bounds, and cardinality allow the block). `Escape` and `pointercancel`
+change nothing and the compatibility click that follows a carry inserts nothing. The non-drag path to the
+identical placement is a palette click followed by the outline destination selector.
+
+The workspace is one container-queried grid. Below its narrow breakpoint the `Workspace panels`
+navigation shows `Canvas`, `Blocks`, `Outline`, and `Inspector` as pressed-state buttons over mutually
+exclusive sheets; a completed insertion returns to the canvas sheet. Selection, history, and the rendered
+page persist across sheets. The command palette is a workspace-level layer, so `Ctrl+K` reaches it from
+any sheet and `Escape` returns focus to the invoking control.
+
 ## Inspector
 
-The inspector edits the selected node without leaving the keyboard. Every value input holds the
-JSON serialization of its property or override, and every control is a native input,
-select, or button, so `Tab` moves through them in one documented order: the recipe selector when
-the active theme offers a matching recipe; declared Design token selectors and their `Remove`
-buttons; base property rows (value input, then `Unset`); the add-property row (name, value,
+The inspector edits the selected node without leaving the keyboard. Every control is a native
+input, select, button, or disclosure, so `Tab` moves through them in one documented order. Ordinary
+typed controls come first: native text, multi-line, number, integer, and switch controls for the
+block's declared scalar ports (an Entry-bound port edits the Entry value through the guarded value
+adapter and never replaces the binding); Studio-owned authoring controls; typed controls for scalar
+property schemas; the recipe selector when the active theme offers a matching recipe; declared
+Design token selectors and their `Remove` buttons; the Layout size-role section; then resource
+binding controls. The `Advanced properties and bindings` disclosure follows and holds the raw
+editors: identifier and type facts, base property rows whose value inputs hold the JSON
+serialization of the property (value input, then `Unset`); the add-property row (name, value,
 `Add property`); model field selectors and their `Remove` buttons, or the legacy binding rows and
-set-binding form when no model port is negotiated; then — when the host supplies viewports — the responsive rows for the active
-viewport and the add-override form; and finally the Layout size-role section. In read-only or
+set-binding form when no model port is negotiated; and — when the host supplies viewports — the
+responsive rows for the active viewport and the add-override form. In read-only or
 mode-incompatible sessions the corresponding controls are disabled.
+
+Activating a rendered block on the visual canvas — a double-click on its measured region, or
+`Enter`/`F2` while the canvas stage has focus and a block is selected — keeps the page visible and
+moves focus to that block's first enabled typed control in the inspector. Value editing remains a
+canonical command over the Entry or Blueprint draft; the rendered markup is never edited in place.
 
 Every responsive value carries its provenance as text, never as color or position alone: an
 override row states `Overridden for the {viewport} viewport: {value}`, a property the active

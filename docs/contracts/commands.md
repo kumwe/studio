@@ -84,7 +84,7 @@ surface is an intent projection only; every row still passes through the same he
 
 | Command                             | Reference shell path                                                                           |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `insert-node`                       | Block palette and command palette                                                              |
+| `insert-node`                       | Block palette click, measured canvas drop from the palette, and command palette                |
 | `remove-node`                       | Outline action, Delete key and command palette                                                 |
 | `restore-node`                      | Restore-last-deleted command-palette action backed by a journal bounded to `maxHistoryEntries` |
 | `move-node`                         | Measured canvas reparent, outline destination selector and command-palette destination         |

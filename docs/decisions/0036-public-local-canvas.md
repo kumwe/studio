@@ -28,7 +28,16 @@ Blueprint value. Unsupported host queries and transforms are not executed locall
 
 A local canvas is an explicit browser context, never a fallback for an enabled or failed hosted preview.
 Host preview continues to require its configured capabilities and exact binding. Disposal, a newer
-draft, or rendering failure invalidates geometry, and late asynchronous work cannot restore it.
+draft, or rendering failure invalidates geometry, and late asynchronous work cannot restore it. The
+configured hosted runtime supplies the same explicit context only when the resolved session has preview
+disabled, because the normal configuration-first HTTP mount declares no host preview; it changes no
+route, admission, or draft identity, and a session that enables preview keeps the host channel.
+
+Palette insertion gains a measured carry-and-drop gesture over the same overlay. Its destinations are the
+semantically valid insertion collections the click path already derives from; geometry only ranks them,
+and the drop dispatches the canonical `insert-node` command. Activating a rendered block focuses its typed
+inspector control rather than editing rendered markup. The workspace collapses into pane sheets below a
+container breakpoint with the canvas central; the command palette is a workspace-level layer.
 
 Palette clicks dispatch a cancelable insertion request before the shell's canonical insertion command.
 A listener may take ownership with `preventDefault()`. Existing synchronous adapters remain compatible:

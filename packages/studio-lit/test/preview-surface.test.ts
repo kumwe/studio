@@ -915,3 +915,177 @@ describe('shell preview surface', () => {
     element.remove();
   });
 });
+
+describe('palette-to-canvas insertion', () => {
+  async function mountDropScenario(): Promise<{
+    button: HTMLButtonElement;
+    commandTypes: string[];
+    element: KumweStudioElement;
+  }> {
+    const client = new FakePreviewClient();
+    client.rectsByNode['section-a'] = [{ height: 100, width: 300, x: 0, y: 0 }];
+    client.rectsByNode['text-1'] = [{ height: 30, width: 120, x: 10, y: 20 }];
+    client.rectsByNode['section-b'] = [{ height: 100, width: 300, x: 0, y: 200 }];
+    const { element } = await mount({
+      blockDefinitions: [
+        defineTestBlock({
+          label: 'Section',
+          slots: [
+            {
+              accepts: { types: ['studio.core/text'] },
+              id: 'content',
+              label: { defaultMessage: 'Content', key: 'studio.test/content' },
+              maximum: 20,
+              minimum: 0,
+              ordered: true,
+            },
+          ],
+          type: 'studio.core/section',
+        }),
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      client,
+      roots: [section('section-a', [node('text-1')]), section('section-b', [])],
+    });
+    const commandTypes: string[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+      if (detail.command !== null) {
+        commandTypes.push(detail.command.type);
+      }
+    });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, {
+      [marker(digest, 0)]: 'section-a',
+      [marker(digest, 1)]: 'text-1',
+      [marker(digest, 2)]: 'section-b',
+    });
+    await settle(element);
+    const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '.palette-block[data-block-type="studio.core/text"]',
+    );
+    if (button === null || button === undefined) {
+      throw new Error('Missing the Text palette block.');
+    }
+    return { button, commandTypes, element };
+  }
+
+  it('drops a palette block into the measured empty slot through the same insert-node command', async () => {
+    const { button, commandTypes, element } = await mountDropScenario();
+    const before = structuredClone(element.document);
+
+    // A plain press stays a click: no drag state, no extra insertion.
+    button.dispatchEvent(pointerEvent('pointerdown', 50, 5, 5));
+    button.dispatchEvent(pointerEvent('pointerup', 50, 6, 6));
+    await element.updateComplete;
+    expect(element.document).toEqual(before);
+
+    button.dispatchEvent(pointerEvent('pointerdown', 51, 5, 5));
+    button.dispatchEvent(pointerEvent('pointermove', 51, 150, 250));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+    expect(element.shadowRoot?.querySelector('.preview-canvas-status')?.textContent).toContain(
+      'section-b',
+    );
+    button.dispatchEvent(pointerEvent('pointerup', 51, 150, 250));
+    // The browser follows a captured pointerup with a compatibility click; it
+    // must not insert a second block.
+    button.click();
+    await settle(element);
+
+    expect(commandTypes).toEqual(['studio.command/insert-node']);
+    expect(element.document?.roots).toHaveLength(2);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-2']);
+    expect(element.selection).toEqual(['text-2']);
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+
+    // The identical placement is available without dragging: insert, then
+    // choose the destination from the outline's native selector.
+    element.undo();
+    await settle(element);
+    expect(element.document).toEqual(before);
+    element.selectNode(undefined);
+    await settle(element);
+    button.click();
+    await settle(element);
+    expect(element.document?.roots.map((root) => root.id)).toEqual([
+      'section-a',
+      'section-b',
+      'text-2',
+    ]);
+    outlineEntry(element, 'text-2').click();
+    await settle(element);
+    const destination = element.shadowRoot?.querySelector<HTMLSelectElement>(
+      '.outline-move-destination',
+    );
+    const option = [...(destination?.options ?? [])].find((candidate) =>
+      candidate.textContent.includes('section-b'),
+    );
+    expect(option).toBeDefined();
+    if (destination == null || option === undefined) throw new Error('Missing destination.');
+    destination.value = option.value;
+    destination.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle(element);
+    expect(element.document?.roots).toHaveLength(2);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-2']);
+    element.remove();
+  });
+
+  it('leaves the document unchanged when Escape or pointercancel ends a palette carry', async () => {
+    const { button, commandTypes, element } = await mountDropScenario();
+    const before = structuredClone(element.document);
+
+    button.dispatchEvent(pointerEvent('pointerdown', 52, 5, 5));
+    button.dispatchEvent(pointerEvent('pointermove', 52, 150, 250));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Escape' }),
+    );
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+    button.dispatchEvent(pointerEvent('pointerup', 52, 150, 250));
+    button.click();
+    await settle(element);
+    expect(element.document).toEqual(before);
+
+    button.dispatchEvent(pointerEvent('pointerdown', 53, 5, 5));
+    button.dispatchEvent(pointerEvent('pointermove', 53, 150, 250));
+    button.dispatchEvent(pointerEvent('pointercancel', 53, 150, 250));
+    await settle(element);
+    expect(element.document).toEqual(before);
+    expect(commandTypes).toEqual([]);
+    expect(element.shadowRoot?.querySelector('.live-region, [aria-live]')?.textContent).toContain(
+      'cancelled',
+    );
+
+    // Later deliberate clicks insert normally again.
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    button.click();
+    await settle(element);
+    expect(commandTypes).toEqual(['studio.command/insert-node']);
+    element.remove();
+  });
+
+  it('offers no palette carry in read-only sessions', async () => {
+    const client = new FakePreviewClient();
+    const { element } = await mount({ client, sessionState: 'read-only' });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, { [marker(digest, 0)]: 'node-1' });
+    await settle(element);
+    const button = element.shadowRoot?.querySelector<HTMLButtonElement>('.palette-block');
+    const before = structuredClone(element.document);
+    button?.dispatchEvent(pointerEvent('pointerdown', 54, 5, 5));
+    button?.dispatchEvent(pointerEvent('pointermove', 54, 150, 250));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+    button?.dispatchEvent(pointerEvent('pointerup', 54, 150, 250));
+    await settle(element);
+    expect(element.document).toEqual(before);
+    element.remove();
+  });
+});

@@ -36,7 +36,7 @@ import {
   type StudioContextualSaveRequestDetail,
 } from './contextual-authoring.js';
 import { KumweStudioElement, type StudioInsertRequestDetail } from './kumwe-studio.js';
-import type { StudioLocalCanvasContext } from './local-canvas.js';
+import { STUDIO_LOCAL_CANVAS_VIEWPORTS, type StudioLocalCanvasContext } from './local-canvas.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 
 const LOCAL_OWNER = { id: 'studio.local/browser', version: '1.0.0' } as const;
@@ -363,29 +363,9 @@ export class KumweStudioStandaloneElement extends LitElement {
   #project: AuthoringSessionSnapshot;
   #sequence = 0;
   readonly #localCanvasContext: StudioLocalCanvasContext = Object.freeze({});
-  readonly #viewports: ThemeViewport[] = [
-    {
-      base: true,
-      id: 'compact',
-      label: { key: 'studio.local/compact', defaultMessage: 'Mobile' },
-      order: 0,
-      previewWidth: 360,
-    },
-    {
-      base: false,
-      id: 'medium',
-      label: { key: 'studio.local/medium', defaultMessage: 'Tablet' },
-      order: 1,
-      previewWidth: 768,
-    },
-    {
-      base: false,
-      id: 'expanded',
-      label: { key: 'studio.local/expanded', defaultMessage: 'Desktop' },
-      order: 2,
-      previewWidth: 1440,
-    },
-  ];
+  readonly #viewports: ThemeViewport[] = STUDIO_LOCAL_CANVAS_VIEWPORTS.map((viewport) => ({
+    ...viewport,
+  }));
 
   public constructor() {
     super();
@@ -710,6 +690,19 @@ export function mountStudioStandalone(
   };
 }
 
+/**
+ * The first local canvas width follows the authoring device: a narrow screen
+ * starts at the renderer's compact breakpoint so the rendered page is legible
+ * without scaling, while wider screens start at the desktop width. Authors
+ * switch widths at any time; the choice is presentation input, never data.
+ */
+function initialLocalViewport(): ThemeViewport['id'] {
+  const narrow =
+    typeof globalThis.matchMedia === 'function' &&
+    globalThis.matchMedia('(max-width: 47.9375rem)').matches;
+  return narrow ? 'compact' : 'expanded';
+}
+
 function standaloneConfiguration(
   project: AuthoringSessionSnapshot,
   definitions: readonly BlockDefinition[],
@@ -767,7 +760,7 @@ function standaloneConfiguration(
       preview: {
         allowApproximateRenderer: false,
         enabled: false,
-        initialViewport: 'expanded',
+        initialViewport: initialLocalViewport(),
         sameOriginRequired: true,
       },
       protocolVersion: STUDIO_WIRE_PROTOCOL_VERSION,

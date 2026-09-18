@@ -1049,6 +1049,10 @@
       "defaultMessage": "Moving {label} to {destination}",
       "parameters": ["destination", "label"]
     },
+    "studio.shell/visual-insert-target": {
+      "defaultMessage": "Inserting {label} at {destination}",
+      "parameters": ["destination", "label"]
+    },
     "studio.shell/workspace-panels": {
       "defaultMessage": "Workspace panels",
       "parameters": []
