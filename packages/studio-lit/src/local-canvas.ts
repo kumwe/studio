@@ -8,6 +8,7 @@ import type {
   JsonValue,
   NodeId,
   PreviewMarkerRect,
+  ThemeViewport,
 } from '@kumwe/studio-protocol';
 import {
   enhanceStudioWeb,
@@ -22,6 +23,36 @@ export interface StudioLocalCanvasContext {
   readonly entry?: Readonly<EntryDocument>;
   readonly renderContext?: Readonly<StudioWebRenderContext>;
 }
+
+/**
+ * The responsive widths the local canvas offers when no theme declares its
+ * own. They mirror the semantic web renderer's fixed 48rem/75rem breakpoints,
+ * so every width shows behaviour the public renderer really produces. They
+ * are authoring chrome, never stored in a Blueprint.
+ */
+export const STUDIO_LOCAL_CANVAS_VIEWPORTS: readonly ThemeViewport[] = Object.freeze([
+  {
+    base: true,
+    id: 'compact',
+    label: { key: 'studio.local/compact', defaultMessage: 'Mobile' },
+    order: 0,
+    previewWidth: 360,
+  },
+  {
+    base: false,
+    id: 'medium',
+    label: { key: 'studio.local/medium', defaultMessage: 'Tablet' },
+    order: 1,
+    previewWidth: 768,
+  },
+  {
+    base: false,
+    id: 'expanded',
+    label: { key: 'studio.local/expanded', defaultMessage: 'Desktop' },
+    order: 2,
+    previewWidth: 1440,
+  },
+]);
 
 export interface StudioLocalCanvasCallbacks {
   onActivated(nodeId: NodeId): void;

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openShell, populateShell } from '../support/shell.js';
+import { openAdvancedInspector, openShell, populateShell } from '../support/shell.js';
 
 /**
  * TH-013: the authoring chrome operates under the strict Content-Security-
@@ -91,6 +91,7 @@ test('the chrome completes an authoring pass under the pinned policy without vio
   // covers form interaction in addition to insertion and selection.
   await page.keyboard.press('Escape');
   const inspector = shell.getByRole('complementary', { name: 'Inspector' });
+  await openAdvancedInspector(shell);
   const addPropertyName = inspector.getByRole('textbox', { name: 'New property name' });
   await addPropertyName.fill('note');
   await expect(addPropertyName).toHaveValue('note');

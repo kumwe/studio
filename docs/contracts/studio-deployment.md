@@ -118,11 +118,21 @@ widths represent the authored page, not the outer embedding width. Local output,
 and asynchronous rendering are instance-owned and disposed with the mount. No network or host adapter is
 required to see the built-in composition. A configured hosted preview failure never selects this path.
 
+A hosted mount whose resolved `session.preview.enabled` is `false` receives the same isolated local canvas
+for its admitted contribution generation, labelled local and non-authoritative, with the renderer's
+responsive widths. This is an explicit context for a session that declared no host preview; it grants no
+authority, performs no request, and does not alter the configured routes, contribution admission, or draft
+identity. A session that enables preview MUST continue to bind the host preview channel; when that binding
+is absent or fails, the shell shows the textual preview state and MUST NOT substitute the local canvas.
+
 The low-level shell accepts an explicit trusted browser `localCanvasContext` for local projection and
 exposes `canvasReady` for render settlement. Raw HTML is not an input. Ordinary palette insertion works
 without a host event listener: `studio-insert-request` is cancelable; an adapter taking ownership must
 prevent its default action. A synchronous legacy listener that already changes the command session is
-not followed by a second insertion. These browser APIs do not change the portable wire or host authority.
+not followed by a second insertion. Carrying a palette entry onto the measured canvas dispatches the same
+`insert-node` command at a geometry-ranked destination drawn only from the semantically valid set; it does
+not dispatch `studio-insert-request`, and a cancelled carry dispatches nothing. These browser APIs do not
+change the portable wire or host authority.
 
 Standalone keeps work in browser memory. It MUST expose two explicit, non-equivalent interchange operations:
 

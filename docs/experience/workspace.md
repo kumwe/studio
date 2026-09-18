@@ -13,6 +13,18 @@ choices, and inline/minimized/maximized/fullscreen state on one mounted session.
 plans and accepted choices through the configured authoritative adapter; its standalone runtime downloads the
 same bounded intent without claiming persistence.
 
+The Blueprint shell now keeps one rendered page canvas mounted while Model, Blueprint, and Content controls
+change: standalone mounts, and hosted mounts whose resolved session enables no host preview, render the
+admitted composition through the public semantic web renderer in an isolated local canvas labelled as
+non-authoritative, with measured selection, responsive target widths, and the same measured drop indicator
+for palette insertion and block movement. The inspector is docked beside that canvas and leads with typed
+port and property controls, Layout size roles at the active viewport, and the Model and Content panels;
+raw JSON editing sits behind an `Advanced properties and bindings` disclosure. Narrow containers present
+the Library, Outline, and Inspector as mutually exclusive sheets behind a visible pane switcher while the
+canvas stays central. Inline value editing is contextual: activating a rendered block focuses its typed
+control; the rendered markup itself is never editable in place, and no editor geometry or CSS enters a
+Blueprint.
+
 The complete region and interaction specification below remains the product and qualification boundary.
 Implementing a component state is not proof of host navigation continuity, complete field tooling, manual
 accessibility, or the integrated `STUDIO-PROD-015` journey (`STUDIO-PROD-014`).
