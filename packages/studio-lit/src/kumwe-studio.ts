@@ -3206,6 +3206,7 @@ export class KumweStudioElement extends LitElement {
       ${this.#renderInspectorResourceBindings(node, !this.#permits('studio.command/set-binding'))}
       <details class="inspector-advanced">
         <summary>${this.#text('studio.shell/inspector-advanced')}</summary>
+        <p class="hint">${this.#text('studio.shell/inspector-hint')}</p>
         <dl>
           <div>
             <dt>${this.#text('studio.shell/inspector-identifier')}</dt>
