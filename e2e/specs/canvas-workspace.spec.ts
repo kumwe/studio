@@ -41,7 +41,10 @@ test('the public canvas stays live while typed content, layout and presentation 
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .analyze();
   expect(scan.violations, JSON.stringify(scan.violations, null, 2)).toEqual([]);
-  await page.screenshot({ path: '.cache/playwright/canvas-workspace-desktop.png', fullPage: true });
+  await test.info().attach('canvas-workspace-desktop', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
 });
 
 test('small-screen sheets preserve a rendered page and expose the same typed controls', async ({
@@ -69,5 +72,8 @@ test('small-screen sheets preserve a rendered page and expose the same typed con
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(overflow).toBe(false);
-  await page.screenshot({ path: '.cache/playwright/canvas-workspace-mobile.png', fullPage: true });
+  await test.info().attach('canvas-workspace-mobile', {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: 'image/png',
+  });
 });
