@@ -1,5 +1,12 @@
 # @kumwe/studio-core
 
+## 0.1.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies [[`6420d43`](https://github.com/kumwe/studio/commit/6420d43de9e8e7a25702d66dc4fa70910402e0dc), [`b08774d`](https://github.com/kumwe/studio/commit/b08774df3038bc844afc183d69842607ccacd6b1)]:
+  - @kumwe/studio-protocol@0.1.0-beta.6
+
 ## 0.1.0-beta.5
 
 ### Patch Changes
