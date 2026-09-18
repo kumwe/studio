@@ -56,6 +56,7 @@ import { messageText, type StudioMessageKey, type StudioMessageOverrides } from 
 import type { StudioLocalCanvasContext } from './local-canvas.js';
 import type { StudioPreviewBinding } from './preview-surface.js';
 import type { StudioResourceSearchService } from './resource-authoring-control.js';
+import type { StudioEntryValueAdapter } from './scalar-controls.js';
 
 export const STUDIO_CONTEXTUAL_MODES: readonly StudioAuthoringMode[] = Object.freeze([
   'model',
@@ -222,11 +223,60 @@ export class KumweStudioContextualElement extends LitElement {
     .contextual-workspace {
       background: white;
       border: 1px solid var(--studio-contextual-border);
+      block-size: clamp(34rem, 80vh, 72rem);
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
       min-inline-size: 0;
     }
 
     .contextual-workspace[data-presentation='maximized'] {
-      min-block-size: min(90vh, 70rem);
+      block-size: min(90vh, 70rem);
+    }
+
+    .contextual-workspace[data-presentation='fullscreen'] {
+      block-size: 100dvh;
+      border: 0;
+    }
+
+    .contextual-workspace[data-presentation='minimized'],
+    .contextual-unavailable {
+      block-size: auto;
+    }
+
+    .contextual-body {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      min-block-size: 0;
+      min-inline-size: 0;
+    }
+
+    .blueprint-panel {
+      min-block-size: 0;
+    }
+
+    kumwe-studio {
+      --studio-workspace-height: 100%;
+      block-size: 100%;
+      min-block-size: 0;
+    }
+
+    .contextual-inspector {
+      min-inline-size: 0;
+    }
+
+    .contextual-inspector .contextual-panel {
+      gap: 0.875rem;
+      grid-template-columns: minmax(0, 1fr);
+      padding: 0;
+    }
+
+    .contextual-inspector :is(.field-builder, .field-values, .model-fields) {
+      border: 0;
+      padding: 0;
+    }
+
+    .contextual-inspector h2 {
+      font-size: 0.875rem;
     }
 
     .contextual-header {
@@ -480,6 +530,13 @@ export class KumweStudioContextualElement extends LitElement {
   #resourceGeneration = '';
   #commandSequence = 0;
   #announcement = '';
+  readonly #entryValues: StudioEntryValueAdapter = {
+    read: (path) =>
+      this.#draft === undefined ? undefined : entryValueAtPath(this.#draft.entry, path),
+    write: (path, value) => {
+      this.setEntryValue(path, value);
+    },
+  };
 
   public constructor() {
     super();
@@ -558,6 +615,7 @@ export class KumweStudioContextualElement extends LitElement {
 
   /** Add one fully typed field through the core Model command path. */
   public addField(field: FieldDefinition, position?: number): ContentModelDocument {
+    this.#assertWritableMode('model');
     const draft = this.#requireDraft();
     const contextualSession = this.contextualSession;
     const session =
@@ -593,6 +651,7 @@ export class KumweStudioContextualElement extends LitElement {
 
   /** Set one actual Entry value through the core Content command path. */
   public setEntryValue(fieldPath: readonly LocalName[], value: JsonValue): EntryDocument {
+    this.#assertWritableMode('content');
     const draft = this.#requireDraft();
     const contextualSession = this.contextualSession;
     const session =
@@ -851,7 +910,7 @@ export class KumweStudioContextualElement extends LitElement {
                   class="contextual-mode-tab"
                   role="tab"
                   data-mode=${mode}
-                  aria-controls=${`studio-contextual-panel-${mode}`}
+                  aria-controls="studio-contextual-panel-blueprint"
                   aria-selected=${this.mode === mode ? 'true' : 'false'}
                   tabindex=${this.mode === mode ? 0 : -1}
                   @click=${(): void => this.setMode(mode)}
@@ -862,13 +921,11 @@ export class KumweStudioContextualElement extends LitElement {
             )}
           </nav>
 
-          ${this.#renderModelPanel(draft, readOnly)}
           <section
             id="studio-contextual-panel-blueprint"
             class="contextual-panel blueprint-panel"
             role="tabpanel"
-            aria-labelledby="studio-contextual-tab-blueprint"
-            ?hidden=${this.mode !== 'blueprint'}
+            aria-labelledby=${`studio-contextual-tab-${this.mode}`}
           >
             <kumwe-studio
               .authoringControlRegistry=${this.authoringControlRegistry}
@@ -877,6 +934,8 @@ export class KumweStudioContextualElement extends LitElement {
               .contentModel=${draft.model}
               .designControls=${this.designControls}
               .document=${this.#blueprintDraft ?? session.state.blueprint}
+              .entryValues=${modes.includes('content') ? this.#entryValues : undefined}
+              .inspectorMode=${this.mode}
               .localCanvasContext=${this.localCanvasContext === undefined ? undefined : { ...this.localCanvasContext, entry: draft.entry }}
               .messages=${this.messages}
               .patterns=${this.patterns}
@@ -888,10 +947,13 @@ export class KumweStudioContextualElement extends LitElement {
                 this.#onBlueprintChange(event.detail);
               }}
             >
+              <div slot="contextual-inspector" class="contextual-inspector">
+                ${this.#renderModelPanel(draft, readOnly)}
+                ${this.#renderContentPanel(draft, readOnly)}
+              </div>
               <slot name="preview" slot="preview"></slot>
             </kumwe-studio>
           </section>
-          ${this.#renderContentPanel(draft, readOnly)}
         </div>
 
         <footer class="contextual-status">
@@ -933,7 +995,7 @@ export class KumweStudioContextualElement extends LitElement {
       <section
         id="studio-contextual-panel-model"
         class="contextual-panel model-panel"
-        role="tabpanel"
+        role="region"
         aria-labelledby="studio-contextual-tab-model"
         ?hidden=${this.mode !== 'model'}
       >
@@ -1056,7 +1118,7 @@ export class KumweStudioContextualElement extends LitElement {
       <section
         id="studio-contextual-panel-content"
         class="contextual-panel content-panel"
-        role="tabpanel"
+        role="region"
         aria-labelledby="studio-contextual-tab-content"
         ?hidden=${this.mode !== 'content'}
       >
@@ -1314,8 +1376,11 @@ export class KumweStudioContextualElement extends LitElement {
       id: (this.#draft?.entry ?? session.state.entry).id,
       revision: (this.#draft?.entry ?? session.state.entry).revision,
     };
-    result.session.composite = 'single';
-    result.session.mode = 'blueprint';
+    const blueprintAllowed = session.capabilities.modes.includes('blueprint');
+    const contentAllowed = session.capabilities.modes.includes('content');
+    result.session.composite = !blueprintAllowed && contentAllowed ? 'hybrid' : 'single';
+    result.session.mode = blueprintAllowed ? 'blueprint' : 'content';
+    if (!blueprintAllowed && !contentAllowed) result.session.sessionState = 'read-only';
     result.session.resourceContext = structuredClone(session.resourceContext);
     result.session.sessionGeneration = session.sessionGeneration;
     result.session.sessionId = session.sessionId;
@@ -1507,6 +1572,21 @@ export class KumweStudioContextualElement extends LitElement {
       );
     }
     return this.#draft;
+  }
+
+  #assertWritableMode(mode: 'content' | 'model'): void {
+    if (this.configuration?.session.sessionState === 'read-only') {
+      throw new StudioCommandError(
+        'read-only-session',
+        'A read-only contextual session cannot apply an authoring command.',
+      );
+    }
+    if (this.session?.capabilities.modes.includes(mode) !== true) {
+      throw new StudioCommandError(
+        'mode-forbidden',
+        `The resolved contextual session does not permit ${mode} commands.`,
+      );
+    }
   }
 
   #requireExecutor(session: StudioSession | undefined, label: string): StudioSession {

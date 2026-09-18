@@ -286,6 +286,67 @@ describe('contextual authoring shell', () => {
     );
   });
 
+  it('docks mode controls around the same canvas without hiding or replacing its session', async () => {
+    const element = await mount();
+    const canvas = element.blueprintElement;
+    if (canvas === undefined) throw new Error('Missing canvas.');
+    canvas.selectNode('article-card-1');
+    await canvas.updateComplete;
+    const coordinates = element.snapshot?.state.coordinates;
+    for (const mode of ['content', 'model', 'blueprint'] as const) {
+      element.setMode(mode);
+      await element.updateComplete;
+      await canvas.updateComplete;
+      expect(element.blueprintElement).toBe(canvas);
+      expect(canvas.selection).toEqual(['article-card-1']);
+      expect(canvas.inspectorMode).toBe(mode);
+      expect(element.snapshot?.state.coordinates).toEqual(coordinates);
+      expect(element.shadowRoot?.querySelector('.blueprint-panel')?.hasAttribute('hidden')).toBe(
+        false,
+      );
+      expect(modeButton(element, mode).getAttribute('aria-controls')).toBe(
+        'studio-contextual-panel-blueprint',
+      );
+      expect(
+        element.shadowRoot?.querySelector('.blueprint-panel')?.getAttribute('aria-labelledby'),
+      ).toBe(`studio-contextual-tab-${mode}`);
+    }
+    const panels = canvas.querySelector('[slot="contextual-inspector"]');
+    expect(panels?.querySelector('.model-panel')).not.toBeNull();
+    expect(panels?.querySelector('.content-panel')).not.toBeNull();
+    expect(canvas.entryValues?.read(['title'])).toBe('Exact value');
+    canvas.entryValues?.write(['title'], 'Updated in the canvas inspector');
+    await element.updateComplete;
+    expect(element.snapshot?.state.entry.values.title).toBe('Updated in the canvas inspector');
+    expect(element.snapshot?.state.blueprint).toEqual(element.session?.state.blueprint);
+    expect(element.dirtyState).toEqual({ blueprint: false, entry: true, model: false });
+  });
+
+  it('does not gain Model or unrestricted Blueprint authority by displaying the shared canvas', async () => {
+    const element = await mount();
+    if (element.session === undefined) throw new Error('Missing session.');
+    element.session = {
+      ...element.session,
+      capabilities: { ...element.session.capabilities, modes: ['content'] },
+    };
+    await element.updateComplete;
+    await element.blueprintElement?.updateComplete;
+    expect(element.currentMode).toBe('content');
+    expect(element.blueprintElement?.configuration?.session).toMatchObject({
+      composite: 'hybrid',
+      mode: 'content',
+    });
+    const field = fields()[0];
+    if (field === undefined) throw new Error('Missing test field.');
+    expect(() => element.addField({ ...field, id: 'denied' })).toThrow(
+      expect.objectContaining({ code: 'mode-forbidden' }),
+    );
+    expect(() => element.setMode('model')).toThrow(RangeError);
+    element.setEntryValue(['title'], 'An authorized content edit');
+    expect(element.snapshot?.state.entry.values.title).toBe('An authorized content edit');
+    expect(element.snapshot?.state.model.fields.some((field) => field.id === 'denied')).toBe(false);
+  });
+
   it('requests host return with only the opaque resolved return context', async () => {
     const element = await mount();
     let detail: unknown;
