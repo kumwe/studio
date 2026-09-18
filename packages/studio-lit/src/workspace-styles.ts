@@ -61,6 +61,26 @@ export const canvasWorkspaceStyles: CSSResult = css`
     display: none;
   }
 
+  /* The command palette is a workspace-level layer: Ctrl+K reaches it from
+     any pane, and it never depends on the canvas pane being visible. */
+  .command-palette {
+    align-self: start;
+    box-shadow: 0 0.5rem 2rem #18202a26;
+    grid-column: 1 / -1;
+    grid-row: 1 / -1;
+    inline-size: min(100% - 2rem, 36rem);
+    justify-self: center;
+    margin: 3rem 1rem 0;
+    max-block-size: calc(100% - 4rem);
+    overflow: auto;
+    position: relative;
+    z-index: 3;
+  }
+
+  .palette-block {
+    touch-action: none;
+  }
+
   .library-search {
     display: grid;
     font-size: 0.8125rem;
@@ -278,6 +298,12 @@ export const canvasWorkspaceStyles: CSSResult = css`
       grid-column: 1;
       grid-row: 1;
       padding: 0.5rem;
+    }
+
+    .command-palette {
+      grid-column: 1;
+      grid-row: 1 / -1;
+      margin-block-start: 3.5rem;
     }
 
     .pane-switcher button {

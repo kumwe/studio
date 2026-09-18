@@ -4,6 +4,7 @@ import {
   createCoreProductionBlockDefinitions,
   createCoreProductionPatterns,
   defineKumweStudioContextual,
+  STUDIO_LOCAL_CANVAS_VIEWPORTS,
   defineStudioPlugin,
   STUDIO_CONTRACT_VERSION,
   STUDIO_CONTEXTUAL_PRESENTATIONS,
@@ -71,6 +72,11 @@ const studio = requiredElement(
   document.querySelector<KumweStudioContextualElement>('kumwe-studio-contextual'),
   'kumwe-studio-contextual',
 );
+// This static host declares no host preview, so the page is composed on the
+// explicit local canvas: the public semantic renderer draws the exact draft,
+// labelled as local and non-authoritative, with no request or authority.
+studio.localCanvasContext = Object.freeze({});
+studio.viewports = STUDIO_LOCAL_CANVAS_VIEWPORTS.map((viewport) => ({ ...viewport }));
 const status = requiredElement(
   document.querySelector<HTMLOutputElement>('#runtime-status'),
   '#runtime-status',

@@ -174,6 +174,20 @@ describe('hosted browser runtime', () => {
     ]);
     expect(runtime.admittedContributions.patterns).toEqual([]);
     expect(blueprint.shadowRoot?.querySelectorAll('.palette button')).toHaveLength(1);
+    // A hosted session that never enabled host preview still gets a rendered
+    // page: the explicit local canvas, labelled as non-authoritative, with the
+    // renderer's responsive widths. It is not a fallback for a failed preview.
+    expect(runtime.element.configuration?.session.preview.enabled).toBe(false);
+    expect(runtime.element.localCanvasContext).toBeDefined();
+    expect(runtime.element.viewports?.map((viewport) => viewport.id)).toEqual([
+      'compact',
+      'medium',
+      'expanded',
+    ]);
+    await blueprint.canvasReady;
+    await blueprint.updateComplete;
+    expect(blueprint.shadowRoot?.querySelector('.local-canvas-region')).not.toBeNull();
+    expect(blueprint.shadowRoot?.querySelector('.structural-canvas-fallback')).toBeNull();
     const node = session.state.blueprint.roots[0];
     if (node === undefined) throw new Error('The hosted fixture requires one Blueprint node.');
     runtime.element.setEntryValue(['name'], 'Hosted round trip');

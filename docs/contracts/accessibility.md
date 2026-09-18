@@ -86,7 +86,13 @@ pressed-state button and renders hover, selection and drop state with both shape
 the SVG geometry itself is presentation-only to assistive technology. The semantic outline remains the
 accessible canvas and enumerates the identical valid destinations in a native selector. The command palette
 provides the same destination actions, so reordering and reparenting never require coordinate perception or
-dragging.
+dragging. Carrying a palette entry onto the canvas is the same kind of enhancement: the drop names its
+destination textually, and a palette click followed by the outline destination selector reaches the
+identical placement without dragging.
+
+The workspace grid collapses below its container breakpoint into a visible pane switcher of pressed-state
+buttons over mutually exclusive Library, Outline, and Inspector sheets with the canvas central; a completed
+insertion returns to the canvas sheet, and the command palette remains reachable from every sheet.
 
 Pointer movement uses an activation threshold and capture has two no-op cancellation paths:
 `pointercancel` and document-level `Escape`. A cancelled gesture dispatches no command. Preview geometry

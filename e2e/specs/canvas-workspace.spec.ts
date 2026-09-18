@@ -36,6 +36,61 @@ test('the public canvas stays live while typed content, layout and presentation 
   await expect(canvas.getByRole('heading', { name: 'A page built on the canvas' })).toBeVisible();
   await studio.getByRole('button', { name: 'Inline', exact: true }).click();
   await expect(canvas.getByRole('heading', { name: 'A page built on the canvas' })).toBeVisible();
+
+  // Activating a rendered block moves the author to its typed control while
+  // the page stays visible; value editing never edits the rendered markup.
+  await region.dblclick();
+  await expect(input).toBeFocused();
+  await expect(canvas.getByRole('heading', { name: 'A page built on the canvas' })).toBeVisible();
+
+  // Palette-to-canvas insertion is an enhancement over the click path: a
+  // cancelled carry changes nothing, and a drop dispatches the same
+  // insert-node command at the geometry-ranked destination.
+  const divider = studio
+    .getByRole('complementary', { name: 'Block palette' })
+    .getByRole('button', { name: 'Divider', exact: true });
+  await divider.scrollIntoViewIfNeeded();
+  // Dropping just under the heading ranks the boundary after it inside the
+  // hero section above any document-root boundary.
+  const headingBox = await region.boundingBox();
+  const dividerBox = await divider.boundingBox();
+  expect(headingBox).not.toBeNull();
+  expect(dividerBox).not.toBeNull();
+  if (headingBox === null || dividerBox === null) return;
+  const dropPoint = {
+    x: headingBox.x + headingBox.width / 2,
+    y: headingBox.y + headingBox.height + 2,
+  };
+  await page.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dropPoint.x, dropPoint.y, { steps: 8 });
+  await expect(studio.locator('.preview-canvas-drop-indicator')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect(canvas.locator('[data-studio-block="divider"]')).toHaveCount(0);
+  await page.mouse.move(dividerBox.x + dividerBox.width / 2, dividerBox.y + dividerBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dropPoint.x, dropPoint.y, { steps: 8 });
+  await expect(studio.locator('.preview-canvas-drop-indicator')).toBeVisible();
+  await page.mouse.up();
+  await expect(
+    canvas.locator('[data-studio-block="section"] [data-studio-block="divider"]'),
+  ).toHaveCount(1);
+  await expect(canvas.locator('[data-studio-block="divider"]')).toHaveCount(1);
+  const orderAfterDrop = await canvas
+    .locator('[data-studio-block="section"] [data-studio-block]')
+    .evaluateAll((elements) =>
+      elements.map((element) => element.getAttribute('data-studio-block')),
+    );
+  expect(orderAfterDrop.indexOf('divider')).toBe(orderAfterDrop.indexOf('heading') + 1);
+
+  // Responsive widths represent the authored page, not the editor width, and
+  // switching them keeps selection and the rendered content.
+  await studio.getByRole('button', { name: 'Mobile', exact: true }).click();
+  await expect(canvas.locator('.canvas-viewport')).toHaveCSS('inline-size', '360px');
+  await expect(canvas.getByRole('heading', { name: 'A page built on the canvas' })).toBeVisible();
+  await studio.getByRole('button', { name: 'Desktop', exact: true }).click();
+  await expect(canvas.locator('.canvas-viewport')).toHaveCSS('inline-size', '1440px');
   expect(errors).toEqual([]);
   const scan = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])

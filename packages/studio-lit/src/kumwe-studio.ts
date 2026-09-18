@@ -34,6 +34,7 @@ import type {
   BlueprintCommand,
   BlueprintDocument,
   BlueprintNode,
+  BlockType,
   CommandDestination,
   ContentModelDocument,
   DuplicateNodeCommand,
@@ -202,6 +203,24 @@ interface PreviewCanvasDragState {
   capture?: Element;
   label: string;
   nodeId: NodeId;
+  originX: number;
+  originY: number;
+  pointerId: number;
+  target?: CanvasDropTarget;
+}
+
+/**
+ * A palette block being carried onto the measured canvas. The gesture is an
+ * enhancement over palette clicks and the outline destination selector: it
+ * ranks the same insert-node destinations by geometry and dispatches the same
+ * canonical command, so a drop never creates an otherwise invalid placement.
+ */
+interface PaletteDragState {
+  active: boolean;
+  cancelled: boolean;
+  capture?: Element;
+  definition: BlockDefinition;
+  label: string;
   originX: number;
   originY: number;
   pointerId: number;
@@ -941,7 +960,9 @@ export class KumweStudioElement extends LitElement {
   readonly #onDocumentKeydown = (event: KeyboardEvent): void => {
     if (
       event.key === 'Escape' &&
-      (this.#drag !== undefined || this.#previewDrag !== undefined) &&
+      (this.#drag !== undefined ||
+        this.#previewDrag !== undefined ||
+        this.#paletteDrag !== undefined) &&
       this.#cancelDrag()
     ) {
       event.preventDefault();
@@ -953,6 +974,9 @@ export class KumweStudioElement extends LitElement {
   #previewBindingGeneration: Revision | undefined;
   #previewSurface: StudioPreviewSurface | undefined;
   #previewDrag: PreviewCanvasDragState | undefined;
+  #paletteDrag: PaletteDragState | undefined;
+  /** A completed palette drop must not also run the button's click insertion. */
+  #suppressPaletteClick = false;
   readonly #removedNodes: RemovedNodeRecord[] = [];
   #registry: BlockRegistry | undefined;
   readonly #resourceBindingControls = new Map<string, MountedResourceBindingControl>();
@@ -1176,6 +1200,12 @@ export class KumweStudioElement extends LitElement {
     if (changed.has('viewports') || changed.has('theme')) {
       this.#activeViewportId = undefined;
     }
+    if (changed.has('inspectorMode') && this.inspectorMode !== undefined) {
+      // Model and Content controls dock in the inspector, so choosing one of
+      // those modes on a narrow screen brings that sheet forward; Blueprint
+      // returns to the page. Wide layouts show every region regardless.
+      this.activePane = this.inspectorMode === 'blueprint' ? 'canvas' : 'inspector';
+    }
     if (changed.has('configuration')) {
       this.#rebuildRegistry();
     }
@@ -1297,6 +1327,7 @@ export class KumweStudioElement extends LitElement {
               </button>`,
           )}
         </nav>
+        ${this.#renderCommandPalette()}
         <aside class="panel library" aria-label=${this.#text('studio.shell/palette-label')}>
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
           <label class="library-search">
@@ -1318,8 +1349,22 @@ export class KumweStudioElement extends LitElement {
                   <li>
                     <button
                       type="button"
+                      class="palette-block"
+                      data-block-type=${definition.type}
                       ?disabled=${!this.#canInsertDefinition(definition)}
                       @click=${(): void => this.#requestInsert(definition)}
+                      @pointerdown=${(event: PointerEvent): void => {
+                        this.#onPaletteBlockPointerDown(event, definition);
+                      }}
+                      @pointermove=${(event: PointerEvent): void => {
+                        this.#onPaletteBlockPointerMove(event);
+                      }}
+                      @pointerup=${(event: PointerEvent): void => {
+                        this.#onPaletteBlockPointerUp(event);
+                      }}
+                      @pointercancel=${(event: PointerEvent): void => {
+                        this.#onPaletteBlockPointerCancel(event);
+                      }}
                     >
                       <span class="block-symbol" aria-hidden="true"
                         >${definition.slots.length > 0 ? '⊞' : referenceText(definition.label).slice(0, 1)}</span
@@ -1386,7 +1431,6 @@ export class KumweStudioElement extends LitElement {
             >
               ${this.#text('studio.shell/command-palette-toggle')}
             </button>
-            ${this.#renderCommandPalette()}
             <div
               class="toolbar"
               role="group"
@@ -1579,6 +1623,19 @@ export class KumweStudioElement extends LitElement {
       this.#releasePreviewDragCapture(previewDrag);
       if (previewDrag.active) {
         this.#announce('studio.shell/announce-drag-cancelled', { label: previewDrag.label });
+      }
+      this.requestUpdate();
+      return true;
+    }
+    const paletteDrag = this.#paletteDrag;
+    if (paletteDrag !== undefined && !paletteDrag.cancelled) {
+      // The state survives until pointerup so the click that completes the
+      // cancelled gesture is recognised and does not insert.
+      paletteDrag.cancelled = true;
+      delete paletteDrag.target;
+      this.#releasePaletteDragCapture(paletteDrag);
+      if (paletteDrag.active) {
+        this.#announce('studio.shell/announce-drag-cancelled', { label: paletteDrag.label });
       }
       this.requestUpdate();
       return true;
@@ -1858,10 +1915,10 @@ export class KumweStudioElement extends LitElement {
    * at the end of the document roots — the same placement an outline insert
    * resolves to.
    */
-  #insertDefinition(definition: BlockDefinition): void {
+  #insertDefinition(definition: BlockDefinition, explicit?: CommandDestination): void {
     const session = this.#session;
     const document = this.document;
-    const destination = this.#insertionDestination(definition);
+    const destination = explicit ?? this.#insertionDestination(definition);
     if (session === undefined || document === undefined || destination === undefined) {
       return;
     }
@@ -4991,7 +5048,13 @@ export class KumweStudioElement extends LitElement {
         ${
           available && state !== 'closed'
             ? html`
-                <div class="preview-stage" tabindex="0">
+                <div
+                  class="preview-stage"
+                  tabindex="0"
+                  @keydown=${(event: KeyboardEvent): void => {
+                    this.#onPreviewStageKeydown(event);
+                  }}
+                >
                   <slot
                     class="preview-surface-slot"
                     name="preview"
@@ -5017,7 +5080,11 @@ export class KumweStudioElement extends LitElement {
       return nothing;
     }
     const indicator =
-      this.#previewDrag?.active === true ? this.#previewDrag.target?.indicator : undefined;
+      this.#previewDrag?.active === true
+        ? this.#previewDrag.target?.indicator
+        : this.#paletteDrag?.active === true && !this.#paletteDrag.cancelled
+          ? this.#paletteDrag.target?.indicator
+          : undefined;
     const measurements = Object.entries(geometry.measurements).sort(([left], [right]) => {
       // Paint ancestors before descendants. Bringing the selected parent to
       // the front would make every nested block impossible to click.
@@ -5069,6 +5136,10 @@ export class KumweStudioElement extends LitElement {
                 @pointerdown=${(event: PointerEvent): void => {
                   this.#onPreviewCanvasPointerDown(event, nodeId);
                 }}
+                @dblclick=${(event: MouseEvent): void => {
+                  event.preventDefault();
+                  this.#activateNodeEditing(nodeId);
+                }}
               ></rect>
             `,
           ),
@@ -5092,14 +5163,25 @@ export class KumweStudioElement extends LitElement {
 
   #renderPreviewCanvasStatus(): TemplateResult | typeof nothing {
     const drag = this.#previewDrag;
-    if (drag?.active !== true || drag.target === undefined) {
+    if (drag?.active === true && drag.target !== undefined) {
+      return html`
+        <p class="preview-canvas-status">
+          ${this.#text('studio.shell/visual-drop-target', {
+            destination: drag.target.label,
+            label: drag.label,
+          })}
+        </p>
+      `;
+    }
+    const insertion = this.#paletteDrag;
+    if (insertion?.active !== true || insertion.cancelled || insertion.target === undefined) {
       return nothing;
     }
     return html`
       <p class="preview-canvas-status">
-        ${this.#text('studio.shell/visual-drop-target', {
-          destination: drag.target.label,
-          label: drag.label,
+        ${this.#text('studio.shell/visual-insert-target', {
+          destination: insertion.target.label,
+          label: insertion.label,
         })}
       </p>
     `;
@@ -5234,7 +5316,19 @@ export class KumweStudioElement extends LitElement {
     x: number,
     y: number,
   ): CanvasDropTarget | undefined {
-    const targets = this.#previewDropTargets(node);
+    return this.#rankDropTarget(this.#previewDropTargets(node), x, y);
+  }
+
+  /**
+   * Geometry ranks the already-valid destinations by distance; an exact tie
+   * resolves toward the most specific (deepest) collection, then enumeration
+   * order. Ranking never adds a destination the semantic layer refused.
+   */
+  #rankDropTarget(
+    targets: readonly CanvasDropTarget[],
+    x: number,
+    y: number,
+  ): CanvasDropTarget | undefined {
     let chosen: CanvasDropTarget | undefined;
     let distance = Number.POSITIVE_INFINITY;
     for (const target of targets) {
@@ -5251,13 +5345,128 @@ export class KumweStudioElement extends LitElement {
   }
 
   #previewDropTargets(node: BlueprintNode): CanvasDropTarget[] {
+    return this.#dropTargetsFor(
+      this.#moveDestinations(node),
+      this.#moveCollections(node),
+      node.type,
+      node.id,
+    );
+  }
+
+  /**
+   * Every collection that may receive a fresh node of this definition: the
+   * document roots outside hybrid composition, plus each slot whose accepted
+   * types, hybrid bounds, and cardinality admit it. This is the same rule the
+   * palette click, command palette, and outline paths derive their single
+   * default destination from; the drop gesture only chooses among them.
+   */
+  #insertCollections(definition: BlockDefinition): MoveCollection[] {
+    const document = this.document;
+    if (document === undefined || !this.#permits('studio.command/insert-node')) {
+      return [];
+    }
+    const hybrid = this.#session?.mode === 'hybrid';
+    const collections: MoveCollection[] = [];
+    if (!hybrid) {
+      collections.push({
+        collection: document.roots,
+        label: this.#text('studio.shell/document-roots'),
+        specificity: 0,
+      });
+    }
+    const stack = document.roots.map((node) => ({ node, specificity: 1 }));
+    while (stack.length > 0) {
+      const current = stack.shift();
+      if (current === undefined) {
+        break;
+      }
+      const { node: parent, specificity } = current;
+      const parentDefinition = this.#findDefinition(parent);
+      for (const children of Object.values(parent.slots)) {
+        stack.push(...children.map((node) => ({ node, specificity: specificity + 1 })));
+      }
+      for (const slot of parentDefinition?.slots ?? []) {
+        if (!slot.accepts.types.includes(definition.type)) {
+          continue;
+        }
+        if (hybrid) {
+          if (!this.#isComposableSlot(parent, slot.id)) {
+            continue;
+          }
+          const allowed =
+            parent.authoring.slots?.[slot.id]?.allowedBlocks ?? parent.authoring.allowedBlocks;
+          if (allowed?.includes(definition.type) === false) {
+            continue;
+          }
+        }
+        const entries = parent.slots[slot.id] ?? [];
+        if (typeof slot.maximum === 'number' && entries.length >= slot.maximum) {
+          continue;
+        }
+        collections.push({
+          collection: entries,
+          label: this.#text('studio.shell/move-slot-collection', {
+            parent: `${this.#nodeLabel(parent)} (${parent.id})`,
+            slot: referenceText(slot.label),
+          }),
+          parentNodeId: parent.id,
+          slot: slot.id,
+          specificity,
+        });
+      }
+    }
+    return collections;
+  }
+
+  #insertDestinations(definition: BlockDefinition): MoveDestinationOption[] {
+    const destinations: MoveDestinationOption[] = [];
+    for (const target of this.#insertCollections(definition)) {
+      for (let position = 0; position <= target.collection.length; position += 1) {
+        const destination: CommandDestination = { position };
+        if (target.parentNodeId !== undefined && target.slot !== undefined) {
+          destination.parentNodeId = target.parentNodeId;
+          destination.slot = target.slot;
+        }
+        destinations.push({
+          destination,
+          id: `${target.parentNodeId ?? 'document'}--${target.slot ?? 'roots'}--${position}`,
+          label: this.#text('studio.shell/move-destination-option', {
+            collection: target.label,
+            count: String(target.collection.length + 1),
+            position: String(position + 1),
+          }),
+        });
+      }
+    }
+    return destinations;
+  }
+
+  #insertDropTargets(definition: BlockDefinition): CanvasDropTarget[] {
+    return this.#dropTargetsFor(
+      this.#insertDestinations(definition),
+      this.#insertCollections(definition),
+      definition.type,
+      undefined,
+    );
+  }
+
+  /**
+   * Converts semantic destinations into measured indicators. Ordered
+   * boundaries come from sibling rectangles; an empty compatible slot receives
+   * a deterministic band inside its measured parent; an empty document offers
+   * the whole canvas as its first position for insertion only.
+   */
+  #dropTargetsFor(
+    options: readonly MoveDestinationOption[],
+    collections: readonly MoveCollection[],
+    type: BlockType,
+    excluded: NodeId | undefined,
+  ): CanvasDropTarget[] {
     const geometry = this.canvasGeometry;
     const document = this.document;
     if (geometry === undefined || document === undefined) {
       return [];
     }
-    const options = this.#moveDestinations(node);
-    const collections = this.#moveCollections(node);
     const targets: CanvasDropTarget[] = [];
     for (const option of options) {
       const collection = collections.find(
@@ -5268,7 +5477,7 @@ export class KumweStudioElement extends LitElement {
       if (collection === undefined) {
         continue;
       }
-      const children = collection.collection.filter((candidate) => candidate.id !== node.id);
+      const children = collection.collection.filter((candidate) => candidate.id !== excluded);
       const childRects = children.map((child) =>
         boundingPreviewRect(geometry.measurements[child.id] ?? []),
       );
@@ -5286,18 +5495,37 @@ export class KumweStudioElement extends LitElement {
         });
         continue;
       }
-      if (children.length !== 0 || collection.parentNodeId === undefined) {
+      if (children.length !== 0) {
+        continue;
+      }
+      if (collection.parentNodeId === undefined) {
+        if (excluded !== undefined) {
+          continue;
+        }
+        const indicator: PreviewMarkerRect = {
+          height: Math.max(4, geometry.viewport.height - 8),
+          width: Math.max(4, geometry.viewport.width - 8),
+          x: 4,
+          y: 4,
+        };
+        targets.push({
+          ...option,
+          distanceX: indicator.x + indicator.width / 2,
+          distanceY: indicator.y + indicator.height / 2,
+          indicator,
+          specificity: collection.specificity,
+        });
         continue;
       }
       const parentRect = boundingPreviewRect(geometry.measurements[collection.parentNodeId] ?? []);
-      if (parentRect === undefined) {
+      const parent = findOutlineLocation(document.roots, collection.parentNodeId)?.node;
+      if (parentRect === undefined || parent === undefined) {
         continue;
       }
-      const parent = findOutlineLocation(document.roots, collection.parentNodeId)?.node;
       const slots =
-        this.#findDefinition(parent ?? node)?.slots.filter((slot) => {
-          const entries = parent?.slots[slot.id] ?? [];
-          return entries.length === 0 && slot.accepts.types.includes(node.type);
+        this.#findDefinition(parent)?.slots.filter((slot) => {
+          const entries = parent.slots[slot.id] ?? [];
+          return entries.length === 0 && slot.accepts.types.includes(type);
         }) ?? [];
       const slotIndex = Math.max(
         0,
@@ -5319,6 +5547,191 @@ export class KumweStudioElement extends LitElement {
       });
     }
     return targets;
+  }
+
+  /**
+   * Palette-to-canvas insertion is an enhancement (SR-017): a press stays an
+   * ordinary click, four CSS pixels of movement begin carrying the block, and
+   * the drop dispatches the same insert-node command the click would, at the
+   * geometry-ranked destination. Escape and pointercancel change nothing.
+   */
+  #onPaletteBlockPointerDown(event: PointerEvent, definition: BlockDefinition): void {
+    if (
+      event.button !== 0 ||
+      this.#previewDrag !== undefined ||
+      (this.#paletteDrag !== undefined && !this.#paletteDrag.cancelled) ||
+      this.canvasGeometry === undefined ||
+      !this.#permits('studio.command/insert-node')
+    ) {
+      return;
+    }
+    const drag: PaletteDragState = {
+      active: false,
+      cancelled: false,
+      definition,
+      label: referenceText(definition.label),
+      originX: event.clientX,
+      originY: event.clientY,
+      pointerId: event.pointerId,
+    };
+    const capture = event.currentTarget;
+    if (capture instanceof Element) {
+      try {
+        capture.setPointerCapture(event.pointerId);
+        drag.capture = capture;
+      } catch {
+        // Pointer capture is unavailable in some embedding contexts; the
+        // gesture then completes only while the pointer stays over the button.
+      }
+    }
+    this.#paletteDrag = drag;
+  }
+
+  #onPaletteBlockPointerMove(event: PointerEvent): void {
+    const drag = this.#paletteDrag;
+    if (drag?.pointerId !== event.pointerId || drag.cancelled) {
+      return;
+    }
+    if (
+      !drag.active &&
+      Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY) < 4
+    ) {
+      return;
+    }
+    drag.active = true;
+    const point = this.#paletteCanvasPoint(event);
+    const target =
+      point === undefined
+        ? undefined
+        : this.#rankDropTarget(this.#insertDropTargets(drag.definition), point.x, point.y);
+    if (target === undefined) {
+      delete drag.target;
+    } else {
+      drag.target = target;
+    }
+    this.requestUpdate();
+  }
+
+  #onPaletteBlockPointerUp(event: PointerEvent): void {
+    const drag = this.#paletteDrag;
+    if (drag?.pointerId !== event.pointerId) {
+      return;
+    }
+    this.#paletteDrag = undefined;
+    this.#releasePaletteDragCapture(drag);
+    this.requestUpdate();
+    if (!drag.active && !drag.cancelled) {
+      // A plain press stays a click; the click path performs the insertion
+      // and still offers host adapters their cancelable insert request.
+      return;
+    }
+    this.#suppressFollowingPaletteClick();
+    if (drag.cancelled) {
+      return;
+    }
+    if (drag.target === undefined) {
+      this.#announce('studio.shell/announce-drag-cancelled', { label: drag.label });
+      return;
+    }
+    this.#insertDefinition(drag.definition, drag.target.destination);
+  }
+
+  #onPaletteBlockPointerCancel(event: PointerEvent): void {
+    if (this.#paletteDrag?.pointerId === event.pointerId) {
+      this.#cancelDrag();
+    }
+  }
+
+  #suppressFollowingPaletteClick(): void {
+    this.#suppressPaletteClick = true;
+    // The browser dispatches the compatibility click in the same input task;
+    // anything later is a new, deliberate activation.
+    this.ownerDocument.defaultView?.setTimeout(() => {
+      this.#suppressPaletteClick = false;
+    }, 0);
+  }
+
+  #releasePaletteDragCapture(drag: PaletteDragState): void {
+    try {
+      if (drag.capture?.hasPointerCapture(drag.pointerId) === true) {
+        drag.capture.releasePointerCapture(drag.pointerId);
+      }
+    } catch {
+      // The capture may already have been revoked by disconnection.
+    }
+  }
+
+  /** Maps a captured pointer onto the overlay's geometry viewport coordinates. */
+  #paletteCanvasPoint(event: PointerEvent): { x: number; y: number } | undefined {
+    const geometry = this.canvasGeometry;
+    const overlay = this.shadowRoot?.querySelector<SVGSVGElement>('.preview-canvas-overlay');
+    if (geometry === undefined || overlay === null || overlay === undefined) {
+      return undefined;
+    }
+    const bounds = overlay.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      // Without layout (test DOM) the raw coordinates stand in for geometry;
+      // a canvas hidden behind another narrow-screen sheet offers no target.
+      return this.activePane === 'canvas' ? { x: event.clientX, y: event.clientY } : undefined;
+    }
+    if (
+      event.clientX < bounds.left ||
+      event.clientX > bounds.right ||
+      event.clientY < bounds.top ||
+      event.clientY > bounds.bottom
+    ) {
+      return undefined;
+    }
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * geometry.viewport.width,
+      y: ((event.clientY - bounds.top) / bounds.height) * geometry.viewport.height,
+    };
+  }
+
+  /**
+   * Activating a rendered block (double-click, or Enter/F2 on the focused
+   * canvas stage) keeps the page visible and moves the author to the block's
+   * first typed control in the docked inspector. Value editing therefore stays
+   * a canonical command over the Entry or Blueprint draft, never an edit of
+   * the rendered markup.
+   */
+  #activateNodeEditing(nodeId: NodeId): void {
+    if (
+      this.document === undefined ||
+      findOutlineLocation(this.document.roots, nodeId) === undefined
+    ) {
+      return;
+    }
+    this.#selectNode(nodeId);
+    this.activePane = 'inspector';
+    void this.updateComplete.then(() => {
+      if (this.selectedNodeId !== nodeId) {
+        return;
+      }
+      const selector = ':is(input, select, textarea):not(:disabled)';
+      const shadowDefault = this.shadowRoot?.querySelector<HTMLElement>('.inspector-default');
+      const control =
+        (shadowDefault?.hasAttribute('hidden') === false
+          ? shadowDefault.querySelector<HTMLElement>(`.scalar-control ${selector}`)
+          : null) ??
+        this.querySelector<HTMLElement>(`[slot="contextual-inspector"] ${selector}`) ??
+        this.shadowRoot?.querySelector<HTMLElement>(
+          `.inspector-default:not([hidden]) ${selector}`,
+        ) ??
+        null;
+      control?.focus();
+    });
+  }
+
+  #onPreviewStageKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== 'F2') {
+      return;
+    }
+    if (event.currentTarget !== event.target || this.selectedNodeId === undefined) {
+      return;
+    }
+    event.preventDefault();
+    this.#activateNodeEditing(this.selectedNodeId);
   }
 
   #renderViewportSwitcher(): TemplateResult | typeof nothing {
@@ -5349,6 +5762,12 @@ export class KumweStudioElement extends LitElement {
   }
 
   #requestInsert(definition: BlockDefinition): void {
+    if (this.#suppressPaletteClick) {
+      // The click completing (or following a cancelled) palette drop already
+      // had its outcome; a second insertion would duplicate or resurrect it.
+      this.#suppressPaletteClick = false;
+      return;
+    }
     const destination = this.#insertionDestination(definition);
     if (destination === undefined) {
       return;
@@ -5544,7 +5963,13 @@ export class KumweStudioElement extends LitElement {
         <p class="preview-status">
           ${this.#text(state === 'unavailable' ? 'studio.shell/local-canvas-unavailable' : 'studio.shell/local-canvas-description')}
         </p>
-        <div class="preview-stage" tabindex="0">
+        <div
+          class="preview-stage"
+          tabindex="0"
+          @keydown=${(event: KeyboardEvent): void => {
+            this.#onPreviewStageKeydown(event);
+          }}
+        >
           <div class="local-canvas-host"></div>
           ${this.#renderPreviewCanvasOverlay()}
         </div>

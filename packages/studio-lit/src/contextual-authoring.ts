@@ -220,27 +220,33 @@ export class KumweStudioContextualElement extends LitElement {
       z-index: 2147483000;
     }
 
+    /* Inline presentation grows around its header and footer while the
+       Blueprint shell keeps its own bounded, internally scrolling height, so a
+       tall wrapped header on a narrow screen never pushes the shell under the
+       status footer. The body row never shrinks below the shell's minimum. */
     .contextual-workspace {
       background: white;
       border: 1px solid var(--studio-contextual-border);
-      block-size: clamp(34rem, 80vh, 72rem);
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(28rem, 1fr) auto;
       min-inline-size: 0;
     }
 
     .contextual-workspace[data-presentation='maximized'] {
       block-size: min(90vh, 70rem);
+      overflow: auto;
     }
 
     .contextual-workspace[data-presentation='fullscreen'] {
       block-size: 100dvh;
       border: 0;
+      overflow: auto;
     }
 
     .contextual-workspace[data-presentation='minimized'],
     .contextual-unavailable {
       block-size: auto;
+      grid-template-rows: auto minmax(0, 1fr) auto;
     }
 
     .contextual-body {
@@ -255,9 +261,13 @@ export class KumweStudioContextualElement extends LitElement {
     }
 
     kumwe-studio {
-      --studio-workspace-height: 100%;
       block-size: 100%;
       min-block-size: 0;
+    }
+
+    .contextual-workspace:is([data-presentation='maximized'], [data-presentation='fullscreen'])
+      kumwe-studio {
+      --studio-workspace-height: 100%;
     }
 
     .contextual-inspector {

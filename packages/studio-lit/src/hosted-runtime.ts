@@ -42,6 +42,7 @@ import {
 } from './hosted-services.js';
 import { startHostedCreateSession } from './hosted-start.js';
 import { KumweStudioElement } from './kumwe-studio.js';
+import { STUDIO_LOCAL_CANVAS_VIEWPORTS } from './local-canvas.js';
 
 const HOST_ERROR_EVENT = 'studio-host-error';
 const SAVE_CONFIRMATION_EVENT = 'studio-contextual-save-confirmation-required';
@@ -204,6 +205,17 @@ export async function mountStudioHosted(
     element.patterns = structuredClone([...admitted.patterns]);
     element.resourceSearchService = services.resourceSearchService;
     element.session = hostSession.session.snapshot;
+    if (!configuration.session.preview.enabled) {
+      // The resolved session declares no authoritative host preview, so the
+      // mount renders the admitted composition locally through the public
+      // semantic renderer and labels it as such. This is an explicit local
+      // context for a session that never enabled preview; a configured preview
+      // failure still cannot select this path, and no host authority changes.
+      element.localCanvasContext = Object.freeze({
+        renderContext: Object.freeze({ locale: configuration.session.locale.resolved }),
+      });
+      element.viewports = STUDIO_LOCAL_CANVAS_VIEWPORTS.map((viewport) => ({ ...viewport }));
+    }
 
     const runtime = new HostedRuntimeHandle(
       target,
