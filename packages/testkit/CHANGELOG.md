@@ -1,5 +1,16 @@
 # @kumwe/studio-testkit
 
+## 0.1.0-beta.6
+
+### Patch Changes
+
+- [#62](https://github.com/kumwe/studio/pull/62) [`6420d43`](https://github.com/kumwe/studio/commit/6420d43de9e8e7a25702d66dc4fa70910402e0dc) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Carry block-palette entries onto the measured canvas and drop them through the canonical insert-node command at a geometry-ranked valid destination, with Escape and pointercancel as no-ops and a palette-click plus outline-destination path to the identical placement. Activate a rendered block by double-click or Enter/F2 to focus its typed inspector control. Render the isolated local canvas for hosted sessions that declare no host preview, using the renderer's responsive widths, without changing routes, admission, or authority. Make the command palette a workspace-level layer reachable from every narrow-screen pane, and publish the insertion status message.
+
+- [#62](https://github.com/kumwe/studio/pull/62) [`b08774d`](https://github.com/kumwe/studio/commit/b08774df3038bc844afc183d69842607ccacd6b1) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Render an isolated, responsive local page canvas in public standalone mounts using the canonical web renderer. Preserve Entry bindings, selection, independent lifecycle and restrictive CSP without host or runtime network requirements. Make ordinary palette clicks perform canonical insertion when no host listener handles them, with cancellation and synchronous adapter compatibility. Publish the corresponding local-rendering status messages.
+- Updated dependencies [[`6420d43`](https://github.com/kumwe/studio/commit/6420d43de9e8e7a25702d66dc4fa70910402e0dc), [`b08774d`](https://github.com/kumwe/studio/commit/b08774df3038bc844afc183d69842607ccacd6b1)]:
+  - @kumwe/studio-protocol@0.1.0-beta.6
+  - @kumwe/studio-core@0.1.0-beta.6
+
 ## 0.1.0-beta.5
 
 ### Patch Changes
