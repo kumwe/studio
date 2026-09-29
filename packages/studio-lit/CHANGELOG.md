@@ -1,5 +1,18 @@
 # @kumwe/studio
 
+## 0.1.0-beta.9
+
+### Patch Changes
+
+- [#72](https://github.com/kumwe/studio/pull/72) [`b199beb`](https://github.com/kumwe/studio/commit/b199beb537e9dea4c5035d1051b05b8e9edd0c26) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Give the keyboard-focusable local canvas and hosted preview stages meaningful group names using their existing localized labels. Assistive technology can now identify these focus stops while Enter and F2 continue opening the selected block's controls.
+- Updated dependencies []:
+  - @kumwe/studio-core@0.1.0-beta.9
+  - @kumwe/studio-media@0.1.0-beta.9
+  - @kumwe/studio-preview@0.1.0-beta.9
+  - @kumwe/studio-protocol@0.1.0-beta.9
+  - @kumwe/studio-renderer-web@0.1.0-beta.9
+  - @kumwe/studio-rich-text@0.1.0-beta.9
+
 ## 0.1.0-beta.8
 
 ### Patch Changes
