@@ -5054,6 +5054,8 @@ export class KumweStudioElement extends LitElement {
             ? html`
                 <div
                   class="preview-stage"
+                  role="group"
+                  aria-label=${this.#text('studio.shell/preview-label')}
                   tabindex="0"
                   @keydown=${(event: KeyboardEvent): void => {
                     this.#onPreviewStageKeydown(event);
@@ -5969,6 +5971,8 @@ export class KumweStudioElement extends LitElement {
         </p>
         <div
           class="preview-stage"
+          role="group"
+          aria-label=${this.#text('studio.shell/local-canvas-label')}
           tabindex="0"
           @keydown=${(event: KeyboardEvent): void => {
             this.#onPreviewStageKeydown(event);
