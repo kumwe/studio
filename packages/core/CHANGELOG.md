@@ -1,5 +1,15 @@
 # @kumwe/studio-core
 
+## 0.1.0-beta.7
+
+### Patch Changes
+
+- [#68](https://github.com/kumwe/studio/pull/68) [`214b2cc`](https://github.com/kumwe/studio/commit/214b2cc533031cbc315dd039204cca2550a3f859) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Keep the host-accepted contextual snapshot separate from locally retained drafts and presentation.
+  Repeated saves now preserve unsaved work and local presentation without treating those overlays as
+  server-accepted state.
+- Updated dependencies [[`130cb5f`](https://github.com/kumwe/studio/commit/130cb5f61981bc069b74f73be021b8f7bdbd9465)]:
+  - @kumwe/studio-protocol@0.1.0-beta.7
+
 ## 0.1.0-beta.6
 
 ### Patch Changes
