@@ -1,5 +1,18 @@
 # @kumwe/studio
 
+## 0.1.0-beta.8
+
+### Patch Changes
+
+- [#70](https://github.com/kumwe/studio/pull/70) [`dc21443`](https://github.com/kumwe/studio/commit/dc21443f83d5bee4799fca6f373bba3b1e6ea7ee) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Keep the Outline panel keyboard accessible when a short workspace makes its empty-state instructions scroll. The named region now has an explicit tab stop and an inset focus indicator, so keyboard access does not depend on having selectable blocks or browser-specific scroll-container focus behavior.
+- Updated dependencies []:
+  - @kumwe/studio-core@0.1.0-beta.8
+  - @kumwe/studio-media@0.1.0-beta.8
+  - @kumwe/studio-preview@0.1.0-beta.8
+  - @kumwe/studio-protocol@0.1.0-beta.8
+  - @kumwe/studio-renderer-web@0.1.0-beta.8
+  - @kumwe/studio-rich-text@0.1.0-beta.8
+
 ## 0.1.0-beta.7
 
 ### Patch Changes
