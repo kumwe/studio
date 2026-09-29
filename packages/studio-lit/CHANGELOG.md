@@ -1,5 +1,20 @@
 # @kumwe/studio
 
+## 0.1.0-beta.7
+
+### Patch Changes
+
+- [#68](https://github.com/kumwe/studio/pull/68) [`130cb5f`](https://github.com/kumwe/studio/commit/130cb5f61981bc069b74f73be021b8f7bdbd9465) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Apply one per-mount message catalog to the hosted start chooser, contextual editor, and save confirmation.
+  Publish the confirmation labels as translatable messages while preserving host-authored consequences and
+  isolating each mount's overrides.
+- Updated dependencies [[`214b2cc`](https://github.com/kumwe/studio/commit/214b2cc533031cbc315dd039204cca2550a3f859), [`130cb5f`](https://github.com/kumwe/studio/commit/130cb5f61981bc069b74f73be021b8f7bdbd9465)]:
+  - @kumwe/studio-core@0.1.0-beta.7
+  - @kumwe/studio-protocol@0.1.0-beta.7
+  - @kumwe/studio-preview@0.1.0-beta.7
+  - @kumwe/studio-renderer-web@0.1.0-beta.7
+  - @kumwe/studio-media@0.1.0-beta.7
+  - @kumwe/studio-rich-text@0.1.0-beta.7
+
 ## 0.1.0-beta.6
 
 ### Minor Changes
