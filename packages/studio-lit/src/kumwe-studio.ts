@@ -1469,7 +1469,11 @@ export class KumweStudioElement extends LitElement {
           }
         </main>
 
-        <aside class="panel outline" aria-label=${this.#text('studio.shell/outline-heading')}>
+        <aside
+          class="panel outline"
+          aria-label=${this.#text('studio.shell/outline-heading')}
+          tabindex="0"
+        >
           <h2>${this.#text('studio.shell/outline-heading')}</h2>
           <p class="hint">${this.#text('studio.shell/outline-hint')}</p>
           ${
