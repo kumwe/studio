@@ -52,6 +52,9 @@ test('the production renderer renders and keeps canonical two-way selection', as
   // The channel handshake completed and the empty draft rendered.
   await expect(status).toHaveText('Preview is current.');
   await expect(surface.locator('.preview-empty')).toBeVisible();
+  const stage = pane.getByRole('group', { name: 'Rendered preview', exact: true });
+  await stage.focus();
+  await expect(stage).toBeFocused();
 
   // Inserting from the palette flows through the production semantic-web
   // renderer to a canonical wrapper with explicit layout intent.

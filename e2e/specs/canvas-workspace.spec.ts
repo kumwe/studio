@@ -9,6 +9,9 @@ test('the public canvas stays live while typed content, layout and presentation 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const studio = await openPublicStudio(page);
+  const stage = studio.getByRole('group', { name: 'Page canvas', exact: true });
+  await stage.focus();
+  await expect(stage).toBeFocused();
   // A blank outline still contains instructions that overflow a short workspace.
   // It must be reachable and scrollable before it has any interactive tree entries.
   const outline = studio.getByRole('complementary', { name: 'Outline' });
@@ -39,6 +42,9 @@ test('the public canvas stays live while typed content, layout and presentation 
   await region.click();
   const input = studio.locator('[data-scalar-key="port:text"] input');
   await expect(input).toHaveValue('Build something meaningful');
+  await stage.focus();
+  await page.keyboard.press('Enter');
+  await expect(input).toBeFocused();
   await input.fill('A page built on the canvas');
   await expect(canvas.getByRole('heading', { name: 'A page built on the canvas' })).toBeVisible();
   await studio.getByRole('tab', { name: 'Content', exact: true }).click();
