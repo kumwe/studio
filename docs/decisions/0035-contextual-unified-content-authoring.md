@@ -107,3 +107,7 @@ Read-only projection itself and its fail-closed binding rules remain unchanged.
   entry, workflow, and migration authority.
 - A Node.js production service was rejected because the host owns server authority and Kumwe App's backend
   boundary is PHP.
+
+The contextual browser mount accepts one per-instance message override catalog for its start chooser,
+editor, and save confirmation. This is the existing plain-text shell localization contract applied to the
+whole session; it adds no serialized authority, route, or persistent artifact member.

@@ -43,6 +43,7 @@ import {
 import { startHostedCreateSession } from './hosted-start.js';
 import { KumweStudioElement } from './kumwe-studio.js';
 import { STUDIO_LOCAL_CANVAS_VIEWPORTS } from './local-canvas.js';
+import { messageText, type StudioMessageOverrides } from './messages.js';
 
 const HOST_ERROR_EVENT = 'studio-host-error';
 const SAVE_CONFIRMATION_EVENT = 'studio-contextual-save-confirmation-required';
@@ -53,6 +54,8 @@ export interface StudioBrowserCryptography {
 }
 
 export interface StudioHostedRuntimeOptions {
+  /** Per-mount plain-text messages for the start chooser, editor, and save confirmation. */
+  readonly messages?: StudioMessageOverrides;
   /** Browser transport/test seams; routing and static authentication still come only from JSON. */
   readonly adapter?: BrowserConfiguredHttpHostAdapterOptions;
   /**
@@ -129,6 +132,8 @@ export async function mountStudioHosted(
   if (!(element instanceof KumweStudioContextualElement)) {
     throw new TypeError('The registered contextual Studio element has an incompatible class.');
   }
+  const messages = options.messages === undefined ? undefined : structuredClone(options.messages);
+  element.messages = messages;
   const errorSurface = createHostErrorSurface();
   target.append(errorSurface);
   let hostSession: StudioContextualHostSessionHandle | undefined;
@@ -160,6 +165,7 @@ export async function mountStudioHosted(
             preflight,
             configuration.launch.start,
             configuration.launch.initialPresentation,
+            messages,
           );
 
     const admitted = resolveAdmittedContributions(configuration, hostSession, targetRequest);
@@ -224,6 +230,7 @@ export async function mountStudioHosted(
       hostSession,
       admitted,
       options.saveConfirmationHandler,
+      messages,
     );
     element.addEventListener('studio-contextual-save-request', runtime.onSaveRequest);
     confirmationSurface = runtime.confirmationSurface;
@@ -294,13 +301,14 @@ class HostedRuntimeHandle implements StudioHostedRuntimeHandle {
     hostSession: StudioContextualHostSessionHandle,
     admittedContributions: StudioHostedAdmittedContributions,
     confirmationHandler: StudioHostedSaveConfirmationHandler | undefined,
+    messages: StudioMessageOverrides | undefined,
   ) {
     this.element = element;
     this.#errorSurface = errorSurface;
     this.#hostSession = hostSession;
     this.#admittedContributions = cloneAdmittedContributions(admittedContributions);
     this.#confirmationHandler = confirmationHandler;
-    this.#confirmationSurface = createSaveConfirmationSurface(target);
+    this.#confirmationSurface = createSaveConfirmationSurface(target, messages);
   }
 
   public readonly onSaveRequest = (event: Event): void => {
@@ -485,7 +493,10 @@ interface StudioHostedConfirmationSurface {
 
 let confirmationSurfaceSerial = 0;
 
-function createSaveConfirmationSurface(target: HTMLElement): StudioHostedConfirmationSurface {
+function createSaveConfirmationSurface(
+  target: HTMLElement,
+  messages: StudioMessageOverrides | undefined,
+): StudioHostedConfirmationSurface {
   confirmationSurfaceSerial += 1;
   const documentValue = target.ownerDocument;
   const identity = `studio-save-confirmation-${String(confirmationSurfaceSerial)}`;
@@ -509,18 +520,20 @@ function createSaveConfirmationSurface(target: HTMLElement): StudioHostedConfirm
   surface.setAttribute('role', 'alertdialog');
   surface.tabIndex = -1;
   heading.id = `${identity}-title`;
-  heading.textContent = 'Confirm save';
+  heading.textContent = messageText('studio.contextual/save-confirmation-heading', messages);
   explanation.id = `${identity}-description`;
-  explanation.textContent =
-    'The configured server requires confirmation of these consequences before saving.';
+  explanation.textContent = messageText(
+    'studio.contextual/save-confirmation-explanation',
+    messages,
+  );
   consequences.id = `${identity}-consequences`;
   actions.className = 'studio-save-confirmation-actions';
   cancelButton.type = 'button';
   cancelButton.dataset.studioSaveConfirmationAction = 'cancel';
-  cancelButton.textContent = 'Cancel';
+  cancelButton.textContent = messageText('studio.contextual/save-confirmation-cancel', messages);
   confirmButton.type = 'button';
   confirmButton.dataset.studioSaveConfirmationAction = 'confirm';
-  confirmButton.textContent = 'Confirm and save';
+  confirmButton.textContent = messageText('studio.contextual/save-confirmation-confirm', messages);
   actions.append(cancelButton, confirmButton);
   surface.append(heading, explanation, consequences, actions);
 

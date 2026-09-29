@@ -125,6 +125,11 @@ describe('hosted browser runtime', () => {
         fetchImplementation: server.fetch,
       },
       identifiers: deterministicIdentifiers(),
+      messages: {
+        'studio.contextual/choose-start': { defaultMessage: 'Kies hoe om te begin' },
+        'studio.contextual/start': { defaultMessage: 'Begin Studio' },
+        'studio.contextual/mode-content': { defaultMessage: 'Inhoud' },
+      },
     });
     await expect.poll(() => target.querySelector('kumwe-studio-hosted-start')).not.toBeNull();
     const chooser = target.querySelector('kumwe-studio-hosted-start');
@@ -133,6 +138,12 @@ describe('hosted browser runtime', () => {
     await expect
       .poll(() => chooser.shadowRoot?.querySelectorAll('input[type="radio"]').length)
       .toBe(2);
+    expect(chooser.shadowRoot?.querySelector('h1')?.textContent?.trim()).toBe(
+      'Kies hoe om te begin',
+    );
+    expect(chooser.shadowRoot?.querySelector('button.primary')?.textContent?.trim()).toBe(
+      'Begin Studio',
+    );
 
     const radios = chooser.shadowRoot?.querySelectorAll<HTMLInputElement>('input[type="radio"]');
     radios?.item(1).click();
@@ -145,6 +156,9 @@ describe('hosted browser runtime', () => {
       type: typeSummary.reference,
     });
     expect(runtime.element.snapshot?.start).toEqual(server.startRequests[0]?.source);
+    expect(runtime.element.messages?.['studio.contextual/mode-content']?.defaultMessage).toBe(
+      'Inhoud',
+    );
     expect(target.querySelector('kumwe-studio-hosted-start')).toBeNull();
     runtime.dispose();
   });
@@ -481,6 +495,14 @@ describe('hosted browser runtime', () => {
         fetchImplementation: server.fetch,
       },
       identifiers: deterministicIdentifiers(),
+      messages: {
+        'studio.contextual/save-confirmation-heading': { defaultMessage: 'Bevestig stoor' },
+        'studio.contextual/save-confirmation-explanation': {
+          defaultMessage: 'Bevestig hierdie gevolge.',
+        },
+        'studio.contextual/save-confirmation-cancel': { defaultMessage: 'Kanselleer' },
+        'studio.contextual/save-confirmation-confirm': { defaultMessage: 'Bevestig en stoor' },
+      },
     });
     const saveButton = runtime.element.shadowRoot?.querySelector<HTMLButtonElement>(
       '.contextual-save-button[data-outcome="save-item"]',
@@ -510,6 +532,10 @@ describe('hosted browser runtime', () => {
     expect(surface?.getAttribute('aria-describedby')).toContain('consequences');
     expect(cancel).toBe(document.activeElement);
     expect(surface?.textContent).toContain('Confirm this save.');
+    expect(surface?.querySelector('h2')?.textContent).toBe('Bevestig stoor');
+    expect(surface?.querySelector('p')?.textContent).toBe('Bevestig hierdie gevolge.');
+    expect(cancel?.textContent).toBe('Kanselleer');
+    expect(confirm?.textContent).toBe('Bevestig en stoor');
 
     surface?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
     expect(runtime.pendingSaveConfirmation).toBeUndefined();

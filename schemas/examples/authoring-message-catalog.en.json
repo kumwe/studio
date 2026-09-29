@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.7.0",
+  "catalogVersion": "1.8.0",
   "locale": "en",
   "messages": {
     "studio.contextual/add-field": {
@@ -279,6 +279,22 @@
     },
     "studio.contextual/save-as-new-type": {
       "defaultMessage": "Save as new type",
+      "parameters": []
+    },
+    "studio.contextual/save-confirmation-cancel": {
+      "defaultMessage": "Cancel",
+      "parameters": []
+    },
+    "studio.contextual/save-confirmation-confirm": {
+      "defaultMessage": "Confirm and save",
+      "parameters": []
+    },
+    "studio.contextual/save-confirmation-explanation": {
+      "defaultMessage": "The configured server requires confirmation of these consequences before saving.",
+      "parameters": []
+    },
+    "studio.contextual/save-confirmation-heading": {
+      "defaultMessage": "Confirm save",
       "parameters": []
     },
     "studio.contextual/save-item": {
