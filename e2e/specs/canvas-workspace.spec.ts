@@ -5,10 +5,29 @@ import { openPublicStudio, showWorkspacePane } from '../support/public-studio.js
 test('the public canvas stays live while typed content, layout and presentation controls change', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1600, height: 1000 });
+  await page.setViewportSize({ width: 1600, height: 600 });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const studio = await openPublicStudio(page);
+  // A blank outline still contains instructions that overflow a short workspace.
+  // It must be reachable and scrollable before it has any interactive tree entries.
+  const outline = studio.getByRole('complementary', { name: 'Outline' });
+  expect(await outline.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+    true,
+  );
+  await outline.focus();
+  await expect(outline).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(outline).not.toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(outline).toBeFocused();
+  await page.keyboard.press('End');
+  await expect.poll(() => outline.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  const blankScan = await new AxeBuilder({ page })
+    .withRules(['scrollable-region-focusable'])
+    .analyze();
+  expect(blankScan.violations, JSON.stringify(blankScan.violations, null, 2)).toEqual([]);
+  await page.setViewportSize({ width: 1600, height: 1000 });
   await studio.getByRole('button', { name: 'Fullscreen', exact: true }).click();
   await studio.locator('button.pattern-apply[data-pattern-id="studio.pattern/hero"]').click();
   const canvas = studio.locator('.local-canvas-host');
