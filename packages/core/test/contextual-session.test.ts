@@ -993,6 +993,13 @@ describe('explicit save planning and host reconciliation', () => {
     expect(handle.session.dirty).toEqual({ blueprint: true, entry: false, model: true });
     expect(handle.session.model.fields.map((field) => field.id)).toContain('summary');
     expect(handle.session.blueprint.roots.at(-1)?.id).toBe('new-section');
+
+    // Excluded local drafts remain distinct from the server baseline on later saves.
+    const nextIntent = handle.session.createSaveIntent({ outcome: 'save-item' });
+    await handle.save(nextIntent, (await handle.planSave(nextIntent)).value);
+    expect(handle.session.dirty).toEqual({ blueprint: true, entry: false, model: true });
+    expect(handle.session.model.fields.map((field) => field.id)).toContain('summary');
+    expect(handle.session.blueprint.roots.at(-1)?.id).toBe('new-section');
   });
 
   it('accepts an item-local Blueprint while preserving the reusable base Blueprint', async () => {
@@ -1026,6 +1033,10 @@ describe('explicit save planning and host reconciliation', () => {
     expect(result.value.session.presentation.returnContext).toEqual(plan.successorContext);
     expect(result.value.session.presentation.current).toBe('maximized');
     expect(handle.session.snapshot.presentation.returnContext).toEqual(plan.successorContext);
+    expect(handle.session.snapshot.presentation.current).toBe('maximized');
+
+    const nextIntent = handle.session.createSaveIntent({ outcome: 'save-item' });
+    await handle.save(nextIntent, (await handle.planSave(nextIntent)).value);
     expect(handle.session.snapshot.presentation.current).toBe('maximized');
     expect(() => handle.session.setPresentation('minimized')).toThrow(
       expect.objectContaining({ code: 'invalid-authoring-request' }) as Error,

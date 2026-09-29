@@ -474,6 +474,7 @@ class BoundContextualDraftSession implements StudioContextualSession {
   readonly #maximumHistoryEntries: number;
   readonly #permissions: readonly QualifiedName[];
   readonly #readOnly: boolean;
+  #acceptedSnapshot!: AuthoringSessionSnapshot;
   #blueprintSession!: StudioSession;
   #entry!: EntryDocument;
   #entryStateVersion = 0;
@@ -547,7 +548,7 @@ class BoundContextualDraftSession implements StudioContextualSession {
 
   /** @internal Last host-accepted state before local draft overlays. */
   public get acceptedSnapshot(): AuthoringSessionSnapshot {
-    return cloneContractValue(this.#snapshot);
+    return cloneContractValue(this.#acceptedSnapshot);
   }
 
   public createSaveIntent(options: StudioContextualSaveIntentOptions): AuthoringSaveIntent {
@@ -663,11 +664,15 @@ class BoundContextualDraftSession implements StudioContextualSession {
   }
 
   /** @internal Replaces drafts only with a fully validated host-accepted snapshot. */
-  public acceptHostSnapshot(snapshot: AuthoringSessionSnapshot): void {
+  public acceptHostSnapshot(
+    snapshot: AuthoringSessionSnapshot,
+    acceptedSnapshot: AuthoringSessionSnapshot = snapshot,
+  ): void {
     assertBlueprintWithinSessionPolicy(snapshot.state.blueprint, this.#limits);
     assertEntryWithinSessionPolicy(snapshot.state.entry, this.#limits);
     assertModelWithinSessionPolicy(snapshot.state.model, this.#limits);
     const previousSelection = this.#blueprintSession?.selection ?? [];
+    this.#acceptedSnapshot = cloneContractValue(acceptedSnapshot);
     this.#snapshot = cloneContractValue(snapshot);
     this.#model = cloneContractValue(snapshot.state.model);
     this.#entry = cloneContractValue(snapshot.state.entry);
@@ -929,7 +934,7 @@ class BoundContextualHostSession implements StudioContextualHostSessionHandle {
     const acceptedBase = this.#draftSession.acceptedSnapshot;
     assertSaveResult(plan, request, saved, prior, acceptedBase);
     const reconciled = reconcileExcludedDrafts(saved, request, prior);
-    this.#draftSession.acceptHostSnapshot(reconciled.session);
+    this.#draftSession.acceptHostSnapshot(reconciled.session, saved.session);
     this.#plannedIntents.clear();
     this.#clearMutationKey(operationId, fingerprint);
     return {
