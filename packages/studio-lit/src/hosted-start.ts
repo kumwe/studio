@@ -20,7 +20,7 @@ import type {
   MessageReference,
   ReusableContentTypeReference,
 } from '@kumwe/studio-protocol';
-import { messageText } from './messages.js';
+import { messageText, type StudioMessageOverrides } from './messages.js';
 import { dispatchStudioContextualReturnRequest } from './hosted-return.js';
 
 const START_REQUEST_EVENT = 'studio-internal-start-request';
@@ -41,6 +41,7 @@ export class KumweStudioHostedStartElement extends LitElement {
     availableStarts: { attribute: false },
     hasMore: { attribute: false },
     loading: { attribute: false },
+    messages: { attribute: false },
     preferred: { attribute: false },
     returnContext: { attribute: false },
     starting: { attribute: false },
@@ -134,6 +135,7 @@ export class KumweStudioHostedStartElement extends LitElement {
   declare public availableStarts: readonly AuthoringStartSource['kind'][];
   declare public hasMore: boolean;
   declare public loading: boolean;
+  declare public messages: StudioMessageOverrides | undefined;
   declare public preferred: AuthoringStartSource | undefined;
   declare public returnContext: AuthoringReturnContext | undefined;
   declare public starting: boolean;
@@ -147,6 +149,7 @@ export class KumweStudioHostedStartElement extends LitElement {
     this.availableStarts = [];
     this.hasMore = false;
     this.loading = false;
+    this.messages = undefined;
     this.preferred = undefined;
     this.returnContext = undefined;
     this.selected = '';
@@ -173,7 +176,9 @@ export class KumweStudioHostedStartElement extends LitElement {
     return html`
       <section class="start-surface" aria-labelledby="studio-start-heading">
         <header>
-          <h1 id="studio-start-heading">${messageText('studio.contextual/choose-start')}</h1>
+          <h1 id="studio-start-heading">
+            ${messageText('studio.contextual/choose-start', this.messages)}
+          </h1>
           <p>${referenceText(this.targetLabel)}</p>
         </header>
 
@@ -181,7 +186,7 @@ export class KumweStudioHostedStartElement extends LitElement {
           supportsTypes
             ? html`<form class="type-search" @submit=${this.#requestSearch}>
                 <label for="studio-type-search" class="status"
-                  >${messageText('studio.contextual/type-search')}</label
+                  >${messageText('studio.contextual/type-search', this.messages)}</label
                 >
                 <input
                   id="studio-type-search"
@@ -191,20 +196,20 @@ export class KumweStudioHostedStartElement extends LitElement {
                   ?disabled=${busy}
                 />
                 <button type="submit" ?disabled=${busy}>
-                  ${messageText('studio.contextual/search')}
+                  ${messageText('studio.contextual/search', this.messages)}
                 </button>
               </form>`
             : nothing
         }
 
         <fieldset class="choices" ?disabled=${busy}>
-          <legend>${messageText('studio.contextual/start-source')}</legend>
+          <legend>${messageText('studio.contextual/start-source', this.messages)}</legend>
           ${
             supportsBlank
               ? this.#choice(
                   'blank',
-                  messageText('studio.contextual/start-blank'),
-                  messageText('studio.contextual/start-blank-help'),
+                  messageText('studio.contextual/start-blank', this.messages),
+                  messageText('studio.contextual/start-blank-help', this.messages),
                 )
               : nothing
           }
@@ -221,10 +226,12 @@ export class KumweStudioHostedStartElement extends LitElement {
         ${
           this.loading
             ? html`<p class="status" role="status">
-                ${messageText('studio.contextual/types-loading')}
+                ${messageText('studio.contextual/types-loading', this.messages)}
               </p>`
             : supportsTypes && this.types.length === 0
-              ? html`<p class="status">${messageText('studio.contextual/types-empty')}</p>`
+              ? html`<p class="status">
+                  ${messageText('studio.contextual/types-empty', this.messages)}
+                </p>`
               : nothing
         }
 
@@ -237,14 +244,14 @@ export class KumweStudioHostedStartElement extends LitElement {
           >
             ${
               this.starting
-                ? messageText('studio.contextual/starting')
-                : messageText('studio.contextual/start')
+                ? messageText('studio.contextual/starting', this.messages)
+                : messageText('studio.contextual/start', this.messages)
             }
           </button>
           ${
             this.hasMore
               ? html`<button type="button" ?disabled=${busy} @click=${this.#requestMore}>
-                  ${messageText('studio.contextual/load-more-types')}
+                  ${messageText('studio.contextual/load-more-types', this.messages)}
                 </button>`
               : nothing
           }
@@ -252,10 +259,10 @@ export class KumweStudioHostedStartElement extends LitElement {
             this.returnContext === undefined
               ? nothing
               : html`<button type="button" ?disabled=${busy} @click=${this.#requestReturn}>
-                  ${messageText('studio.contextual/return', undefined, {
+                  ${messageText('studio.contextual/return', this.messages, {
                     destination:
                       referenceText(this.returnContext.label) ||
-                      messageText('studio.contextual/return-destination'),
+                      messageText('studio.contextual/return-destination', this.messages),
                   })}
                 </button>`
           }
@@ -349,6 +356,7 @@ export async function startHostedCreateSession(
   preflight: StudioContextualPreflightHandle,
   preferred: AuthoringStartSource,
   presentation: AuthoringStartRequest['presentation'],
+  messages?: StudioMessageOverrides,
 ): Promise<StudioContextualHostSessionHandle> {
   const availableStarts = preflight.resolution.availableStarts.filter(
     (kind): kind is 'blank' | 'from-type' => kind === 'blank' || kind === 'from-type',
@@ -368,6 +376,7 @@ export async function startHostedCreateSession(
   if (!(element instanceof KumweStudioHostedStartElement)) {
     throw new TypeError('The registered hosted start element has an incompatible class.');
   }
+  element.messages = messages;
   element.availableStarts = availableStarts;
   element.loading = true;
   element.preferred = structuredClone(preferred);

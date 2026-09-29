@@ -25,7 +25,7 @@ const catalog = JSON.parse(canonicalBytes.toString('utf8'));
 if (
   catalog.kind !== 'authoring-message-catalog' ||
   catalog.contractVersion !== '0.1-draft' ||
-  catalog.catalogVersion !== '1.7.0' ||
+  catalog.catalogVersion !== '1.8.0' ||
   catalog.locale !== 'en'
 ) {
   throw new Error('The canonical English authoring catalog has an unexpected identity.');
@@ -55,6 +55,7 @@ const source = (
   await Promise.all(
     [
       'contextual-authoring.ts',
+      'hosted-runtime.ts',
       'hosted-start.ts',
       'kumwe-studio.ts',
       'outline.ts',

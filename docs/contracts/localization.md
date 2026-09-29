@@ -23,6 +23,15 @@ value as `studioMessageCatalog`. The JSON schema and canonical source live with 
 and the testkit ships the byte-identical fixture. Build checks reject unpublished shell keys,
 undeclared parameters, unsorted keys, or stale copies.
 
+## Hosted authoring controls
+
+The browser mount's per-instance hosted.messages option supplies the same published
+StudioMessageOverrides used by the contextual shell. Studio copies these overrides when mounting
+and applies them before rendering the create-source chooser, contextual editor, and save-confirmation
+controls. Omitted keys retain the catalog default. Overrides carry plain text only, cannot change host
+routing or authority, and are never shared with another mount. Host-authored target labels, type labels,
+and save consequences retain their authoritative message references.
+
 ## Locale negotiation
 
 The host supplies requested locale, fallback chain, writing direction, time zone, calendar, numbering system, hour cycle, optional measurement-system preference, and available bundles. Studio reports the resolved locale and display preferences. Locale or display preferences can change without rebuilding persisted artifacts, but the UI MUST recompute direction, formatting and layout.
