@@ -1,6 +1,6 @@
 {
   "name": "@kumwe/studio",
-  "version": "0.1.0-beta.8",
+  "version": "0.1.0-beta.9",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/kumwe/studio.git",
@@ -34,16 +34,16 @@
     "build": "tsc -b && node ../../scripts/minify-package-dist.mjs --package packages/studio-lit && node ../../scripts/build-studio-browser.mjs"
   },
   "dependencies": {
-    "@kumwe/studio-core": "0.1.0-beta.8",
-    "@kumwe/studio-media": "0.1.0-beta.8",
-    "@kumwe/studio-preview": "0.1.0-beta.8",
-    "@kumwe/studio-protocol": "0.1.0-beta.8",
-    "@kumwe/studio-renderer-web": "0.1.0-beta.8",
-    "@kumwe/studio-rich-text": "0.1.0-beta.8",
+    "@kumwe/studio-core": "0.1.0-beta.9",
+    "@kumwe/studio-media": "0.1.0-beta.9",
+    "@kumwe/studio-preview": "0.1.0-beta.9",
+    "@kumwe/studio-protocol": "0.1.0-beta.9",
+    "@kumwe/studio-renderer-web": "0.1.0-beta.9",
+    "@kumwe/studio-rich-text": "0.1.0-beta.9",
     "lit": "3.3.3"
   },
   "devDependencies": {
-    "@kumwe/studio-testkit": "0.1.0-beta.8"
+    "@kumwe/studio-testkit": "0.1.0-beta.9"
   },
   "publishConfig": {
     "access": "public",
