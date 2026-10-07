@@ -32,7 +32,7 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
 | [0022](0022-core-layout-block-family.md)             | Core layout blocks store bounded responsive intent                 | Proposed |
 | [0023](0023-shell-preview-surface-binding.md)        | Shell preview binds a host-staged canonical channel                | Proposed |
 | [0024](0024-read-only-model-binding-projection.md)   | Host models project into read-only field-binding affordances¹      | Proposed |
-| [0025](0025-measured-preview-visual-canvas.md)       | Direct manipulation uses measured preview geometry                 | Proposed |
+| [0025](0025-measured-preview-visual-canvas.md)       | Direct manipulation uses measured preview geometry²                | Proposed |
 | [0026](0026-production-block-catalog.md)             | Studio owns a portable production block catalog                    | Proposed |
 | [0027](0027-studio-owned-rich-text-authoring.md)     | Studio owns Editor.js behind canonical rich-text profiles          | Proposed |
 | [0028](0028-portable-semantic-web-renderer.md)       | One portable semantic web renderer with optional adapters          | Proposed |
@@ -44,5 +44,8 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
 
 ¹ The bounded behavior remains valid, but its interpretation as the complete product target is partially
 superseded by [ADR 0035](0035-contextual-unified-content-authoring.md).
+
+² Hover and single-click selection are narrowed by [ADR 0037](0037-page-builder-workspace-composition.md);
+the edit/operate boundary for dragging stands.
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

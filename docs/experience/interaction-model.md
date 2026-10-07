@@ -22,6 +22,9 @@ Commands identify artifact version, target node or field, operation, arguments, 
 
 - Selection is application state; DOM focus is an accessibility mechanism. Changing one must not unexpectedly destroy the other.
 - Canvas, Outline, and Inspector represent the same selected node and stable path.
+- Hover is a transient linkage between the page and the outline: it is shown on both, never announced, and
+  never moves focus or scrolls the panel; a focused outline entry is indicated on the page distinctly from
+  hover and selection.
 - After insert, move, or delete, focus moves to a documented logical target and is announced when necessary.
 - Nested interactive previews have an explicit edit/operate boundary so an author can select a block without accidentally activating it.
 - Escape unwinds the current interaction layer; it never silently discards a draft.

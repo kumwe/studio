@@ -1,6 +1,8 @@
 # ADR 0025: Direct manipulation uses measured preview geometry
 
 - Status: proposed
+- Narrowed by: [ADR 0037](0037-page-builder-workspace-composition.md) (hover and single-click selection no
+  longer require edit mode; dragging still does)
 - Scope: visual canvas, placement semantics, command-surface completeness
 
 ## Context

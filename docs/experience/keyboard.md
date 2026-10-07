@@ -42,10 +42,10 @@ substring match on the localized entry label.
 
 The current host-rendered preview is the visual canvas when measured geometry is available. Its
 `Select and move rendered blocks` pressed-state control creates an explicit edit/operate boundary:
-operate mode leaves trusted preview links and controls reachable; edit mode exposes measured selection,
-hover and drop regions. A pointer press selects. Movement of at least four CSS pixels begins a drag;
-same-collection destinations dispatch `reorder-children`, while cross-root or cross-slot destinations
-dispatch `move-node`.
+operate mode leaves trusted preview links and controls reachable and already shows measured hover and
+activation-reported single-click selection; edit mode additionally exposes drop regions and dragging, where
+a pointer press selects and movement of at least four CSS pixels begins a drag; same-collection destinations
+dispatch `reorder-children`, while cross-root or cross-slot destinations dispatch `move-node`.
 
 Dragging is a pure enhancement (SR-017). The selected outline entry exposes a native destination selector
 containing every valid root/slot position, and the command palette exposes the same destinations. All three
@@ -91,7 +91,8 @@ set-binding form when no model port is negotiated; and — when the host supplie
 responsive rows for the active viewport and the add-override form. In read-only or
 mode-incompatible sessions the corresponding controls are disabled.
 
-Activating a rendered block on the visual canvas — a double-click on its measured region, or
+A single click on a rendered block selects it and scrolls its outline entry into view without moving
+focus to any control. Activating a rendered block on the visual canvas — a double-click on its measured region, or
 `Enter`/`F2` while the canvas stage has focus and a block is selected — keeps the page visible and
 moves focus to that block's first enabled typed control in the inspector. Value editing remains a
 canonical command over the Entry or Blueprint draft; the rendered markup is never edited in place.
@@ -189,10 +190,13 @@ These interactions are executable assertions in
 `packages/studio-lit/test/layout-blocks.test.ts`,
 `packages/studio-lit/test/inspector.test.ts`, and
 `packages/studio-lit/test/model-bindings.test.ts`,
-`packages/studio-lit/test/layout-editing.test.ts`: keyboard dispatch, disabled states at
+`packages/studio-lit/test/layout-editing.test.ts`,
+`packages/studio-lit/test/local-canvas.test.ts`, and
+`packages/studio-lit/test/preview-surface.test.ts`: keyboard dispatch, disabled states at
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
 cancellation, measured reparenting parity, inspector editing with its Tab order and conflict recovery,
-inheritance reset, size-role editing with its provenance, pattern/restoration surfaces, and the documented
-focus targets are all verified there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
+inheritance reset, size-role editing with its provenance, pattern/restoration surfaces, single-click
+selection that reveals the outline entry without moving focus to a control (SR-032), and the documented focus targets
+are all verified there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
 real SVG hit target, pointer/keyboard `move-node` identity, cancelled-drag no-op and zero CSP violations. A
 change to this table without a matching assertion change is a contract violation.

@@ -30,6 +30,8 @@ Keyboard operations use documented shortcuts and discoverable menus. They do not
 - Focus is never moved merely because a preview refreshes.
 - Virtualized lists preserve semantic position, set size and keyboard navigation.
 - Selection, focus and hover are distinct states with non-color indicators.
+- Hovering a rendered block and hovering its outline entry show the same hovered state on both; a focused
+  outline entry shows a dashed focused indicator on the page that is distinct from hover and selection.
 - Focus indicators meet at least WCAG 2.2 focus appearance requirements and remain visible over theme previews.
 
 ## Canvas semantics
@@ -81,18 +83,23 @@ reload, teardown or failed render never moves focus.
 Theme preview controls expose viewport role and dimensions textually. Responsive state is not conveyed only through visual width.
 
 The measured visual canvas has an explicit edit/operate boundary. Its overlay is pointer-inert by default,
-so preview links and controls keep their trusted renderer behavior. Edit mode is exposed by a native
-pressed-state button and renders hover, selection and drop state with both shape/outline and textual status;
-the SVG geometry itself is presentation-only to assistive technology. The semantic outline remains the
-accessible canvas and enumerates the identical valid destinations in a native selector. The command palette
-provides the same destination actions, so reordering and reparenting never require coordinate perception or
-dragging. Carrying a palette entry onto the canvas is the same kind of enhancement: the drop names its
-destination textually, and a palette click followed by the outline destination selector reaches the
-identical placement without dragging.
+so preview links and controls keep their trusted renderer behavior. Hover is shown in both modes from
+accepted measurements and single-click selection in operate mode is the renderer's trusted activation
+report, both with shape/outline indicators; edit mode is exposed by a native pressed-state button in the page
+toolbar and additionally renders drop state with both shape/outline and textual status. Hover is never
+announced; the SVG geometry itself is presentation-only to assistive technology. The semantic outline
+remains the accessible canvas and enumerates the identical valid destinations in a native selector. The
+command palette provides the same destination actions, so reordering and reparenting never require
+coordinate perception or dragging. Carrying a palette entry onto the canvas is the same kind of enhancement:
+the drop names its destination textually, and a palette click followed by the outline destination selector
+reaches the identical placement without dragging.
 
 The workspace grid collapses below its container breakpoint into a visible pane switcher of pressed-state
 buttons over mutually exclusive Library, Outline, and Inspector sheets with the canvas central; a completed
-insertion returns to the canvas sheet, and the command palette remains reachable from every sheet.
+insertion returns to the canvas sheet, and the command palette remains reachable from every sheet. At wide
+widths the block palette is an `Add blocks` disclosure beside the outline; while closed its landmark is
+absent, as a hidden sheet is; it opens by default on an empty document, and a replaced document or session
+never closes a library that holds keyboard focus.
 
 Pointer movement uses an activation threshold and capture has two no-op cancellation paths:
 `pointercancel` and document-level `Escape`. A cancelled gesture dispatches no command. Preview geometry

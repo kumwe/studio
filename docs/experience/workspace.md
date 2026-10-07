@@ -17,13 +17,15 @@ The Blueprint shell now keeps one rendered page canvas mounted while Model, Blue
 change: standalone mounts, and hosted mounts whose resolved session enables no host preview, render the
 admitted composition through the public semantic web renderer in an isolated local canvas labelled as
 non-authoritative, with measured selection, responsive target widths, and the same measured drop indicator
-for palette insertion and block movement. The inspector is docked beside that canvas and leads with typed
-port and property controls, Layout size roles at the active viewport, and the Model and Content panels;
-raw JSON editing sits behind an `Advanced properties and bindings` disclosure. Narrow containers present
-the Library, Outline, and Inspector as mutually exclusive sheets behind a visible pane switcher while the
-canvas stays central. Inline value editing is contextual: activating a rendered block focuses its typed
-control; the rendered markup itself is never editable in place, and no editor geometry or CSS enters a
-Blueprint.
+for palette insertion and block movement. At wide widths the workspace is one narrow structure-and-details
+column (Outline leading, an `Add blocks` disclosure for the palette, then the Inspector, which leads with
+typed port and property controls, Layout size roles at the active viewport, and the docked Model and Content
+panels, with raw JSON editing behind an `Advanced properties and bindings` disclosure) beside a page column
+that fills the workspace height under a sticky toolbar; hovering a rendered block highlights its outline
+entry and a single click reveals it without moving focus. Narrow containers present the Library, Outline,
+and Inspector as mutually exclusive sheets behind a visible pane switcher while the canvas stays central.
+Inline value editing is contextual: activating a rendered block focuses its typed control; the rendered
+markup itself is never editable in place, and no editor geometry or CSS enters a Blueprint.
 
 The complete region and interaction specification below remains the product and qualification boundary.
 Implementing a component state is not proof of host navigation continuity, complete field tooling, manual
@@ -45,14 +47,14 @@ block-beta
 
 This diagram expresses regions, not fixed pixels. Hosts and design profiles may alter density and placement through declared capabilities. The workspace must remain usable at zoom, with long translated labels, in RTL, and without relying on color or pointer precision.
 
-| Region    | Responsibility                                                                                     | Required alternatives                                              |
-| --------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Host bar  | Target context, exact type/version, locale, workflow, presentation state, and explicit save choice | Standard links and form controls supplied by the host              |
-| Library   | Searchable blocks, patterns, typed fields, and extension provenance                                | Insert-before/after/inside/bind commands and keyboard navigation   |
-| Canvas    | Direct block/field placement, permitted value editing, resize intent, and host-rendered preview    | Outline tree and inspector expose every operation                  |
-| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors                                     | Move up/down/in/out, duplicate, delete, and select controls        |
-| Inspector | Typed properties, bindings, responsive roles, design recipes, policy, accessibility metadata       | Schema-generated labels, descriptions, errors, and ordinary inputs |
-| Status    | Validation, compatibility, save state, conflicts, history, and optional collaboration              | Persistent textual status and focusable error navigation           |
+| Region    | Responsibility                                                                                                              | Required alternatives                                              |
+| --------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Host bar  | Target context, exact type/version, locale, workflow, presentation state, and explicit save choice                          | Standard links and form controls supplied by the host              |
+| Library   | Searchable blocks, patterns, typed fields, and extension provenance; opened from the structure panel's `Add blocks` control | Insert-before/after/inside/bind commands and keyboard navigation   |
+| Canvas    | Direct block/field placement, permitted value editing, resize intent, and host-rendered preview                             | Outline tree and inspector expose every operation                  |
+| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors                                                              | Move up/down/in/out, duplicate, delete, and select controls        |
+| Inspector | Typed properties, bindings, responsive roles, design recipes, policy, accessibility metadata                                | Schema-generated labels, descriptions, errors, and ordinary inputs |
+| Status    | Validation, compatibility, save state, conflicts, history, and optional collaboration                                       | Persistent textual status and focusable error navigation           |
 
 ## Narrow screens
 

@@ -46,12 +46,17 @@ non-authoritative (`STUDIO-PROD-014`), and requirement rows are never renumbered
    template identity of the inspector, so imperatively mounted authoring controls keep their holder elements
    and never remount mid-edit.
 3. **Hover and selection linked both ways.** One reactive hovered node is shared by the overlay, the panel
-   rows and the local canvas; keyboard focus on a row is the non-pointer equivalent of hover. A single click
-   on a rendered block selects it, scrolls its row into view and opens the details layer without moving
-   focus; Enter, F2 and double-click keep focusing the first typed control. On a host-rendered preview, hover
-   and single-click selection derive from hit-testing the latest accepted measurements, so they need no edit
-   mode, while moving blocks by drag stays behind the explicit pressed control of ADR 0025 so links and
-   controls inside the trusted preview remain reachable.
+   rows and the local canvas. Keyboard focus on a row draws its own dashed indicator on the page, so
+   selection, hover and focus remain three distinct, non-colour states; focus is the non-pointer way to find
+   a row's block, not a hover alias. A single click on a rendered block selects it, scrolls its row into view
+   and opens the details layer without moving focus; Enter, F2 and double-click keep focusing the first typed
+   control. On a host-rendered preview the shell obtains hover from passive pointer listeners on its own
+   stage that hit-test the latest accepted measurements with the overlay's ancestor-first order and never
+   prevent the trusted surface's default action; single-click selection there is the renderer's trusted
+   activation report, which the shell routes through the same reveal path, so neither needs edit mode. A
+   surface inside a frame delivers no pointer events to the shell, so hover there waits for the preview
+   channel to carry it. Moving blocks by drag stays behind the explicit pressed control of ADR 0025, now in
+   the toolbar, so links and controls inside the trusted preview remain reachable.
 4. **Insertion with an explicit destination.** Every add control (page level, each declared slot, before
    and after the selected row, and the dashed zone drawn in an empty container on the page) opens the add
    layer with a declared parent, slot and position. The insertion request a host may intercept gains an
@@ -62,8 +67,10 @@ non-authoritative (`STUDIO-PROD-014`), and requirement rows are never renumbered
    wire change is needed. A model-level column block is a separate future decision.
 6. **Honest page region.** The local canvas keeps its visible non-authoritative caption, demoted to a line
    beside the page rather than a heading above it. The measurement origin is the slotted preview surface's
-   top-left corner; the shell centres surface and overlay together instead of assuming a stage-anchored
-   surface.
+   top-left corner. A host measurer reports rectangles relative to the slotted surface it measures, so the
+   host anchors that surface at the stage's start edge instead of centring it; the reference host does so. A
+   shell-owned frame that centres surface and overlay together, instead of assuming a stage-anchored
+   surface, is a later slice.
 
 ## Consequences
 
@@ -73,7 +80,10 @@ keep exposing the complete semantic tree and destination set, so keyboard and as
 reach every operation without the layered view. New message keys move the catalog digest and therefore the
 release record, the vendored corpus of the PHP realization and the host's translation files. New
 requirement rows are appended for mirrored hover, click-to-reveal, layered keyboard navigation, explicit
-insertion destinations and holder stability; no existing row changes meaning.
+insertion destinations and holder stability; no existing row changes meaning. The block palette becomes an
+`Add blocks` disclosure of the structure panel that opens by default on an empty document and is re-derived
+whenever the shell receives a replaced document or session, never closing a library that holds keyboard
+focus; narrow sheets are unaffected.
 
 The composition lands in slices on the existing shell element, each shippable and each labelled truthfully:
 the frame with hover and click linkage first, then layered navigation, then explicit insertion and columns,
@@ -87,8 +97,17 @@ Re-styling the pinned shell from the host was rejected: the host cannot re-lay o
 and the App forbids a host-local page builder. A second shell element built in parallel was rejected
 because it duplicates behaviour, message keys and documentation until retirement. Making the host-preview
 overlay always enter edit mode was rejected because it intercepts tabs, dialogs and links inside the trusted
-preview; hover and selection are obtained from measurements instead. Carrying hover through the preview
-protocol and staging unsaved drafts in the host preview was deferred because it changes the closed message
-vocabulary and forces a major PHP realization release before anything is visible. A new column block type
-was deferred because stack children already give columns identity, rows and rectangles. Editing rendered
-markup in place was rejected by the existing contract boundary.
+preview; hover is obtained from measurements and single-click selection from the renderer's activation
+report instead. Carrying hover through the preview protocol and staging unsaved drafts in the host preview
+was deferred because it changes the closed message vocabulary and forces a major PHP realization release
+before anything is visible. A new column block type was deferred because stack children already give
+columns identity, rows and rectangles. Editing rendered markup in place was rejected by the existing
+contract boundary.
+
+## Implementation note
+
+Slice 1 (frame, hover and click linkage, origin fix) is recorded in `CHANGELOG.md`; layers, explicit
+insertion, columns and panel drag follow as separate slices, each with its own requirement rows. Slice 1
+implements Decision 1 and the hover, focus, click-reveal and activation-reported selection of Decision 3, plus
+the host-side half of Decision 6 (the measured surface anchored at the stage origin); Decision 3's "opens the
+details layer" and Decision 2 are slice S3; Decisions 4 and 5 are S4; the shell-side half of Decision 6 is S6.
