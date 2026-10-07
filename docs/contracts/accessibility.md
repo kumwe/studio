@@ -32,11 +32,23 @@ Keyboard operations use documented shortcuts and discoverable menus. They do not
 - Selection, focus and hover are distinct states with non-color indicators.
 - Hovering a rendered block and hovering its outline entry show the same hovered state on both; a focused
   outline entry shows a dashed focused indicator on the page that is distinct from hover and selection.
+- The structure panel navigates in layers and never drops focus: opening a container as a level focuses its
+  first listed entry, opening a block's details from the keyboard or its `Edit` action focuses the first
+  typed control, a page click opens the details without moving focus, and returning with `Back`,
+  `Arrow Left` or `Escape` focuses the entry whose level or details were open, or the Outline region itself
+  when no block is selected; focus that sits in a region about to hide moves to the header's `Back` control
+  (the details region itself in the contextual Content and Model modes, which render no `Back`), and a level
+  whose last child leaves the document falls back to its parent with the container focused. Each layer
+  change, and a new block shown in the details view, is announced once through the polite live region.
 - Focus indicators meet at least WCAG 2.2 focus appearance requirements and remain visible over theme previews.
 
 ## Canvas semantics
 
 The accessible representation of a Blueprint is the semantic outline/tree, not arbitrary visual geometry. It exposes block name, position, parent slot, locked state, issues and relevant content summary without leaking inaccessible values.
+
+The complete tree is the default and always reachable with `Show whole tree`; an opened level lists one
+container's non-empty slots and their direct children under a header naming the parent, and never replaces
+the complete tree as the accessible representation.
 
 Tree interaction follows an established ARIA pattern only when fully implemented; otherwise a nested list with explicit action menus is preferred. Custom elements expose correct roles, names, states, descriptions and relationships through the accessibility tree.
 
@@ -99,7 +111,11 @@ buttons over mutually exclusive Library, Outline, and Inspector sheets with the 
 insertion returns to the canvas sheet, and the command palette remains reachable from every sheet. At wide
 widths the block palette is an `Add blocks` disclosure beside the outline; while closed its landmark is
 absent, as a hidden sheet is; it opens by default on an empty document, and a replaced document or session
-never closes a library that holds keyboard focus.
+never closes a library that holds keyboard focus. Above the breakpoint the column shows one layer at a time,
+structure or details: the Outline and the `Add blocks` disclosure are hidden while details are shown, and the
+Inspector while the structure is shown, so one of those two landmarks is absent at a time; hiding a layer
+changes visibility only, so imperatively mounted authoring controls keep their holder elements across layer
+changes.
 
 Pointer movement uses an activation threshold and capture has two no-op cancellation paths:
 `pointercancel` and document-level `Escape`. A cancelled gesture dispatches no command. Preview geometry

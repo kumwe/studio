@@ -106,8 +106,18 @@ contract boundary.
 
 ## Implementation note
 
-Slice 1 (frame, hover and click linkage, origin fix) is recorded in `CHANGELOG.md`; layers, explicit
-insertion, columns and panel drag follow as separate slices, each with its own requirement rows. Slice 1
-implements Decision 1 and the hover, focus, click-reveal and activation-reported selection of Decision 3, plus
-the host-side half of Decision 6 (the measured surface anchored at the stage origin); Decision 3's "opens the
-details layer" and Decision 2 are slice S3; Decisions 4 and 5 are S4; the shell-side half of Decision 6 is S6.
+Slices 1 (frame, hover and click linkage, origin fix) and 3 (layered navigation) are recorded in
+`CHANGELOG.md`; explicit insertion, columns and panel drag follow as separate slices, each with its own
+requirement rows. Slice 1 implements Decision 1 and the hover, focus, click-reveal and activation-reported
+selection of Decision 3, plus the host-side half of Decision 6 (the measured surface anchored at the stage
+origin). Slice 3 implements Decision 2 and the "opens the details layer" clause of Decision 3: the structure
+layer opens with the whole tree, a container can be opened into its own level under a header naming the
+parent, the details layer is the existing inspector under a header with `Back` and the selection path, and
+the add surface remains the `Add blocks` disclosure of the structure layer (Consequences) rather than a third
+layer; it is hidden with the structure layer while details are shown. The row actions of Decision 2 are
+`Edit` and `Open` under the selected row (`Open` only where the row has listed children). In the contextual
+Content and Model modes the docked panel is the details layer and the wrapper's `Blueprint` tab is the
+return, so the shell renders no `Back`, does not unwind on `Escape` there, and keeps the docked panel when a
+structural focus target (a diagnostic's block, for instance) is only listed for that return. Decisions 4 and
+5 are slice S4;
+the shell-side half of Decision 6 is S6.

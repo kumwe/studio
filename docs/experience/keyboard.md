@@ -7,20 +7,33 @@ does not depend on this document.
 
 ## Outline
 
-| Keys                    | Operation                                                                |
-| ----------------------- | ------------------------------------------------------------------------ |
-| `Tab`                   | Enter and leave the outline region in document order                     |
-| `Arrow Up / Arrow Down` | Move focus between outline entries                                       |
-| `Enter` / `Space`       | Select the focused entry                                                 |
-| `Alt+Arrow Up`          | Move the focused node earlier in its collection (`reorder-children`)     |
-| `Alt+Arrow Down`        | Move the focused node later in its collection (`reorder-children`)       |
-| `Ctrl+D` / `Meta+D`     | Duplicate the focused node (`duplicate-node`)                            |
-| `Delete`                | Delete the focused node (`remove-node`)                                  |
-| Destination selector    | Move to any valid root/slot position (`move-node` or `reorder-children`) |
+| Keys                       | Operation                                                                                                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`                      | Enter and leave the outline region in document order                                                                                                                  |
+| `Arrow Up / Arrow Down`    | Move focus between outline entries                                                                                                                                    |
+| `Enter` / `Space`          | Select the focused entry                                                                                                                                              |
+| `Alt+Arrow Up`             | Move the focused node earlier in its collection (`reorder-children`)                                                                                                  |
+| `Alt+Arrow Down`           | Move the focused node later in its collection (`reorder-children`)                                                                                                    |
+| `Ctrl+D` / `Meta+D`        | Duplicate the focused node (`duplicate-node`)                                                                                                                         |
+| `Delete`                   | Delete the focused node (`remove-node`)                                                                                                                               |
+| `Arrow Right`              | Open the focused container as the panel's current level; on a block without children, open its details and focus its first control. A modified arrow is not consumed  |
+| `Arrow Left`               | Return to the parent level; the container that was opened takes focus. At the page level, or with a modifier, the key is not consumed                                 |
+| `Escape`                   | In the details view return to the structure with the selected entry focused (or the Outline region when nothing is selected); in an opened level return to its parent |
+| `Back` / `Show whole tree` | The same returns as buttons in the panel header; `Edit` and `Open` under the selected entry are the pointer paths                                                     |
+| Destination selector       | Move to any valid root/slot position (`move-node` or `reorder-children`)                                                                                              |
 
 After a deletion, focus moves to the previous sibling entry, then the parent, then the first
 entry; after duplication, focus moves to the copy. The polite live region announces every outcome,
 including failures.
+
+The panel header names where the author is: `Back to Page` or `Back to {parent}` beside `Add blocks`, then
+the level's name beside `Show whole tree`, on an opened level; `Back` with the selection path on the details
+view. `Escape` reaches the panel only after an active drag cancel and the command palette have had their
+turn (drag cancel, then palette close, then the panel unwind), only when it originates in the panel's own
+chrome — a text input, select, editable region or imperatively mounted control keeps its own `Escape` — and
+not in the contextual Content and Model modes, where the docked panel is the details view, no `Back` is
+rendered and the `Blueprint` tab returns. Each layer change, and a new block shown in the details view, is
+announced once; hover is not.
 
 ## Command palette
 
@@ -91,23 +104,26 @@ set-binding form when no model port is negotiated; and — when the host supplie
 responsive rows for the active viewport and the add-override form. In read-only or
 mode-incompatible sessions the corresponding controls are disabled.
 
-A single click on a rendered block selects it and scrolls its outline entry into view without moving
-focus to any control. Activating a rendered block on the visual canvas — a double-click on its measured region, or
-`Enter`/`F2` while the canvas stage has focus and a block is selected — keeps the page visible and
-moves focus to that block's first enabled typed control in the inspector. Value editing remains a
-canonical command over the Entry or Blueprint draft; the rendered markup is never edited in place.
+A single click on a rendered block selects it, reveals its outline entry and opens the details view without
+moving focus to any control; `Back` returns to the structure view with that entry focused and scrolled into
+view. Activating a rendered block on the visual canvas — a double-click on its measured region, or
+`Enter`/`F2` while the canvas stage has focus and a block is selected — keeps the page visible, opens the
+details view and moves focus to that block's first enabled typed control in the inspector (or to the
+header's `Back` control when no typed control can take focus). Value editing remains a canonical command
+over the Entry or Blueprint draft; the rendered markup is never edited in place.
 
 Every responsive value carries its provenance as text, never as color or position alone: an
 override row states `Overridden for the {viewport} viewport: {value}`, a property the active
 viewport does not override states `Inherited from base: {value}`, and base property rows are
 marked `Base value`.
 
-| Keys              | Operation                                                               |
-| ----------------- | ----------------------------------------------------------------------- |
-| `Tab`             | Move through the inspector controls in the documented order             |
-| `Enter`           | In a value input, parse the text as JSON and commit it                  |
-| `Escape`          | In a value input, revert to the committed value and announce the cancel |
-| `Enter` / `Space` | Activate the focused unset, add, set-binding, or remove button          |
+| Keys              | Operation                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tab`             | Move through the inspector controls in the documented order                                                                           |
+| `Enter`           | In a value input, parse the text as JSON and commit it                                                                                |
+| `Escape`          | In a value input, revert to the committed value and announce the cancel                                                               |
+| `Escape`          | From `Back` or another button, switch or disclosure of the panel chrome, return to the structure view with the selected entry focused |
+| `Enter` / `Space` | Activate the focused unset, add, set-binding, or remove button                                                                        |
 
 Property commits dispatch `set-property`, unset buttons `unset-property`, a model field selection or the
 legacy binding form dispatches `set-binding`, and binding removal dispatches `remove-binding`. A model field
@@ -196,7 +212,9 @@ These interactions are executable assertions in
 collection edges and in read-only sessions, live-region announcements, pointer-drag reordering and
 cancellation, measured reparenting parity, inspector editing with its Tab order and conflict recovery,
 inheritance reset, size-role editing with its provenance, pattern/restoration surfaces, single-click
-selection that reveals the outline entry without moving focus to a control (SR-032), and the documented focus targets
-are all verified there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
+selection that reveals the outline entry without moving focus to a control (SR-032), layered structure
+navigation with its returns, focus targets and single announcements (SR-035), holder stability of
+imperatively mounted controls across layers (SR-038), and the documented focus targets are all verified
+there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
 real SVG hit target, pointer/keyboard `move-node` identity, cancelled-drag no-op and zero CSP violations. A
 change to this table without a matching assertion change is a contract violation.

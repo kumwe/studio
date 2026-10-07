@@ -22,8 +22,13 @@ column (Outline leading, an `Add blocks` disclosure for the palette, then the In
 typed port and property controls, Layout size roles at the active viewport, and the docked Model and Content
 panels, with raw JSON editing behind an `Advanced properties and bindings` disclosure) beside a page column
 that fills the workspace height under a sticky toolbar; hovering a rendered block highlights its outline
-entry and a single click reveals it without moving focus. Narrow containers present the Library, Outline,
-and Inspector as mutually exclusive sheets behind a visible pane switcher while the canvas stays central.
+entry and a single click reveals it without moving focus. The column navigates in layers: the structure view
+opens with the whole tree and can be opened into one container at a time under a header naming the parent;
+the details view shows the selected block's inspector sections and the docked Model and Content panels under
+a `Back` control and the selection path (in the contextual Content and Model modes the `Blueprint` tab is
+the return); a single click on the page opens the details view, and `Back`, `Arrow Left` and `Escape`
+return. Narrow containers present the Library, Outline, and Inspector as mutually exclusive sheets behind a
+visible pane switcher while the canvas stays central.
 Inline value editing is contextual: activating a rendered block focuses its typed control; the rendered
 markup itself is never editable in place, and no editor geometry or CSS enters a Blueprint.
 
@@ -52,7 +57,7 @@ This diagram expresses regions, not fixed pixels. Hosts and design profiles may 
 | Host bar  | Target context, exact type/version, locale, workflow, presentation state, and explicit save choice                          | Standard links and form controls supplied by the host              |
 | Library   | Searchable blocks, patterns, typed fields, and extension provenance; opened from the structure panel's `Add blocks` control | Insert-before/after/inside/bind commands and keyboard navigation   |
 | Canvas    | Direct block/field placement, permitted value editing, resize intent, and host-rendered preview                             | Outline tree and inspector expose every operation                  |
-| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors                                                              | Move up/down/in/out, duplicate, delete, and select controls        |
+| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors, navigable in layers with the whole tree as the default view | Move up/down/in/out, duplicate, delete, and select controls        |
 | Inspector | Typed properties, bindings, responsive roles, design recipes, policy, accessibility metadata                                | Schema-generated labels, descriptions, errors, and ordinary inputs |
 | Status    | Validation, compatibility, save state, conflicts, history, and optional collaboration                                       | Persistent textual status and focusable error navigation           |
 
