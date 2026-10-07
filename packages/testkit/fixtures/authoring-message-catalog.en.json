@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.9.0",
+  "catalogVersion": "1.10.0",
   "locale": "en",
   "messages": {
     "studio.contextual/add-field": {
@@ -485,6 +485,10 @@
       "defaultMessage": "Set the {property} override for the {viewport} viewport",
       "parameters": ["property", "viewport"]
     },
+    "studio.shell/announce-panel-layer": {
+      "defaultMessage": "Showing {layer} for {label}",
+      "parameters": ["label", "layer"]
+    },
     "studio.shell/announce-pattern-applied": {
       "defaultMessage": "Applied the {pattern} pattern",
       "parameters": ["pattern"]
@@ -957,6 +961,10 @@
       "defaultMessage": "Move up",
       "parameters": []
     },
+    "studio.shell/outline-edit": {
+      "defaultMessage": "Edit",
+      "parameters": []
+    },
     "studio.shell/outline-empty": {
       "defaultMessage": "The outline lists blocks once the document has content.",
       "parameters": []
@@ -966,12 +974,20 @@
       "parameters": []
     },
     "studio.shell/outline-hint": {
-      "defaultMessage": "Arrow keys move focus. Alt+Arrow moves the block. Delete removes it. Ctrl+D or Cmd+D duplicates it.",
+      "defaultMessage": "Arrow keys move focus. Alt+Arrow moves the block. Delete removes it. Ctrl+D or Cmd+D duplicates it. Arrow Right opens a container, or a block's details. Arrow Left, Back or Escape returns.",
+      "parameters": []
+    },
+    "studio.shell/outline-open": {
+      "defaultMessage": "Open",
       "parameters": []
     },
     "studio.shell/outline-slot": {
       "defaultMessage": "Slot: {slot}",
       "parameters": ["slot"]
+    },
+    "studio.shell/outline-whole-tree": {
+      "defaultMessage": "Show whole tree",
+      "parameters": []
     },
     "studio.shell/palette-heading": {
       "defaultMessage": "Blocks",
@@ -979,6 +995,18 @@
     },
     "studio.shell/palette-label": {
       "defaultMessage": "Block palette",
+      "parameters": []
+    },
+    "studio.shell/panel-back": {
+      "defaultMessage": "Back",
+      "parameters": []
+    },
+    "studio.shell/panel-back-to": {
+      "defaultMessage": "Back to {label}",
+      "parameters": ["label"]
+    },
+    "studio.shell/panel-page": {
+      "defaultMessage": "Page",
       "parameters": []
     },
     "studio.shell/patterns-heading": {
