@@ -61,12 +61,11 @@ describe('optional exact advanced adapters', () => {
   });
 
   it('runs KaTeX 0.18.4 with trust disabled', async () => {
-    const render = vi.fn(
-      (source: string, element: HTMLElement, options: Readonly<Record<string, unknown>>) => {
-        void options;
-        element.textContent = source;
-      },
-    );
+    const render = vi.fn<
+      (source: string, element: HTMLElement, options: Readonly<Record<string, unknown>>) => void
+    >((source, element) => {
+      element.textContent = source;
+    });
     const node = await createKatexAdapter(() =>
       Promise.resolve({ render, version: '0.18.4' }),
     ).render({

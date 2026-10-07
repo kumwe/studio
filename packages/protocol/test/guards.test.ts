@@ -177,8 +177,8 @@ describe('isHostPortError', () => {
     expect(isHostPortError({ ...hostError(), retryable: 'yes' })).toBe(false);
     expect(isHostPortError({ ...hostError(), retryAfterMilliseconds: -1 })).toBe(false);
     expect(isHostPortError({ ...hostError(), message: { key: 'not-qualified' } })).toBe(false);
-    const { message, ...withoutMessage } = hostError();
-    void message;
+    const withoutMessage = hostError();
+    delete withoutMessage.message;
     expect(isHostPortError(withoutMessage)).toBe(false);
   });
 
