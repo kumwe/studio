@@ -202,6 +202,12 @@ describe('hosted browser runtime', () => {
     await blueprint.updateComplete;
     expect(blueprint.shadowRoot?.querySelector('.local-canvas-region')).not.toBeNull();
     expect(blueprint.shadowRoot?.querySelector('.structural-canvas-fallback')).toBeNull();
+    // The host set no initial viewport, so the hosted local canvas opens at the
+    // device width (expanded outside the narrow media query) while the base
+    // viewport, where un-overridden edits are written, stays compact.
+    expect(runtime.element.configuration?.session.preview.initialViewport).toBe('expanded');
+    expect(blueprint.activeViewport?.id).toBe('expanded');
+    expect(blueprint.viewports?.find((viewport) => viewport.base)?.id).toBe('compact');
     const node = session.state.blueprint.roots[0];
     if (node === undefined) throw new Error('The hosted fixture requires one Blueprint node.');
     runtime.element.setEntryValue(['name'], 'Hosted round trip');
@@ -262,6 +268,34 @@ describe('hosted browser runtime', () => {
 
     runtime.dispose();
     expect(target.children).toHaveLength(0);
+  });
+
+  it('keeps the initial viewport a host chose for its local canvas', async () => {
+    const session = structuredClone(fixture);
+    const server = createBrowserAuthoringServer(session);
+    const configured = deployment(session);
+    configured.session.preview.initialViewport = 'compact';
+    const target = document.createElement('div');
+    target.id = 'hosted-studio';
+    document.body.append(target);
+
+    const runtime = await mountStudioHosted(target, configured, {
+      adapter: {
+        currentTimeMilliseconds: () => 0,
+        fetchImplementation: server.fetch,
+      },
+      identifiers: deterministicIdentifiers(),
+    });
+    await runtime.element.updateComplete;
+    const blueprint = runtime.element.blueprintElement;
+    if (blueprint === undefined)
+      throw new Error('Hosted Studio did not mount its Blueprint shell.');
+    await blueprint.updateComplete;
+
+    expect(runtime.element.configuration?.session.preview.enabled).toBe(false);
+    expect(runtime.element.configuration?.session.preview.initialViewport).toBe('compact');
+    expect(blueprint.activeViewport?.id).toBe('compact');
+    runtime.dispose();
   });
 
   it('bubbles a return request containing only the opaque host return context', async () => {

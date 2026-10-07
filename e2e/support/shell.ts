@@ -3,16 +3,36 @@ import { expect, type Locator, type Page } from '@playwright/test';
 export type WorkspacePane = 'Blocks' | 'Canvas' | 'Inspector' | 'Outline';
 
 /**
+ * At wide widths the block palette sits behind the Outline's "Add blocks"
+ * disclosure, which the shell closes on a non-empty document. Opening it here
+ * is idempotent: an already-open disclosure (a blank document, or a library
+ * that keeps keyboard focus across a session rebuild) is left alone, and the
+ * narrow sheets, where the toggle is a sheet switch, go through `showPane`.
+ */
+export async function openBlocks(shell: Locator): Promise<void> {
+  const toggle = shell.getByRole('button', { name: 'Add blocks', exact: true });
+  if (
+    (await toggle.count()) > 0 &&
+    (await toggle.isVisible()) &&
+    (await toggle.getAttribute('aria-expanded')) === 'false'
+  ) {
+    await toggle.click();
+  }
+}
+
+/**
  * Below the workspace's container breakpoint the Library, Outline, and
  * Inspector are mutually exclusive sheets behind the visible pane switcher.
- * Wide layouts show every region at once, so the switcher is absent and this
- * helper is a no-op there. Specs always reach a pane through this control,
- * never through a hidden DOM mutation.
+ * Wide layouts show every region at once, so the switcher is absent and only
+ * the block palette needs its disclosure opened there. Specs always reach a
+ * pane through a visible control, never through a hidden DOM mutation.
  */
 export async function showPane(shell: Locator, name: WorkspacePane): Promise<void> {
   const switcher = shell.getByRole('navigation', { name: 'Workspace panels' });
   if (await switcher.isVisible()) {
     await switcher.getByRole('button', { name, exact: true }).click();
+  } else if (name === 'Blocks') {
+    await openBlocks(shell);
   }
 }
 

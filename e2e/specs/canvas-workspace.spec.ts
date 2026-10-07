@@ -5,10 +5,14 @@ import { openPublicStudio, showWorkspacePane } from '../support/public-studio.js
 test('the public canvas stays live while typed content, layout and presentation controls change', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1600, height: 600 });
+  await page.setViewportSize({ width: 1600, height: 400 });
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   const studio = await openPublicStudio(page);
+  // Inline presentation clamps the workspace to a minimum height, so the
+  // overflow premise below runs in Fullscreen, where the workspace follows
+  // the (short) viewport.
+  await studio.getByRole('button', { name: 'Fullscreen', exact: true }).click();
   const stage = studio.getByRole('group', { name: 'Page canvas', exact: true });
   await stage.focus();
   await expect(stage).toBeFocused();
@@ -31,17 +35,61 @@ test('the public canvas stays live while typed content, layout and presentation 
     .analyze();
   expect(blankScan.violations, JSON.stringify(blankScan.violations, null, 2)).toEqual([]);
   await page.setViewportSize({ width: 1600, height: 1000 });
-  await studio.getByRole('button', { name: 'Fullscreen', exact: true }).click();
+
+  // Wide layout: the structure column (Outline, Inspector) sits entirely to
+  // the left of the page, the page column fills the workspace height, and
+  // nothing overflows the viewport horizontally.
+  const pageBox = await studio.locator('.local-canvas-region').boundingBox();
+  const workspaceBox = await studio.locator('.workspace').boundingBox();
+  const canvasBox = await studio.getByRole('main', { name: 'Blueprint structure' }).boundingBox();
+  expect(pageBox).not.toBeNull();
+  expect(workspaceBox).not.toBeNull();
+  expect(canvasBox).not.toBeNull();
+  if (pageBox === null || workspaceBox === null || canvasBox === null) return;
+  for (const name of ['Outline', 'Inspector']) {
+    const box = await studio.getByRole('complementary', { name, exact: true }).boundingBox();
+    expect(box, name).not.toBeNull();
+    if (box === null) return;
+    expect(box.x + box.width, name).toBeLessThanOrEqual(pageBox.x + 1);
+  }
+  expect(Math.abs(canvasBox.height - workspaceBox.height)).toBeLessThanOrEqual(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+
   await studio.locator('button.pattern-apply[data-pattern-id="studio.pattern/hero"]').click();
   const canvas = studio.locator('.local-canvas-host');
   const heading = canvas.getByRole('heading', { name: 'Build something meaningful' });
   await expect(heading).toBeVisible();
+  // The local canvas keeps its truthful caption in real layout while its
+  // heading is demoted to assistive text.
+  const caption = studio.locator('.local-canvas-region .preview-status');
+  await expect(caption).toBeVisible();
+  await expect(caption).toHaveText(/not an authoritative host preview/);
+  await expect(studio.locator('.local-canvas-region > h2')).toHaveClass(/assistive/);
   const nodeId = await heading.locator('..').getAttribute('data-studio-node');
   expect(nodeId).not.toBeNull();
   const region = studio.locator(`.preview-canvas-region[data-node-id="${nodeId ?? ''}"]`).first();
   await region.click();
   const input = studio.locator('[data-scalar-key="port:text"] input');
   await expect(input).toHaveValue('Build something meaningful');
+  // A single click selects and reveals; it never moves keyboard focus.
+  await expect(input).not.toBeFocused();
+  // Hovering the rendered block marks its outline entry; leaving clears it.
+  await region.hover();
+  await expect(studio.locator('button.outline-entry[data-hovered="true"]')).toHaveCount(1);
+  await page.mouse.move(5, 5);
+  await expect(studio.locator('button.outline-entry[data-hovered="true"]')).toHaveCount(0);
+  // Clicking the outline entry selects and focuses it at once: the rect
+  // carries both states and selection keeps its solid stroke.
+  const entry = studio.locator(`button.outline-entry[data-node-id="${nodeId ?? ''}"]`);
+  await entry.click();
+  await expect(entry).toBeFocused();
+  await expect(region).toHaveAttribute('data-selected', 'true');
+  await expect(region).toHaveAttribute('data-focused', 'true');
+  expect(await region.evaluate((element) => getComputedStyle(element).strokeDasharray)).toBe(
+    'none',
+  );
   await stage.focus();
   await page.keyboard.press('Enter');
   await expect(input).toBeFocused();
@@ -71,6 +119,7 @@ test('the public canvas stays live while typed content, layout and presentation 
   // Palette-to-canvas insertion is an enhancement over the click path: a
   // cancelled carry changes nothing, and a drop dispatches the same
   // insert-node command at the geometry-ranked destination.
+  await showWorkspacePane(studio, 'Blocks');
   const divider = studio
     .getByRole('complementary', { name: 'Block palette' })
     .getByRole('button', { name: 'Divider', exact: true });

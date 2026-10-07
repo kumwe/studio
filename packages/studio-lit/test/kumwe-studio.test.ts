@@ -500,7 +500,11 @@ describe('kumwe-studio element', () => {
     const element = await mountShell({ roots: structuredRoots() });
 
     expect(element.shadowRoot?.textContent).toContain('Blocks');
+    expect(element.shadowRoot?.querySelector('button.add-blocks-toggle')?.textContent?.trim()).toBe(
+      'Add blocks',
+    );
     element.messages = {
+      'studio.shell/add-blocks-toggle': { defaultMessage: 'Bausteine hinzufügen' },
       'studio.shell/outline-heading': { defaultMessage: 'Struktur' },
       'studio.shell/palette-heading': { defaultMessage: 'Bausteine' },
     };
@@ -509,7 +513,172 @@ describe('kumwe-studio element', () => {
     expect(element.shadowRoot?.textContent).toContain('Bausteine');
     expect(element.shadowRoot?.textContent).toContain('Struktur');
     expect(element.shadowRoot?.querySelector('aside[aria-label="Struktur"]')).not.toBeNull();
+    expect(element.shadowRoot?.querySelector('button.add-blocks-toggle')?.textContent?.trim()).toBe(
+      'Bausteine hinzufügen',
+    );
     element.remove();
+  });
+
+  it('collapses the block palette behind Add blocks on a non-empty document and opens it on a blank one', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+    const toggle = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'aside.outline .panel-header button.add-blocks-toggle',
+    );
+    const library = element.shadowRoot?.querySelector('aside.library');
+    expect(workspace?.getAttribute('data-library')).toBe('closed');
+    expect(toggle?.textContent?.trim()).toBe('Add blocks');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle?.getAttribute('aria-controls')).toBe('library');
+    expect(library?.id).toBe('library');
+    expect(library?.getAttribute('aria-label')).toBe('Block palette');
+
+    toggle?.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('open');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(workspace?.getAttribute('data-pane')).toBe('library');
+
+    toggle?.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('closed');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    expect(workspace?.getAttribute('data-pane')).toBe('outline');
+    element.remove();
+
+    const blank = await mountShell();
+    expect(blank.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'open',
+    );
+    expect(
+      blank.shadowRoot?.querySelector('button.add-blocks-toggle')?.getAttribute('aria-expanded'),
+    ).toBe('true');
+    blank.remove();
+  });
+
+  it('moves focus from a closing library to the Add blocks control', async () => {
+    const element = await mountShell();
+    const toggle = element.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle');
+    const search = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.library input[type="search"]',
+    );
+    if (toggle == null || search == null) throw new Error('Missing library controls');
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'open',
+    );
+    search.focus();
+    expect(element.shadowRoot?.activeElement).toBe(search);
+
+    toggle.click();
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'closed',
+    );
+    expect(element.shadowRoot?.activeElement).toBe(toggle);
+    element.remove();
+  });
+
+  it('closes an open library from any pane at wide widths and brings it forward while sheets are active', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+    const toggle = element.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle');
+    const switcher = element.shadowRoot?.querySelector<HTMLElement>('nav.pane-switcher');
+    if (toggle == null || switcher == null) throw new Error('Missing workspace controls');
+    const insertFromPalette = async (): Promise<void> => {
+      const palette = [
+        ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.palette button') ?? []),
+      ];
+      palette.find((button) => button.textContent?.includes('Text'))?.click();
+      await element.updateComplete;
+      expect(workspace?.getAttribute('data-pane')).toBe('canvas');
+    };
+
+    // Wide: an insertion returns to the canvas pane; the next press still closes.
+    toggle.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('open');
+    await insertFromPalette();
+    toggle.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('closed');
+    expect(workspace?.getAttribute('data-pane')).toBe('canvas');
+
+    // Sheets: the switcher is laid out, so a press from another sheet brings
+    // the open library forward instead of closing it behind that sheet.
+    const original = switcher.getBoundingClientRect.bind(switcher);
+    switcher.getBoundingClientRect = (): DOMRect => new DOMRect(0, 0, 390, 40);
+    toggle.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('open');
+    expect(workspace?.getAttribute('data-pane')).toBe('library');
+    await insertFromPalette();
+    toggle.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('open');
+    expect(workspace?.getAttribute('data-pane')).toBe('library');
+    toggle.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-library')).toBe('closed');
+    expect(workspace?.getAttribute('data-pane')).toBe('outline');
+    switcher.getBoundingClientRect = original;
+    element.remove();
+  });
+
+  it('orders the structure panel before the page', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const children = [...(element.shadowRoot?.querySelector('.workspace')?.children ?? [])];
+    const indexOf = (selector: string): number =>
+      children.findIndex((child) => child.matches(selector));
+    const outline = indexOf('aside.outline');
+    const library = indexOf('aside.library');
+    const inspector = indexOf('aside.inspector');
+    const canvas = indexOf('main.canvas');
+
+    expect(outline).toBeGreaterThanOrEqual(0);
+    expect(outline).toBeLessThan(library);
+    expect(library).toBeLessThan(inspector);
+    expect(inspector).toBeLessThan(canvas);
+    element.remove();
+  });
+
+  it('keeps an open library that holds focus when the document is replaced', async () => {
+    const element = await mountShell();
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'open',
+    );
+    const search = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.library input[type="search"]',
+    );
+    if (search == null) throw new Error('Missing library search');
+    search.focus();
+    expect(element.shadowRoot?.activeElement).toBe(search);
+
+    element.document = createBlueprintFixture({ roots: structuredRoots() });
+    await element.updateComplete;
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'hero-1',
+      'section-1',
+      'text-1',
+      'text-2',
+    ]);
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'open',
+    );
+    expect(element.shadowRoot?.activeElement).toBe(search);
+    element.remove();
+
+    const inverse = await mountShell();
+    const outline = inverse.shadowRoot?.querySelector<HTMLElement>('aside.outline');
+    if (outline == null) throw new Error('Missing outline panel');
+    outline.focus();
+    expect(inverse.shadowRoot?.activeElement).toBe(outline);
+
+    inverse.document = createBlueprintFixture({ roots: structuredRoots() });
+    await inverse.updateComplete;
+    expect(inverse.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library')).toBe(
+      'closed',
+    );
+    inverse.remove();
   });
 
   it('tracks the save state and emits studio-dirty-changed', async () => {
