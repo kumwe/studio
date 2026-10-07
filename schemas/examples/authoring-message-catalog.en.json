@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.8.0",
+  "catalogVersion": "1.9.0",
   "locale": "en",
   "messages": {
     "studio.contextual/add-field": {
@@ -399,6 +399,10 @@
     },
     "studio.contextual/workspace-size": {
       "defaultMessage": "Workspace size",
+      "parameters": []
+    },
+    "studio.shell/add-blocks-toggle": {
+      "defaultMessage": "Add blocks",
       "parameters": []
     },
     "studio.shell/announce-binding-removed": {
