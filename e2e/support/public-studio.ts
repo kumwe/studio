@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
-import { openBlocks } from './shell.js';
+import { openBlocks, returnToStructure } from './shell.js';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -53,8 +53,11 @@ document.documentElement.dataset.studioReady = 'true';`,
 
 /**
  * Select a small-screen sheet through its visible control, never a hidden DOM
- * mutation. At wide widths only the block palette is behind a control, the
- * Outline's "Add blocks" disclosure, so `Blocks` opens it there.
+ * mutation. At wide widths the structure column shows one layer at a time:
+ * `Blocks` opens the structure view's "Add blocks" disclosure and `Outline`
+ * returns from the details view through its "Back" control, while the
+ * details view (`Inspector`) is reached by a page click, `Enter` on the stage
+ * or the selected entry's `Edit`, which a spec drives itself.
  */
 export async function showWorkspacePane(studio: Locator, name: string): Promise<void> {
   const switcher = studio.getByRole('navigation', { name: 'Workspace panels' });
@@ -62,5 +65,7 @@ export async function showWorkspacePane(studio: Locator, name: string): Promise<
     await switcher.getByRole('button', { name, exact: true }).click();
   } else if (name === 'Blocks') {
     await openBlocks(studio);
+  } else if (name === 'Outline') {
+    await returnToStructure(studio);
   }
 }

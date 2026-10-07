@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   STUDIO_CONTRACT_VERSION,
+  type BlockDefinition,
   type BlockType,
   type BlueprintCommand,
   type BlueprintDocument,
@@ -16,6 +17,7 @@ import {
 import {
   defineKumweStudio,
   KumweStudioElement,
+  StudioAuthoringControlRegistry,
   type StudioDocumentChangeDetail,
 } from '../src/index.js';
 
@@ -74,6 +76,7 @@ function themeViewports(): ThemeViewport[] {
 }
 
 interface MountOptions {
+  definitions?: BlockDefinition[];
   roots?: BlueprintNode[];
   sessionState?: 'editable' | 'read-only';
   viewports?: ThemeViewport[];
@@ -83,7 +86,9 @@ async function mountShell(options: MountOptions = {}): Promise<KumweStudioElemen
   defineKumweStudio();
   const element = new KumweStudioElement();
   element.configuration = {
-    blockDefinitions: [defineTestBlock({ label: 'Text', type: 'studio.core/text' })],
+    blockDefinitions: options.definitions ?? [
+      defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+    ],
     session: createStudioConfigurationFixture(
       options.sessionState === undefined ? {} : { sessionState: options.sessionState },
     ),
@@ -306,7 +311,9 @@ describe('inspector property editing', () => {
     const controls = [
       ...inspectorRegion(element).querySelectorAll<HTMLElement>('input, button'),
     ].map((control) => control.className);
+    // The details header's Back control precedes every editing control.
     expect(controls).toEqual([
+      'panel-back',
       'layout-role-input',
       'layout-role-unset',
       'layout-role-input',
@@ -485,11 +492,13 @@ describe('inspector read-only and failure behaviour', () => {
       ...inspectorRegion(element).querySelectorAll<HTMLInputElement | HTMLButtonElement>(
         'input, button',
       ),
-    ];
+    ].filter((control) => control.closest('.panel-header') === null);
     expect(controls.length).toBeGreaterThan(0);
     for (const control of controls) {
       expect(control.disabled).toBe(true);
     }
+    // Navigation stays available: the layer's Back control is never disabled.
+    expect(inspectorButton(element, 'button.panel-back').disabled).toBe(false);
     expect(inspectorRegion(element).textContent).toContain(
       'Editing is disabled because this session is read-only.',
     );
@@ -536,6 +545,83 @@ describe('inspector read-only and failure behaviour', () => {
     expect(liveRegionText(element)).toContain('Undid change');
     expect(selectedNode(element).properties.align).toBe('start');
     expect(propertyInput(element, 'align').value).toBe('"start"');
+    element.remove();
+  });
+});
+
+describe('inspector layers', () => {
+  it('keeps an imperatively mounted authoring control and its holder across structure → details → structure', async () => {
+    let destroyed = 0;
+    let mounted = 0;
+    const element = await mountShell({
+      definitions: [
+        {
+          ...defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+          propertyControls: [{ control: 'org.example.catalog/note', property: 'note' }],
+        },
+      ],
+    });
+    element.authoringControlRegistry = new StudioAuthoringControlRegistry({
+      extensionControls: [
+        {
+          control: 'org.example.catalog/note',
+          mount(options) {
+            mounted += 1;
+            const input = document.createElement('input');
+            input.setAttribute('aria-label', 'Extension note');
+            input.value = typeof options.value === 'string' ? options.value : '';
+            input.addEventListener('input', () => {
+              options.onChange?.({ valid: true, value: input.value });
+            });
+            options.holder.append(input);
+            return {
+              destroy: (): void => {
+                destroyed += 1;
+                input.remove();
+              },
+              focus: (): void => input.focus(),
+              readOnly: options.readOnly === true,
+              value: (): string => input.value,
+            };
+          },
+        },
+      ],
+    });
+    await element.updateComplete;
+    await selectNode(element, 'text-1');
+    await element.authoringReady;
+    const view = (): string | null =>
+      element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-panel-view') ?? null;
+    const holder = element.shadowRoot?.querySelector<HTMLElement>(
+      '[data-authoring-key="text-1:property:note"]',
+    );
+    const input = holder?.querySelector<HTMLInputElement>('[aria-label="Extension note"]');
+    if (holder == null || input == null) throw new Error('Missing mounted extension control.');
+    expect(mounted).toBe(1);
+    expect(view()).toBe('structure');
+    input.value = 'kept across layers';
+
+    element.revealInspector();
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(view()).toBe('details');
+    expect(element.shadowRoot?.querySelector('[data-authoring-key="text-1:property:note"]')).toBe(
+      holder,
+    );
+
+    inspectorButton(element, 'button.panel-back').click();
+    await element.updateComplete;
+    await element.authoringReady;
+    expect(view()).toBe('structure');
+    expect(element.shadowRoot?.querySelector('[data-authoring-key="text-1:property:note"]')).toBe(
+      holder,
+    );
+    expect(holder.isConnected).toBe(true);
+    expect(holder.querySelector('[aria-label="Extension note"]')).toBe(input);
+    expect(input.isConnected).toBe(true);
+    expect(input.value).toBe('kept across layers');
+    expect(destroyed).toBe(0);
+    expect(mounted).toBe(1);
     element.remove();
   });
 });

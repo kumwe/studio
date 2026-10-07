@@ -296,6 +296,74 @@ describe('breadcrumb', () => {
     expect(nav?.querySelectorAll('button').length).toBe(0);
     element.remove();
   });
+
+  it('renders inside the details header and no longer in the page column', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    await selectNode(element, 'text-1');
+    const nav = breadcrumb(element);
+    expect(nav).not.toBeNull();
+    expect(nav?.closest('aside.inspector')).not.toBeNull();
+    expect(canvas(element).querySelector('.breadcrumb')).toBeNull();
+    const header = element.shadowRoot?.querySelector('aside.inspector .panel-header');
+    const inspectorDefault = element.shadowRoot?.querySelector(
+      'aside.inspector .inspector-default',
+    );
+    if (nav == null || header == null || inspectorDefault == null) {
+      throw new Error('Missing details header or inspector body');
+    }
+    expect(header.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+    expect(
+      nav.compareDocumentPosition(inspectorDefault) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).not.toBe(0);
+    element.remove();
+  });
+
+  it('exposes the panel layer and the opened level as workspace attributes', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+    if (workspace == null) throw new Error('Missing workspace');
+    expect(workspace.getAttribute('data-panel-view')).toBe('structure');
+    expect(workspace.hasAttribute('data-panel-scope')).toBe(false);
+
+    element.revealInspector();
+    await element.updateComplete;
+    expect(workspace.getAttribute('data-panel-view')).toBe('details');
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('aside.inspector button.panel-back')
+      ?.click();
+    await element.updateComplete;
+    expect(workspace.getAttribute('data-panel-view')).toBe('structure');
+
+    await selectNode(element, 'section-1');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('button.outline-open')?.click();
+    await element.updateComplete;
+    expect(workspace.getAttribute('data-panel-view')).toBe('structure');
+    expect(workspace.getAttribute('data-panel-scope')).toBe('section-1');
+    element.remove();
+  });
+
+  it('keeps the details view when an ancestor crumb is activated', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+
+    await selectNode(element, 'text-2');
+    element.revealInspector();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-panel-view')).toBe('details');
+
+    breadcrumb(element)
+      ?.querySelector<HTMLButtonElement>('button[data-node-id="section-1"]')
+      ?.click();
+    await element.updateComplete;
+    expect(workspace?.getAttribute('data-panel-view')).toBe('details');
+    expect(outlineEntry(element, 'section-1').getAttribute('aria-pressed')).toBe('true');
+    expect(breadcrumb(element)?.querySelector('[aria-current="true"]')?.textContent?.trim()).toBe(
+      'Section',
+    );
+    element.remove();
+  });
 });
 
 describe('diagnostics surface', () => {

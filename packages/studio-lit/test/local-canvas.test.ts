@@ -61,6 +61,14 @@ function renderedRoot(shell: KumweStudioElement): ShadowRoot {
   return root;
 }
 
+function liveRegionText(shell: KumweStudioElement): string {
+  return shell.shadowRoot?.querySelector('[aria-live="polite"]')?.textContent ?? '';
+}
+
+function panelView(shell: KumweStudioElement): string | null {
+  return shell.shadowRoot?.querySelector('.workspace')?.getAttribute('data-panel-view') ?? null;
+}
+
 afterEach(() => {
   document.body.replaceChildren();
   vi.restoreAllMocks();
@@ -150,6 +158,10 @@ describe('public standalone visual canvas', () => {
     expect(entry?.getAttribute('aria-pressed')).toBe('true');
     expect(scrollIntoView.mock.contexts).toContain(entry);
     expect(shell.shadowRoot?.activeElement).toBeNull();
+    // A page click opens the details layer, announced once, still without focus.
+    expect(panelView(shell)).toBe('details');
+    expect(liveRegionText(shell)).toBe('Showing Inspector for Heading');
+    expect(shell.shadowRoot?.activeElement).toBeNull();
   });
 
   it('reveals a panel-selected node on the local canvas', async () => {
@@ -174,6 +186,8 @@ describe('public standalone visual canvas', () => {
     expect(scrollIntoView.mock.contexts).toContain(rendered);
     // A panel-originated selection never scrolls the panel itself.
     expect(scrollIntoView.mock.contexts).not.toContain(entry);
+    // Selecting through the structure view does not change the layer.
+    expect(panelView(shell)).toBe('structure');
   });
 
   it('demotes the local-canvas heading and keeps its caption', async () => {

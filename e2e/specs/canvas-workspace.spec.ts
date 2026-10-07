@@ -36,22 +36,26 @@ test('the public canvas stays live while typed content, layout and presentation 
   expect(blankScan.violations, JSON.stringify(blankScan.violations, null, 2)).toEqual([]);
   await page.setViewportSize({ width: 1600, height: 1000 });
 
-  // Wide layout: the structure column (Outline, Inspector) sits entirely to
-  // the left of the page, the page column fills the workspace height, and
-  // nothing overflows the viewport horizontally.
+  // Wide layout: the structure column shows one layer at a time and opens on
+  // the structure view, so the Outline sits entirely to the left of the page
+  // while the Inspector waits behind the details view; the page column fills
+  // the workspace height, and nothing overflows the viewport horizontally.
+  const workspace = studio.locator('.workspace');
   const pageBox = await studio.locator('.local-canvas-region').boundingBox();
-  const workspaceBox = await studio.locator('.workspace').boundingBox();
+  const workspaceBox = await workspace.boundingBox();
   const canvasBox = await studio.getByRole('main', { name: 'Blueprint structure' }).boundingBox();
   expect(pageBox).not.toBeNull();
   expect(workspaceBox).not.toBeNull();
   expect(canvasBox).not.toBeNull();
   if (pageBox === null || workspaceBox === null || canvasBox === null) return;
-  for (const name of ['Outline', 'Inspector']) {
-    const box = await studio.getByRole('complementary', { name, exact: true }).boundingBox();
-    expect(box, name).not.toBeNull();
-    if (box === null) return;
-    expect(box.x + box.width, name).toBeLessThanOrEqual(pageBox.x + 1);
-  }
+  await expect(workspace).toHaveAttribute('data-panel-view', 'structure');
+  const outlineLandmark = studio.getByRole('complementary', { name: 'Outline', exact: true });
+  const inspectorLandmark = studio.getByRole('complementary', { name: 'Inspector', exact: true });
+  const outlineBox = await outlineLandmark.boundingBox();
+  expect(outlineBox).not.toBeNull();
+  if (outlineBox === null) return;
+  expect(outlineBox.x + outlineBox.width).toBeLessThanOrEqual(pageBox.x + 1);
+  await expect(inspectorLandmark).toBeHidden();
   expect(Math.abs(canvasBox.height - workspaceBox.height)).toBeLessThanOrEqual(2);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
@@ -71,6 +75,16 @@ test('the public canvas stays live while typed content, layout and presentation 
   expect(nodeId).not.toBeNull();
   const region = studio.locator(`.preview-canvas-region[data-node-id="${nodeId ?? ''}"]`).first();
   await region.click();
+  // A single click on the page opens the details view: the Inspector takes the
+  // structure column, left of the page, with the selection path in its
+  // header, while the Outline waits behind "Back".
+  await expect(workspace).toHaveAttribute('data-panel-view', 'details');
+  await expect(outlineLandmark).toBeHidden();
+  const inspectorBox = await inspectorLandmark.boundingBox();
+  expect(inspectorBox).not.toBeNull();
+  if (inspectorBox === null) return;
+  expect(inspectorBox.x + inspectorBox.width).toBeLessThanOrEqual(pageBox.x + 1);
+  await expect(inspectorLandmark.getByRole('navigation', { name: 'Selection path' })).toBeVisible();
   const input = studio.locator('[data-scalar-key="port:text"] input');
   await expect(input).toHaveValue('Build something meaningful');
   // A single click selects and reveals; it never moves keyboard focus.
@@ -80,9 +94,13 @@ test('the public canvas stays live while typed content, layout and presentation 
   await expect(studio.locator('button.outline-entry[data-hovered="true"]')).toHaveCount(1);
   await page.mouse.move(5, 5);
   await expect(studio.locator('button.outline-entry[data-hovered="true"]')).toHaveCount(0);
+  // "Back" returns to the structure view with the selected entry focused.
+  await inspectorLandmark.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(workspace).toHaveAttribute('data-panel-view', 'structure');
+  const entry = studio.locator(`button.outline-entry[data-node-id="${nodeId ?? ''}"]`);
+  await expect(entry).toBeFocused();
   // Clicking the outline entry selects and focuses it at once: the rect
   // carries both states and selection keeps its solid stroke.
-  const entry = studio.locator(`button.outline-entry[data-node-id="${nodeId ?? ''}"]`);
   await entry.click();
   await expect(entry).toBeFocused();
   await expect(region).toHaveAttribute('data-selected', 'true');
@@ -120,6 +138,7 @@ test('the public canvas stays live while typed content, layout and presentation 
   // cancelled carry changes nothing, and a drop dispatches the same
   // insert-node command at the geometry-ranked destination.
   await showWorkspacePane(studio, 'Blocks');
+  await expect(workspace).toHaveAttribute('data-panel-view', 'structure');
   const divider = studio
     .getByRole('complementary', { name: 'Block palette' })
     .getByRole('button', { name: 'Divider', exact: true });

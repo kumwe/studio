@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { isPreviewMarker } from '@kumwe/studio-protocol';
-import { openShell } from '../support/shell.js';
+import { openShell, returnToStructure } from '../support/shell.js';
 
 /**
  * M3-04/M4-01: the reference renderer behind the preview bridge. The host
@@ -94,10 +94,21 @@ test('the production renderer renders and keeps canonical two-way selection', as
     .getByRole('button', { name: 'Section', exact: true })
     .click();
   await renderedDivider.click();
+  // The activation opens the details view for the resolved node: the
+  // selection path names it, and "Back" returns to the structure view.
+  await expect(shell.locator('.workspace')).toHaveAttribute('data-panel-view', 'details');
+  await expect(
+    shell
+      .getByRole('complementary', { name: 'Inspector' })
+      .getByRole('navigation', { name: 'Selection path' }),
+  ).toContainText('Divider');
+  await shell.getByRole('button', { name: 'Back', exact: true }).click();
   const outline = shell.getByRole('complementary', { name: 'Outline' });
   const dividerEntry = outline.getByRole('button', { name: 'Divider', exact: true });
   await expect(dividerEntry).toHaveAttribute('aria-pressed', 'true');
-  // The host's activation report also reveals the entry in the structure panel.
+  // The host's activation report also reveals the entry in the structure
+  // panel: after "Back" it is focused and scrolled into view.
+  await expect(dividerEntry).toBeFocused();
   await expect(dividerEntry).toBeInViewport();
 
   // With the edit control off, hovering the rendered block marks its outline
@@ -147,6 +158,11 @@ test('the production renderer renders and keeps canonical two-way selection', as
   await expect(shell.locator('.preview-canvas-drop-indicator')).toHaveCount(0);
   await page.mouse.up();
   await expect(renderedDivider).toHaveCount(1);
+  // With the control off the gesture is an ordinary click on the rendered
+  // divider: the host reports an activation, which opens its details view
+  // again, and the structure is unchanged once "Back" shows it.
+  await expect(shell.locator('.workspace')).toHaveAttribute('data-panel-view', 'details');
+  await returnToStructure(shell);
   expect(await entryOrder()).toEqual(orderBefore);
 
   // A viewport switch re-renders the same canonical page and the selection
