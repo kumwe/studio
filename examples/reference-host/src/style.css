@@ -203,7 +203,7 @@ kumwe-studio-contextual {
 .preview-surface {
   border: 1px solid #d7dce2;
   border-radius: 0.5rem;
-  margin-inline: auto;
+  margin-inline: 0;
   max-inline-size: 100%;
   overflow: auto;
   padding: var(--theme-block-gap, 0.75rem);
