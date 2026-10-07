@@ -1,5 +1,11 @@
 # @kumwe/studio-protocol
 
+## 0.1.0-beta.10
+
+### Patch Changes
+
+- [#74](https://github.com/kumwe/studio/pull/74) [`c9093f1`](https://github.com/kumwe/studio/commit/c9093f17ae0158520db3cd6a810199a39c27cd61) Thanks [@dependabot](https://github.com/apps/dependabot)! - Drop the no-op `void schemaFile;` statement from the generated `roundTripGeneratedProtocolModel` helper. The schema file argument only selects the model type, and the helper's behaviour is unchanged.
+
 ## 0.1.0-beta.9
 
 ## 0.1.0-beta.8
