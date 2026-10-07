@@ -94,6 +94,14 @@ import {
   findOutlineLocation,
 } from './outline.js';
 import {
+  hasListedChildren,
+  isNodeListed,
+  listedAncestorOf,
+  listingScopeFor,
+  parentScopeOf,
+  scopeChildren,
+} from './panel-navigation.js';
+import {
   StudioPreviewSurface,
   type StudioPreviewBinding,
   type StudioPreviewGeometry,
@@ -286,6 +294,8 @@ export class KumweStudioElement extends LitElement {
     patterns: { attribute: false },
     paletteFilter: { attribute: false, state: true },
     paletteOpen: { attribute: false, state: true },
+    panelScopeId: { attribute: false, state: true },
+    panelView: { attribute: false, state: true },
     previewBinding: { attribute: false },
     previewState: { attribute: false, state: true },
     resourceSearchService: { attribute: false },
@@ -352,6 +362,15 @@ export class KumweStudioElement extends LitElement {
     button:focus-visible {
       outline: 0.1875rem solid color-mix(in srgb, var(--studio-primary), transparent 55%);
       outline-offset: 0.125rem;
+    }
+
+    /* The structure panel's focused row is its cursor: after a pointer-driven
+       layer change the row is focused by script, which the platform does not
+       paint as :focus-visible, so it carries the same dashed focused
+       indicator the page shows for it. */
+    button.outline-entry:focus:not(:focus-visible) {
+      outline: 0.125rem dashed var(--studio-primary);
+      outline-offset: -0.125rem;
     }
 
     button[aria-pressed='true'] {
@@ -454,12 +473,16 @@ export class KumweStudioElement extends LitElement {
     .panel-header {
       align-items: center;
       background: var(--studio-panel);
+      /* A sticky box holds at the scrollport's content edge, so the panel's
+         own top padding is painted by the shadow rather than pulled over by
+         a negative margin, which would only push the header onto the row
+         below it. */
+      box-shadow: 0 -0.875rem 0 0 var(--studio-panel);
       display: flex;
       gap: 0.5rem;
       inset-block-start: 0;
       justify-content: space-between;
-      margin-block-start: -0.875rem;
-      padding-block: 0.875rem 0.25rem;
+      padding-block: 0 0.25rem;
       position: sticky;
       z-index: 1;
     }
@@ -468,8 +491,31 @@ export class KumweStudioElement extends LitElement {
       margin: 0;
     }
 
-    .add-blocks-toggle {
+    .add-blocks-toggle,
+    .panel-back,
+    .outline-whole-tree {
       font-size: 0.8125rem;
+    }
+
+    .panel-back-glyph {
+      margin-inline-end: 0.25rem;
+    }
+
+    /* An opened level lays its header out as two lines: the way back beside
+       the disclosure, then the level's name beside the way to the whole tree. */
+    .panel-header[data-scope] {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      justify-items: start;
+    }
+
+    .panel-header[data-scope] > .add-blocks-toggle,
+    .panel-header[data-scope] > .outline-whole-tree {
+      justify-self: end;
+    }
+
+    .outline-scope-heading {
+      overflow-wrap: anywhere;
     }
 
     /* The inset ring is the non-colour hover indicator, mirrored by the page
@@ -993,6 +1039,13 @@ export class KumweStudioElement extends LitElement {
   declare protected libraryOpen: boolean;
   declare protected paletteFilter: string | undefined;
   declare protected paletteOpen: boolean | undefined;
+  /**
+   * The container the structure view is opened into; `undefined` is the page
+   * level, which lists the whole tree. A scope survives a details round trip.
+   */
+  declare protected panelScopeId: NodeId | undefined;
+  /** Which layer the structure column shows: the tree or the selected block's details. */
+  declare protected panelView: 'structure' | 'details';
   declare protected previewState: StudioPreviewState | 'unavailable' | undefined;
   declare protected selectedNodeId: string | undefined;
 
@@ -1011,6 +1064,10 @@ export class KumweStudioElement extends LitElement {
   #internalDocumentUpdate = false;
   #lastDirty = false;
   #libraryWasOpen = false;
+  /** The last layer announced, so a repeated transition to the same layer stays silent. */
+  #announcedLayer: string | undefined;
+  /** The row the hover indicator marks in the current structure listing (computed per render). */
+  #hoveredRowId: NodeId | undefined;
   #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
   #pendingPaletteFocus = false;
@@ -1045,6 +1102,8 @@ export class KumweStudioElement extends LitElement {
     this.libraryQuery = '';
     this.activePane = 'canvas';
     this.libraryOpen = true;
+    this.panelView = 'structure';
+    this.panelScopeId = undefined;
   }
 
   public get activeViewport(): ThemeViewport | undefined {
@@ -1133,7 +1192,18 @@ export class KumweStudioElement extends LitElement {
    * as commands Studio can construct locally. Invalid identifiers are refused by the core session.
    */
   public revealInspector(): void {
+    // Host-driven and silent: the host announces its own insertion. Focus that
+    // sits in a region the details view hides moves to the Back control.
+    const leaving = this.#focusInsideStructureRegions();
     this.activePane = 'inspector';
+    this.panelView = 'details';
+    if (leaving) {
+      void this.updateComplete.then(() => {
+        if (this.panelView === 'details') {
+          this.#focusPanelBack();
+        }
+      });
+    }
   }
 
   public selectNode(nodeId: NodeId | undefined): void {
@@ -1258,11 +1328,33 @@ export class KumweStudioElement extends LitElement {
     if (changed.has('viewports') || changed.has('theme')) {
       this.#activeViewportId = undefined;
     }
+    this.#alignPanelToPendingFocus();
     if (changed.has('inspectorMode') && this.inspectorMode !== undefined) {
       // Model and Content controls dock in the inspector, so choosing one of
       // those modes on a narrow screen brings that sheet forward; Blueprint
       // returns to the page. Wide layouts show every region regardless.
       this.activePane = this.inspectorMode === 'blueprint' ? 'canvas' : 'inspector';
+    }
+    // The pane is protected state, outside `keyof this` as Lit types it.
+    const changedKeys: ReadonlyMap<PropertyKey, unknown> = changed;
+    if (
+      changedKeys.has('activePane') ||
+      (changed.has('inspectorMode') && this.inspectorMode !== undefined)
+    ) {
+      // The Outline and Inspector sheets are the structure and details layers,
+      // and the contextual tabs follow the same rule: docked Content and Model
+      // panels live in the details layer, Blueprint returns to the structure.
+      const previous = this.panelView;
+      if (this.activePane === 'outline') {
+        this.panelView = 'structure';
+      } else if (this.activePane === 'inspector') {
+        this.panelView = 'details';
+      } else if (changed.has('inspectorMode') && this.inspectorMode === 'blueprint') {
+        this.panelView = 'structure';
+      }
+      if (this.panelView !== previous) {
+        this.#announcedLayer = undefined;
+      }
     }
     if (changed.has('configuration')) {
       this.#rebuildRegistry();
@@ -1387,6 +1479,8 @@ export class KumweStudioElement extends LitElement {
         data-pane=${this.activePane}
         data-contextual=${this.inspectorMode === undefined ? 'false' : 'true'}
         data-library=${this.libraryOpen ? 'open' : 'closed'}
+        data-panel-view=${this.panelView}
+        data-panel-scope=${this.panelScopeId ?? nothing}
         @keydown=${(event: KeyboardEvent): void => {
           this.#onWorkspaceKeydown(event);
         }}
@@ -1411,28 +1505,9 @@ export class KumweStudioElement extends LitElement {
           aria-label=${this.#text('studio.shell/outline-heading')}
           tabindex="0"
         >
-          <div class="panel-header">
-            <h2>${this.#text('studio.shell/outline-heading')}</h2>
-            <button
-              type="button"
-              class="add-blocks-toggle"
-              aria-expanded=${this.libraryOpen ? 'true' : 'false'}
-              aria-controls="library"
-              @click=${(): void => {
-                this.#toggleLibrary();
-              }}
-            >
-              ${this.#text('studio.shell/add-blocks-toggle')}
-            </button>
-          </div>
+          ${this.#renderPanelHeader('structure')}
           <p class="hint">${this.#text('studio.shell/outline-hint')}</p>
-          ${
-            roots.length === 0
-              ? html`<p class="empty">${this.#text('studio.shell/outline-empty')}</p>`
-              : html`<ul class="tree">
-                  ${roots.map((node) => this.#renderOutlineNode(node))}
-                </ul>`
-          }
+          ${this.#renderOutline(roots)}
         </aside>
 
         <aside
@@ -1516,8 +1591,12 @@ export class KumweStudioElement extends LitElement {
           }
         </aside>
 
-        <aside class="panel inspector" aria-label=${this.#text('studio.shell/inspector-heading')}>
-          <h2>${this.#text('studio.shell/inspector-heading')}</h2>
+        <aside
+          class="panel inspector"
+          aria-label=${this.#text('studio.shell/inspector-heading')}
+          tabindex="-1"
+        >
+          ${this.#renderPanelHeader('details')} ${this.#renderBreadcrumb()}
           <slot class="inspector-slot" name="contextual-inspector"></slot>
           <div
             class="inspector-default"
@@ -1583,7 +1662,7 @@ export class KumweStudioElement extends LitElement {
             </div>
             ${this.#renderCanvasEditToggle()}
           </div>
-          ${this.#renderBreadcrumb()} ${this.#renderPreview()} ${this.#renderDropIndicator()}
+          ${this.#renderPreview()} ${this.#renderDropIndicator()}
           ${
             roots.length === 0
               ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
@@ -2658,6 +2737,27 @@ export class KumweStudioElement extends LitElement {
       }
       return;
     }
+    // The layer keys are the plain horizontal arrows: a modified arrow is
+    // left to the platform (Alt+Arrow is the move modifier of the vertical pair).
+    const modified = event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
+    if (event.key === 'ArrowRight' && !modified) {
+      // A container opens as the panel's current level; a block without
+      // children opens its details with the first control focused.
+      event.preventDefault();
+      if (hasListedChildren(node)) {
+        this.#openScope(node.id);
+      } else {
+        this.#activateNodeEditing(node.id);
+      }
+      return;
+    }
+    if (event.key === 'ArrowLeft' && !modified) {
+      if (this.panelScopeId !== undefined) {
+        event.preventDefault();
+        this.#closeScope();
+      }
+      return;
+    }
     if (event.key === 'Delete') {
       event.preventDefault();
       this.#deleteNode(node);
@@ -2719,6 +2819,23 @@ export class KumweStudioElement extends LitElement {
       if (this.paletteOpen === true) {
         event.preventDefault();
         this.#closePalette(true);
+      }
+      // Precedence: drag cancel, then the command palette, then the panel
+      // unwind, which only a key from the panel's own chrome may trigger.
+      if (
+        event.defaultPrevented ||
+        this.inspectorMode === 'content' ||
+        this.inspectorMode === 'model' ||
+        this.#panelEscapeOrigin(event) === null
+      ) {
+        return;
+      }
+      if (this.panelView === 'details') {
+        event.preventDefault();
+        this.#showStructure();
+      } else if (this.panelScopeId !== undefined) {
+        event.preventDefault();
+        this.#closeScope();
       }
     }
   }
@@ -3079,6 +3196,29 @@ export class KumweStudioElement extends LitElement {
   #rebuildSession(): void {
     this.hoveredNodeId = undefined;
     this.focusedEntryNodeId = undefined;
+    // A replaced document or session starts at the page level. The layer is
+    // re-derived from the contextual mode rather than reset: the docked
+    // Content and Model panels live in the details layer and must survive the
+    // wrapper's first update and every save reconciliation.
+    const previousView = this.panelView;
+    const detailsHeldFocus = this.#inspectorHoldsFocus();
+    this.panelScopeId = undefined;
+    this.#announcedLayer = undefined;
+    this.panelView =
+      this.inspectorMode === 'content' || this.inspectorMode === 'model' ? 'details' : 'structure';
+    if (previousView === 'details' && this.panelView === 'structure') {
+      // The details layer closes under the author (the selection it showed
+      // is cleared below): the layer change is announced like any other, and
+      // focus that sat in the closing layer lands on the structure region.
+      if (detailsHeldFocus) {
+        void this.updateComplete.then(() => {
+          if (this.panelView === 'structure' && this.#shadowActiveElement() === null) {
+            this.shadowRoot?.querySelector<HTMLElement>('aside.outline')?.focus();
+          }
+        });
+      }
+      this.#announceLayer('structure', undefined);
+    }
     // The library opens on a blank document and collapses on a non-empty one,
     // but a library that holds keyboard focus is never hidden by a host
     // snapshot: that would drop focus to the body while the author is typing.
@@ -5027,6 +5167,28 @@ export class KumweStudioElement extends LitElement {
         >
           ${this.#text('studio.shell/delete')}
         </button>
+        <button
+          type="button"
+          class="outline-edit"
+          @click=${(): void => {
+            this.#activateNodeEditing(node.id);
+          }}
+        >
+          ${this.#text('studio.shell/outline-edit')}
+        </button>
+        ${
+          hasListedChildren(node)
+            ? html`<button
+                type="button"
+                class="outline-open"
+                @click=${(): void => {
+                  this.#openScope(node.id);
+                }}
+              >
+                ${this.#text('studio.shell/outline-open')}
+              </button>`
+            : nothing
+        }
         <label class="outline-move-destination-label">
           <span>${this.#text('studio.shell/move-destination-label')}</span>
           <select
@@ -5058,17 +5220,156 @@ export class KumweStudioElement extends LitElement {
     `;
   }
 
-  #renderOutlineNode(node: BlueprintNode): TemplateResult {
+  /**
+   * The structure listing: the whole tree at the page level, or one opened
+   * container's non-empty slots with their direct children. The whole tree
+   * is the default and the complete accessible representation; a level only
+   * narrows what is listed.
+   */
+  #renderOutline(roots: readonly BlueprintNode[]): TemplateResult {
+    const scopeId = this.panelScopeId;
+    const hovered = this.hoveredNodeId;
+    this.#hoveredRowId =
+      hovered === undefined || scopeId === undefined
+        ? hovered
+        : listedAncestorOf(roots, scopeId, hovered);
+    const empty = html`<p class="empty">${this.#text('studio.shell/outline-empty')}</p>`;
+    if (scopeId === undefined) {
+      return roots.length === 0
+        ? empty
+        : html`<ul class="tree">
+            ${roots.map((node) => this.#renderOutlineNode(node, { nested: true }))}
+          </ul>`;
+    }
+    const scope = findOutlineLocation(roots, scopeId)?.node;
+    const slots = scopeChildren(roots, scopeId);
+    if (scope === undefined || slots.length === 0) {
+      return empty;
+    }
+    return html`${slots.map(({ slot, children }) =>
+      this.#renderSlotSection(scope, slot, children, false),
+    )}`;
+  }
+
+  /** The hover indicator marks the listed row that stands for the hovered node. */
+  #entryHovered(node: BlueprintNode): boolean {
+    return this.#hoveredRowId !== undefined && this.#hoveredRowId === node.id;
+  }
+
+  /**
+   * The sticky header of each layer. The structure header names the level
+   * (the page, or an opened container with the way back to its parent); the
+   * details header carries `Back`, except in the contextual Content and Model
+   * modes, where the wrapper's Blueprint tab is the return.
+   */
+  #renderPanelHeader(view: 'structure' | 'details'): TemplateResult {
+    if (view === 'details') {
+      const returnable = this.inspectorMode === undefined || this.inspectorMode === 'blueprint';
+      return html`
+        <div class="panel-header">
+          ${
+            returnable
+              ? html`<button
+                  type="button"
+                  class="panel-back"
+                  @click=${(): void => {
+                    this.#showStructure();
+                  }}
+                >
+                  <span class="panel-back-glyph" aria-hidden="true">&lsaquo;</span>
+                  ${this.#text('studio.shell/panel-back')}
+                </button>`
+              : nothing
+          }
+          <h2>${this.#text('studio.shell/inspector-heading')}</h2>
+        </div>
+      `;
+    }
+    const roots = this.document?.roots ?? [];
+    const scope =
+      this.panelScopeId === undefined
+        ? undefined
+        : findOutlineLocation(roots, this.panelScopeId)?.node;
+    const addBlocks = html`<button
+      type="button"
+      class="add-blocks-toggle"
+      aria-expanded=${this.libraryOpen ? 'true' : 'false'}
+      aria-controls="library"
+      @click=${(): void => {
+        this.#toggleLibrary();
+      }}
+    >
+      ${this.#text('studio.shell/add-blocks-toggle')}
+    </button>`;
+    if (scope === undefined) {
+      return html`
+        <div class="panel-header">
+          <h2>${this.#text('studio.shell/outline-heading')}</h2>
+          ${addBlocks}
+        </div>
+      `;
+    }
+    const parentId = parentScopeOf(roots, scope.id);
+    const parent = parentId === undefined ? undefined : findOutlineLocation(roots, parentId)?.node;
+    const parentLabel =
+      parent === undefined ? this.#text('studio.shell/panel-page') : this.#nodeLabel(parent);
+    return html`
+      <div class="panel-header" data-scope=${scope.id}>
+        <button
+          type="button"
+          class="panel-back"
+          @click=${(): void => {
+            this.#closeScope();
+          }}
+        >
+          <span class="panel-back-glyph" aria-hidden="true">&lsaquo;</span>
+          ${this.#text('studio.shell/panel-back-to', { label: parentLabel })}
+        </button>
+        ${addBlocks}
+        <h2 class="outline-scope-heading">${this.#nodeLabel(scope)}</h2>
+        <button
+          type="button"
+          class="outline-whole-tree"
+          @click=${(): void => {
+            this.#showWholeTree();
+          }}
+        >
+          ${this.#text('studio.shell/outline-whole-tree')}
+        </button>
+      </div>
+    `;
+  }
+
+  #renderSlotSection(
+    node: BlueprintNode,
+    slot: string,
+    children: readonly BlueprintNode[],
+    nested: boolean,
+  ): TemplateResult {
+    // The slot name is visible text, not only a region label, so the
+    // composition structure stays perceivable in the outline.
+    const slotText = this.#slotLabel(node, slot);
+    return html`
+      <section class="node-children" aria-label=${slotText}>
+        <span class="outline-slot-label">${slotText}</span>
+        <ul class="tree">
+          ${children.map((child) => this.#renderOutlineNode(child, { nested }))}
+        </ul>
+      </section>
+    `;
+  }
+
+  #renderOutlineNode(node: BlueprintNode, options: { nested: boolean }): TemplateResult {
     const definition = this.#findDefinition(node);
     const selected = this.selectedNodeId === node.id;
-    const nested = Object.entries(node.slots);
+    const nested = options.nested ? Object.entries(node.slots) : [];
     return html`
       <li>
         <button
           type="button"
           class="outline-entry"
           data-node-id=${node.id}
-          data-hovered=${this.hoveredNodeId === node.id ? 'true' : 'false'}
+          data-hovered=${this.#entryHovered(node) ? 'true' : 'false'}
           aria-pressed=${selected ? 'true' : 'false'}
           @click=${(): void => {
             this.#selectNode(node.id);
@@ -5097,22 +5398,9 @@ export class KumweStudioElement extends LitElement {
           }
         </button>
         ${selected ? this.#renderOutlineControls(node) : nothing}
-        ${nested.map(([slot, children]) => {
-          if (children.length === 0) {
-            return nothing;
-          }
-          // The slot name is visible text, not only a region label, so the
-          // composition structure stays perceivable in the outline.
-          const slotText = this.#slotLabel(node, slot);
-          return html`
-            <section class="node-children" aria-label=${slotText}>
-              <span class="outline-slot-label">${slotText}</span>
-              <ul class="tree">
-                ${children.map((child) => this.#renderOutlineNode(child))}
-              </ul>
-            </section>
-          `;
-        })}
+        ${nested.map(([slot, children]) =>
+          children.length === 0 ? nothing : this.#renderSlotSection(node, slot, children, true),
+        )}
       </li>
     `;
   }
@@ -5841,23 +6129,7 @@ export class KumweStudioElement extends LitElement {
     }
     this.#selectNode(nodeId);
     this.activePane = 'inspector';
-    void this.updateComplete.then(() => {
-      if (this.selectedNodeId !== nodeId) {
-        return;
-      }
-      const selector = ':is(input, select, textarea):not(:disabled)';
-      const shadowDefault = this.shadowRoot?.querySelector<HTMLElement>('.inspector-default');
-      const control =
-        (shadowDefault?.hasAttribute('hidden') === false
-          ? shadowDefault.querySelector<HTMLElement>(`.scalar-control ${selector}`)
-          : null) ??
-        this.querySelector<HTMLElement>(`[slot="contextual-inspector"] ${selector}`) ??
-        this.shadowRoot?.querySelector<HTMLElement>(
-          `.inspector-default:not([hidden]) ${selector}`,
-        ) ??
-        null;
-      control?.focus();
-    });
+    this.#openDetails(nodeId, { focus: 'control' });
   }
 
   #onPreviewStageKeydown(event: KeyboardEvent): void {
@@ -6080,6 +6352,8 @@ export class KumweStudioElement extends LitElement {
       revealOnCanvas: false,
       revealEntry: true,
     });
+    // A click on the page opens the details layer without moving focus.
+    this.#openDetails(nodeId, { focus: 'none' });
   }
 
   /** Non-focusing sibling of #focusOutlineEntry; reduced motion needs no smooth scroll. */
@@ -6153,6 +6427,21 @@ export class KumweStudioElement extends LitElement {
     );
   }
 
+  #outlineHoldsFocus(): boolean {
+    const active = this.#shadowActiveElement();
+    return (
+      active !== null && this.shadowRoot?.querySelector('aside.outline')?.contains(active) === true
+    );
+  }
+
+  #inspectorHoldsFocus(): boolean {
+    const active = this.#shadowActiveElement();
+    return (
+      active !== null &&
+      this.shadowRoot?.querySelector('aside.inspector')?.contains(active) === true
+    );
+  }
+
   /** The focused element inside the shadow tree, or null when none resolves. */
   #shadowActiveElement(): Element | null {
     const root = this.shadowRoot;
@@ -6166,6 +6455,285 @@ export class KumweStudioElement extends LitElement {
       // tree; an unresolved focus is treated as none.
       return null;
     }
+  }
+
+  /**
+   * Opens a container as the structure view's current level. The first listed
+   * row takes focus. A level that is empty by the time it renders has already
+   * fallen back to its parent (`#alignPanelToPendingFocus`), which lists the
+   * container and focuses it, so focus is never dropped into a hidden region.
+   */
+  #openScope(nodeId: NodeId): void {
+    const roots = this.document?.roots;
+    if (roots === undefined) {
+      return;
+    }
+    const node = findOutlineLocation(roots, nodeId)?.node;
+    if (node === undefined || !hasListedChildren(node)) {
+      return;
+    }
+    this.panelScopeId = nodeId;
+    this.panelView = 'structure';
+    if (this.activePane === 'inspector') {
+      this.activePane = 'outline';
+    }
+    void this.updateComplete.then(() => {
+      if (this.panelScopeId !== nodeId || this.panelView !== 'structure') {
+        return;
+      }
+      const outline = this.shadowRoot?.querySelector('aside.outline');
+      const target =
+        outline?.querySelector<HTMLElement>('button.outline-entry') ??
+        outline?.querySelector<HTMLElement>('button.panel-back') ??
+        null;
+      target?.focus();
+    });
+    this.#announceLayer('structure', nodeId);
+  }
+
+  /** Returns one level up; the container that was opened is listed there and takes focus. */
+  #closeScope(): void {
+    const previous = this.panelScopeId;
+    const roots = this.document?.roots;
+    if (previous === undefined || roots === undefined) {
+      return;
+    }
+    const parent = parentScopeOf(roots, previous);
+    this.panelScopeId = parent;
+    this.#pendingFocusNodeId = previous;
+    this.#announceLayer('structure', parent);
+  }
+
+  /** Returns to the page level; the container that was opened takes focus. */
+  #showWholeTree(): void {
+    const previous = this.panelScopeId;
+    this.panelScopeId = undefined;
+    this.#pendingFocusNodeId = previous;
+    this.#announceLayer('structure', undefined);
+  }
+
+  /**
+   * Shows the selected block's details. `control` focuses the first typed
+   * control, as `Enter`, `F2`, double-click and `Edit` do; `none` leaves focus
+   * alone, as a page click does. Either way focus that would otherwise sit in
+   * a region the details view hides moves to the `Back` control.
+   */
+  #openDetails(nodeId: NodeId, options: { focus: 'control' | 'none' }): void {
+    if (this.selectedNodeId !== nodeId) {
+      this.#selectNode(nodeId);
+    }
+    const leaving = this.#focusInsideStructureRegions();
+    this.panelView = 'details';
+    if (this.activePane === 'outline') {
+      this.activePane = 'inspector';
+    }
+    void this.updateComplete.then(() => {
+      if (this.panelView !== 'details') {
+        return;
+      }
+      if (options.focus === 'control') {
+        if (this.selectedNodeId !== nodeId) {
+          return;
+        }
+        const control = this.#firstDetailsControl();
+        control?.focus();
+        if (control === null || !this.#holdsFocus(control)) {
+          // A candidate inside a closed disclosure ignores focus(); the
+          // header control is the visible fallback.
+          this.#focusPanelBack();
+        }
+      } else if (leaving) {
+        this.#focusPanelBack();
+      }
+    });
+    this.#announceLayer('details', nodeId);
+  }
+
+  /**
+   * Returns from the details to the structure view with the selected entry
+   * focused and listed. A no-op in the contextual Content and Model modes,
+   * where the docked panel is the details view and the Blueprint tab returns.
+   */
+  #showStructure(): void {
+    if (this.inspectorMode === 'content' || this.inspectorMode === 'model') {
+      return;
+    }
+    const roots = this.document?.roots ?? [];
+    const active = this.#shadowActiveElement();
+    const fromInspector =
+      active !== null &&
+      this.shadowRoot?.querySelector('aside.inspector')?.contains(active) === true;
+    this.panelView = 'structure';
+    if (this.activePane === 'inspector') {
+      this.activePane = 'outline';
+    }
+    const selected = this.selectedNodeId;
+    if (selected !== undefined && findOutlineLocation(roots, selected) !== undefined) {
+      if (!isNodeListed(roots, this.panelScopeId, selected)) {
+        this.panelScopeId = listingScopeFor(roots, selected);
+      }
+      this.#pendingFocusNodeId = selected;
+    } else if (fromInspector) {
+      void this.updateComplete.then(() => {
+        if (this.panelView === 'structure') {
+          this.shadowRoot?.querySelector<HTMLElement>('aside.outline')?.focus();
+        }
+      });
+    }
+    this.#announceLayer('structure', this.panelScopeId);
+  }
+
+  /** Announces a layer change once through the polite live region. */
+  #announceLayer(view: 'structure' | 'details', subjectId: NodeId | undefined): void {
+    const key = `${view}:${subjectId ?? ''}`;
+    if (key === this.#announcedLayer) {
+      return;
+    }
+    this.#announcedLayer = key;
+    const subject =
+      subjectId === undefined || this.document === undefined
+        ? undefined
+        : findOutlineLocation(this.document.roots, subjectId)?.node;
+    this.#announce('studio.shell/announce-panel-layer', {
+      label:
+        subject === undefined ? this.#text('studio.shell/panel-page') : this.#nodeLabel(subject),
+      layer: this.#text(
+        view === 'structure' ? 'studio.shell/outline-heading' : 'studio.shell/inspector-heading',
+      ),
+    });
+  }
+
+  /**
+   * Runs before every render: a level whose container left the document falls
+   * back to the page, a level that lost its last child falls back to its
+   * parent (which lists the container), and a pending focus target (after
+   * insert, delete, duplicate, move, restore, undo or redo) is always listed
+   * in the structure view, which is the layer that shows it. Silent: each of
+   * those actions announces its own outcome. In the contextual Content and
+   * Model modes the docked panel stays: the structure view would hide it with
+   * no `Back` and no `Escape` unwind, so the target is only listed for the
+   * return through the wrapper's `Blueprint` tab.
+   */
+  #alignPanelToPendingFocus(): void {
+    const roots = this.document?.roots;
+    if (roots === undefined) {
+      return;
+    }
+    const scope = this.panelScopeId;
+    if (scope !== undefined && findOutlineLocation(roots, scope) === undefined) {
+      this.panelScopeId = undefined;
+      this.#announcedLayer = undefined;
+    } else if (scope !== undefined && scopeChildren(roots, scope).length === 0) {
+      this.panelScopeId = parentScopeOf(roots, scope);
+      this.#announcedLayer = undefined;
+      const target = this.#pendingFocusNodeId;
+      if (
+        (target === undefined || findOutlineLocation(roots, target) === undefined) &&
+        this.#outlineHoldsFocus()
+      ) {
+        // The focused row leaves with the level; the container that held it
+        // is listed one level up and takes its place.
+        this.#pendingFocusNodeId = scope;
+      }
+    }
+    const pending = this.#pendingFocusNodeId;
+    if (pending === undefined || findOutlineLocation(roots, pending) === undefined) {
+      return;
+    }
+    if (!isNodeListed(roots, this.panelScopeId, pending)) {
+      this.panelScopeId = listingScopeFor(roots, pending);
+      this.#announcedLayer = undefined;
+    }
+    const contextual = this.inspectorMode === 'content' || this.inspectorMode === 'model';
+    if (!contextual && this.panelView !== 'structure') {
+      this.panelView = 'structure';
+      if (this.activePane === 'inspector') {
+        this.activePane = 'outline';
+      }
+      this.#announcedLayer = undefined;
+    }
+  }
+
+  /**
+   * The element an Escape may unwind the panel from: a control of the panel's
+   * own chrome inside the outline or the inspector. Text entry, selects,
+   * editable regions and imperatively mounted controls keep their Escape.
+   */
+  #panelEscapeOrigin(event: KeyboardEvent): Element | null {
+    const origin = event.composedPath()[0];
+    const root = this.shadowRoot;
+    if (!(origin instanceof Element) || root === null) {
+      return null;
+    }
+    const outline = root.querySelector('aside.outline');
+    const inspector = root.querySelector('aside.inspector');
+    if (outline?.contains(origin) !== true && inspector?.contains(origin) !== true) {
+      return null;
+    }
+    if (
+      origin.closest(
+        '[data-authoring-key], [data-resource-authoring-key], [data-entry-control-key], [contenteditable]',
+      ) !== null
+    ) {
+      return null;
+    }
+    const name = origin.localName;
+    if (name === 'textarea' || name === 'select') {
+      return null;
+    }
+    if (name === 'input') {
+      const type = origin.getAttribute('type') ?? 'text';
+      if (!['button', 'submit', 'reset', 'checkbox', 'radio'].includes(type)) {
+        return null;
+      }
+    }
+    return origin;
+  }
+
+  /** The first enabled typed control of the details view, in the order `Enter` on the stage uses. */
+  #firstDetailsControl(): HTMLElement | null {
+    const selector = ':is(input, select, textarea):not(:disabled)';
+    const shadowDefault = this.shadowRoot?.querySelector<HTMLElement>('.inspector-default');
+    return (
+      (shadowDefault?.hasAttribute('hidden') === false
+        ? shadowDefault.querySelector<HTMLElement>(`.scalar-control ${selector}`)
+        : null) ??
+      this.querySelector<HTMLElement>(`[slot="contextual-inspector"] ${selector}`) ??
+      this.shadowRoot?.querySelector<HTMLElement>(`.inspector-default:not([hidden]) ${selector}`) ??
+      null
+    );
+  }
+
+  /** Whether `element` is the focused element of its own tree (shadow or light). */
+  #holdsFocus(element: Element): boolean {
+    const tree = element.getRootNode();
+    const active =
+      tree instanceof Document || tree instanceof ShadowRoot ? tree.activeElement : null;
+    return active === element;
+  }
+
+  /** Whether focus sits in a region the details view hides at wide widths. */
+  #focusInsideStructureRegions(): boolean {
+    const active = this.#shadowActiveElement();
+    if (active === null) {
+      return false;
+    }
+    const root = this.shadowRoot;
+    return (
+      root?.querySelector('aside.outline')?.contains(active) === true ||
+      root?.querySelector('aside.library')?.contains(active) === true
+    );
+  }
+
+  /**
+   * Focuses the details header's `Back` control, or the details region itself
+   * in the contextual Content and Model modes, which render no `Back`: focus
+   * that leaves a hiding region always lands on something visible.
+   */
+  #focusPanelBack(): void {
+    const inspector = this.shadowRoot?.querySelector<HTMLElement>('aside.inspector');
+    const back = inspector?.querySelector<HTMLButtonElement>('button.panel-back');
+    (back ?? inspector)?.focus();
   }
 
   #toggleLibrary(): void {

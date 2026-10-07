@@ -181,11 +181,6 @@ export const canvasWorkspaceStyles: CSSResult = css`
     z-index: 2;
   }
 
-  .canvas > .breadcrumb {
-    margin: 0;
-    padding: 0.375rem 0.75rem;
-  }
-
   .canvas-toolbar :is(.toolbar, .viewport-switcher, .command-palette-toggle) {
     margin: 0;
   }
@@ -270,6 +265,11 @@ export const canvasWorkspaceStyles: CSSResult = css`
     margin: 0 0 0.75rem;
   }
 
+  /* The selection path sits under the details header, above the sections. */
+  .inspector .breadcrumb ol {
+    margin: 0 0 0.75rem;
+  }
+
   .inspector-advanced {
     border-block-start: 1px solid var(--studio-border);
     margin-block-start: 1rem;
@@ -313,6 +313,29 @@ export const canvasWorkspaceStyles: CSSResult = css`
   @container studio-workspace (width >= 56rem) {
     .workspace[data-library='closed'] > .library {
       display: none;
+    }
+
+    /* One layer at a time: the structure view (outline and its disclosure)
+       or the details view (inspector). Hidden regions keep their DOM, so
+       imperatively mounted authoring controls keep their holders; the row
+       tracks collapse because a hidden grid item does not shrink minmax(). */
+    .workspace[data-panel-view='structure'] > .inspector,
+    .workspace[data-panel-view='details'] > .outline,
+    .workspace[data-panel-view='details'] > .library {
+      display: none;
+    }
+
+    .workspace[data-panel-view='structure'] {
+      grid-template-rows: minmax(8rem, 1fr) 0 0 auto auto;
+    }
+
+    .workspace[data-panel-view='structure'][data-library='open'] {
+      grid-template-rows: minmax(8rem, 0.9fr) minmax(8rem, 1.1fr) 0 auto auto;
+    }
+
+    .workspace[data-panel-view='details'],
+    .workspace[data-panel-view='details'][data-library='open'] {
+      grid-template-rows: 0 0 minmax(10rem, 1fr) auto auto;
     }
   }
 
