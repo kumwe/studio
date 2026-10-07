@@ -6,6 +6,28 @@ import { minify as minifyJavaScriptWithOxc } from 'vite';
 export const RELEASE_ASSET_HASH_HEX_LENGTH = 16;
 
 /**
+ * Release assets are production bytes regardless of the process that builds
+ * them. A test runner sets NODE_ENV to a non-production value, and the bundler
+ * then resolves the development export conditions of bundled dependencies and
+ * emits a larger module than the one a release publishes. Every release build
+ * calls this before bundling so the bytes it measures are the bytes it ships,
+ * and calls the returned function once the bundler resolves: the builders are
+ * imported in-process by the release scripts and the test suites, whose own
+ * environment the pin must not change.
+ */
+export function pinReleaseBuildEnvironment() {
+  const previous = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+  return () => {
+    if (previous === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = previous;
+    }
+  };
+}
+
+/**
  * These are publication ceilings, not targets. A budget change is reviewable
  * release policy and must never be inferred from the bytes that happened to be
  * produced by the current build.

@@ -10,6 +10,7 @@ import {
   contentHashedAssetName,
   minifyReleaseCss,
   minifyReleaseJavaScript,
+  pinReleaseBuildEnvironment,
   releaseAssetIdentity,
   releaseRuntimeAssetRecord,
 } from './release-asset-policy.mjs';
@@ -30,34 +31,39 @@ const session = JSON.parse(
 );
 
 await rm(outputDirectory, { force: true, recursive: true });
-await build({
-  base: './',
-  build: {
-    chunkSizeWarningLimit: 600,
-    emptyOutDir: true,
-    manifest: 'build-manifest.json',
-    minify: true,
-    outDir: outputDirectory,
-    rolldownOptions: {
-      external: ['@kumwe/studio-internal/browser-entry'],
-      output: {
-        assetFileNames: 'assets/studio-[name]-[hash][extname]',
-        chunkFileNames: 'assets/studio-[name]-[hash].js',
-        entryFileNames: 'assets/studio-[name]-[hash].js',
-        paths: {
-          '@kumwe/studio-internal/browser-entry': `./${basename(browserModuleName)}`,
+const restoreBuildEnvironment = pinReleaseBuildEnvironment();
+try {
+  await build({
+    base: './',
+    build: {
+      chunkSizeWarningLimit: 600,
+      emptyOutDir: true,
+      manifest: 'build-manifest.json',
+      minify: true,
+      outDir: outputDirectory,
+      rolldownOptions: {
+        external: ['@kumwe/studio-internal/browser-entry'],
+        output: {
+          assetFileNames: 'assets/studio-[name]-[hash][extname]',
+          chunkFileNames: 'assets/studio-[name]-[hash].js',
+          entryFileNames: 'assets/studio-[name]-[hash].js',
+          paths: {
+            '@kumwe/studio-internal/browser-entry': `./${basename(browserModuleName)}`,
+          },
         },
       },
+      sourcemap: false,
     },
-    sourcemap: false,
-  },
-  configFile: false,
-  define: {
-    __STUDIO_STATIC_SESSION__: JSON.stringify(session),
-  },
-  logLevel: 'warn',
-  root: exampleRoot,
-});
+    configFile: false,
+    define: {
+      __STUDIO_STATIC_SESSION__: JSON.stringify(session),
+    },
+    logLevel: 'warn',
+    root: exampleRoot,
+  });
+} finally {
+  restoreBuildEnvironment();
+}
 await copyFile(browserModulePath, join(outputDirectory, browserModuleName));
 
 const bundlerManifestPath = join(outputDirectory, 'build-manifest.json');
