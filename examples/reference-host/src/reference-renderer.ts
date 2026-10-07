@@ -220,6 +220,16 @@ export function connectReferenceRenderer(options: ReferenceRendererOptions): Pre
     const marked = origin instanceof Element ? origin.closest<HTMLElement>('[data-marker]') : null;
     const marker = marked?.dataset.marker;
     if (marker === undefined || marked === null || !surface.contains(marked)) return;
+    if (interaction === 'activate') {
+      // The shell takes an activation as the selection and does not echo it
+      // back, so the host moves its own selection marker with it; otherwise
+      // a block selected through the panel earlier would stay marked.
+      const nodeId = [...markerByNode].find(([, candidate]) => candidate === marker)?.[0];
+      if (nodeId !== undefined) {
+        selectedNodeId = nodeId;
+        highlight(nodeId);
+      }
+    }
     host.announceActivation({ interaction, marker });
   };
   surface.addEventListener('click', (event) => announceInteraction(event, 'activate'));
