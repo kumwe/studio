@@ -6,7 +6,7 @@ import { JsonValidator } from '@cyclonedx/cyclonedx-library/Validation';
 const require = createRequire(import.meta.url);
 const libraryManifest = require('@cyclonedx/cyclonedx-library/package.json');
 
-export const OFFICIAL_CYCLONEDX_LIBRARY_VERSION = '10.2.0';
+export const OFFICIAL_CYCLONEDX_LIBRARY_VERSION = '10.3.0';
 
 export async function collectOfficialCycloneDxFailures(document) {
   if (libraryManifest.version !== OFFICIAL_CYCLONEDX_LIBRARY_VERSION) {

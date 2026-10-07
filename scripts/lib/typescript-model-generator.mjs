@@ -169,7 +169,6 @@ export function roundTripGeneratedProtocolModel<SchemaFile extends GeneratedProt
   schemaFile: SchemaFile,
   value: GeneratedProtocolModelMap[SchemaFile],
 ): GeneratedProtocolModelMap[SchemaFile] {
-  void schemaFile;
   return JSON.parse(JSON.stringify(value)) as GeneratedProtocolModelMap[SchemaFile];
 }
 `;
