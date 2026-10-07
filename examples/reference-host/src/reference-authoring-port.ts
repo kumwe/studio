@@ -545,10 +545,8 @@ class ReferenceArtifactPort implements ArtifactPort {
 
   public async dependencies(
     reference: ArtifactReference,
-    context: HostRequestContext,
   ): Promise<HostPortResult<ArtifactReference[]>> {
     await browserAdapterBoundary();
-    void context;
     const artifact = this.#authoring.artifact(reference);
     if (artifact.kind === 'blueprint') {
       return result([
@@ -560,12 +558,8 @@ class ReferenceArtifactPort implements ArtifactPort {
     return result([]);
   }
 
-  public async load(
-    reference: ArtifactReference,
-    context: HostRequestContext,
-  ): Promise<HostPortResult<StudioArtifact>> {
+  public async load(reference: ArtifactReference): Promise<HostPortResult<StudioArtifact>> {
     await browserAdapterBoundary();
-    void context;
     const artifact = this.#authoring.artifact(reference);
     return result(artifact, artifact.revision);
   }
