@@ -26,6 +26,9 @@ Commands identify artifact version, target node or field, operation, arguments, 
   never moves focus or scrolls the panel; a focused outline entry is indicated on the page distinctly from
   hover and selection.
 - After insert, move, or delete, focus moves to a documented logical target and is announced when necessary.
+- The structure panel is layered: a single click on the page opens the selected block's details without
+  moving focus; `Back`, `Arrow Left` and `Escape` unwind one layer and place focus on the entry whose level
+  or details were open.
 - Nested interactive previews have an explicit edit/operate boundary so an author can select a block without accidentally activating it.
 - Escape unwinds the current interaction layer; it never silently discards a draft.
 

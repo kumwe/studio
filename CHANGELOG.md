@@ -22,8 +22,23 @@ work-package acceptance and gate outcomes remain governed by
 - The reference host anchors its measured surface at the stage origin, which aligns the overlay rectangles it
   drew beside the rendered blocks before. A hosted local canvas opens at its desktop width on wide screens
   when the host sets no initial viewport; the base viewport is unchanged.
-- This is the first slice of ADR 0037; layered navigation, explicit insertion destinations, columns and panel
-  drag follow. It is implemented behaviour, not qualification of the contextual product (`STUDIO-PROD-014`).
+- The left column navigates in layers: the structure view opens with the whole tree and can open one
+  container at a time under a header naming the parent, with `Show whole tree` to return; the details view
+  shows the selected block's inspector sections and the docked Model and Content panels under `Back` and the
+  selection path, which moved from the page column into that header. A page click opens the details view
+  without moving focus; `Edit`, `Open`, `Arrow Right`, `Arrow Left`, `Back` and `Escape` are the keyboard
+  and pointer paths, every layer change (and a new block shown in the details view) is announced once, and
+  imperatively mounted authoring controls keep their holder elements across layers. In the contextual
+  Content and Model modes the docked panel is the details view and the `Blueprint` tab returns.
+- These are the first and third slices of ADR 0037; explicit insertion destinations, columns and panel drag
+  follow. They are implemented behaviour, not qualification of the contextual product (`STUDIO-PROD-014`).
+
+### Release tooling
+
+- The release-asset builders pin the bundler to production bytes for the duration of each build regardless
+  of the invoking process's `NODE_ENV`, so the static-delivery budget test measures the bytes a release
+  ships; the test runner's environment previously resolved development export conditions and emitted a
+  larger browser module.
 
 ### Standalone production authoring and delivery (M4-01, M4-02, M5-01, M5-02, M5-03)
 
