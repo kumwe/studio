@@ -9,6 +9,7 @@ import {
   assertReleaseRuntimeAsset,
   contentHashedAssetName,
   minifyReleaseJavaScript,
+  pinReleaseBuildEnvironment,
   releaseRuntimeAssetRecord,
 } from './release-asset-policy.mjs';
 
@@ -37,25 +38,36 @@ export async function buildStudioEnhancementRuntimeAssets(
   const emittedName = 'studio-enhancements.js';
 
   try {
-    await build({
-      build: {
-        emptyOutDir: true,
-        lib: {
-          entry: join(rootPath, 'packages', 'renderer-web', 'src', 'enhancement-runtime-entry.ts'),
-          fileName: () => emittedName,
-          formats: ['iife'],
-          name: 'KumweStudioEnhancements',
+    const restoreBuildEnvironment = pinReleaseBuildEnvironment();
+    try {
+      await build({
+        build: {
+          emptyOutDir: true,
+          lib: {
+            entry: join(
+              rootPath,
+              'packages',
+              'renderer-web',
+              'src',
+              'enhancement-runtime-entry.ts',
+            ),
+            fileName: () => emittedName,
+            formats: ['iife'],
+            name: 'KumweStudioEnhancements',
+          },
+          minify: false,
+          outDir: temporary,
+          rolldownOptions: { output: { codeSplitting: false } },
+          sourcemap: false,
+          target: 'es2022',
         },
-        minify: false,
-        outDir: temporary,
-        rolldownOptions: { output: { codeSplitting: false } },
-        sourcemap: false,
-        target: 'es2022',
-      },
-      configFile: false,
-      logLevel: 'warn',
-      root: rootPath,
-    });
+        configFile: false,
+        logLevel: 'warn',
+        root: rootPath,
+      });
+    } finally {
+      restoreBuildEnvironment();
+    }
     const emitted = await readFile(join(temporary, emittedName), 'utf8');
     const minified = await minifyReleaseJavaScript(emitted, {
       fileName: emittedName,

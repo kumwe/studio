@@ -21,6 +21,7 @@ import {
   assertReleaseRuntimeAsset,
   contentHashedAssetName,
   minifyReleaseJavaScript,
+  pinReleaseBuildEnvironment,
   releaseAssetIdentity,
   releaseRuntimeAssetRecord,
 } from './release-asset-policy.mjs';
@@ -112,26 +113,31 @@ export async function buildStudioBrowserAssets(
   const entry = join(rootPath, 'packages', 'studio-lit', 'src', 'browser-entry.ts');
 
   await rm(destination, { force: true, recursive: true });
-  await build({
-    build: {
-      emptyOutDir: true,
-      lib: {
-        entry,
-        fileName: () => 'studio-browser.js',
-        formats: ['es'],
+  const restoreBuildEnvironment = pinReleaseBuildEnvironment();
+  try {
+    await build({
+      build: {
+        emptyOutDir: true,
+        lib: {
+          entry,
+          fileName: () => 'studio-browser.js',
+          formats: ['es'],
+        },
+        minify: true,
+        outDir: destination,
+        rolldownOptions: {
+          output: { codeSplitting: false },
+        },
+        sourcemap: false,
+        target: 'es2022',
       },
-      minify: true,
-      outDir: destination,
-      rolldownOptions: {
-        output: { codeSplitting: false },
-      },
-      sourcemap: false,
-      target: 'es2022',
-    },
-    configFile: false,
-    logLevel: 'warn',
-    root: rootPath,
-  });
+      configFile: false,
+      logLevel: 'warn',
+      root: rootPath,
+    });
+  } finally {
+    restoreBuildEnvironment();
+  }
 
   const modulePath = join(destination, 'studio-browser.js');
   const emittedModule = await readFile(modulePath, 'utf8');
