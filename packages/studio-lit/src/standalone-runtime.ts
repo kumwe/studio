@@ -36,7 +36,11 @@ import {
   type StudioContextualSaveRequestDetail,
 } from './contextual-authoring.js';
 import { KumweStudioElement, type StudioInsertRequestDetail } from './kumwe-studio.js';
-import { STUDIO_LOCAL_CANVAS_VIEWPORTS, type StudioLocalCanvasContext } from './local-canvas.js';
+import {
+  STUDIO_LOCAL_CANVAS_VIEWPORTS,
+  initialLocalCanvasViewport,
+  type StudioLocalCanvasContext,
+} from './local-canvas.js';
 import { messageText, type StudioMessageKey, type StudioMessageOverrides } from './messages.js';
 
 const LOCAL_OWNER = { id: 'studio.local/browser', version: '1.0.0' } as const;
@@ -690,19 +694,6 @@ export function mountStudioStandalone(
   };
 }
 
-/**
- * The first local canvas width follows the authoring device: a narrow screen
- * starts at the renderer's compact breakpoint so the rendered page is legible
- * without scaling, while wider screens start at the desktop width. Authors
- * switch widths at any time; the choice is presentation input, never data.
- */
-function initialLocalViewport(): ThemeViewport['id'] {
-  const narrow =
-    typeof globalThis.matchMedia === 'function' &&
-    globalThis.matchMedia('(max-width: 47.9375rem)').matches;
-  return narrow ? 'compact' : 'expanded';
-}
-
 function standaloneConfiguration(
   project: AuthoringSessionSnapshot,
   definitions: readonly BlockDefinition[],
@@ -760,7 +751,7 @@ function standaloneConfiguration(
       preview: {
         allowApproximateRenderer: false,
         enabled: false,
-        initialViewport: initialLocalViewport(),
+        initialViewport: initialLocalCanvasViewport(),
         sameOriginRequired: true,
       },
       protocolVersion: STUDIO_WIRE_PROTOCOL_VERSION,

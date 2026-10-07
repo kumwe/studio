@@ -42,7 +42,7 @@ import {
 } from './hosted-services.js';
 import { startHostedCreateSession } from './hosted-start.js';
 import { KumweStudioElement } from './kumwe-studio.js';
-import { STUDIO_LOCAL_CANVAS_VIEWPORTS } from './local-canvas.js';
+import { STUDIO_LOCAL_CANVAS_VIEWPORTS, initialLocalCanvasViewport } from './local-canvas.js';
 import { messageText, type StudioMessageOverrides } from './messages.js';
 
 const HOST_ERROR_EVENT = 'studio-host-error';
@@ -200,9 +200,16 @@ export async function mountStudioHosted(
         )
         .map((entry) => entry.control),
     );
+    const session = structuredClone(configuration.session);
+    if (!session.preview.enabled && session.preview.initialViewport === undefined) {
+      // A hosted local canvas opens at the device's width when the host sets
+      // no initial viewport; the base viewport, and so where edits are
+      // written, is unchanged.
+      session.preview.initialViewport = initialLocalCanvasViewport();
+    }
     element.configuration = {
       blockDefinitions: structuredClone([...admitted.blockDefinitions]),
-      session: structuredClone(configuration.session),
+      session,
     };
     element.contextualSession = hostSession.session;
     const admittedDesignControls = mergeAdmittedDesignControls(admitted.designVocabularies);
