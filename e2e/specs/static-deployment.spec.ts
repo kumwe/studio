@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { expect, test } from '@playwright/test';
+import { showWorkspacePane } from '../support/public-studio.js';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const deploymentRoot = resolve(repositoryRoot, 'examples', 'standalone-static-host', 'dist');
@@ -78,6 +79,7 @@ test.describe('zero-Node standalone static deployment', () => {
     await extensionName.fill('Lifecycle Backpack');
 
     await studio.getByRole('tab', { name: 'Blueprint' }).click();
+    await showWorkspacePane(studio, 'Blocks');
     await studio.getByRole('button', { name: 'Catalog promotion pattern' }).click();
     await studio.getByRole('tab', { name: 'Content' }).click();
     await studio.getByRole('button', { name: 'Save item' }).click();

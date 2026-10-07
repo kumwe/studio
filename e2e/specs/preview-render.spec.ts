@@ -94,11 +94,60 @@ test('the production renderer renders and keeps canonical two-way selection', as
     .getByRole('button', { name: 'Section', exact: true })
     .click();
   await renderedDivider.click();
+  const outline = shell.getByRole('complementary', { name: 'Outline' });
+  const dividerEntry = outline.getByRole('button', { name: 'Divider', exact: true });
+  await expect(dividerEntry).toHaveAttribute('aria-pressed', 'true');
+  // The host's activation report also reveals the entry in the structure panel.
+  await expect(dividerEntry).toBeInViewport();
+
+  // With the edit control off, hovering the rendered block marks its outline
+  // entry through the shell's passive stage listeners; leaving clears it.
+  await renderedDivider.hover();
+  await expect(outline.locator('button.outline-entry[data-hovered="true"]')).toHaveText(/Divider/);
+  await page.mouse.move(5, 5);
+  await expect(shell.locator('button.outline-entry[data-hovered="true"]')).toHaveCount(0);
+
+  // The host measures against its surface's own edge, so the overlay rect the
+  // shell paints from those measurements lines up with the rendered block.
+  // Both boxes come from the DOM's own geometry: Playwright's boundingBox()
+  // widens an SVG rect by its stroke, which would hide a half-stroke offset.
+  const dividerId = await dividerEntry.getAttribute('data-node-id');
+  expect(dividerId).not.toBeNull();
+  const dividerRect = shell
+    .locator(`.preview-canvas-region[data-node-id="${dividerId ?? ''}"]`)
+    .first();
+  const geometryX = (element: Element): number => element.getBoundingClientRect().x;
+  const rectX = await dividerRect.evaluate(geometryX);
+  const renderedX = await renderedDivider.evaluate(geometryX);
+  expect(Math.abs(rectX - renderedX)).toBeLessThanOrEqual(1);
+
+  // The rendered-preview edit control lives in the canvas toolbar and stays off.
   await expect(
     shell
-      .getByRole('complementary', { name: 'Outline' })
-      .getByRole('button', { name: 'Divider', exact: true }),
-  ).toHaveAttribute('aria-pressed', 'true');
+      .locator('.canvas-toolbar')
+      .getByRole('button', { name: 'Select and move rendered blocks' }),
+  ).toHaveAttribute('aria-pressed', 'false');
+
+  // Edit mode still gates dragging: with the control off, a drag across the
+  // rendered divider arms no drop indicator and moves nothing.
+  const entryOrder = (): Promise<(string | null)[]> =>
+    outline
+      .locator('button.outline-entry')
+      .evaluateAll((elements) => elements.map((element) => element.getAttribute('data-node-id')));
+  const orderBefore = await entryOrder();
+  const dividerBox = await renderedDivider.boundingBox();
+  if (dividerBox === null) throw new Error('The rendered divider has no box');
+  const dragStart = {
+    x: dividerBox.x + dividerBox.width / 2,
+    y: dividerBox.y + dividerBox.height / 2,
+  };
+  await page.mouse.move(dragStart.x, dragStart.y);
+  await page.mouse.down();
+  await page.mouse.move(dragStart.x + 40, dragStart.y, { steps: 6 });
+  await expect(shell.locator('.preview-canvas-drop-indicator')).toHaveCount(0);
+  await page.mouse.up();
+  await expect(renderedDivider).toHaveCount(1);
+  expect(await entryOrder()).toEqual(orderBefore);
 
   // A viewport switch re-renders the same canonical page and the selection
   // map is rebuilt from the new renderer output rather than reused by index.

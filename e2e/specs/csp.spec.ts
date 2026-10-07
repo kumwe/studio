@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openAdvancedInspector, openShell, populateShell } from '../support/shell.js';
+import { openAdvancedInspector, openShell, populateShell, showPane } from '../support/shell.js';
 
 /**
  * TH-013: the authoring chrome operates under the strict Content-Security-
@@ -79,6 +79,8 @@ test('the chrome completes an authoring pass under the pinned policy without vio
   expect(response?.headers()['content-security-policy']).toBe(PINNED_POLICY);
 
   const shell = page.locator('kumwe-studio');
+  await expect(shell.locator('.workspace')).toBeAttached();
+  await showPane(shell, 'Blocks');
   await expect(
     shell.getByRole('complementary', { name: 'Block palette' }).getByRole('button', {
       name: 'Section',

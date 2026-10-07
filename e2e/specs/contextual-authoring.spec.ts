@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { openBlocks } from '../support/shell.js';
 
 test.setTimeout(60_000);
 
@@ -121,6 +122,7 @@ test('the real contextual shell completes every standalone host-authoring outcom
 
   await studio.getByRole('tab', { name: 'Blueprint' }).click();
   const blueprint = studio.locator('kumwe-studio');
+  await openBlocks(blueprint);
   await blueprint
     .getByRole('complementary', { name: 'Block palette' })
     .getByRole('button', { name: 'Section', exact: true })
@@ -197,6 +199,7 @@ test('the real contextual shell completes every standalone host-authoring outcom
   await summary.fill('Entry values stay outside reusable types');
   await summary.blur();
   await studio.getByRole('tab', { name: 'Blueprint' }).click();
+  await openBlocks(studio.locator('kumwe-studio'));
   await studio
     .locator('kumwe-studio')
     .getByRole('complementary', { name: 'Block palette' })
@@ -226,6 +229,7 @@ test('the real contextual shell completes every standalone host-authoring outcom
     .getByRole('complementary', { name: 'Outline' })
     .getByRole('button', { name: 'Section', exact: true });
   await section.click();
+  await openBlocks(studio.locator('kumwe-studio'));
   await studio
     .locator('kumwe-studio')
     .getByRole('complementary', { name: 'Block palette' })

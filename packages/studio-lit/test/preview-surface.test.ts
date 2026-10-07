@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   computePreviewDraftDigest,
   type PreviewClient,
@@ -434,6 +434,92 @@ async function mountBoundaryRankingScenario(onlyChildHeight: number): Promise<{
   }
   return { commandTypes, element, overlay, region };
 }
+
+function crossingEvent(type: 'pointerenter' | 'pointerleave', pointerId: number): PointerEvent {
+  // Enter and leave never bubble, so a crossing on one rect or entry cannot
+  // reach the stage's own leave listener and fake the result.
+  return new PointerEvent(type, { bubbles: false, composed: true, pointerId });
+}
+
+function liveRegionText(element: KumweStudioElement): string {
+  return element.shadowRoot?.querySelector('[aria-live="polite"]')?.textContent ?? '';
+}
+
+function measuredRegion(element: KumweStudioElement, nodeId: string): SVGRectElement {
+  const rect = element.shadowRoot?.querySelector<SVGRectElement>(
+    `.preview-canvas-region[data-node-id="${nodeId}"]`,
+  );
+  if (rect === null || rect === undefined) {
+    throw new Error(`Missing measured region ${nodeId}`);
+  }
+  return rect;
+}
+
+function previewStage(element: KumweStudioElement): HTMLElement {
+  const stage = element.shadowRoot?.querySelector<HTMLElement>('.preview-stage');
+  if (stage === null || stage === undefined) {
+    throw new Error('Missing preview stage');
+  }
+  return stage;
+}
+
+/**
+ * A measured host preview with the edit control left OFF: section-a holds
+ * text-1, section-b is empty, and every rect is accepted geometry.
+ */
+async function mountMeasuredHoverScenario(): Promise<{
+  client: FakePreviewClient;
+  commandTypes: string[];
+  digest: string;
+  element: KumweStudioElement;
+}> {
+  const client = new FakePreviewClient();
+  client.rectsByNode['section-a'] = [{ height: 100, width: 300, x: 0, y: 0 }];
+  client.rectsByNode['text-1'] = [{ height: 30, width: 120, x: 10, y: 20 }];
+  client.rectsByNode['section-b'] = [{ height: 100, width: 300, x: 0, y: 200 }];
+  const { element } = await mount({
+    blockDefinitions: [
+      defineTestBlock({
+        label: 'Section',
+        slots: [
+          {
+            accepts: { types: ['studio.core/text'] },
+            id: 'content',
+            label: { defaultMessage: 'Content', key: 'studio.test/content' },
+            maximum: 20,
+            minimum: 0,
+            ordered: true,
+          },
+        ],
+        type: 'studio.core/section',
+      }),
+      defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+    ],
+    client,
+    roots: [section('section-a', [node('text-1')]), section('section-b', [])],
+  });
+  const commandTypes: string[] = [];
+  element.addEventListener('studio-document-change', (event) => {
+    const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+    if (detail.command !== null) {
+      commandTypes.push(detail.command.type);
+    }
+  });
+  client.announceReady();
+  await client.waitForRenders(1);
+  const digest = client.renders[0]?.payload.draftDigest ?? '';
+  client.resolveRender(0, {
+    [marker(digest, 0)]: 'section-a',
+    [marker(digest, 1)]: 'text-1',
+    [marker(digest, 2)]: 'section-b',
+  });
+  await settle(element);
+  return { client, commandTypes, digest, element };
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('shell preview surface', () => {
   it('keeps the scrollable preview stage keyboard focusable', async () => {
@@ -898,6 +984,181 @@ describe('shell preview surface', () => {
     expect(regions.map((region) => region.dataset.nodeId)).toEqual(['section-a', 'text-1']);
     expect(regions[0]?.dataset.selected).toBe('true');
     expect(regions.at(-1)?.dataset.selected).toBe('false');
+    element.remove();
+  });
+
+  it('mirrors hover between a measured region and its outline entry', async () => {
+    const { element } = await mountMeasuredHoverScenario();
+    const announced = liveRegionText(element);
+    expect(outlineEntry(element, 'text-1').dataset.hovered).toBe('false');
+    expect(measuredRegion(element, 'text-1').dataset.hovered).toBe('false');
+
+    measuredRegion(element, 'text-1').dispatchEvent(crossingEvent('pointerenter', 60));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'text-1').dataset.hovered).toBe('true');
+    expect(outlineEntry(element, 'section-a').dataset.hovered).toBe('false');
+
+    measuredRegion(element, 'text-1').dispatchEvent(crossingEvent('pointerleave', 60));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'text-1').dataset.hovered).toBe('false');
+
+    outlineEntry(element, 'text-1').dispatchEvent(crossingEvent('pointerenter', 60));
+    await element.updateComplete;
+    expect(measuredRegion(element, 'text-1').dataset.hovered).toBe('true');
+    expect(measuredRegion(element, 'section-a').dataset.hovered).toBe('false');
+
+    outlineEntry(element, 'text-1').dispatchEvent(crossingEvent('pointerleave', 60));
+    await element.updateComplete;
+    expect(measuredRegion(element, 'text-1').dataset.hovered).toBe('false');
+    expect(liveRegionText(element)).toBe(announced);
+    element.remove();
+  });
+
+  it('draws a distinct focused region for a focused outline entry', async () => {
+    const { element } = await mountMeasuredHoverScenario();
+    const entry = outlineEntry(element, 'text-1');
+    expect(measuredRegion(element, 'text-1').dataset.focused).toBe('false');
+
+    entry.focus();
+    await element.updateComplete;
+    expect(element.shadowRoot?.activeElement).toBe(entry);
+    const focused = measuredRegion(element, 'text-1');
+    expect(focused.dataset.focused).toBe('true');
+    expect(focused.dataset.hovered).toBe('false');
+    expect(focused.dataset.selected).toBe('false');
+    expect(measuredRegion(element, 'section-a').dataset.focused).toBe('false');
+
+    entry.blur();
+    await element.updateComplete;
+    expect(measuredRegion(element, 'text-1').dataset.focused).toBe('false');
+
+    // Selecting the entry while it holds focus keeps both states on the rect;
+    // the solid selection stroke taking precedence is a browser-lane check.
+    entry.click();
+    entry.focus();
+    await settle(element);
+    const selectedAndFocused = measuredRegion(element, 'text-1');
+    expect(selectedAndFocused.dataset.selected).toBe('true');
+    expect(selectedAndFocused.dataset.focused).toBe('true');
+    element.remove();
+  });
+
+  it('moves the focused region to the node a re-bound entry shows after a document replacement', async () => {
+    const { client, element } = await mountMeasuredHoverScenario();
+    const entry = outlineEntry(element, 'section-a');
+    entry.focus();
+    await element.updateComplete;
+    expect(measuredRegion(element, 'section-a').dataset.focused).toBe('true');
+
+    // Entries render in place: the same button now shows section-b and keeps
+    // focus without a focus event, so the page indicator must follow it.
+    element.document = createBlueprintFixture({
+      roots: [section('section-b', []), section('section-a', [node('text-1')])],
+    });
+    await client.waitForRenders(2);
+    const digest = client.renders[1]?.payload.draftDigest ?? '';
+    client.resolveRender(1, {
+      [marker(digest, 0)]: 'section-b',
+      [marker(digest, 1)]: 'section-a',
+      [marker(digest, 2)]: 'text-1',
+    });
+    await settle(element);
+    expect(element.shadowRoot?.activeElement).toBe(entry);
+    expect(entry.dataset.nodeId).toBe('section-b');
+    expect(measuredRegion(element, 'section-b').dataset.focused).toBe('true');
+    expect(measuredRegion(element, 'section-a').dataset.focused).toBe('false');
+    element.remove();
+  });
+
+  it('hovers from the passive stage without the edit control, reveals the host-activated node and arms no drag', async () => {
+    const { client, commandTypes, digest, element } = await mountMeasuredHoverScenario();
+    expect(
+      element.shadowRoot
+        ?.querySelector('.canvas-toolbar .canvas-edit-toggle')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('false');
+    const scrollIntoView = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => undefined);
+    const activeBefore = document.activeElement;
+    const selectionsBefore = client.selections.length;
+
+    // The overlay has no box in happy-dom, so client coordinates are the
+    // viewport coordinates of the accepted measurements: (40, 30) lies inside
+    // section-a and its child text-1, and the deepest measurement wins.
+    previewStage(element).dispatchEvent(pointerEvent('pointermove', 61, 40, 30));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'text-1').dataset.hovered).toBe('true');
+    expect(outlineEntry(element, 'section-a').dataset.hovered).toBe('false');
+    previewStage(element).dispatchEvent(pointerEvent('pointermove', 61, 200, 80));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'section-a').dataset.hovered).toBe('true');
+    expect(outlineEntry(element, 'text-1').dataset.hovered).toBe('false');
+    previewStage(element).dispatchEvent(crossingEvent('pointerleave', 61));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.outline-entry[data-hovered="true"]')).toBeNull();
+
+    // Selection stays the host's trusted activation report, which reveals the
+    // entry without moving focus and is never echoed back as a selection.
+    client.emitActivated({ interaction: 'activate', marker: marker(digest, 1) });
+    await settle(element);
+    const entry = outlineEntry(element, 'text-1');
+    expect(entry.getAttribute('aria-pressed')).toBe('true');
+    expect(element.selection).toEqual(['text-1']);
+    expect(scrollIntoView.mock.contexts).toContain(entry);
+    expect(document.activeElement).toBe(activeBefore);
+    expect(element.shadowRoot?.activeElement).toBeNull();
+    expect(client.selections).toHaveLength(selectionsBefore);
+
+    // With the control off the overlay arms no drag.
+    measuredRegion(element, 'text-1').dispatchEvent(pointerEvent('pointerdown', 62, 20, 30));
+    element.shadowRoot
+      ?.querySelector('.preview-canvas-overlay')
+      ?.dispatchEvent(pointerEvent('pointermove', 62, 80, 90));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+    measuredRegion(element, 'text-1').dispatchEvent(pointerEvent('pointerup', 62, 80, 90));
+    await settle(element);
+    expect(commandTypes).toEqual([]);
+    expect(element.selection).toEqual(['text-1']);
+
+    // There is no passive click handler: a click on the stage over section-a
+    // selects nothing and asks the host for nothing.
+    previewStage(element).dispatchEvent(
+      new MouseEvent('click', { bubbles: true, clientX: 200, clientY: 80, composed: true }),
+    );
+    await settle(element);
+    expect(element.selection).toEqual(['text-1']);
+    expect(client.selections).toHaveLength(selectionsBefore);
+    expect(commandTypes).toEqual([]);
+    element.remove();
+  });
+
+  it('renders the edit control in the toolbar', async () => {
+    const { element } = await mountMeasuredHoverScenario();
+    const toggle = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '.canvas-toolbar .canvas-edit-toggle',
+    );
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle?.textContent?.trim()).toBe('Select and move rendered blocks');
+    expect(element.shadowRoot?.querySelector('.preview-region .canvas-edit-toggle')).toBeNull();
+    expect(element.shadowRoot?.querySelectorAll('.canvas-edit-toggle')).toHaveLength(1);
+
+    toggle?.click();
+    await element.updateComplete;
+    expect(
+      element.shadowRoot
+        ?.querySelector('.canvas-toolbar .canvas-edit-toggle')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(liveRegionText(element)).not.toBe('');
+
+    // Once pressed, hover comes from the overlay rects and the stage's passive
+    // listeners stay inert.
+    previewStage(element).dispatchEvent(pointerEvent('pointermove', 63, 40, 30));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.outline-entry[data-hovered="true"]')).toBeNull();
     element.remove();
   });
 

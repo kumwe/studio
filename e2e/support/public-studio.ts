@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
+import { openBlocks } from './shell.js';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -50,8 +51,16 @@ document.documentElement.dataset.studioReady = 'true';`,
   return studio;
 }
 
-/** Select a small-screen sheet through its visible control, never a hidden DOM mutation. */
+/**
+ * Select a small-screen sheet through its visible control, never a hidden DOM
+ * mutation. At wide widths only the block palette is behind a control, the
+ * Outline's "Add blocks" disclosure, so `Blocks` opens it there.
+ */
 export async function showWorkspacePane(studio: Locator, name: string): Promise<void> {
   const switcher = studio.getByRole('navigation', { name: 'Workspace panels' });
-  if (await switcher.isVisible()) await switcher.getByRole('button', { name, exact: true }).click();
+  if (await switcher.isVisible()) {
+    await switcher.getByRole('button', { name, exact: true }).click();
+  } else if (name === 'Blocks') {
+    await openBlocks(studio);
+  }
 }

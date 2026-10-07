@@ -135,10 +135,61 @@ describe('public standalone visual canvas', () => {
     });
     document.body.append(element);
     const shell = await settle(element);
+    const scrollIntoView = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => undefined);
     renderedRoot(shell).querySelector<HTMLElement>('h2')?.click();
     await shell.updateComplete;
     expect(shell.selection).toEqual(['page-heading']);
     expect(shell.shadowRoot?.querySelector('.inspector')?.textContent).toContain('page-heading');
+    // A page click reveals the outline entry without taking focus from the page.
+    await shell.updateComplete;
+    const entry = shell.shadowRoot?.querySelector<HTMLButtonElement>(
+      'button.outline-entry[data-node-id="page-heading"]',
+    );
+    expect(entry?.getAttribute('aria-pressed')).toBe('true');
+    expect(scrollIntoView.mock.contexts).toContain(entry);
+    expect(shell.shadowRoot?.activeElement).toBeNull();
+  });
+
+  it('reveals a panel-selected node on the local canvas', async () => {
+    const element = createStudioStandaloneRuntime({
+      initialProject: headingProject('Revealed title'),
+    });
+    document.body.append(element);
+    const shell = await settle(element);
+    const scrollIntoView = vi
+      .spyOn(HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => undefined);
+    const entry = shell.shadowRoot?.querySelector<HTMLButtonElement>(
+      'button.outline-entry[data-node-id="page-heading"]',
+    );
+    if (entry == null) throw new Error('Missing outline entry.');
+    entry.click();
+    await shell.updateComplete;
+    await shell.updateComplete;
+    expect(shell.selection).toEqual(['page-heading']);
+    const rendered = renderedRoot(shell).querySelector('[data-studio-node="page-heading"]');
+    expect(rendered).not.toBeNull();
+    expect(scrollIntoView.mock.contexts).toContain(rendered);
+    // A panel-originated selection never scrolls the panel itself.
+    expect(scrollIntoView.mock.contexts).not.toContain(entry);
+  });
+
+  it('demotes the local-canvas heading and keeps its caption', async () => {
+    const element = createStudioStandaloneRuntime({
+      initialProject: headingProject('Captioned page'),
+    });
+    document.body.append(element);
+    const shell = await settle(element);
+    const heading = shell.shadowRoot?.querySelector('.local-canvas-region > h2');
+    expect(heading?.classList.contains('assistive')).toBe(true);
+    expect(heading?.textContent?.trim()).toBe('Page canvas');
+    expect(
+      shell.shadowRoot?.querySelector('.local-canvas-region .preview-status')?.textContent,
+    ).toContain('Local rendering');
+    // The local canvas forces direct manipulation on, so no edit control renders.
+    expect(shell.shadowRoot?.querySelector('.canvas-edit-toggle')).toBeNull();
   });
 
   it('inserts directly without a host listener, honors cancellation, and does not duplicate a legacy synchronous insertion', async () => {
