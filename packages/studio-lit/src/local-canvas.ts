@@ -54,6 +54,20 @@ export const STUDIO_LOCAL_CANVAS_VIEWPORTS: readonly ThemeViewport[] = Object.fr
   },
 ]);
 
+/**
+ * The first local canvas width follows the authoring device: a narrow screen
+ * starts at the renderer's compact breakpoint so the rendered page is legible
+ * without scaling, while wider screens start at the desktop width. Authors
+ * switch widths at any time; the choice is presentation input, never data,
+ * and the base viewport (where un-overridden edits are written) is unchanged.
+ */
+export function initialLocalCanvasViewport(): ThemeViewport['id'] {
+  const narrow =
+    typeof globalThis.matchMedia === 'function' &&
+    globalThis.matchMedia('(max-width: 47.9375rem)').matches;
+  return narrow ? 'compact' : 'expanded';
+}
+
 export interface StudioLocalCanvasCallbacks {
   onActivated(nodeId: NodeId): void;
   onGeometry(geometry: StudioPreviewGeometry | undefined): void;

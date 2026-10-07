@@ -9,15 +9,23 @@ export const canvasWorkspaceStyles: CSSResult = css`
     --studio-panel: #ffffff;
     --studio-primary: #3157d5;
     --studio-muted: #596579;
+    --studio-panel-width: clamp(18rem, 24vw, 22rem);
   }
 
+  /* One structure column (outline, library disclosure, inspector) beside a
+     page column that main.canvas spans. The middle row holds the library and
+     collapses to nothing while the disclosure is closed. */
   .workspace {
     background: #eef1f6;
     block-size: var(--studio-workspace-height, clamp(32rem, 74vh, 62rem));
-    grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr) minmax(15rem, 19rem);
-    grid-template-rows: minmax(12rem, 1fr) minmax(8rem, 0.7fr) auto auto;
+    grid-template-columns: var(--studio-panel-width) minmax(0, 1fr);
+    grid-template-rows: minmax(8rem, 1fr) 0 minmax(10rem, 1fr) auto auto;
     min-block-size: 28rem;
     overflow: hidden;
+  }
+
+  .workspace[data-library='open'] {
+    grid-template-rows: minmax(8rem, 0.9fr) minmax(8rem, 1.1fr) minmax(10rem, 0.8fr) auto auto;
   }
 
   .panel,
@@ -28,15 +36,16 @@ export const canvasWorkspaceStyles: CSSResult = css`
   }
 
   .library {
+    border-block: 1px solid var(--studio-border);
     grid-column: 1;
-    grid-row: 1;
+    grid-row: 2;
     overflow: auto;
     scrollbar-gutter: stable;
   }
 
   .outline {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 1;
     overflow: auto;
     scrollbar-gutter: stable;
   }
@@ -48,16 +57,18 @@ export const canvasWorkspaceStyles: CSSResult = css`
 
   .canvas {
     background: #eef1f6;
+    display: flex;
+    flex-direction: column;
     grid-column: 2;
-    grid-row: 1 / 3;
+    grid-row: 1 / 4;
     overflow: auto;
-    padding: 0.75rem 1rem 2rem;
+    padding: 0;
     scrollbar-gutter: stable;
   }
 
   .inspector {
-    grid-column: 3;
-    grid-row: 1 / 3;
+    grid-column: 1;
+    grid-row: 3;
     overflow: auto;
     scrollbar-gutter: stable;
   }
@@ -118,7 +129,7 @@ export const canvasWorkspaceStyles: CSSResult = css`
     inline-size: 100%;
     justify-content: center;
     min-block-size: 4.5rem;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
     padding: 0.625rem 0.375rem;
     text-align: center;
   }
@@ -157,11 +168,22 @@ export const canvasWorkspaceStyles: CSSResult = css`
 
   .canvas-toolbar {
     align-items: center;
+    background: white;
+    border-block-end: 1px solid var(--studio-border);
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    inset-block-start: 0;
     justify-content: space-between;
-    margin-block-end: 0.75rem;
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    position: sticky;
+    z-index: 2;
+  }
+
+  .canvas > .breadcrumb {
+    margin: 0;
+    padding: 0.375rem 0.75rem;
   }
 
   .canvas-toolbar :is(.toolbar, .viewport-switcher, .command-palette-toggle) {
@@ -179,18 +201,14 @@ export const canvasWorkspaceStyles: CSSResult = css`
     padding: 0;
   }
 
-  .preview-region > h2 {
-    font-size: 0.75rem;
-  }
-
   .preview-status {
     font-size: 0.75rem;
   }
 
   .preview-stage {
     background: white;
-    border: 1px solid var(--studio-border);
-    box-shadow: 0 0.25rem 1rem #18202a0d;
+    border: 0;
+    box-shadow: none;
     min-block-size: 20rem;
   }
 
@@ -266,7 +284,8 @@ export const canvasWorkspaceStyles: CSSResult = css`
   }
 
   .diagnostics {
-    grid-row: 3;
+    grid-column: 1 / -1;
+    grid-row: 4;
     max-block-size: 8rem;
     overflow: auto;
     padding-block: 0.5rem;
@@ -279,7 +298,8 @@ export const canvasWorkspaceStyles: CSSResult = css`
   .statusbar {
     background: white;
     font-size: 0.75rem;
-    grid-row: 4;
+    grid-column: 1 / -1;
+    grid-row: 5;
     min-block-size: 2rem;
     padding: 0.375rem 0.875rem;
   }
@@ -288,11 +308,28 @@ export const canvasWorkspaceStyles: CSSResult = css`
     display: none;
   }
 
+  /* The closed disclosure hides the palette only at wide widths; the narrow
+     Blocks sheet always shows it, so the landmark survives every sheet path. */
+  @container studio-workspace (width >= 56rem) {
+    .workspace[data-library='closed'] > .library {
+      display: none;
+    }
+  }
+
   @container studio-workspace (width < 56rem) {
-    .workspace {
+    .workspace,
+    .workspace[data-library='open'] {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr) auto auto;
       min-block-size: 28rem;
+    }
+
+    .diagnostics {
+      grid-row: 3;
+    }
+
+    .statusbar {
+      grid-row: 4;
     }
 
     .pane-switcher {

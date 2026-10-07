@@ -275,6 +275,9 @@ export class KumweStudioElement extends LitElement {
     document: { attribute: false },
     inspectorMode: { attribute: false },
     entryValues: { attribute: false },
+    focusedEntryNodeId: { attribute: false, state: true },
+    hoveredNodeId: { attribute: false, state: true },
+    libraryOpen: { attribute: false, state: true },
     libraryQuery: { attribute: false, state: true },
     activePane: { attribute: false, state: true },
     localCanvasContext: { attribute: false },
@@ -446,6 +449,43 @@ export class KumweStudioElement extends LitElement {
       overflow-wrap: anywhere;
     }
 
+    /* The header stays in view while the tree scrolls, so the disclosure
+       control is reachable from any entry the panel has scrolled to. */
+    .panel-header {
+      align-items: center;
+      background: var(--studio-panel);
+      display: flex;
+      gap: 0.5rem;
+      inset-block-start: 0;
+      justify-content: space-between;
+      margin-block-start: -0.875rem;
+      padding-block: 0.875rem 0.25rem;
+      position: sticky;
+      z-index: 1;
+    }
+
+    .panel-header > h2 {
+      margin: 0;
+    }
+
+    .add-blocks-toggle {
+      font-size: 0.8125rem;
+    }
+
+    /* The inset ring is the non-colour hover indicator, mirrored by the page
+       rect; it composes with the pressed bar so a hovered selected entry
+       still shows both states. */
+    .outline-entry[data-hovered='true'] {
+      background: color-mix(in srgb, var(--studio-primary), transparent 92%);
+      box-shadow: inset 0 0 0 1px var(--studio-primary);
+    }
+
+    .outline-entry[data-hovered='true'][aria-pressed='true'] {
+      box-shadow:
+        inset 0.1875rem 0 0 var(--studio-primary),
+        inset 0 0 0 1px var(--studio-primary);
+    }
+
     .unresolved {
       background: #fbe9e9;
       border: 1px solid #e5b6b6;
@@ -500,20 +540,22 @@ export class KumweStudioElement extends LitElement {
 
     .preview-region {
       background: white;
-      border: 1px solid var(--studio-border);
-      border-radius: 0.5rem;
-      margin-bottom: 1rem;
-      padding: 0.75rem;
-    }
-
-    .preview-region h2 {
-      margin-bottom: 0.25rem;
+      border: 0;
+      border-radius: 0;
+      display: flex;
+      flex: 1 0 auto;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
     }
 
     .preview-status {
-      color: #5d6671;
-      font-size: 0.8125rem;
-      margin: 0 0 0.625rem;
+      background: #f6f8fb;
+      border-block-end: 1px solid var(--studio-border);
+      color: var(--studio-muted, #5d6671);
+      font-size: 0.75rem;
+      margin: 0;
+      padding: 0.25rem 0.75rem;
     }
 
     .preview-surface-slot {
@@ -523,6 +565,7 @@ export class KumweStudioElement extends LitElement {
     }
 
     .preview-stage {
+      flex: 1 0 auto;
       isolation: isolate;
       overflow: auto;
       position: relative;
@@ -567,7 +610,7 @@ export class KumweStudioElement extends LitElement {
     }
 
     .canvas-edit-toggle {
-      margin-bottom: 0.625rem;
+      margin: 0;
     }
 
     .preview-canvas-region[data-hovered='true'] {
@@ -575,9 +618,17 @@ export class KumweStudioElement extends LitElement {
       stroke: color-mix(in srgb, var(--studio-primary), transparent 35%);
     }
 
+    .preview-canvas-region[data-focused='true'] {
+      stroke: var(--studio-primary);
+      stroke-dasharray: 6 4;
+      stroke-width: 2;
+    }
+
+    /* Selection keeps its solid stroke while the entry also holds focus. */
     .preview-canvas-region[data-selected='true'] {
       fill: color-mix(in srgb, var(--studio-primary), transparent 88%);
       stroke: var(--studio-primary);
+      stroke-dasharray: none;
       stroke-width: 3;
     }
 
@@ -934,6 +985,12 @@ export class KumweStudioElement extends LitElement {
   declare protected announcement: string | undefined;
   declare protected canvasDirectManipulation: boolean | undefined;
   declare protected canvasGeometry: StudioPreviewGeometry | undefined;
+  /** The outline entry that holds keyboard focus; drawn as a dashed page rect, distinct from hover. */
+  declare protected focusedEntryNodeId: NodeId | undefined;
+  /** Shared by overlay rects and outline entries so hovering either surface marks the other. */
+  declare protected hoveredNodeId: NodeId | undefined;
+  /** Whether the block library disclosure is open at wide widths. */
+  declare protected libraryOpen: boolean;
   declare protected paletteFilter: string | undefined;
   declare protected paletteOpen: boolean | undefined;
   declare protected previewState: StudioPreviewState | 'unavailable' | undefined;
@@ -951,9 +1008,9 @@ export class KumweStudioElement extends LitElement {
   readonly #defaultPatterns = createCoreProductionPatterns();
   #diagnostics: StudioDiagnostic[] = [];
   #drag: CanvasDragState | undefined;
-  #hoveredPreviewNodeId: NodeId | undefined;
   #internalDocumentUpdate = false;
   #lastDirty = false;
+  #libraryWasOpen = false;
   #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
   #pendingPaletteFocus = false;
@@ -987,6 +1044,7 @@ export class KumweStudioElement extends LitElement {
     super();
     this.libraryQuery = '';
     this.activePane = 'canvas';
+    this.libraryOpen = true;
   }
 
   public get activeViewport(): ThemeViewport | undefined {
@@ -1262,6 +1320,25 @@ export class KumweStudioElement extends LitElement {
       this.#pendingPaletteFocus = false;
       this.shadowRoot?.querySelector<HTMLInputElement>('.command-palette input')?.focus();
     }
+    if (this.libraryOpen && !this.#libraryWasOpen) {
+      // A reopened disclosure starts at its heading and search field.
+      const library = this.shadowRoot?.querySelector('aside.library');
+      if (library !== null && library !== undefined) {
+        library.scrollTop = 0;
+      }
+    }
+    this.#libraryWasOpen = this.libraryOpen;
+    // Entries are rendered in place, so a focused entry can be re-bound to
+    // another node without a focus event; the page indicator follows the
+    // node the focused entry now shows.
+    const activeEntry = this.#shadowActiveElement();
+    const focusedId =
+      activeEntry instanceof HTMLElement && activeEntry.classList.contains('outline-entry')
+        ? activeEntry.dataset.nodeId
+        : undefined;
+    if (focusedId !== this.focusedEntryNodeId) {
+      this.focusedEntryNodeId = focusedId;
+    }
     // A select's user-chosen value survives re-renders, so every update
     // re-aligns each size-role select with the assignment it renders.
     for (const select of this.shadowRoot?.querySelectorAll<HTMLSelectElement>(
@@ -1309,6 +1386,7 @@ export class KumweStudioElement extends LitElement {
         class="workspace"
         data-pane=${this.activePane}
         data-contextual=${this.inspectorMode === undefined ? 'false' : 'true'}
+        data-library=${this.libraryOpen ? 'open' : 'closed'}
         @keydown=${(event: KeyboardEvent): void => {
           this.#onWorkspaceKeydown(event);
         }}
@@ -1328,7 +1406,40 @@ export class KumweStudioElement extends LitElement {
           )}
         </nav>
         ${this.#renderCommandPalette()}
-        <aside class="panel library" aria-label=${this.#text('studio.shell/palette-label')}>
+        <aside
+          class="panel outline"
+          aria-label=${this.#text('studio.shell/outline-heading')}
+          tabindex="0"
+        >
+          <div class="panel-header">
+            <h2>${this.#text('studio.shell/outline-heading')}</h2>
+            <button
+              type="button"
+              class="add-blocks-toggle"
+              aria-expanded=${this.libraryOpen ? 'true' : 'false'}
+              aria-controls="library"
+              @click=${(): void => {
+                this.#toggleLibrary();
+              }}
+            >
+              ${this.#text('studio.shell/add-blocks-toggle')}
+            </button>
+          </div>
+          <p class="hint">${this.#text('studio.shell/outline-hint')}</p>
+          ${
+            roots.length === 0
+              ? html`<p class="empty">${this.#text('studio.shell/outline-empty')}</p>`
+              : html`<ul class="tree">
+                  ${roots.map((node) => this.#renderOutlineNode(node))}
+                </ul>`
+          }
+        </aside>
+
+        <aside
+          class="panel library"
+          id="library"
+          aria-label=${this.#text('studio.shell/palette-label')}
+        >
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
           <label class="library-search">
             ${this.#text('studio.shell/library-search')}
@@ -1405,6 +1516,21 @@ export class KumweStudioElement extends LitElement {
           }
         </aside>
 
+        <aside class="panel inspector" aria-label=${this.#text('studio.shell/inspector-heading')}>
+          <h2>${this.#text('studio.shell/inspector-heading')}</h2>
+          <slot class="inspector-slot" name="contextual-inspector"></slot>
+          <div
+            class="inspector-default"
+            ?hidden=${this.inspectorMode !== undefined && this.inspectorMode !== 'blueprint'}
+          >
+            ${
+              selected === undefined
+                ? html`<p>${this.#text('studio.shell/inspector-empty')}</p>`
+                : this.#renderInspector(selected)
+            }
+          </div>
+        </aside>
+
         <main
           class="canvas"
           aria-label=${this.#text('studio.shell/canvas-label')}
@@ -1455,6 +1581,7 @@ export class KumweStudioElement extends LitElement {
                 ${this.#text('studio.shell/redo')}
               </button>
             </div>
+            ${this.#renderCanvasEditToggle()}
           </div>
           ${this.#renderBreadcrumb()} ${this.#renderPreview()} ${this.#renderDropIndicator()}
           ${
@@ -1468,37 +1595,6 @@ export class KumweStudioElement extends LitElement {
                   </ul>`
           }
         </main>
-
-        <aside
-          class="panel outline"
-          aria-label=${this.#text('studio.shell/outline-heading')}
-          tabindex="0"
-        >
-          <h2>${this.#text('studio.shell/outline-heading')}</h2>
-          <p class="hint">${this.#text('studio.shell/outline-hint')}</p>
-          ${
-            roots.length === 0
-              ? html`<p class="empty">${this.#text('studio.shell/outline-empty')}</p>`
-              : html`<ul class="tree">
-                  ${roots.map((node) => this.#renderOutlineNode(node))}
-                </ul>`
-          }
-        </aside>
-
-        <aside class="panel inspector" aria-label=${this.#text('studio.shell/inspector-heading')}>
-          <h2>${this.#text('studio.shell/inspector-heading')}</h2>
-          <slot class="inspector-slot" name="contextual-inspector"></slot>
-          <div
-            class="inspector-default"
-            ?hidden=${this.inspectorMode !== undefined && this.inspectorMode !== 'blueprint'}
-          >
-            ${
-              selected === undefined
-                ? html`<p>${this.#text('studio.shell/inspector-empty')}</p>`
-                : this.#renderInspector(selected)
-            }
-          </div>
-        </aside>
 
         <section
           class="panel diagnostics"
@@ -2981,6 +3077,15 @@ export class KumweStudioElement extends LitElement {
   }
 
   #rebuildSession(): void {
+    this.hoveredNodeId = undefined;
+    this.focusedEntryNodeId = undefined;
+    // The library opens on a blank document and collapses on a non-empty one,
+    // but a library that holds keyboard focus is never hidden by a host
+    // snapshot: that would drop focus to the body while the author is typing.
+    const empty = (this.document?.roots.length ?? 0) === 0;
+    if (empty || !this.#libraryHoldsFocus()) {
+      this.libraryOpen = empty;
+    }
     if (this.commandSession !== undefined) {
       this.#session = this.commandSession;
       this.#sessionGeneration =
@@ -4963,12 +5068,25 @@ export class KumweStudioElement extends LitElement {
           type="button"
           class="outline-entry"
           data-node-id=${node.id}
+          data-hovered=${this.hoveredNodeId === node.id ? 'true' : 'false'}
           aria-pressed=${selected ? 'true' : 'false'}
           @click=${(): void => {
             this.#selectNode(node.id);
           }}
           @keydown=${(event: KeyboardEvent): void => {
             this.#onOutlineKeydown(event, node);
+          }}
+          @pointerenter=${(): void => {
+            this.hoveredNodeId = node.id;
+          }}
+          @pointerleave=${(): void => {
+            if (this.hoveredNodeId === node.id) this.hoveredNodeId = undefined;
+          }}
+          @focus=${(): void => {
+            this.focusedEntryNodeId = node.id;
+          }}
+          @blur=${(): void => {
+            if (this.focusedEntryNodeId === node.id) this.focusedEntryNodeId = undefined;
           }}
         >
           ${
@@ -4999,6 +5117,42 @@ export class KumweStudioElement extends LitElement {
     `;
   }
 
+  /**
+   * The rendered-preview edit control lives in the sticky toolbar. It keeps
+   * its class, accessible name and pressed state; the local canvas, which
+   * forces direct manipulation on, renders none.
+   */
+  #renderCanvasEditToggle(): TemplateResult | typeof nothing {
+    if (this.#usesLocalCanvas()) return nothing;
+    const available = this.#previewCapabilityAvailable() && this.previewBinding !== undefined;
+    const state = available ? (this.previewState ?? 'connecting') : 'unavailable';
+    if (!available || state !== 'current' || this.canvasGeometry === undefined) {
+      return nothing;
+    }
+    return html`
+      <button
+        type="button"
+        class="canvas-edit-toggle"
+        aria-pressed=${this.canvasDirectManipulation === true ? 'true' : 'false'}
+        @click=${(): void => {
+          this.canvasDirectManipulation = this.canvasDirectManipulation !== true;
+          if (!this.canvasDirectManipulation && this.#previewDrag !== undefined) {
+            this.#cancelDrag();
+          }
+          this.#announce('studio.shell/announce-canvas-mode', {
+            state: this.#text(
+              this.canvasDirectManipulation
+                ? 'studio.shell/canvas-mode-editing'
+                : 'studio.shell/canvas-mode-interacting',
+            ),
+          });
+        }}
+      >
+        ${this.#text('studio.shell/canvas-edit-toggle')}
+      </button>
+    `;
+  }
+
   #renderPreview(): TemplateResult {
     if (this.#usesLocalCanvas()) return this.#renderLocalCanvas();
     const available = this.#previewCapabilityAvailable() && this.previewBinding !== undefined;
@@ -5021,34 +5175,8 @@ export class KumweStudioElement extends LitElement {
         data-preview-state=${state}
         aria-label=${this.#text('studio.shell/preview-label')}
       >
-        <h2>${this.#text('studio.shell/preview-heading')}</h2>
+        <h2 class="assistive">${this.#text('studio.shell/preview-heading')}</h2>
         <p class="preview-status">${this.#text(statusKey)}</p>
-        ${
-          available && state === 'current' && this.canvasGeometry !== undefined
-            ? html`
-                <button
-                  type="button"
-                  class="canvas-edit-toggle"
-                  aria-pressed=${this.canvasDirectManipulation === true ? 'true' : 'false'}
-                  @click=${(): void => {
-                    this.canvasDirectManipulation = this.canvasDirectManipulation !== true;
-                    if (!this.canvasDirectManipulation && this.#previewDrag !== undefined) {
-                      this.#cancelDrag();
-                    }
-                    this.#announce('studio.shell/announce-canvas-mode', {
-                      state: this.#text(
-                        this.canvasDirectManipulation
-                          ? 'studio.shell/canvas-mode-editing'
-                          : 'studio.shell/canvas-mode-interacting',
-                      ),
-                    });
-                  }}
-                >
-                  ${this.#text('studio.shell/canvas-edit-toggle')}
-                </button>
-              `
-            : nothing
-        }
         ${
           available && state !== 'closed'
             ? html`
@@ -5059,6 +5187,12 @@ export class KumweStudioElement extends LitElement {
                   tabindex="0"
                   @keydown=${(event: KeyboardEvent): void => {
                     this.#onPreviewStageKeydown(event);
+                  }}
+                  @pointermove=${(event: PointerEvent): void => {
+                    this.#onPreviewStagePointerMove(event);
+                  }}
+                  @pointerleave=${(): void => {
+                    this.#onPreviewStagePointerLeave();
                   }}
                 >
                   <slot
@@ -5123,21 +5257,18 @@ export class KumweStudioElement extends LitElement {
                 class="preview-canvas-region"
                 data-node-id=${nodeId}
                 data-rect-index=${String(index)}
-                data-hovered=${this.#hoveredPreviewNodeId === nodeId ? 'true' : 'false'}
+                data-hovered=${this.hoveredNodeId === nodeId ? 'true' : 'false'}
+                data-focused=${this.focusedEntryNodeId === nodeId ? 'true' : 'false'}
                 data-selected=${this.selectedNodeId === nodeId ? 'true' : 'false'}
                 x=${String(rect.x)}
                 y=${String(rect.y)}
                 width=${String(rect.width)}
                 height=${String(rect.height)}
                 @pointerenter=${(): void => {
-                  this.#hoveredPreviewNodeId = nodeId;
-                  this.requestUpdate();
+                  this.hoveredNodeId = nodeId;
                 }}
                 @pointerleave=${(): void => {
-                  if (this.#hoveredPreviewNodeId === nodeId) {
-                    this.#hoveredPreviewNodeId = undefined;
-                    this.requestUpdate();
-                  }
+                  if (this.hoveredNodeId === nodeId) this.hoveredNodeId = undefined;
                 }}
                 @pointerdown=${(event: PointerEvent): void => {
                   this.#onPreviewCanvasPointerDown(event, nodeId);
@@ -5207,7 +5338,7 @@ export class KumweStudioElement extends LitElement {
     if (node === undefined) {
       return;
     }
-    this.#selectNode(nodeId);
+    this.#selectNode(nodeId, { revealOnCanvas: false });
     const destinations = this.#moveDestinations(node);
     if (destinations.length === 0) {
       return;
@@ -5268,7 +5399,7 @@ export class KumweStudioElement extends LitElement {
     this.#releasePreviewDragCapture(drag);
     this.requestUpdate();
     if (!drag.active) {
-      this.#selectNode(drag.nodeId);
+      this.#selectFromPage(drag.nodeId);
       return;
     }
     const document = this.document;
@@ -5900,6 +6031,10 @@ export class KumweStudioElement extends LitElement {
   #runShellCommand(command: BlueprintCommand): boolean {
     try {
       this.execute(command);
+      // Entries are re-bound in place after a structural change, so the row
+      // under a resting pointer may now show another node; the next pointer
+      // movement re-establishes hover.
+      this.hoveredNodeId = undefined;
       return true;
     } catch {
       // execute() has already announced the failure through the live region.
@@ -5907,7 +6042,11 @@ export class KumweStudioElement extends LitElement {
     }
   }
 
-  #selectNode(nodeId: NodeId, notifyPreview = true): void {
+  #selectNode(
+    nodeId: NodeId,
+    options: { notifyPreview?: boolean; revealOnCanvas?: boolean; revealEntry?: boolean } = {},
+  ): void {
+    const { notifyPreview = true, revealOnCanvas = true, revealEntry = false } = options;
     const session = this.#session;
     if (session === undefined) {
       return;
@@ -5921,6 +6060,140 @@ export class KumweStudioElement extends LitElement {
     if (notifyPreview) {
       this.#previewSurface?.selectNode(nodeId);
     }
+    if (revealOnCanvas) {
+      this.#localCanvas?.reveal(nodeId);
+    }
+    if (revealEntry) {
+      void this.updateComplete.then(() => {
+        this.#revealOutlineEntry(nodeId);
+      });
+    }
+  }
+
+  /**
+   * A selection that originates on the page: the outline entry scrolls into
+   * view without taking focus, and the page itself is never re-scrolled.
+   */
+  #selectFromPage(nodeId: NodeId, options: { notifyPreview?: boolean } = {}): void {
+    this.#selectNode(nodeId, {
+      notifyPreview: options.notifyPreview ?? true,
+      revealOnCanvas: false,
+      revealEntry: true,
+    });
+  }
+
+  /** Non-focusing sibling of #focusOutlineEntry; reduced motion needs no smooth scroll. */
+  #revealOutlineEntry(nodeId: NodeId): void {
+    const entries = this.shadowRoot?.querySelectorAll<HTMLButtonElement>('button.outline-entry');
+    if (entries === undefined) {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.dataset.nodeId === nodeId) {
+        entry.scrollIntoView?.({ block: 'nearest' });
+        return;
+      }
+    }
+  }
+
+  /**
+   * Resolves the deepest accepted measurement under a client point. Geometry
+   * comes only from the host's accepted measurements; no slotted node is read.
+   */
+  #hitTestMeasurements(clientX: number, clientY: number): NodeId | undefined {
+    const geometry = this.canvasGeometry;
+    if (geometry === undefined) {
+      return undefined;
+    }
+    const bounds = this.shadowRoot
+      ?.querySelector('.preview-canvas-overlay')
+      ?.getBoundingClientRect();
+    const scaled = bounds !== undefined && bounds.width > 0 && bounds.height > 0;
+    const x = scaled ? ((clientX - bounds.left) / bounds.width) * geometry.viewport.width : clientX;
+    const y = scaled
+      ? ((clientY - bounds.top) / bounds.height) * geometry.viewport.height
+      : clientY;
+    const roots = this.document?.roots ?? [];
+    let deepest: NodeId | undefined;
+    let depth = -1;
+    for (const [nodeId, rects] of Object.entries(geometry.measurements)) {
+      const hit = rects.some(
+        (rect) =>
+          x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height,
+      );
+      if (!hit) continue;
+      const candidateDepth = findAncestry(roots, nodeId).length;
+      if (candidateDepth > depth) {
+        deepest = nodeId;
+        depth = candidateDepth;
+      }
+    }
+    return deepest;
+  }
+
+  /**
+   * Passive hover on a host preview while the overlay stays pointer-inert:
+   * the stage listens, never prevents default, and only marks the hovered
+   * node. Selection stays the host's trusted activation report.
+   */
+  #onPreviewStagePointerMove(event: PointerEvent): void {
+    if (this.canvasDirectManipulation === true) return;
+    const nodeId = this.#hitTestMeasurements(event.clientX, event.clientY);
+    if (nodeId !== this.hoveredNodeId) this.hoveredNodeId = nodeId;
+  }
+
+  #onPreviewStagePointerLeave(): void {
+    if (this.canvasDirectManipulation !== true) this.hoveredNodeId = undefined;
+  }
+
+  #libraryHoldsFocus(): boolean {
+    const active = this.#shadowActiveElement();
+    return (
+      active !== null && this.shadowRoot?.querySelector('aside.library')?.contains(active) === true
+    );
+  }
+
+  /** The focused element inside the shadow tree, or null when none resolves. */
+  #shadowActiveElement(): Element | null {
+    const root = this.shadowRoot;
+    if (root === null || !this.isConnected) {
+      return null;
+    }
+    try {
+      return root.activeElement;
+    } catch {
+      // A DOM implementation may fail to resolve focus across a detached
+      // tree; an unresolved focus is treated as none.
+      return null;
+    }
+  }
+
+  #toggleLibrary(): void {
+    if (this.libraryOpen && this.activePane !== 'library' && this.#sheetsActive()) {
+      // Narrow sheets ignore the disclosure: an open library behind another
+      // sheet is brought forward rather than closed.
+      this.activePane = 'library';
+      return;
+    }
+    if (this.libraryOpen && this.#libraryHoldsFocus()) {
+      // Hiding the panel would drop its focus to the body; the control that
+      // closes the disclosure takes it instead.
+      this.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle')?.focus();
+    }
+    this.libraryOpen = !this.libraryOpen;
+    if (this.libraryOpen) {
+      this.activePane = 'library';
+    } else if (this.activePane === 'library') {
+      this.activePane = 'outline';
+    }
+  }
+
+  /** Whether the workspace currently shows one sheet at a time (its pane switcher is laid out). */
+  #sheetsActive(): boolean {
+    const switcher = this.shadowRoot?.querySelector('nav.pane-switcher');
+    return (
+      switcher !== null && switcher !== undefined && switcher.getBoundingClientRect().height > 0
+    );
   }
 
   #selectViewport(viewport: ThemeViewport): void {
@@ -5965,7 +6238,7 @@ export class KumweStudioElement extends LitElement {
         data-local-canvas-state=${state}
         aria-label=${this.#text('studio.shell/local-canvas-label')}
       >
-        <h2>${this.#text('studio.shell/local-canvas-label')}</h2>
+        <h2 class="assistive">${this.#text('studio.shell/local-canvas-label')}</h2>
         <p class="preview-status">
           ${this.#text(state === 'unavailable' ? 'studio.shell/local-canvas-unavailable' : 'studio.shell/local-canvas-description')}
         </p>
@@ -6002,12 +6275,12 @@ export class KumweStudioElement extends LitElement {
       this.#localCanvasHolder = holder;
       this.#localCanvas = new StudioLocalCanvas(holder, {
         onActivated: (nodeId): void => {
-          this.#selectNode(nodeId, false);
+          this.#selectFromPage(nodeId, { notifyPreview: false });
         },
         onGeometry: (geometry): void => {
           this.canvasGeometry = geometry;
           if (geometry === undefined) {
-            this.#hoveredPreviewNodeId = undefined;
+            this.hoveredNodeId = undefined;
             this.#cancelDrag();
           }
         },
@@ -6089,13 +6362,12 @@ export class KumweStudioElement extends LitElement {
     this.#previewBindingGeneration = generation;
     this.#previewSurface = new StudioPreviewSurface(binding, {
       onActivated: (nodeId): void => {
-        this.#selectNode(nodeId, false);
-        this.requestUpdate();
+        this.#selectFromPage(nodeId, { notifyPreview: false });
       },
       onGeometry: (geometry): void => {
         this.canvasGeometry = geometry;
         if (geometry === undefined) {
-          this.#hoveredPreviewNodeId = undefined;
+          this.hoveredNodeId = undefined;
           if (this.#previewDrag !== undefined) {
             this.#cancelDrag();
           }
