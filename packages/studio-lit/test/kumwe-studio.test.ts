@@ -5,6 +5,7 @@ import {
   type BlockType,
   type BlueprintNode,
   type InsertNodeCommand,
+  type RemoveNodeCommand,
 } from '@kumwe/studio-protocol';
 import {
   createBlueprintFixture,
@@ -98,6 +99,71 @@ function saveStateText(element: KumweStudioElement): string {
 function activeOutlineNodeId(element: KumweStudioElement): string | undefined {
   const active = element.shadowRoot?.activeElement;
   return active instanceof HTMLElement ? active.dataset.nodeId : undefined;
+}
+
+function workspace(element: KumweStudioElement): HTMLElement {
+  const region = element.shadowRoot?.querySelector<HTMLElement>('.workspace');
+  if (region === null || region === undefined) {
+    throw new Error('Missing workspace');
+  }
+  return region;
+}
+
+function panelView(element: KumweStudioElement): string | null {
+  return workspace(element).getAttribute('data-panel-view');
+}
+
+function panelScope(element: KumweStudioElement): string | null {
+  return workspace(element).getAttribute('data-panel-scope');
+}
+
+/** The details header's Back control, or null while the contextual modes hide it. */
+function panelBack(element: KumweStudioElement): HTMLButtonElement | null {
+  return (
+    element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'aside.inspector .panel-header button.panel-back',
+    ) ?? null
+  );
+}
+
+/** The opened level's `Back to …` control, or null at the page level. */
+function scopeBack(element: KumweStudioElement): HTMLButtonElement | null {
+  return (
+    element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'aside.outline .panel-header button.panel-back',
+    ) ?? null
+  );
+}
+
+function keydown(target: EventTarget, key: string, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    key,
+    ...init,
+  });
+  target.dispatchEvent(event);
+  return event;
+}
+
+/** Two update rounds: the render, then the focus placement queued behind it. */
+async function settle(element: KumweStudioElement): Promise<void> {
+  await element.updateComplete;
+  await element.updateComplete;
+}
+
+function removeNodeCommand(element: KumweStudioElement, nodeId: string): RemoveNodeCommand {
+  return {
+    artifactId: element.document?.id ?? 'test.blueprint',
+    baseStateVersion: element.stateVersion,
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id: `command-remove-${nodeId}`,
+    kind: 'command',
+    payload: { nodeId },
+    sessionGeneration: 'session-r1',
+    type: 'studio.command/remove-node',
+  };
 }
 
 async function selectNode(element: KumweStudioElement, nodeId: string): Promise<void> {
@@ -507,6 +573,7 @@ describe('kumwe-studio element', () => {
       'studio.shell/add-blocks-toggle': { defaultMessage: 'Bausteine hinzufügen' },
       'studio.shell/outline-heading': { defaultMessage: 'Struktur' },
       'studio.shell/palette-heading': { defaultMessage: 'Bausteine' },
+      'studio.shell/panel-back': { defaultMessage: 'Zurück' },
     };
     await element.updateComplete;
 
@@ -516,6 +583,13 @@ describe('kumwe-studio element', () => {
     expect(element.shadowRoot?.querySelector('button.add-blocks-toggle')?.textContent?.trim()).toBe(
       'Bausteine hinzufügen',
     );
+
+    await selectNode(element, 'text-1');
+    element.revealInspector();
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    expect(panelBack(element)?.textContent).toContain('Zurück');
+    expect(panelBack(element)?.textContent).not.toContain('Back');
     element.remove();
   });
 
@@ -727,6 +801,682 @@ describe('kumwe-studio element', () => {
     await element.updateComplete;
     expect(element.document?.roots.some((node) => node.id === 'newer-edit')).toBe(true);
     expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
+    element.remove();
+  });
+});
+
+describe('layered structure navigation', () => {
+  it('opens the structure view at the page level and keeps the whole tree', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    expect(panelView(element)).toBe('structure');
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'hero-1',
+      'section-1',
+      'text-1',
+      'text-2',
+    ]);
+    expect(scopeBack(element)).toBeNull();
+    expect(element.shadowRoot?.querySelector('aside.outline h2')?.textContent?.trim()).toBe(
+      'Outline',
+    );
+    expect(element.shadowRoot?.querySelector('button.outline-open')).toBeNull();
+    expect(element.shadowRoot?.querySelector('button.outline-edit')).toBeNull();
+    expect(element.shadowRoot?.querySelector('button.outline-whole-tree')).toBeNull();
+    element.remove();
+  });
+
+  it('drills into a container with Open and ArrowRight and lists only its slot children', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    await selectNode(element, 'section-1');
+    expect(controlButton(element, 'outline-edit').textContent?.trim()).toBe('Edit');
+    expect(controlButton(element, 'outline-open').textContent?.trim()).toBe('Open');
+
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelView(element)).toBe('structure');
+    expect(panelScope(element)).toBe('section-1');
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'text-1',
+      'text-2',
+    ]);
+    expect(scopeBack(element)?.textContent).toContain('Back to Page');
+    expect(
+      element.shadowRoot
+        ?.querySelector('aside.outline h2.outline-scope-heading')
+        ?.textContent?.trim(),
+    ).toBe('Section');
+    expect(element.shadowRoot?.querySelector('button.outline-whole-tree')).not.toBeNull();
+    expect(liveRegionText(element)).toBe('Showing Outline for Section');
+    expect(activeOutlineNodeId(element)).toBe('text-1');
+    // A leaf inside the level offers Edit but no Open.
+    await selectNode(element, 'text-1');
+    expect(controlButton(element, 'outline-edit')).toBeDefined();
+    expect(element.shadowRoot?.querySelector('button.outline-open')).toBeNull();
+
+    element.shadowRoot?.querySelector<HTMLButtonElement>('button.outline-whole-tree')?.click();
+    await settle(element);
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'hero-1',
+      'section-1',
+      'text-1',
+      'text-2',
+    ]);
+    expect(scopeBack(element)).toBeNull();
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
+
+    outlineEntry(element, 'section-1').focus();
+    expect(keydown(outlineEntry(element, 'section-1'), 'ArrowRight').defaultPrevented).toBe(true);
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('text-1');
+    expect(liveRegionText(element)).toBe('Showing Outline for Section');
+
+    expect(keydown(outlineEntry(element, 'text-1'), 'ArrowLeft').defaultPrevented).toBe(true);
+    await settle(element);
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
+    // At the page level ArrowLeft has nothing to close and is left to the browser.
+    expect(keydown(outlineEntry(element, 'section-1'), 'ArrowLeft').defaultPrevented).toBe(false);
+
+    keydown(outlineEntry(element, 'section-1'), 'ArrowRight');
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(keydown(outlineEntry(element, 'text-1'), 'Escape').defaultPrevented).toBe(true);
+    await settle(element);
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+    // At the page level in the structure view Escape is not consumed.
+    expect(keydown(outlineEntry(element, 'section-1'), 'Escape').defaultPrevented).toBe(false);
+    element.remove();
+  });
+
+  it('ArrowRight on a block without children opens its details and focuses the first control', async () => {
+    const element = await mountShell({
+      definitions: [
+        defineTestBlock({ label: 'Section', type: 'studio.core/section' }),
+        {
+          ...defineTestBlock({
+            label: 'Text',
+            propertySchema: {
+              additionalProperties: false,
+              properties: { text: { type: 'string' } },
+              type: 'object',
+            },
+            type: 'studio.core/text',
+          }),
+          propertyControls: [{ control: 'org.example.catalog/plain-text', property: 'text' }],
+        },
+      ],
+      roots: structuredRoots(),
+    });
+
+    outlineEntry(element, 'text-1').focus();
+    expect(keydown(outlineEntry(element, 'text-1'), 'ArrowRight').defaultPrevented).toBe(true);
+    await settle(element);
+
+    expect(panelView(element)).toBe('details');
+    expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
+    const active = element.shadowRoot?.activeElement;
+    expect(active?.closest('aside.inspector')).not.toBeNull();
+    expect(active?.matches('.scalar-control input')).toBe(true);
+    expect(liveRegionText(element)).toBe('Showing Inspector for Text');
+    element.remove();
+  });
+
+  it('Edit opens the details view, Back returns to the selected entry, and each change is announced once', async () => {
+    const roots = structuredRoots();
+    const second = roots[1]?.slots.content?.[1];
+    if (second === undefined) throw new Error('fixture requires text-2');
+    second.properties = { align: 'start' };
+    const element = await mountShell({ roots });
+
+    await selectNode(element, 'text-2');
+    expect(liveRegionText(element)).toBe('');
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(panelBack(element)?.textContent).toContain('Back');
+    expect(liveRegionText(element)).toBe('Showing Inspector for Text');
+
+    // A sentinel announcement, then the same layer again: the layer is not re-announced.
+    const alignInput = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.inspector input.inspector-property-input[data-property="align"]',
+    );
+    if (alignInput == null) throw new Error('Missing align input');
+    keydown(alignInput, 'Escape');
+    await element.updateComplete;
+    expect(liveRegionText(element)).toBe('Edit cancelled. align kept its value.');
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(liveRegionText(element)).toBe('Edit cancelled. align kept its value.');
+
+    panelBack(element)?.click();
+    await settle(element);
+    expect(panelView(element)).toBe('structure');
+    expect(workspace(element).getAttribute('data-pane')).toBe('outline');
+    expect(activeOutlineNodeId(element)).toBe('text-2');
+    expect(outlineEntry(element, 'text-2').getAttribute('aria-pressed')).toBe('true');
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
+
+    // After a layer change the same details layer is announced again, exactly once.
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(liveRegionText(element)).toBe('Showing Inspector for Text');
+    element.remove();
+  });
+
+  it('Escape unwinds details to structure only from the panel chrome and never from a value input', async () => {
+    const roots = structuredRoots();
+    const first = roots[1]?.slots.content?.[0];
+    if (first === undefined) throw new Error('fixture requires text-1');
+    first.properties = { align: 'start' };
+    const element = await mountShell({ roots });
+
+    await selectNode(element, 'text-1');
+    element.revealInspector();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    const back = panelBack(element);
+    if (back === null) throw new Error('Missing Back control');
+    back.focus();
+    expect(element.shadowRoot?.activeElement).toBe(back);
+    expect(keydown(back, 'Escape').defaultPrevented).toBe(true);
+    await settle(element);
+    expect(panelView(element)).toBe('structure');
+    expect(activeOutlineNodeId(element)).toBe('text-1');
+
+    element.revealInspector();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    const alignInput = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.inspector input.inspector-property-input[data-property="align"]',
+    );
+    if (alignInput == null) throw new Error('Missing align input');
+    alignInput.focus();
+    keydown(alignInput, 'Escape');
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    const nameInput = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.inspector input.inspector-add-property-name',
+    );
+    if (nameInput == null) throw new Error('Missing add-property input');
+    nameInput.focus();
+    expect(keydown(nameInput, 'Escape').defaultPrevented).toBe(false);
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+
+    // The command palette closes first; the panel stays where it is.
+    keydown(workspace(element), 'k', { ctrlKey: true });
+    await element.updateComplete;
+    const paletteInput = element.shadowRoot?.querySelector<HTMLInputElement>(
+      'section.command-palette input',
+    );
+    if (paletteInput == null) throw new Error('Missing command palette');
+    expect(keydown(paletteInput, 'Escape').defaultPrevented).toBe(true);
+    await settle(element);
+    expect(element.shadowRoot?.querySelector('section.command-palette')).toBeNull();
+    expect(panelView(element)).toBe('details');
+
+    // From the page column Escape is not a panel key.
+    const stage = element.shadowRoot?.querySelector<HTMLElement>('main.canvas');
+    if (stage == null) throw new Error('Missing canvas');
+    expect(keydown(stage, 'Escape').defaultPrevented).toBe(false);
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    element.remove();
+  });
+
+  it('revealInspector() opens details without moving focus and selectNode() does not open them', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    expect(element.shadowRoot?.activeElement).toBeNull();
+    const before = liveRegionText(element);
+
+    element.selectNode('text-1');
+    await element.updateComplete;
+    expect(panelView(element)).toBe('structure');
+    expect(outlineEntry(element, 'text-1').getAttribute('aria-pressed')).toBe('true');
+
+    element.revealInspector();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(element.shadowRoot?.activeElement).toBeNull();
+    expect(liveRegionText(element)).toBe(before);
+    element.remove();
+
+    // Focus in a region the details view hides moves to the Back control.
+    const blank = await mountShell();
+    const search = blank.shadowRoot?.querySelector<HTMLInputElement>(
+      'aside.library input[type="search"]',
+    );
+    if (search == null) throw new Error('Missing library search');
+    search.focus();
+    expect(blank.shadowRoot?.activeElement).toBe(search);
+    blank.revealInspector();
+    await settle(blank);
+    expect(panelView(blank)).toBe('details');
+    expect(blank.shadowRoot?.activeElement).toBe(panelBack(blank));
+    blank.remove();
+  });
+
+  it('a structural outcome returns the structure view and lists the focus target without a second announcement', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    await selectNode(element, 'text-2');
+    controlButton(element, 'outline-delete').click();
+    await settle(element);
+    expect(liveRegionText(element)).toBe('Deleted Text block');
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('text-1');
+
+    // The next target is the parent, which the level does not list: the
+    // level falls back to the page without an announcement of its own.
+    controlButton(element, 'outline-delete').click();
+    await settle(element);
+    expect(liveRegionText(element)).toBe('Deleted Text block');
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(panelView(element)).toBe('structure');
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+    element.remove();
+
+    const inserting = await mountShell({ roots: structuredRoots() });
+    await selectNode(inserting, 'text-1');
+    controlButton(inserting, 'outline-edit').click();
+    await settle(inserting);
+    expect(panelView(inserting)).toBe('details');
+    const before = outlineEntries(inserting).map((entry) => entry.dataset.nodeId);
+    const palette = [
+      ...(inserting.shadowRoot?.querySelectorAll<HTMLButtonElement>('.palette button') ?? []),
+    ];
+    palette.find((button) => button.textContent?.includes('Text'))?.click();
+    await settle(inserting);
+    expect(panelView(inserting)).toBe('structure');
+    expect(liveRegionText(inserting)).toBe('Inserted Text');
+    const inserted = activeOutlineNodeId(inserting);
+    expect(inserted).toBeDefined();
+    expect(before).not.toContain(inserted);
+    expect(outlineEntry(inserting, inserted ?? '').getAttribute('aria-pressed')).toBe('true');
+    inserting.remove();
+  });
+
+  it('a deleted level falls back to the page', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+
+    element.execute(removeNodeCommand(element, 'section-1'));
+    await settle(element);
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(panelView(element)).toBe('structure');
+    expect(scopeBack(element)).toBeNull();
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual(['hero-1']);
+    element.remove();
+  });
+
+  it('maps the Outline and Inspector sheets to the two views and leaves the others alone', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const switcher = element.shadowRoot?.querySelector<HTMLElement>('nav.pane-switcher');
+    if (switcher == null) throw new Error('Missing pane switcher');
+    const original = switcher.getBoundingClientRect.bind(switcher);
+    switcher.getBoundingClientRect = (): DOMRect => new DOMRect(0, 0, 390, 40);
+    const paneButton = (label: string): HTMLButtonElement => {
+      const button = [...switcher.querySelectorAll<HTMLButtonElement>('button')].find(
+        (candidate) => candidate.textContent?.trim() === label,
+      );
+      if (button === undefined) throw new Error(`Missing pane button ${label}`);
+      return button;
+    };
+    const before = liveRegionText(element);
+
+    paneButton('Inspector').click();
+    await element.updateComplete;
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(panelView(element)).toBe('details');
+    // Sheet switches are not announced.
+    expect(liveRegionText(element)).toBe(before);
+
+    // Without a selection Back focuses the outline region rather than nothing.
+    const back = panelBack(element);
+    if (back === null) throw new Error('Missing Back control');
+    back.focus();
+    back.click();
+    await settle(element);
+    expect(workspace(element).getAttribute('data-pane')).toBe('outline');
+    expect(panelView(element)).toBe('structure');
+    expect(element.shadowRoot?.activeElement).toBe(
+      element.shadowRoot?.querySelector('aside.outline'),
+    );
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
+    const afterBack = liveRegionText(element);
+
+    paneButton('Inspector').click();
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    paneButton('Blocks').click();
+    await element.updateComplete;
+    expect(workspace(element).getAttribute('data-pane')).toBe('library');
+    expect(panelView(element)).toBe('details');
+    paneButton('Canvas').click();
+    await element.updateComplete;
+    expect(workspace(element).getAttribute('data-pane')).toBe('canvas');
+    expect(panelView(element)).toBe('details');
+    paneButton('Outline').click();
+    await element.updateComplete;
+    expect(workspace(element).getAttribute('data-pane')).toBe('outline');
+    expect(panelView(element)).toBe('structure');
+    // None of the four sheet switches announced anything.
+    expect(liveRegionText(element)).toBe(afterBack);
+    switcher.getBoundingClientRect = original;
+    element.remove();
+  });
+
+  it('maps the contextual modes to layers and keeps the docked panel across a document replacement', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const before = liveRegionText(element);
+    const inspector = element.shadowRoot?.querySelector<HTMLElement>('aside.inspector');
+    if (inspector == null) throw new Error('Missing inspector');
+
+    element.inspectorMode = 'content';
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(panelBack(element)).toBeNull();
+    expect(keydown(inspector, 'Escape').defaultPrevented).toBe(false);
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+
+    element.inspectorMode = 'blueprint';
+    await element.updateComplete;
+    expect(panelView(element)).toBe('structure');
+    expect(workspace(element).getAttribute('data-pane')).toBe('canvas');
+    expect(panelBack(element)).not.toBeNull();
+
+    element.inspectorMode = 'model';
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    expect(panelBack(element)).toBeNull();
+    expect(keydown(inspector, 'Escape').defaultPrevented).toBe(false);
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(liveRegionText(element)).toBe(before);
+
+    element.inspectorMode = 'blueprint';
+    await element.updateComplete;
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(liveRegionText(element)).toBe('Showing Outline for Section');
+    const afterOpen = liveRegionText(element);
+    element.inspectorMode = 'content';
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    expect(liveRegionText(element)).toBe(afterOpen);
+
+    // A replaced host document while a docked panel shows keeps the details
+    // layer and returns the structure layer to the page level, silently.
+    element.document = createBlueprintFixture({ roots: structuredRoots() });
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(panelBack(element)).toBeNull();
+    expect(liveRegionText(element)).toBe(afterOpen);
+    element.remove();
+  });
+
+  it('marks the listed ancestor when a deeper node is hovered inside an opened level', async () => {
+    const element = await mountShell({
+      roots: [
+        blueprintNode('section-1', 'studio.core/section', [
+          blueprintNode('columns-1', 'studio.core/section', [
+            blueprintNode('text-3', 'studio.core/text'),
+          ]),
+        ]),
+      ],
+    });
+    const hoveredIds = (): (string | undefined)[] =>
+      [
+        ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+          'button.outline-entry[data-hovered="true"]',
+        ) ?? []),
+      ].map((entry) => entry.dataset.nodeId);
+    const hover = (nodeId: string): void => {
+      outlineEntry(element, nodeId).dispatchEvent(
+        new PointerEvent('pointerenter', { bubbles: false, composed: true }),
+      );
+    };
+
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual(['columns-1']);
+    hover('columns-1');
+    await element.updateComplete;
+    expect(hoveredIds()).toEqual(['columns-1']);
+
+    await selectNode(element, 'columns-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('columns-1');
+    expect(scopeBack(element)?.textContent).toContain('Back to Section');
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual(['text-3']);
+    hover('text-3');
+    await element.updateComplete;
+    expect(hoveredIds()).toEqual(['text-3']);
+
+    // Back one level: the hovered node is text-3, which this level does not
+    // list, so its listed ancestor carries the indicator, and only it.
+    keydown(outlineEntry(element, 'text-3'), 'ArrowLeft');
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('columns-1');
+    expect(hoveredIds()).toEqual(['columns-1']);
+    element.remove();
+  });
+
+  it('keeps the docked panel when a diagnostic reveals its block in the contextual modes', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    element.inspectorMode = 'content';
+    await element.updateComplete;
+    expect(panelView(element)).toBe('details');
+    const before = liveRegionText(element);
+
+    // hero-1 has no definition, so its block-unavailable diagnostic is node-located.
+    const diagnostic = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'button.diagnostic-entry[data-node-id="hero-1"]',
+    );
+    if (diagnostic == null) throw new Error('Missing node-located diagnostic');
+    diagnostic.focus();
+    diagnostic.click();
+    await settle(element);
+    expect(element.selection).toEqual(['hero-1']);
+    // The structure view would hide the docked Content panel with no Back and
+    // no Escape unwind, so the view and the sheet stay where they were.
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(panelBack(element)).toBeNull();
+    expect(liveRegionText(element)).toBe(before);
+
+    // The Blueprint tab is the return; the revealed block is listed there.
+    element.inspectorMode = 'blueprint';
+    await settle(element);
+    expect(panelView(element)).toBe('structure');
+    expect(outlineEntry(element, 'hero-1').getAttribute('aria-pressed')).toBe('true');
+    element.remove();
+  });
+
+  it('moves focus into the details region where the contextual modes render no Back', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+    const switcher = element.shadowRoot?.querySelector<HTMLElement>('nav.pane-switcher');
+    if (switcher == null) throw new Error('Missing pane switcher');
+    const original = switcher.getBoundingClientRect.bind(switcher);
+    switcher.getBoundingClientRect = (): DOMRect => new DOMRect(0, 0, 390, 40);
+    const inspector = element.shadowRoot?.querySelector<HTMLElement>('aside.inspector');
+    if (inspector == null) throw new Error('Missing inspector');
+    element.inspectorMode = 'content';
+    await element.updateComplete;
+    const outlineButton = [...switcher.querySelectorAll<HTMLButtonElement>('button')].find(
+      (candidate) => candidate.textContent?.trim() === 'Outline',
+    );
+    if (outlineButton === undefined) throw new Error('Missing Outline pane button');
+
+    // A host reveal while the Outline sheet holds focus.
+    outlineButton.click();
+    await element.updateComplete;
+    expect(panelView(element)).toBe('structure');
+    outlineEntry(element, 'text-1').focus();
+    element.revealInspector();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(workspace(element).getAttribute('data-pane')).toBe('inspector');
+    expect(panelBack(element)).toBeNull();
+    const active = element.shadowRoot?.activeElement ?? null;
+    expect(active).not.toBeNull();
+    expect(inspector.contains(active)).toBe(true);
+
+    // The row's Edit with no focusable control in the docked panel.
+    outlineButton.click();
+    await element.updateComplete;
+    await selectNode(element, 'text-1');
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    const afterEdit = element.shadowRoot?.activeElement ?? null;
+    expect(afterEdit).not.toBeNull();
+    expect(inspector.contains(afterEdit)).toBe(true);
+    switcher.getBoundingClientRect = original;
+    element.remove();
+  });
+
+  it('a level that loses its last child falls back to its parent with the container focused', async () => {
+    const element = await mountShell({
+      roots: [
+        blueprintNode('hero-1', 'studio.core/hero'),
+        blueprintNode('section-1', 'studio.core/section', [
+          blueprintNode('text-1', 'studio.core/text'),
+        ]),
+      ],
+    });
+
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('text-1');
+
+    // A host-run removal of the only listed row: the level is never shown
+    // empty, and the container the row belonged to takes the focus.
+    element.execute(removeNodeCommand(element, 'text-1'));
+    await settle(element);
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(panelView(element)).toBe('structure');
+    expect(element.shadowRoot?.querySelector('aside.outline p.empty')).toBeNull();
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'hero-1',
+      'section-1',
+    ]);
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+
+    // Undo restores the child; the author opens the level again and undoes an
+    // insert whose entry holds focus, which is the same collapse.
+    element.undo();
+    await settle(element);
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'hero-1',
+      'section-1',
+      'text-1',
+    ]);
+    element.execute(removeNodeCommand(element, 'text-1'));
+    await settle(element);
+    element.execute({
+      ...insertTextCommand(element, 'text-9'),
+      payload: {
+        destination: { parentNodeId: 'section-1', position: 0, slot: 'content' },
+        node: blueprintNode('text-9', 'studio.core/text'),
+      },
+    });
+    await settle(element);
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('text-9');
+    element.undo();
+    await settle(element);
+    expect(liveRegionText(element)).toBe('Undid change');
+    expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+    expect(element.shadowRoot?.querySelector('aside.outline p.empty')).toBeNull();
+    expect(activeOutlineNodeId(element)).toBe('section-1');
+    element.remove();
+  });
+
+  it('leaves a modified horizontal arrow to the platform', async () => {
+    const element = await mountShell({ roots: structuredRoots() });
+
+    for (const init of [
+      { ctrlKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { altKey: true },
+    ] as const) {
+      expect(keydown(outlineEntry(element, 'section-1'), 'ArrowRight', init).defaultPrevented).toBe(
+        false,
+      );
+      await settle(element);
+      expect(workspace(element).hasAttribute('data-panel-scope')).toBe(false);
+      expect(panelView(element)).toBe('structure');
+    }
+
+    keydown(outlineEntry(element, 'section-1'), 'ArrowRight');
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    expect(
+      keydown(outlineEntry(element, 'text-1'), 'ArrowLeft', { altKey: true }).defaultPrevented,
+    ).toBe(false);
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    element.remove();
+  });
+
+  it('returns the structure layer with focus and an announcement when the document is replaced under the details view', async () => {
+    const roots = structuredRoots();
+    const first = roots[1]?.slots.content?.[0];
+    if (first === undefined) throw new Error('fixture requires text-1');
+    first.properties = { align: 'start' };
+    const element = await mountShell({ roots });
+
+    await selectNode(element, 'text-1');
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    const control = element.shadowRoot?.activeElement ?? null;
+    expect(control).not.toBeNull();
+    expect(element.shadowRoot?.querySelector('aside.inspector')?.contains(control)).toBe(true);
+    expect(liveRegionText(element)).toBe('Showing Inspector for Text');
+
+    element.document = createBlueprintFixture({ roots: structuredRoots() });
+    await settle(element);
+    expect(panelView(element)).toBe('structure');
+    expect(element.selection).toEqual([]);
+    expect(element.shadowRoot?.activeElement).toBe(
+      element.shadowRoot?.querySelector('aside.outline'),
+    );
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
     element.remove();
   });
 });

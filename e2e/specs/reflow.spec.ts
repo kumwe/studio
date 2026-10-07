@@ -60,6 +60,23 @@ test('the workspace reflows at 320 CSS px without losing core functions', async 
   await addPropertyName.focus();
   await expect(addPropertyName).toBeFocused();
 
+  // The Inspector sheet is the details view. Escape from a text input never
+  // unwinds it; the header's "Back" control returns to the Outline sheet,
+  // the structure view, with the selected entry focused.
+  const workspace = shell.locator('.workspace');
+  await expect(workspace).toHaveAttribute('data-panel-view', 'details');
+  await page.keyboard.press('Escape');
+  await expect(addPropertyName).toBeFocused();
+  await expect(workspace).toHaveAttribute('data-panel-view', 'details');
+  const back = inspector.getByRole('button', { name: 'Back', exact: true });
+  await back.focus();
+  await expect(back).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(workspace).toHaveAttribute('data-pane', 'outline');
+  await expect(workspace).toHaveAttribute('data-panel-view', 'structure');
+  await expect(shell.getByRole('complementary', { name: 'Outline' })).toBeVisible();
+  await expect(outlineEntry).toBeFocused();
+
   // The command palette still opens from the keyboard and takes focus, even
   // while a sheet other than the canvas is showing.
   await showPane(shell, 'Outline');

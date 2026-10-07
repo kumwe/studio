@@ -1109,6 +1109,10 @@ describe('shell preview surface', () => {
     expect(document.activeElement).toBe(activeBefore);
     expect(element.shadowRoot?.activeElement).toBeNull();
     expect(client.selections).toHaveLength(selectionsBefore);
+    // The host activation opens the details layer without moving focus.
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-panel-view')).toBe(
+      'details',
+    );
 
     // With the control off the overlay arms no drag.
     measuredRegion(element, 'text-1').dispatchEvent(pointerEvent('pointerdown', 62, 20, 30));
@@ -1131,6 +1135,17 @@ describe('shell preview surface', () => {
     expect(element.selection).toEqual(['text-1']);
     expect(client.selections).toHaveLength(selectionsBefore);
     expect(commandTypes).toEqual([]);
+
+    // Back returns to the structure layer and focuses the activated entry.
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('aside.inspector button.panel-back')
+      ?.click();
+    await settle(element);
+    expect(element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-panel-view')).toBe(
+      'structure',
+    );
+    expect(element.shadowRoot?.activeElement).toBe(outlineEntry(element, 'text-1'));
+    expect(element.selection).toEqual(['text-1']);
     element.remove();
   });
 
