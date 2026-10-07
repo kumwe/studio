@@ -16,7 +16,10 @@ recovery without mutation (`STUDIO-PROD-001`, `STUDIO-PROD-003`, and `STUDIO-PRO
 The contextual shell now composes one exact Model, Blueprint, and Entry snapshot over the existing Blueprint
 canvas. It exposes the authorized modes, current additive Model-field and Entry-value controls, separate dirty
 state, all four presentation states, and the three explicit save choices. `mountStudio()` opens either a blank
-standalone workspace or the same shell through an exact configured host transport.
+standalone workspace or the same shell through an exact configured host transport. At wide widths the
+Blueprint workspace is one structure-and-details column (Outline, `Add blocks` disclosure, Inspector) beside
+a full-height page whose hover and single-click selection are mirrored in the Outline; that is implemented
+shell behaviour, not qualification of the contextual journey.
 
 That is implemented browser behavior, not proof of the completed product journey. Complete field lifecycle and
 interaction breadth, Kumwe App persistence/rendering, independent-host replay, the complete `authoring-web`

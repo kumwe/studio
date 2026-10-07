@@ -8,6 +8,23 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Page-builder workspace frame (M4-01)
+
+- The wide Blueprint workspace is now one structure-and-details column beside a page column that fills the
+  workspace height under a sticky toolbar that also holds the rendered-preview edit control. The Outline
+  leads, the block palette is an `Add blocks` disclosure, and the Inspector with the docked Model and Content
+  panels follows; narrow sheets are unchanged.
+- Hovering a rendered block highlights its Outline entry and hovering an entry marks the block; a focused
+  entry shows a distinct dashed indicator on the page. A single click on the page selects and reveals the
+  entry without moving focus to a control. On host previews hover comes from passive hit-testing of accepted measurements
+  and selection stays the renderer's activation report, so the overlay stays pointer-inert until the edit
+  control is pressed and trusted preview controls keep working.
+- The reference host anchors its measured surface at the stage origin, which aligns the overlay rectangles it
+  drew beside the rendered blocks before. A hosted local canvas opens at its desktop width on wide screens
+  when the host sets no initial viewport; the base viewport is unchanged.
+- This is the first slice of ADR 0037; layered navigation, explicit insertion destinations, columns and panel
+  drag follow. It is implemented behaviour, not qualification of the contextual product (`STUDIO-PROD-014`).
+
 ### Standalone production authoring and delivery (M4-01, M4-02, M5-01, M5-02, M5-03)
 
 - Studio now defaults to a host-neutral catalog of 45 schema-valid first-party blocks and ten starter

@@ -33,9 +33,12 @@ bound client and never reads, scrapes or mutates the supplied preview DOM.
 When a current render also supplies geometry, that same slotted surface is the shell's visual canvas. The
 shell draws a CSP-safe SVG overlay from measured rectangles; it does not create a second renderer or infer
 structure from slotted nodes. The overlay is pointer-inert in operate mode so trusted preview controls remain
-usable. An explicit pressed-state control enters canvas edit mode for selection and direct manipulation.
-Outline and command-palette destinations remain available independently of geometry and dispatch the same
-commands as the overlay.
+usable. An explicit pressed-state control enters canvas edit mode for direct manipulation; hover is available
+in operate mode because the shell hit-tests the latest accepted measurements from passive listeners on its
+own stage and never reads the slotted surface, and single-click selection in operate mode is the renderer's
+`studio.preview/activated` report. A frame-isolated surface yields no hover to the shell. Outline and
+command-palette destinations remain available independently of geometry and dispatch the same commands as
+the overlay.
 
 The shell waits for `ready` before staging or rendering. Synchronous document and viewport changes coalesce at
 one microtask boundary into the last complete snapshot; there is no timer-dependent debounce interval. A new
@@ -178,7 +181,8 @@ The shell sizes the SVG viewport to those reported `width` and `height` CSS pixe
 The slotted preview and SVG share one shell-owned overflow surface and the same logical start edge, so an
 embedding width larger than the available editor column scrolls both layers together. Regions outside the
 visible iframe viewport are clipped; neither editor reflow nor a responsive viewport choice may rescale the
-measurement coordinate space.
+measurement coordinate space. The measurement origin is the measured surface's own top-left corner; a host
+must not centre that surface inside the shell's stage while reporting surface-relative rectangles.
 
 Requested markers the renderer cannot associate with any on-screen geometry are reported in the response's distinct `unknown` list. An unknown marker is a normal outcome, never an exception, and is never silently dropped. Markers a measurer volunteers beyond the request are discarded by the responder.
 
