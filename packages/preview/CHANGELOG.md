@@ -1,5 +1,13 @@
 # @kumwe/studio-preview
 
+## 0.1.0-beta.10
+
+### Patch Changes
+
+- Updated dependencies [[`c9093f1`](https://github.com/kumwe/studio/commit/c9093f17ae0158520db3cd6a810199a39c27cd61)]:
+  - @kumwe/studio-protocol@0.1.0-beta.10
+  - @kumwe/studio-core@0.1.0-beta.10
+
 ## 0.1.0-beta.9
 
 ### Patch Changes
