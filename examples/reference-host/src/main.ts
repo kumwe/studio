@@ -22,6 +22,7 @@ import {
   STUDIO_CONTRACT_VERSION,
   STUDIO_WIRE_PROTOCOL_VERSION,
   type BlockDefinition,
+  type BlueprintBatchOperation,
   type BlueprintCommand,
   type BlueprintDocument,
   type BlueprintNode,
@@ -229,13 +230,62 @@ contextualStudio.addEventListener('studio-insert-request', (event: Event) => {
   const studio = requireBlueprintElement();
   const customEvent = event as CustomEvent<{
     definition: BlockDefinition;
+    operations?: BlueprintBatchOperation[];
     parentId: string | null;
+    position?: number;
     slot?: string;
   }>;
   const definition = customEvent.detail.definition;
   if (!isCoreProductionBlockType(definition.type)) {
     throw new Error(`Reference host cannot insert unknown production block ${definition.type}.`);
   }
+  const operations = customEvent.detail.operations;
+  if (operations !== undefined) {
+    // A composite insertion (the column cards): the shell planned one batch
+    // with identifiers unique in this document; the host executes it as one
+    // undoable command under its own envelope.
+    for (const operation of operations) {
+      if (
+        operation.type !== 'studio.command/insert-node' ||
+        !isCoreProductionBlockType(operation.payload.node.type)
+      ) {
+        throw new Error('Reference host inserts only production blocks.');
+      }
+    }
+    studio.execute({
+      artifactId: studio.document?.id ?? 'reference.home',
+      baseStateVersion: studio.stateVersion,
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: crypto.randomUUID(),
+      kind: 'command',
+      payload: { operations: structuredClone(operations) },
+      sessionGeneration: activeConfiguration.session.sessionGeneration,
+      type: 'studio.command/batch',
+    });
+    // The host insertion contract: select the inserted block, here the first
+    // inserted node whose parent lies outside the batch (the columns block).
+    const inserted = new Set(
+      operations.flatMap((operation) =>
+        operation.type === 'studio.command/insert-node' ? [operation.payload.node.id] : [],
+      ),
+    );
+    const root = operations.find(
+      (operation) =>
+        operation.type === 'studio.command/insert-node' &&
+        (operation.payload.destination.parentNodeId === undefined ||
+          !inserted.has(operation.payload.destination.parentNodeId)),
+    );
+    if (root?.type === 'studio.command/insert-node') studio.selectNode(root.payload.node.id);
+    return;
+  }
+  // The shell names the explicit position; an absent one keeps end-of-slot
+  // placement, and any value is clamped into the collection.
+  const clamp = (length: number): number => {
+    const position = customEvent.detail.position;
+    return position === undefined || !Number.isFinite(position)
+      ? length
+      : Math.min(Math.max(Math.trunc(position), 0), length);
+  };
   const type = definition.type;
   const node: BlueprintNode = {
     authoring: { mode: definition.slots.length === 0 ? 'content' : 'structural' },
@@ -260,13 +310,14 @@ contextualStudio.addEventListener('studio-insert-request', (event: Event) => {
     payload: {
       destination:
         customEvent.detail.parentId === null || customEvent.detail.slot === undefined
-          ? { position: studio.document?.roots.length ?? 0 }
+          ? { position: clamp(studio.document?.roots.length ?? 0) }
           : {
               parentNodeId: customEvent.detail.parentId,
-              position:
+              position: clamp(
                 findNode(studio.document?.roots ?? [], customEvent.detail.parentId)?.slots[
                   customEvent.detail.slot
                 ]?.length ?? 0,
+              ),
               slot: customEvent.detail.slot,
             },
       node,
@@ -274,6 +325,7 @@ contextualStudio.addEventListener('studio-insert-request', (event: Event) => {
     sessionGeneration: activeConfiguration.session.sessionGeneration,
     type: 'studio.command/insert-node',
   });
+  studio.selectNode(node.id);
 });
 
 contextualStudio.addEventListener('studio-contextual-change', (event: Event) => {

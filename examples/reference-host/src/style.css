@@ -209,6 +209,12 @@ kumwe-studio-contextual {
   padding: var(--theme-block-gap, 0.75rem);
 }
 
+/* An editing aid of this host page, not renderer output: an empty container
+   keeps a usable height, so the shell can measure it and draw its add band. */
+.preview-surface [data-studio-layout]:empty {
+  min-block-size: 3rem;
+}
+
 .preview-surface[data-preview-viewport='compact'] {
   inline-size: min(100%, 25rem);
 }
