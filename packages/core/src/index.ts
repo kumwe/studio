@@ -87,6 +87,11 @@ export {
   type CoreLayoutVisibility,
 } from './layout.js';
 export {
+  planColumnsInsertion,
+  type ColumnsInsertionOptions,
+  type ColumnsInsertionPlan,
+} from './layout-operations.js';
+export {
   CORE_PRODUCTION_BLOCK_TYPES,
   CORE_PRODUCTION_CONTROL_IDS,
   CORE_PRODUCTION_PATTERN_IDS,
