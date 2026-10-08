@@ -108,6 +108,7 @@ export {
   type AuthoringStartKind,
   type AuthoringStartRequest,
   type AuthoringStartSource,
+  type AuthoringTargetCoreLayout,
   type AuthoringTargetDeclaration,
   type AuthoringTargetEligibility,
   type AuthoringTargetResolution,

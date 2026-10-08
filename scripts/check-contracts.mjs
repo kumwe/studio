@@ -531,6 +531,7 @@ const schemaByExample = new Map([
   ['authoring-message-catalog.en.json', 'authoring-message-catalog.schema.json'],
   ['authoring-save.plan.example.json', 'authoring-save.schema.json'],
   ['authoring-session.example.json', 'authoring-session.schema.json'],
+  ['authoring-target.core-layout.example.json', 'authoring-target.schema.json'],
   ['authoring-target.example.json', 'authoring-target.schema.json'],
   ['block.grid.example.json', 'block-definition.schema.json'],
   ['block.price.example.json', 'block-definition.schema.json'],
@@ -905,6 +906,22 @@ if (common?.$defs?.contractVersion?.const !== '0.1-draft') {
 
 if (common === undefined) {
   throw new Error('The common schema is unavailable.');
+}
+
+const authoringTargetSchema = schemas.find(
+  (schema) => basename(new URL(schema.$id).pathname) === 'authoring-target.schema.json',
+);
+const blockDefinitionSchema = schemas.find(
+  (schema) => basename(new URL(schema.$id).pathname) === 'block-definition.schema.json',
+);
+if (
+  authoringTargetSchema?.$defs?.rendererRequirement === undefined ||
+  canonicalJson(authoringTargetSchema.$defs.rendererRequirement) !==
+    canonicalJson(blockDefinitionSchema?.properties?.rendererRequirements?.items)
+) {
+  throw new Error(
+    'authoring-target rendererRequirement must equal the block-definition renderer requirement item (ADR 0038).',
+  );
 }
 
 const validateJsonValue = ajv.compile({ $ref: `${common.$id}#/$defs/jsonValue` });

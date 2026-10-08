@@ -999,12 +999,22 @@ export interface AuthoringContributionDependency {
 }
 
 /**
+ * Host options for the first-party layout family in one target (ADR 0038). Studio derives the
+ * definitions and their revisions from these options; the host never supplies definition bytes.
+ */
+export interface AuthoringTargetCoreLayout {
+  acceptedChildTypes: readonly BlockType[];
+  rendererRequirements?: readonly RendererRequirement[];
+}
+
+/**
  * Bounded discovery metadata shared by host-core and extension-owned targets.
  * A declaration is never authorization and cannot mint a resource context.
  */
 export interface AuthoringTargetDeclaration {
   contractVersion: StudioContractVersion;
   contributionDependencies: readonly AuthoringContributionDependency[];
+  coreLayout?: AuthoringTargetCoreLayout;
   eligibility: readonly AuthoringTargetEligibility[];
   extensions?: Record<QualifiedName, JsonValue>;
   id: QualifiedName;

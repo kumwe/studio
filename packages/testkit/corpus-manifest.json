@@ -16,6 +16,10 @@
           "file": "authoring-session.example.json"
         },
         {
+          "digest": "sha256-XKA3MDsQTNVYot5/q7JmSB6VJyapL6xKt6+nPYTB33A=",
+          "file": "authoring-target.core-layout.example.json"
+        },
+        {
           "digest": "sha256-oDINh/ZoTlEzYlf+/E31mYddo1LXSYG33aEaUGq2i4I=",
           "file": "authoring-target.example.json"
         },
@@ -974,6 +978,26 @@
         {
           "digest": "sha256-MCJnARlTtq/Bu6cEfE4mgKn+/bF9Ie49nVzjNh1q+ZY=",
           "file": "authoring-session.missing-entry-state.json"
+        },
+        {
+          "digest": "sha256-xpT6sg1KIr5PeFnQfhClqZwsP18QXcJe3cMvurIg0jk=",
+          "file": "authoring-target.core-layout-duplicate-type.json"
+        },
+        {
+          "digest": "sha256-nIksNwCj7/t+0wIkJ+0S72QIkrcd1ktF3rTM1bKj1BE=",
+          "file": "authoring-target.core-layout-empty-renderers.json"
+        },
+        {
+          "digest": "sha256-/SLorfLlU0swULfhkw8LwMwA+HfMZMkk/1FFrOlMjY8=",
+          "file": "authoring-target.core-layout-missing-types.json"
+        },
+        {
+          "digest": "sha256-0cym+eo1rsWqw2VkCcvBCaeTnO820+oXnCK9oMpS8/0=",
+          "file": "authoring-target.core-layout-reserved-type.json"
+        },
+        {
+          "digest": "sha256-Tkya66YlM5C11Qo2ZW3rCJx5qvpcc2QgGfP2mgbmLzw=",
+          "file": "authoring-target.core-layout-too-many-types.json"
         },
         {
           "digest": "sha256-cmSS67Tsvof3kidNu4igl/Gx21+4WwW0iSrpCcX74z0=",

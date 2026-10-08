@@ -33,7 +33,7 @@
       "id": "https://schemas.kumwe.org/studio/v1/authoring-session.schema.json"
     },
     {
-      "digest": "sha256-N3sgQ/9iEAOvKwpkoRPbTeJF/KwK1kLWheMKuGRU+PY=",
+      "digest": "sha256-HyKw8hF+PVLvWqNhfw78XqHWIeaH6cZXLi6FLsFIz4I=",
       "file": "authoring-target.schema.json",
       "id": "https://schemas.kumwe.org/studio/v1/authoring-target.schema.json"
     },

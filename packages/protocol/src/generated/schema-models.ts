@@ -30,7 +30,7 @@ export const GENERATED_TYPESCRIPT_MODEL_METADATA: GeneratedTypeScriptModelMetada
   }),
   schemaCount: 55,
   schemaEpoch: 'https://schemas.kumwe.org/studio/v1/',
-  schemaManifestDigest: 'sha256-t9QdbL5xp3D0M93OEr3NVYKivgJJGR9IRa1SeAef9uk=',
+  schemaManifestDigest: 'sha256-UVKfD1ZYLh/rNGQYT/Yh8GpmKw1D0OEBmA4t43FRd30=',
   supportedWireProtocolRange: '0.1.0-draft.2',
 });
 
@@ -666,9 +666,24 @@ export type GeneratedAuthoringTargetContributionDependency = {
   versions: GeneratedCommonVersionRange;
 };
 
+/** Host options for Studio's section, stack, grid, and columns definitions in this target (ADR 0038). Studio derives the definitions and their revisions from these options; the target grants no authority. */
+export type GeneratedAuthoringTargetCoreLayout = {
+  acceptedChildTypes: (GeneratedCommonQualifiedName &
+    ((
+      | ('studio.core/section' | 'studio.core/stack' | 'studio.core/grid' | 'studio.core/columns')
+      | GeneratedJsonValue
+    ) &
+      string))[];
+  rendererRequirements?: [
+    GeneratedAuthoringTargetRendererRequirement,
+    ...GeneratedAuthoringTargetRendererRequirement[],
+  ];
+};
+
 export type GeneratedAuthoringTargetDeclaration = {
   contractVersion: GeneratedCommonContractVersion;
   contributionDependencies: GeneratedAuthoringTargetContributionDependency[];
+  coreLayout?: GeneratedAuthoringTargetCoreLayout;
   eligibility: [GeneratedAuthoringTargetEligibility, ...GeneratedAuthoringTargetEligibility[]];
   extensions?: GeneratedCommonExtensions;
   id: GeneratedCommonQualifiedName;
@@ -691,6 +706,12 @@ export type GeneratedAuthoringTargetEligibility = 'create' | 'edit';
 
 export type GeneratedAuthoringTargetPresentationState =
   'inline' | 'minimized' | 'maximized' | 'fullscreen';
+
+export type GeneratedAuthoringTargetRendererRequirement = {
+  capability: GeneratedCommonQualifiedName;
+  surface: 'web' | 'email' | 'document' | 'native' | 'preview';
+  versions: GeneratedCommonVersionRange;
+};
 
 export type GeneratedAuthoringTargetResolution = {
   availableStarts: [GeneratedAuthoringTargetStartKind, ...GeneratedAuthoringTargetStartKind[]];

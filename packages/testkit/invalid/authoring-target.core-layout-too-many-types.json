@@ -1,0 +1,113 @@
+{
+  "schema": "authoring-target.schema.json",
+  "description": "A target extends core layout slots with at most 64 types.",
+  "value": {
+    "contractVersion": "0.1-draft",
+    "kind": "authoring-target",
+    "id": "org.example.catalog/product-content",
+    "owner": {
+      "id": "org.example/catalog",
+      "version": "1.0.0"
+    },
+    "label": {
+      "key": "org.example.catalog/product-content",
+      "defaultMessage": "Product content"
+    },
+    "surface": "org.example.catalog/product-editor",
+    "resourceTypes": ["org.example.catalog/product"],
+    "eligibility": ["create", "edit"],
+    "modes": ["model", "blueprint", "content"],
+    "startKinds": ["blank", "from-type", "existing"],
+    "presentationStates": ["inline", "minimized", "maximized", "fullscreen"],
+    "saveOutcomes": ["save-item", "save-new-type-version", "save-as-new-type"],
+    "requiredCapabilities": [
+      {
+        "id": "studio.capability/contextual-authoring",
+        "versions": ">=0.1.0 <1.0.0"
+      }
+    ],
+    "contributionDependencies": [
+      {
+        "kind": "field-adapter",
+        "id": "org.example.catalog/money-control",
+        "versions": "^1.0.0",
+        "required": true
+      },
+      {
+        "kind": "block-definition",
+        "id": "org.example.catalog/price",
+        "versions": "^1.0.0",
+        "required": true
+      }
+    ],
+    "coreLayout": {
+      "acceptedChildTypes": [
+        "org.example.catalog/block-01",
+        "org.example.catalog/block-02",
+        "org.example.catalog/block-03",
+        "org.example.catalog/block-04",
+        "org.example.catalog/block-05",
+        "org.example.catalog/block-06",
+        "org.example.catalog/block-07",
+        "org.example.catalog/block-08",
+        "org.example.catalog/block-09",
+        "org.example.catalog/block-10",
+        "org.example.catalog/block-11",
+        "org.example.catalog/block-12",
+        "org.example.catalog/block-13",
+        "org.example.catalog/block-14",
+        "org.example.catalog/block-15",
+        "org.example.catalog/block-16",
+        "org.example.catalog/block-17",
+        "org.example.catalog/block-18",
+        "org.example.catalog/block-19",
+        "org.example.catalog/block-20",
+        "org.example.catalog/block-21",
+        "org.example.catalog/block-22",
+        "org.example.catalog/block-23",
+        "org.example.catalog/block-24",
+        "org.example.catalog/block-25",
+        "org.example.catalog/block-26",
+        "org.example.catalog/block-27",
+        "org.example.catalog/block-28",
+        "org.example.catalog/block-29",
+        "org.example.catalog/block-30",
+        "org.example.catalog/block-31",
+        "org.example.catalog/block-32",
+        "org.example.catalog/block-33",
+        "org.example.catalog/block-34",
+        "org.example.catalog/block-35",
+        "org.example.catalog/block-36",
+        "org.example.catalog/block-37",
+        "org.example.catalog/block-38",
+        "org.example.catalog/block-39",
+        "org.example.catalog/block-40",
+        "org.example.catalog/block-41",
+        "org.example.catalog/block-42",
+        "org.example.catalog/block-43",
+        "org.example.catalog/block-44",
+        "org.example.catalog/block-45",
+        "org.example.catalog/block-46",
+        "org.example.catalog/block-47",
+        "org.example.catalog/block-48",
+        "org.example.catalog/block-49",
+        "org.example.catalog/block-50",
+        "org.example.catalog/block-51",
+        "org.example.catalog/block-52",
+        "org.example.catalog/block-53",
+        "org.example.catalog/block-54",
+        "org.example.catalog/block-55",
+        "org.example.catalog/block-56",
+        "org.example.catalog/block-57",
+        "org.example.catalog/block-58",
+        "org.example.catalog/block-59",
+        "org.example.catalog/block-60",
+        "org.example.catalog/block-61",
+        "org.example.catalog/block-62",
+        "org.example.catalog/block-63",
+        "org.example.catalog/block-64",
+        "org.example.catalog/block-65"
+      ]
+    }
+  }
+}
