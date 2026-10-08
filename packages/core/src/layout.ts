@@ -7,11 +7,15 @@ import {
   type JsonObject,
   type JsonSchema,
   type LocalName,
+  type JsonValue,
   type RendererRequirement,
+  type Revision,
   type ThemeDocument,
   type ThemeViewport,
 } from '@kumwe/studio-protocol';
+import { canonicalUtf8Bytes } from './canonical.js';
 import { cloneContractValue } from './clone.js';
+import { fnv1a64Hex } from './fnv.js';
 
 /** The portable layout block family shipped by Studio. */
 export const CORE_LAYOUT_BLOCK_TYPES: Readonly<{
@@ -51,9 +55,16 @@ export type CoreLayoutSpacing = 'comfortable' | 'compact' | 'none' | 'spacious';
 export type CoreLayoutVisibility = 'hidden' | 'visible';
 
 export interface CoreLayoutBlockDefinitionOptions {
-  /** Additional host block types admitted into every composable layout slot. */
+  /**
+   * Additional host block types admitted into every composable layout slot. At most 64 listed
+   * entries, layout types included; no duplicates; no `studio.*` type other than the layout
+   * family. The derived revision depends on this set but not on its order.
+   */
   acceptedChildTypes?: readonly BlockType[];
-  /** Trusted renderer capabilities required for this definition family. */
+  /**
+   * Trusted renderer capabilities required for this definition family. The derived revision
+   * depends on this list and its order.
+   */
   rendererRequirements?: readonly RendererRequirement[];
 }
 
@@ -95,6 +106,9 @@ const DEFAULT_RENDERER_REQUIREMENTS: readonly RendererRequirement[] = Object.fre
   { capability: 'studio.renderer/layout', surface: 'web', versions: '^1.0.0' },
 ]);
 
+const MAXIMUM_LISTED_CHILD_TYPES = 64;
+const CORE_LAYOUT_NAMES = ['section', 'stack', 'grid', 'columns'] as const;
+
 const ALIGNMENTS: readonly CoreLayoutAlignment[] = ['center', 'end', 'start', 'stretch'];
 const COLLAPSE_BEHAVIOURS: readonly CoreLayoutCollapse[] = ['preserve', 'stack', 'wrap'];
 const DIRECTIONS: readonly CoreLayoutDirection[] = ['block', 'inline'];
@@ -111,27 +125,54 @@ export function isCoreLayoutBlockType(type: BlockType): type is CoreLayoutBlockT
  * family owns its bounded semantic properties while the host explicitly adds
  * content block types and trusted renderer capabilities; no wildcard slot or
  * renderer authority is invented.
+ *
+ * Each revision is `layout-<name>-h<16 hex>`, where the hex is the FNV-1a-64 of
+ * the canonical bytes of the four built definitions with `revision` left out
+ * (ADR 0038). The revision therefore follows the bytes: the options, and any
+ * change to the family's base bytes in a later release, yield a new revision.
+ * Only the production catalog's own bytes carry `layout-<name>-r1`. Hosts obtain
+ * these revisions from this factory and never compute or hand-write them.
  */
 export function createCoreLayoutBlockDefinitions(
   options: Readonly<CoreLayoutBlockDefinitionOptions> = {},
 ): BlockDefinition[] {
+  const family = buildCoreLayoutFamily(
+    hostChildTypes(options.acceptedChildTypes ?? []),
+    options.rendererRequirements ?? DEFAULT_RENDERER_REQUIREMENTS,
+    (name) => `layout-${name}`,
+  );
+  const unrevised = family.map((definition) => {
+    const bytes: Partial<BlockDefinition> = { ...definition };
+    delete bytes.revision;
+    return bytes;
+  });
+  const digest = fnv1a64Hex(canonicalUtf8Bytes(unrevised as unknown as JsonValue));
+  for (const definition of family) {
+    definition.revision = `${definition.revision}-h${digest}`;
+  }
+  return family;
+}
+
+/**
+ * @internal Builds the family with an explicit revision. Not re-exported from the
+ * package: the production catalog uses it to keep its published revisions, and
+ * every other caller goes through createCoreLayoutBlockDefinitions.
+ */
+export function buildCoreLayoutFamily(
+  acceptedChildTypes: readonly BlockType[],
+  rendererRequirements: readonly RendererRequirement[],
+  revisionOf: (name: (typeof CORE_LAYOUT_NAMES)[number]) => Revision,
+): BlockDefinition[] {
   const acceptedTypes = stableUniqueBlockTypes([
     ...Object.values(CORE_LAYOUT_BLOCK_TYPES),
-    ...(options.acceptedChildTypes ?? []),
+    ...acceptedChildTypes,
   ]);
-  const rendererRequirements = cloneContractValue(
-    options.rendererRequirements ?? DEFAULT_RENDERER_REQUIREMENTS,
-  );
   if (rendererRequirements.length === 0) {
     throw new RangeError('Core layout blocks require at least one trusted renderer capability.');
   }
-
-  return [
-    definition('section', acceptedTypes, rendererRequirements),
-    definition('stack', acceptedTypes, rendererRequirements),
-    definition('grid', acceptedTypes, rendererRequirements),
-    definition('columns', acceptedTypes, rendererRequirements),
-  ];
+  return CORE_LAYOUT_NAMES.map((name) =>
+    definition(name, acceptedTypes, rendererRequirements, revisionOf(name)),
+  );
 }
 
 /** Minimal persisted properties for a newly inserted core layout node. */
@@ -230,6 +271,7 @@ function definition(
   name: keyof typeof CORE_LAYOUT_BLOCK_TYPES,
   acceptedTypes: BlockType[],
   rendererRequirements: readonly RendererRequirement[],
+  revision: Revision,
 ): BlockDefinition {
   const type = CORE_LAYOUT_BLOCK_TYPES[name];
   const title = `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
@@ -269,7 +311,7 @@ function definition(
     })),
     propertySchema: propertySchema(name),
     rendererRequirements: cloneContractValue([...rendererRequirements]),
-    revision: `layout-${name}-r1`,
+    revision,
     slots: [layoutSlot(name, acceptedTypes)],
     themeControls,
     type,
@@ -328,9 +370,37 @@ function propertyForControl(control: LocalName): LocalName {
   }
 }
 
+/**
+ * The sorted, unique host child types of one option set, without the layout family. Refuses
+ * more than 64 listed entries (layout types count), an exact repeat, and any reserved Studio
+ * type outside the layout family.
+ */
+function hostChildTypes(values: readonly BlockType[]): BlockType[] {
+  if (values.length > MAXIMUM_LISTED_CHILD_TYPES) {
+    throw new RangeError(
+      `A core layout family lists at most ${MAXIMUM_LISTED_CHILD_TYPES} child types, layout types included.`,
+    );
+  }
+  const seen = new Set<BlockType>();
+  for (const type of values) {
+    if (seen.has(type)) {
+      throw new RangeError(`Core layout child type ${type} is listed more than once.`);
+    }
+    seen.add(type);
+    if (type.startsWith('studio.') && !isCoreLayoutBlockType(type)) {
+      throw new RangeError(`Core layout slots cannot admit the reserved Studio type ${type}.`);
+    }
+  }
+  return [...seen].filter((type) => !isCoreLayoutBlockType(type)).sort(compareBlockTypes);
+}
+
+function compareBlockTypes(left: BlockType, right: BlockType): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function stableUniqueBlockTypes(values: readonly BlockType[]): BlockType[] {
   const unique = [...new Set(values)];
-  unique.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+  unique.sort(compareBlockTypes);
   if (unique.length === 0) {
     throw new RangeError('A core layout slot requires at least one accepted block type.');
   }
