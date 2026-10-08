@@ -13,11 +13,13 @@ test('core layout blocks compose and reflow four-to-two-to-one', async ({ page }
     .getByRole('complementary', { name: 'Block palette' })
     .getByRole('button', { name: 'Grid', exact: true })
     .click();
-  await shell
-    .getByRole('complementary', { name: 'Outline' })
-    .getByRole('button', { name: 'Grid', exact: true })
-    .click();
+  // The host selects each block it inserts, as the host insertion contract
+  // asks, so the Grid is selected again before each Stack goes into it.
   for (let index = 0; index < 4; index += 1) {
+    await shell
+      .getByRole('complementary', { name: 'Outline' })
+      .getByRole('button', { name: 'Grid', exact: true })
+      .click();
     await shell
       .getByRole('complementary', { name: 'Block palette' })
       .getByRole('button', { name: 'Stack', exact: true })
