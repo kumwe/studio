@@ -36,6 +36,15 @@ Commands identify artifact version, target node or field, operation, arguments, 
 
 Every placement operation resolves to `parent slot + ordered position`. Pointer drag, keyboard move mode, Outline buttons, and host automation issue the same command form. Valid targets come from block slot constraints, policy, and compatibility; visual geometry cannot create an otherwise invalid tree.
 
+- Every add control names its destination explicitly (parent, slot, position) before a block is chosen; the
+  add layer shows it, the shell inserts the chosen block exactly there, and the insertion request a host may
+  intercept carries it. A destination whose collection changes in any way before a block is chosen (a move, an
+  undo or redo, a removal) ends, so a stored position never names a place the control did not. An add control
+  or on-page band is offered only where the insertion rule that lists the drop destinations admits at least
+  one block.
+- Creating columns is one batch of existing block types (a columns block and its stack children) and one undo
+  step.
+
 In the reference web shell, an accepted preview marker map is measured through the canonical channel and
 projected as a CSP-safe SVG overlay. Geometry ranks insertion boundaries for the already-valid destination
 set; it never supplies node identity, slot compatibility, permission or mode authority. Reorder destinations

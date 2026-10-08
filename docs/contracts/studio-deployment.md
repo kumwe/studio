@@ -125,14 +125,26 @@ authority, performs no request, and does not alter the configured routes, contri
 identity. A session that enables preview MUST continue to bind the host preview channel; when that binding
 is absent or fails, the shell shows the textual preview state and MUST NOT substitute the local canvas.
 
-The low-level shell accepts an explicit trusted browser `localCanvasContext` for local projection and
-exposes `canvasReady` for render settlement. Raw HTML is not an input. Ordinary palette insertion works
-without a host event listener: `studio-insert-request` is cancelable; an adapter taking ownership must
-prevent its default action. A synchronous legacy listener that already changes the command session is
-not followed by a second insertion. Carrying a palette entry onto the measured canvas dispatches the same
-`insert-node` command at a geometry-ranked destination drawn only from the semantically valid set; it does
-not dispatch `studio-insert-request`, and a cancelled carry dispatches nothing. These browser APIs do not
-change the portable wire or host authority.
+The low-level shell accepts an explicit trusted browser `localCanvasContext` for local projection and exposes
+`canvasReady` for render settlement. Raw HTML is not an input. Ordinary palette insertion works without a host
+event listener: `studio-insert-request` is cancelable; an adapter taking ownership must prevent its default
+action. The request detail carries the explicit destination: `parentId`, `slot` when the destination is a slot,
+and `position`, the index inside that collection, which the shell always sets; an adapter that ignores
+`position` keeps end-of-slot placement. A composite insertion (the shell's `2 columns`, `3 columns` and
+`4 columns` cards) also carries `operations`, the complete `studio.command/batch` operation list the shell
+otherwise executes itself as one command; an adapter that takes ownership executes an equivalent batch
+(re-mapping identifiers consistently if it owns them), and an adapter that inserts only `definition` produces a
+single columns block. The standalone runtime honours both fields: it clamps `position` into the collection and
+executes `operations` as one batch, refusing any operation that is not an `insert-node` of a built-in block,
+and then selects the inserted block (the composite's root for `operations`) through the public `selectNode()`
+seam; the reference host does the same. A synchronous listener that already changes the command session is not
+followed by a second insertion: the shell completes that insertion as it does its own, so the one block the
+listener added is selected, its row takes focus, the insertion is announced once by name and a narrow layout
+returns to the canvas sheet. An adapter that calls `preventDefault()` owns that feedback for its asynchronous
+insertion. Carrying a palette entry onto the measured canvas dispatches the same `insert-node` command at a
+geometry-ranked destination drawn only from the semantically valid set; it does not dispatch
+`studio-insert-request`, and a cancelled carry dispatches nothing. These browser APIs do not change the
+portable wire or host authority.
 
 Standalone keeps work in browser memory. It MUST expose two explicit, non-equivalent interchange operations:
 

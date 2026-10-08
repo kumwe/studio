@@ -47,11 +47,37 @@ work-package acceptance and gate outcomes remain governed by
   and pointer paths, every layer change (and a new block shown in the details view) is announced once, and
   imperatively mounted authoring controls keep their holder elements across layers. In the contextual
   Content and Model modes the docked panel is the details view and the `Blueprint` tab returns.
-- These are the first and third slices of ADR 0037; explicit insertion destinations, columns and panel drag
-  follow. They are implemented behaviour, not qualification of the contextual product (`STUDIO-PROD-014`).
+- Every add control names its destination: `Add to page` ends the page level, `Add block into {slot}` ends
+  each slot of an opened level, `Add block before`, `Add block after` and `Add block into {slot}` sit under
+  the selected row, the empty page is a dashed zone with its own `Add to page`, and every empty container is
+  offered by native `Add block into {slot} of {parent} ({id})` buttons under the page; an empty slot of a pure
+  container also shows a dashed band on the page (always on the local canvas, in edit mode on a host preview)
+  whose centred `+` disc alone takes the pointer, so the container stays selectable and draggable there, while
+  a content block with an empty slot draws no band over its content. Each opens the `Add blocks` layer with
+  `Adding to {collection}, position n of m` in its header; cards, command-palette inserts and patterns honour
+  that destination or are disabled, and the cancelable insertion request carries `position`, which the
+  standalone and reference hosts honour. The destination ends with a changed selection (also one a host makes
+  through `selectNode()`) and with any change to its own collection, such as a move, an undo or a removal, so
+  a stored position never inserts anywhere the `+` did not name. `2 columns`, `3 columns` and `4 columns`
+  cards (after the `Columns` card, and as command palette entries) insert a columns block with that many stack
+  children as one batch and one undo step (`planColumnsInsertion` in `@kumwe/studio-core`, carried to hosts as
+  `operations`), and those stacks' rows read `Stack, column n of N`. The reference host page gives an empty
+  layout container a 3rem minimum height so its band is usable. The standalone runtime and the reference host
+  select the block they inserted (the columns block for a column card) through `selectNode()`, as the host
+  insertion contract asks. The shell completes a synchronous host's insertion as it does its own: the block is
+  selected, its row takes focus, the insertion is announced once by name and a narrow layout returns to the
+  canvas sheet. A press on a page block that has nowhere to move opens the details view like any other page
+  click instead of only selecting.
+- These are the first, third and fourth slices of ADR 0037; panel drag follows. They are implemented
+  behaviour, not qualification of the contextual product (`STUDIO-PROD-014`).
 
 ### Release tooling
 
+- The authoring browser module budget rises from 1,048,576 to 1,114,112 bytes by the maintainer's
+  release-policy decision, so the page-builder insertion slice and the remaining page-builder slices fit. A
+  consumer that bounds Studio package-file reads below the new budget must raise that bound when it re-pins;
+  the Producer's `StudioContractResources` reader currently bounds each Studio package file at 1,048,576
+  bytes.
 - The release-asset builders pin the bundler to production bytes for the duration of each build regardless
   of the invoking process's `NODE_ENV`, so the static-delivery budget test measures the bytes a release
   ships; the test runner's environment previously resolved development export conditions and emitted a

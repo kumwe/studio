@@ -63,8 +63,10 @@ non-authoritative (`STUDIO-PROD-014`), and requirement rows are never renumbered
    optional position; a host that ignores it keeps today's end-of-slot behaviour. The on-page zone is an
    enhancement; the panel control is the parity path.
 5. **Columns from existing types.** Column creation inserts a columns block with the chosen number of stack
-   children as one batch, so it is one undo step and emits only existing block types; no renderer, host or
-   wire change is needed. A model-level column block is a separate future decision.
+   children as one batch, so it is one undo step and emits only existing block types; no renderer or wire
+   change is needed. The browser insertion request a host may intercept gains an additive optional list of
+   operations, which an intercepting host runs as one batch; a host that ignores it inserts the single
+   columns block. A model-level column block is a separate future decision.
 6. **Honest page region.** The local canvas keeps its visible non-authoritative caption, demoted to a line
    beside the page rather than a heading above it. The measurement origin is the slotted preview surface's
    top-left corner. A host measurer reports rectangles relative to the slotted surface it measures, so the
@@ -106,9 +108,9 @@ contract boundary.
 
 ## Implementation note
 
-Slices 1 (frame, hover and click linkage, origin fix) and 3 (layered navigation) are recorded in
-`CHANGELOG.md`; explicit insertion, columns and panel drag follow as separate slices, each with its own
-requirement rows. Slice 1 implements Decision 1 and the hover, focus, click-reveal and activation-reported
+Slices 1 (frame, hover and click linkage, origin fix), 3 (layered navigation) and 4 (explicit insertion and
+columns) are recorded in `CHANGELOG.md`; panel drag follows as a separate slice with its own requirement
+rows. Slice 1 implements Decision 1 and the hover, focus, click-reveal and activation-reported
 selection of Decision 3, plus the host-side half of Decision 6 (the measured surface anchored at the stage
 origin). Slice 3 implements Decision 2 and the "opens the details layer" clause of Decision 3: the structure
 layer opens with the whole tree, a container can be opened into its own level under a header naming the
@@ -118,6 +120,32 @@ layer; it is hidden with the structure layer while details are shown. The row ac
 `Edit` and `Open` under the selected row (`Open` only where the row has listed children). In the contextual
 Content and Model modes the docked panel is the details layer and the wrapper's `Blueprint` tab is the
 return, so the shell renders no `Back`, does not unwind on `Escape` there, and keeps the docked panel when a
-structural focus target (a diagnostic's block, for instance) is only listed for that return. Decisions 4 and
-5 are slice S4;
-the shell-side half of Decision 6 is S6.
+structural focus target (a diagnostic's block, for instance) is only listed for that return.
+
+Slice 4 implements Decisions 4 and 5. `Add to page` ends the page level, also on a blank document;
+`Add block into {slot}` ends every declared slot of an opened level, an empty one included, and is offered for
+each declared slot under a selected container; `Add block before` and `Add block after` sit under the selected
+row; the empty page is a dashed zone with its own `Add to page`; and every empty container that may receive a
+block is listed by a visible `Empty containers` group of `Add block into {slot} of {parent} ({id})` buttons
+under the stage that is rendered whatever the preview state. An empty slot of a pure container (a block with
+slots and no content ports) also shows a dashed band in that slot's share of the container on the page (always
+on the local canvas, on a host preview only in edit mode); the band is pointer-transparent, so the container
+keeps page selection, drag and double-click, and only its centred `+` disc opens the add layer. A content
+block with an empty slot, such as a card without actions, draws no band over its content; the list offers that
+slot. Each control sets an explicit parent, slot and position, is disabled where no active block may go, and
+opens the add layer, whose header names the destination and describes the search field that takes focus. The
+block cards, the command palette's inserts and the patterns honour that destination exactly or are disabled;
+they are never silently redirected. The destination ends with the insertion or the request that carries it, a
+changed selection (the author's, or a host's through `selectNode()`), closing the add layer, `Escape` inside
+it (except from a search field holding text), leaving the structure view, or any change to its own collection
+(a move, an undo or redo, a removal, its parent ceasing to exist), so a stored position never inserts anywhere
+the control did not name. The cancelable insertion request always carries `position`. The `2 columns`,
+`3 columns` and `4 columns` cards dispatch the same request with the complete batch of `insert-node`
+operations planned by `planColumnsInsertion` in `@kumwe/studio-core`: one `studio.core/columns` with
+`{ collapse: 'stack', columns: N }` and N `studio.core/stack` children in its `items` slot, which is one undo
+step; the structure rows of those stacks read `Stack, column n of N`. The same three insertions are command
+palette entries. The standalone and reference hosts honour `position` (clamped into the collection), execute
+`operations` as one batch and select what they inserted through `selectNode()`; the shell completes a
+synchronous host's insertion as it does its own (selection, focus on the new row, one announcement by name,
+the canvas sheet on a narrow layout). A host that ignores them keeps end-of-slot placement and, for a column
+card, inserts the single columns block. The shell-side half of Decision 6 is S6.
