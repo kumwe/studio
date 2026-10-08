@@ -185,6 +185,22 @@ by start. A mismatch fails closed. Executable custom controls remain precompiled
 host capability and extension lifecycle policy. A dynamic block declares typed ports and query or resource
 bindings; the server resolves and authorizes their data through configured host ports.
 
+A target MAY declare `coreLayout: {acceptedChildTypes, rendererRequirements?}`. Hosted Studio then replaces
+the four production layout definitions with `createCoreLayoutBlockDefinitions(coreLayout)` for that session.
+`acceptedChildTypes` lists at most 64 entries, layout types included. Every listed type other than the layout
+family MUST be a `block-definition` the target admits through a `required: true` contribution dependency; a
+`studio.*` type outside the layout family is refused. Listing a type makes it part of the derived revision, so
+it cannot drop out quietly: a type admitted only through an optional dependency is refused even when it
+resolves, and a missing listed type fails the mount instead of narrowing the slots. The schema refuses reserved
+`studio.*` entries; the dependency rule is semantic and enforced at mount. A host-core or an extension-owned
+target MAY carry the member, which is read only from the target the server returns at start (it must equal the
+resolved target) and grants nothing on its own: it takes effect only when the host-authored session locks the
+derived revisions, and a lock naming `layout-<name>-r1` fails. The options are fixed when the host builds.
+Changing them means regenerating the definitions from the pinned package and migrating stored locks, so a block
+activated at runtime cannot join layout slots until then. A production starter pattern whose block dependencies
+lock a production layout revision (`layout-<name>-r1`) cannot be admitted beside `coreLayout`; hosted policy
+refuses it because its dependency lock is unavailable (ADR 0038).
+
 ## HTTP routing
 
 Every configured host operation is `POST` with `Content-Type: application/json`, `Accept: application/json`, the

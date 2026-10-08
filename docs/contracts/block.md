@@ -91,6 +91,18 @@ Studio ships canonical `section`, `stack`, `grid`, and `columns` block definitio
 
 `createCoreLayoutBlockDefinitions` admits the layout family recursively and requires a host to add each content block type explicitly. It likewise requires one or more trusted renderer capabilities; there is no wildcard slot or renderer. `resolveCoreLayoutIntent` validates the effective tokens against the active theme and reports exact base/default/viewport provenance. A missing theme control or choice fails closed instead of selecting a visually similar replacement. See [ADR 0022](../decisions/0022-core-layout-block-family.md).
 
+The four definitions' revision is a function of the factory options and the family bytes they produce,
+`layout-<name>-h<16 hex>`. The factory output is normative. Informatively, the hex is the FNV-1a-64 of the
+canonical UTF-8 bytes of the four built definitions with `revision` left out, so a later change to the
+family's base bytes also changes the revision. The factory rejects more than 64 listed child types (layout
+types included), a repeated type, and any `studio.*` type other than the layout family. Only the production
+catalog's own bytes carry `layout-<name>-r1`. A host MUST NOT re-declare a `studio.*` definition,
+hand-reproduce the factory, or compute, hand-write, or reuse a Studio revision for other bytes; a
+server-side host materializes the definitions from the exact pinned `@kumwe/studio-core`. Hosted
+authoring receives the options through the target's `coreLayout` member
+([Studio deployment](studio-deployment.md#hosted-launch)). See
+[ADR 0038](../decisions/0038-host-extended-core-layout-revision.md).
+
 ## First-party production catalog
 
 `createCoreProductionBlockDefinitions()` returns the complete 45-type catalog: section, stack, grid,
@@ -100,6 +112,8 @@ message notice, article, cover, badge, label, icon, navigation/item, description
 countdown, progress, search, spinner, table, callout, content reference, content collection, and
 money. `coreProductionInitialProperties()` is the only canonical
 factory for a new first-party node's property defaults; every result validates against its definition.
+Its four layout definitions keep the revisions published in 0.1.0-beta.9 (`layout-<name>-r1`); a
+host-extended family never carries them.
 
 Every first-party definition also exposes the optional `design` property through
 `studio.control/presentation`. The closed intent covers alignment, bounded motion/parallax,

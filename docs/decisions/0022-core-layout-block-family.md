@@ -2,6 +2,8 @@
 
 - Status: proposed
 - Scope: portable section, stack, grid, and columns composition
+- Amended by: [ADR 0038](0038-host-extended-core-layout-revision.md) (the revision is derived from the
+  factory options; hosted targets pass the options through `coreLayout`)
 
 ## Context
 

@@ -38,7 +38,10 @@ Host-core targets and extension targets enter the same immutable contribution ge
 match the qualified target ID, resource surface and type, create/edit intent, requested presentation, optional
 authoring mode and required capability versions. It resolves every required contribution dependency against
 that same generation and version range. A missing required dependency makes the target unavailable; a missing
-optional dependency does not. The result contains only the six composition contributions explicitly admitted
+optional dependency does not. A type a target lists in `coreLayout.acceptedChildTypes` MUST be a required
+`block-definition` dependency of that target: the derived layout revision covers the whole list, so the type
+cannot drop out quietly, and hosted Studio refuses to mount a target that lists an optional or unresolved type
+([ADR 0038](../decisions/0038-host-extended-core-layout-revision.md)). The result contains only the six composition contributions explicitly admitted
 by the target, never every globally active contribution.
 
 Target resolution remains bounded discovery. It does not authenticate an actor, authorize a resource, mint a

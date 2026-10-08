@@ -2,6 +2,8 @@
 
 - **Status:** Proposed
 - **Date:** 2026-08-25
+- **Amended by:** [ADR 0038](0038-host-extended-core-layout-revision.md) (the production layout family
+  keeps its 0.1.0-beta.9 `layout-<name>-r1` revisions as an explicit pin)
 
 ## Context
 
