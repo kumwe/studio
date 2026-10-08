@@ -1,10 +1,13 @@
 import {
   ContributionRuntime,
   assertStudioDeploymentConfiguration,
+  createCoreLayoutBlockDefinitions,
   createCoreProductionBlockDefinitions,
   createCoreProductionPatterns,
+  isCoreLayoutBlockType,
   preflightContextualStudioSession,
   type ExtensionContributions,
+  type StudioCompositionContribution,
   type StudioContextualHostSessionHandle,
   type StudioContextualPreflightHandle,
   type StudioHostSessionIdentifierFactories,
@@ -15,7 +18,10 @@ import {
   type AuthoringSaveIntent,
   type AuthoringSavePlan,
   type AuthoringSaveResult,
+  type AuthoringTargetCoreLayout,
+  type AuthoringTargetDeclaration,
   type AuthoringTargetResolveRequest,
+  type BlockDefinition,
   type DesignVocabulary,
   type HostPortError,
   type OwnerReference,
@@ -668,7 +674,10 @@ function resolveAdmittedContributions(
     );
   }
 
-  const firstPartyBlocks = createCoreProductionBlockDefinitions();
+  const firstPartyBlocks = withTargetCoreLayout(
+    createCoreProductionBlockDefinitions(),
+    snapshot.target.coreLayout,
+  );
   const firstPartyPatterns = createCoreProductionPatterns();
   const payloads: StudioDeploymentContributionPayload[] = [
     ...firstPartyBlocks,
@@ -690,6 +699,7 @@ function resolveAdmittedContributions(
       'The authorized target cannot be reproduced from its admitted contribution generation.',
     );
   }
+  assertCoreLayoutAdmission(snapshot.target, resolved.contributions);
 
   return resolveStudioHostedPolicyCatalog({
     builtInBlockDefinitions: firstPartyBlocks,
@@ -697,6 +707,48 @@ function resolveAdmittedContributions(
     session: configuration.session,
     snapshot,
   });
+}
+
+/**
+ * Replaces the production layout family with the family the started target's
+ * `coreLayout` options derive (ADR 0038), keeping catalog order. The options come
+ * only from the server-authoritative start snapshot and carry their own revisions.
+ */
+function withTargetCoreLayout(
+  definitions: BlockDefinition[],
+  coreLayout: AuthoringTargetCoreLayout | undefined,
+): BlockDefinition[] {
+  if (coreLayout === undefined) return definitions;
+  const family = createCoreLayoutBlockDefinitions(coreLayout);
+  return [...family, ...definitions.filter((entry) => !isCoreLayoutBlockType(entry.type))];
+}
+
+/**
+ * Every host type a target adds to core layout slots must be a `required` block-definition
+ * dependency of that target and resolve in this generation (ADR 0038). An optional dependency
+ * is refused: the derived revision covers the whole list, so the type cannot quietly drop out.
+ * The factory has already refused reserved `studio.*` types outside the layout family.
+ */
+function assertCoreLayoutAdmission(
+  target: AuthoringTargetDeclaration,
+  contributions: readonly StudioCompositionContribution[],
+): void {
+  if (target.coreLayout === undefined) return;
+  const resolved = new Set(
+    contributions.flatMap((entry) => (entry.kind === 'block-definition' ? [entry.type] : [])),
+  );
+  for (const type of target.coreLayout.acceptedChildTypes) {
+    if (isCoreLayoutBlockType(type)) continue;
+    const required = target.contributionDependencies.some(
+      (dependency) =>
+        dependency.kind === 'block-definition' && dependency.id === type && dependency.required,
+    );
+    if (!required || !resolved.has(type)) {
+      throw new TypeError(
+        `The target extends core layout slots with ${type}, which is not a resolved required block-definition dependency of the target.`,
+      );
+    }
+  }
 }
 
 function compileContributionRuntime(
