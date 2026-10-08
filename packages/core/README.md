@@ -52,7 +52,9 @@ The implemented surface covers:
   used for checksums.
 - `createCoreLayoutBlockDefinitions` / `resolveCoreLayoutIntent` — first-party section, stack, grid,
   and columns definitions plus theme-validated responsive intent resolution, with no DOM or stored
-  CSS;
+  CSS; the revision is derived from the family bytes the host options produce
+  (`layout-<name>-h<hex>`), hosted targets pass the options as `coreLayout`, and only the production
+  catalog carries `layout-<name>-r1` (ADR 0038);
 - `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 45-block
   production catalog and ten portable starter compositions, including media, rich content,
   progressive composites including dialogs, popovers, and notices, data display, and

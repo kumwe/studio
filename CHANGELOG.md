@@ -8,6 +8,23 @@ work-package acceptance and gate outcomes remain governed by
 
 ## Unreleased
 
+### Host-extended core layout admission (M3-05, M4-02)
+
+- `createCoreLayoutBlockDefinitions` derives each revision as `layout-<name>-h<16 hex>`, the FNV-1a-64 of
+  the canonical bytes of the four built definitions without their revision, so the revision follows the
+  options and any later base-byte change. It refuses more than 64 listed child types (layout types included),
+  duplicates, and reserved `studio.*` types other than the layout family. The production catalog keeps its
+  0.1.0-beta.9 `layout-<name>-r1` revisions and bytes; the bare factory no longer collides with it.
+- An authoring target may declare `coreLayout: {acceptedChildTypes, rendererRequirements?}`; the schema
+  refuses reserved `studio.*` entries outside the layout family. Hosted Studio then builds the session's
+  section, stack, grid, and columns from those options, so target-admitted host blocks validate, insert, and
+  move inside layout slots. A listed type that is not a resolved `required` block-definition dependency of the
+  target, or a session lock that still names `r1`, fails the mount closed. Layout-free starter patterns stay
+  admissible beside `coreLayout`; patterns that lock a `layout-<name>-r1` revision do not. ADR 0038 amends
+  ADRs 0022 and 0026.
+- Hosts that hand-built extended layout definitions under `layout-<name>-r1` must regenerate them from the
+  pinned package and migrate stored locks; no Studio-published byte set changes.
+
 ### Page-builder workspace frame (M4-01)
 
 - The wide Blueprint workspace is now one structure-and-details column beside a page column that fills the
