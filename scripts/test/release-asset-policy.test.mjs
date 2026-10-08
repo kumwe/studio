@@ -15,6 +15,7 @@ import {
   contentHashedAssetName,
   minifyReleaseCss,
   minifyReleaseJavaScript,
+  RELEASE_ASSET_BUDGETS,
   releaseRuntimeAssetRecord,
 } from '../release-asset-policy.mjs';
 
@@ -90,6 +91,27 @@ describe('deterministic release asset policy', () => {
     await assert.rejects(readFile(join(browser, 'unminified.js.map')), /ENOENT/u);
     await assert.rejects(readFile(join(browser, 'unminified.mjs.map')), /ENOENT/u);
     await assert.rejects(readFile(join(browser, 'unminified.cjs.map')), /ENOENT/u);
+  });
+
+  it('pins each governed asset budget to the reviewed release policy', () => {
+    // A budget change is a reviewed release-policy decision; this pin makes a quiet edit fail.
+    assert.deepEqual(RELEASE_ASSET_BUDGETS, {
+      'authoring-browser-module': 1_114_112,
+      'authoring-entry': 65_536,
+      'authoring-style': 65_536,
+      'enhancement-runtime': 65_536,
+      'public-style': 262_144,
+    });
+    assert.equal(Object.isFrozen(RELEASE_ASSET_BUDGETS), true);
+    const module = Buffer.from('export{};');
+    const record = releaseRuntimeAssetRecord({
+      bytes: module,
+      mediaType: 'text/javascript',
+      path: `assets/${contentHashedAssetName('studio-browser', module, '.js')}`,
+      policy: 'authoring-browser-module',
+      role: 'browser-module',
+    });
+    assert.equal(record.budgetBytes, 1_114_112);
   });
 
   it('closes hash, SRI, minification and budget metadata for JS and generated CSS', async () => {

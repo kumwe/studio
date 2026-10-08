@@ -30,10 +30,12 @@ export function pinReleaseBuildEnvironment() {
 /**
  * These are publication ceilings, not targets. A budget change is reviewable
  * release policy and must never be inferred from the bytes that happened to be
- * produced by the current build.
+ * produced by the current build. The authoring browser module budget rose from
+ * 1,048,576 to 1,114,112 bytes (1,088 KiB) by the maintainer's release-policy
+ * decision of 2026-10-08, so the page-builder slices fit.
  */
 export const RELEASE_ASSET_BUDGETS = Object.freeze({
-  'authoring-browser-module': 1_048_576,
+  'authoring-browser-module': 1_114_112,
   'authoring-entry': 65_536,
   'authoring-style': 65_536,
   'enhancement-runtime': 65_536,
