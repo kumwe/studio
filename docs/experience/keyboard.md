@@ -7,20 +7,21 @@ does not depend on this document.
 
 ## Outline
 
-| Keys                       | Operation                                                                                                                                                             |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Tab`                      | Enter and leave the outline region in document order                                                                                                                  |
-| `Arrow Up / Arrow Down`    | Move focus between outline entries                                                                                                                                    |
-| `Enter` / `Space`          | Select the focused entry                                                                                                                                              |
-| `Alt+Arrow Up`             | Move the focused node earlier in its collection (`reorder-children`)                                                                                                  |
-| `Alt+Arrow Down`           | Move the focused node later in its collection (`reorder-children`)                                                                                                    |
-| `Ctrl+D` / `Meta+D`        | Duplicate the focused node (`duplicate-node`)                                                                                                                         |
-| `Delete`                   | Delete the focused node (`remove-node`)                                                                                                                               |
-| `Arrow Right`              | Open the focused container as the panel's current level; on a block without children, open its details and focus its first control. A modified arrow is not consumed  |
-| `Arrow Left`               | Return to the parent level; the container that was opened takes focus. At the page level, or with a modifier, the key is not consumed                                 |
-| `Escape`                   | In the details view return to the structure with the selected entry focused (or the Outline region when nothing is selected); in an opened level return to its parent |
-| `Back` / `Show whole tree` | The same returns as buttons in the panel header; `Edit` and `Open` under the selected entry are the pointer paths                                                     |
-| Destination selector       | Move to any valid root/slot position (`move-node` or `reorder-children`)                                                                                              |
+| Keys                                                                             | Operation                                                                                                                                                                                                          |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Tab`                                                                            | Enter and leave the outline region in document order                                                                                                                                                               |
+| `Arrow Up / Arrow Down`                                                          | Move focus between outline entries                                                                                                                                                                                 |
+| `Enter` / `Space`                                                                | Select the focused entry                                                                                                                                                                                           |
+| `Alt+Arrow Up`                                                                   | Move the focused node earlier in its collection (`reorder-children`)                                                                                                                                               |
+| `Alt+Arrow Down`                                                                 | Move the focused node later in its collection (`reorder-children`)                                                                                                                                                 |
+| `Ctrl+D` / `Meta+D`                                                              | Duplicate the focused node (`duplicate-node`)                                                                                                                                                                      |
+| `Delete`                                                                         | Delete the focused node (`remove-node`)                                                                                                                                                                            |
+| `Arrow Right`                                                                    | Open the focused container as the panel's current level; on a block without children, open its details and focus its first control. A modified arrow is not consumed                                               |
+| `Arrow Left`                                                                     | Return to the parent level; the container that was opened takes focus. At the page level, or with a modifier, the key is not consumed                                                                              |
+| `Escape`                                                                         | In the details view return to the structure with the selected entry focused (or the Outline region when nothing is selected); in an opened level return to its parent                                              |
+| `Back` / `Show whole tree`                                                       | The same returns as buttons in the panel header; `Edit` and `Open` under the selected entry are the pointer paths                                                                                                  |
+| `Add to page` / `Add block into {slot}` / `Add block before` / `Add block after` | Native buttons at the end of the page level, at the end of each slot of an opened level and under the selected row; each opens the add layer for that exact parent, slot and position and focuses its search field |
+| Destination selector                                                             | Move to any valid root/slot position (`move-node` or `reorder-children`)                                                                                                                                           |
 
 After a deletion, focus moves to the previous sibling entry, then the parent, then the first
 entry; after duplication, focus moves to the copy. The polite live region announces every outcome,
@@ -28,12 +29,25 @@ including failures.
 
 The panel header names where the author is: `Back to Page` or `Back to {parent}` beside `Add blocks`, then
 the level's name beside `Show whole tree`, on an opened level; `Back` with the selection path on the details
-view. `Escape` reaches the panel only after an active drag cancel and the command palette have had their
-turn (drag cancel, then palette close, then the panel unwind), only when it originates in the panel's own
-chrome — a text input, select, editable region or imperatively mounted control keeps its own `Escape` — and
-not in the contextual Content and Model modes, where the docked panel is the details view, no `Back` is
-rendered and the `Blueprint` tab returns. Each layer change, and a new block shown in the details view, is
-announced once; hover is not.
+view. `Escape` reaches the panel only after an active drag cancel, the command palette and a pending add
+destination have had their turn (drag cancel, then palette close, then clearing the add destination, then
+the panel unwind), only when it originates in the panel's own chrome — a text input, select, editable region
+or imperatively mounted control keeps its own `Escape` — and not in the contextual Content and Model modes,
+where the docked panel is the details view, no `Back` is rendered and the `Blueprint` tab returns. Each
+layer change, and a new block shown in the details view, is announced once; hover is not.
+
+Every add control names its destination before a block is chosen. The add layer's header reads
+`Adding to {collection}, position n of m` for the destination chosen through a `+` and describes the search
+field, which takes focus; the block cards, command-palette inserts and patterns that the destination refuses
+are disabled, and an add control with no admissible block is itself disabled. `Escape` inside the add layer
+(from its cards and chrome, or from the search field while it is empty) clears the destination without closing
+the layer or moving focus; a changed selection (the author's, or a host's through `selectNode()`), closing the
+layer, leaving the structure view or any change to the destination's own collection (a move, an undo or redo,
+a removal) also clears it. The empty page and every empty container offer the same destinations as native
+buttons: `Add to page` in the empty-page zone, and `Add block into {slot} of {parent} ({id})` in the
+`Empty containers` group under the page, whose names always differ because they carry the parent's id. The
+column cards (`2 columns`, `3 columns`, `4 columns`) insert a columns block with that many stack children as
+one undoable step, announced once, and those stacks' entries read `Stack, column n of N`.
 
 ## Command palette
 
@@ -58,7 +72,15 @@ The current host-rendered preview is the visual canvas when measured geometry is
 operate mode leaves trusted preview links and controls reachable and already shows measured hover and
 activation-reported single-click selection; edit mode additionally exposes drop regions and dragging, where
 a pointer press selects and movement of at least four CSS pixels begins a drag; same-collection destinations
-dispatch `reorder-children`, while cross-root or cross-slot destinations dispatch `move-node`.
+dispatch `reorder-children`, while cross-root or cross-slot destinations dispatch `move-node`. Edit mode also
+draws a dashed band in each empty slot of a pure container (a block with slots and no content ports) that
+may receive a block, in that slot's share of the container (the local canvas always draws them). The band
+itself is pointer-transparent, so a press anywhere else in the empty container still selects or drags it and
+a double-click still activates it; only the `+` disc at the band's centre takes the pointer, and releasing
+the primary pointer button on it opens the add layer for that slot, the same destination as its button in
+the `Empty containers` list under the page. A drag that ends over the disc keeps its own outcome. A content
+block with an empty slot (a card without actions, for instance) draws no band over its content; its button
+in the list is the way in.
 
 Dragging is a pure enhancement (SR-017). The selected outline entry exposes a native destination selector
 containing every valid root/slot position, and the command palette exposes the same destinations. All three
@@ -78,14 +100,16 @@ CSS pixels of movement begin the carry, the same drop indicator and textual stat
 and the drop dispatches `insert-node` at the geometry-ranked position among the destinations the palette
 click, command palette, and outline already admit (document roots outside hybrid composition, plus every
 slot whose accepted types, hybrid bounds, and cardinality allow the block). `Escape` and `pointercancel`
-change nothing and the compatibility click that follows a carry inserts nothing. The non-drag path to the
-identical placement is a palette click followed by the outline destination selector.
+change nothing and the compatibility click that follows a carry inserts nothing. The non-drag paths to the
+identical placement are an add control naming that destination followed by the palette click, or a palette
+click followed by the outline destination selector.
 
 The workspace is one container-queried grid. Below its narrow breakpoint the `Workspace panels`
 navigation shows `Canvas`, `Blocks`, `Outline`, and `Inspector` as pressed-state buttons over mutually
-exclusive sheets; a completed insertion returns to the canvas sheet. Selection, history, and the rendered
-page persist across sheets. The command palette is a workspace-level layer, so `Ctrl+K` reaches it from
-any sheet and `Escape` returns focus to the invoking control.
+exclusive sheets; an add control brings the `Blocks` sheet forward and a completed insertion returns to the
+canvas sheet. Selection, history, and the rendered page persist across sheets. The command palette is a
+workspace-level layer, so `Ctrl+K` reaches it from any sheet and `Escape` returns focus to the invoking
+control.
 
 ## Inspector
 
@@ -213,8 +237,10 @@ collection edges and in read-only sessions, live-region announcements, pointer-d
 cancellation, measured reparenting parity, inspector editing with its Tab order and conflict recovery,
 inheritance reset, size-role editing with its provenance, pattern/restoration surfaces, single-click
 selection that reveals the outline entry without moving focus to a control (SR-032), layered structure
-navigation with its returns, focus targets and single announcements (SR-035), holder stability of
-imperatively mounted controls across layers (SR-038), and the documented focus targets are all verified
-there. The browser assertion in `e2e/specs/visual-canvas.spec.ts` proves the
-real SVG hit target, pointer/keyboard `move-node` identity, cancelled-drag no-op and zero CSP violations. A
-change to this table without a matching assertion change is a contract violation.
+navigation with its returns, focus targets and single announcements (SR-035), explicit insertion
+destinations carried by every add control with their non-drag parity (SR-036), columns created as one batch
+and one undo step (SR-037), holder stability of imperatively mounted controls across layers (SR-038), and
+the documented focus targets are all verified there. The browser assertion in
+`e2e/specs/visual-canvas.spec.ts` proves the real SVG hit target, pointer/keyboard `move-node` identity,
+cancelled-drag no-op and zero CSP violations. A change to this table without a matching assertion change is
+a contract violation.

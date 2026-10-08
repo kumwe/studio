@@ -104,7 +104,11 @@ remains the accessible canvas and enumerates the identical valid destinations in
 command palette provides the same destination actions, so reordering and reparenting never require
 coordinate perception or dragging. Carrying a palette entry onto the canvas is the same kind of enhancement:
 the drop names its destination textually, and a palette click followed by the outline destination selector
-reaches the identical placement without dragging.
+reaches the identical placement without dragging. Every add control carries an explicit destination that the
+add layer names in text; the dashed band and `+` disc drawn in an empty container are presentation-only SVG,
+mirrored by a native button list under the page with the same destination and a name that carries the
+parent's id, so adding into an empty container never needs geometry or a pointer and two equal containers
+never share an accessible name.
 
 The workspace grid collapses below its container breakpoint into a visible pane switcher of pressed-state
 buttons over mutually exclusive Library, Outline, and Inspector sheets with the canvas central; a completed

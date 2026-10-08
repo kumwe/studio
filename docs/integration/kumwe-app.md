@@ -440,14 +440,17 @@ no-store/no-index, sandbox, origin-pinned handshake, short-lived grant, and rest
 download/network policy. Public, portal, administrator, and recovery responses do not weaken their framing policy
 for Studio.
 
-A palette insertion no longer requires an App listener: the shell dispatches its own canonical
-`insert-node` command when nobody handles the cancelable `studio-insert-request`. When the App owns
-identifier allocation, its listener either executes the canonical command synchronously (the shell then
-inserts nothing further) or calls `preventDefault()` before completing asynchronously, then calls the
-shell's public `selectNode()` seam with the accepted node identifier. That keeps the Inspector, outline,
-keyboard focus model and preview selection aligned with Studio-owned insert commands; the host does not
-query or mutate the shell's shadow DOM. A palette entry carried onto the measured canvas dispatches the
-canonical command directly and does not raise the request event.
+A palette insertion no longer requires an App listener: the shell dispatches its own canonical `insert-node`
+command when nobody handles the cancelable `studio-insert-request`. When the App owns identifier allocation,
+its listener either executes the canonical command synchronously (the shell then inserts nothing further, and
+completes the insertion as its own: it focuses the new row, announces the insertion once by name and returns a
+narrow layout to the canvas sheet) or calls `preventDefault()` before completing asynchronously, then calls
+the shell's public `selectNode()` seam with the accepted node identifier. That keeps the Inspector, outline,
+keyboard focus model and preview selection aligned with Studio-owned insert commands; the host does not query
+or mutate the shell's shadow DOM. A palette entry carried onto the measured canvas dispatches the canonical
+command directly and does not raise the request event. The detail now names `position` and, for the shell's
+column cards, `operations`; until the App listener honours them it keeps end-of-slot placement and inserts the
+single columns block for a column card.
 
 Until the App exposes its authenticated preview response, a hosted mount shows Studio's isolated local
 canvas: the admitted composition rendered by the public semantic renderer and labelled as local and

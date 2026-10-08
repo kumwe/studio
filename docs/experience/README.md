@@ -19,8 +19,9 @@ state, all four presentation states, and the three explicit save choices. `mount
 standalone workspace or the same shell through an exact configured host transport. At wide widths the
 Blueprint workspace is one structure-and-details column (Outline, `Add blocks` disclosure, Inspector) beside
 a full-height page whose hover and single-click selection are mirrored in the Outline, and that column
-navigates in layers (structure, opened container, details); that is implemented shell behaviour, not
-qualification of the contextual journey.
+navigates in layers (structure, opened container, details) with explicit insertion destinations on every add
+control and column creation as one step; that is implemented shell behaviour, not qualification of the
+contextual journey.
 
 That is implemented browser behavior, not proof of the completed product journey. Complete field lifecycle and
 interaction breadth, Kumwe App persistence/rendering, independent-host replay, the complete `authoring-web`

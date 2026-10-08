@@ -27,7 +27,14 @@ opens with the whole tree and can be opened into one container at a time under a
 the details view shows the selected block's inspector sections and the docked Model and Content panels under
 a `Back` control and the selection path (in the contextual Content and Model modes the `Blueprint` tab is
 the return); a single click on the page opens the details view, and `Back`, `Arrow Left` and `Escape`
-return. Narrow containers present the Library, Outline, and Inspector as mutually exclusive sheets behind a
+return. Every level ends with an explicit add control (`Add to page` at the page level,
+`Add block into {slot}` at the end of each slot of an opened level) and the selected row offers
+`Add block before`, `Add block after` and `Add block into {slot}`; each opens the add layer for a named
+destination. The empty page is a dashed zone with its own `Add to page` button; every empty container is
+offered by native buttons under the page, and an empty slot of a pure container also shows a dashed band
+with a `+` disc on the page (on a host preview only in edit mode) that leaves the container selectable; and
+the `2 columns`, `3 columns` and `4 columns` cards, listed after the `Columns` card and in the command
+palette, create a columns block with its stack children as one step. Narrow containers present the Library, Outline, and Inspector as mutually exclusive sheets behind a
 visible pane switcher while the canvas stays central.
 Inline value editing is contextual: activating a rendered block focuses its typed control; the rendered
 markup itself is never editable in place, and no editor geometry or CSS enters a Blueprint.
@@ -52,14 +59,14 @@ block-beta
 
 This diagram expresses regions, not fixed pixels. Hosts and design profiles may alter density and placement through declared capabilities. The workspace must remain usable at zoom, with long translated labels, in RTL, and without relying on color or pointer precision.
 
-| Region    | Responsibility                                                                                                              | Required alternatives                                              |
-| --------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Host bar  | Target context, exact type/version, locale, workflow, presentation state, and explicit save choice                          | Standard links and form controls supplied by the host              |
-| Library   | Searchable blocks, patterns, typed fields, and extension provenance; opened from the structure panel's `Add blocks` control | Insert-before/after/inside/bind commands and keyboard navigation   |
-| Canvas    | Direct block/field placement, permitted value editing, resize intent, and host-rendered preview                             | Outline tree and inspector expose every operation                  |
-| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors, navigable in layers with the whole tree as the default view | Move up/down/in/out, duplicate, delete, and select controls        |
-| Inspector | Typed properties, bindings, responsive roles, design recipes, policy, accessibility metadata                                | Schema-generated labels, descriptions, errors, and ordinary inputs |
-| Status    | Validation, compatibility, save state, conflicts, history, and optional collaboration                                       | Persistent textual status and focusable error navigation           |
+| Region    | Responsibility                                                                                                                                                                   | Required alternatives                                                                             |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Host bar  | Target context, exact type/version, locale, workflow, presentation state, and explicit save choice                                                                               | Standard links and form controls supplied by the host                                             |
+| Library   | Searchable blocks, patterns, typed fields, and extension provenance; opened from the structure panel's `Add blocks` control, and opened for an explicit destination by every `+` | Insert-before/after/inside/bind commands and keyboard navigation                                  |
+| Canvas    | Direct block/field placement, permitted value editing, resize intent, and host-rendered preview                                                                                  | Outline tree and inspector expose every operation; the empty-container button list under the page |
+| Outline   | Complete semantic tree, slots, hidden/unresolved nodes, errors, navigable in layers with the whole tree as the default view                                                      | Move up/down/in/out, duplicate, delete, and select controls                                       |
+| Inspector | Typed properties, bindings, responsive roles, design recipes, policy, accessibility metadata                                                                                     | Schema-generated labels, descriptions, errors, and ordinary inputs                                |
+| Status    | Validation, compatibility, save state, conflicts, history, and optional collaboration                                                                                            | Persistent textual status and focusable error navigation                                          |
 
 ## Narrow screens
 
