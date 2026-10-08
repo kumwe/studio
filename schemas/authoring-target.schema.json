@@ -46,6 +46,55 @@
         "required": { "type": "boolean" }
       }
     },
+    "rendererRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface", "capability", "versions"],
+      "properties": {
+        "surface": { "enum": ["web", "email", "document", "native", "preview"] },
+        "capability": { "$ref": "common.schema.json#/$defs/qualifiedName" },
+        "versions": { "$ref": "common.schema.json#/$defs/versionRange" }
+      }
+    },
+    "coreLayout": {
+      "description": "Host options for Studio's section, stack, grid, and columns definitions in this target (ADR 0038). Studio derives the definitions and their revisions from these options; the target grants no authority.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acceptedChildTypes"],
+      "properties": {
+        "acceptedChildTypes": {
+          "description": "At most 64 listed entries, layout types included. Every entry is a layout type or a type outside the reserved studio namespace.",
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              { "$ref": "common.schema.json#/$defs/qualifiedName" },
+              {
+                "type": "string",
+                "anyOf": [
+                  {
+                    "enum": [
+                      "studio.core/section",
+                      "studio.core/stack",
+                      "studio.core/grid",
+                      "studio.core/columns"
+                    ]
+                  },
+                  { "not": { "pattern": "^studio\\." } }
+                ]
+              }
+            ]
+          }
+        },
+        "rendererRequirements": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/rendererRequirement" }
+        }
+      }
+    },
     "declaration": {
       "type": "object",
       "additionalProperties": false,
@@ -124,6 +173,7 @@
           "maxItems": 500,
           "items": { "$ref": "#/$defs/contributionDependency" }
         },
+        "coreLayout": { "$ref": "#/$defs/coreLayout" },
         "extensions": { "$ref": "common.schema.json#/$defs/extensions" }
       }
     },

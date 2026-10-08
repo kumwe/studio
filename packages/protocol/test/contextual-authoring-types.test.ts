@@ -10,6 +10,7 @@ import {
   type AuthoringSaveItemRequest,
   type AuthoringSaveNewTypeVersionRequest,
   type AuthoringStartRequest,
+  type AuthoringTargetCoreLayout,
   type AuthoringTargetDeclaration,
   type HostAdapter,
   type ReusableContentTypeDefinition,
@@ -48,6 +49,45 @@ describe('contextual authoring protocol', () => {
 
     expect(start.resourceContext.resource?.id).toBe('products/42');
     expect(target.saveOutcomes).toHaveLength(3);
+  });
+
+  it('types the optional coreLayout target member as options, never definition bytes', () => {
+    const coreLayout: AuthoringTargetCoreLayout = {
+      acceptedChildTypes: ['org.example.catalog/price'],
+      rendererRequirements: [
+        { capability: 'org.example.renderer/layout', surface: 'preview', versions: '^1.0.0' },
+      ],
+    };
+    const target: AuthoringTargetDeclaration = {
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      contributionDependencies: [
+        {
+          id: 'org.example.catalog/price',
+          kind: 'block-definition',
+          required: true,
+          versions: '^1.0.0',
+        },
+      ],
+      coreLayout,
+      eligibility: ['edit'],
+      id: 'org.example.catalog/product-content',
+      kind: 'authoring-target',
+      label: { key: 'org.example.catalog/product-content' },
+      modes: ['blueprint'],
+      owner: { id: 'org.example/catalog', version: '1.0.0' },
+      presentationStates: ['inline'],
+      requiredCapabilities: [],
+      resourceTypes: ['org.example.catalog/product'],
+      saveOutcomes: ['save-item'],
+      startKinds: ['existing'],
+      surface: 'org.example.catalog/product-editor',
+    };
+
+    expect(Object.keys(target.coreLayout ?? {}).sort()).toEqual([
+      'acceptedChildTypes',
+      'rendererRequirements',
+    ]);
+    expect(target.coreLayout).not.toHaveProperty('revision');
   });
 
   it('keeps reusable types separate from Entry values and coordinates all three artifacts', () => {
