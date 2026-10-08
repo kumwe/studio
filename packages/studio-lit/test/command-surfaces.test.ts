@@ -5,13 +5,18 @@ import {
   type BlueprintDocument,
   type BlueprintNode,
   type PatternDocument,
+  type RemoveNodeCommand,
 } from '@kumwe/studio-protocol';
 import {
   createBlueprintFixture,
   createStudioConfigurationFixture,
   defineTestBlock,
 } from '@kumwe/studio-testkit';
-import { defineKumweStudio, KumweStudioElement } from '../src/index.js';
+import {
+  defineKumweStudio,
+  KumweStudioElement,
+  type StudioInsertRequestDetail,
+} from '../src/index.js';
 
 function blueprintNode(id: string, type: string, children: BlueprintNode[] = []): BlueprintNode {
   return {
@@ -179,6 +184,96 @@ function pointer(type: string, pointerId: number): PointerEvent {
 
 function documentSnapshot(element: KumweStudioElement): BlueprintDocument {
   return JSON.parse(JSON.stringify(element.document)) as BlueprintDocument;
+}
+
+/** Two update rounds: the render, then the focus placement queued behind it. */
+async function settle(element: KumweStudioElement): Promise<void> {
+  await element.updateComplete;
+  await element.updateComplete;
+}
+
+/** The add layer's destination line, trimmed, or null when no destination is pending. */
+function libraryDestination(element: KumweStudioElement): string | null {
+  const line = element.shadowRoot?.querySelector('p.library-destination#library-destination');
+  return line === null || line === undefined ? null : (line.textContent ?? '').trim();
+}
+
+function librarySearch(element: KumweStudioElement): HTMLInputElement {
+  const input = element.shadowRoot?.querySelector<HTMLInputElement>(
+    'aside.library input[type="search"]',
+  );
+  if (input === null || input === undefined) {
+    throw new Error('Missing library search');
+  }
+  return input;
+}
+
+function libraryState(element: KumweStudioElement): string | null {
+  return element.shadowRoot?.querySelector('.workspace')?.getAttribute('data-library') ?? null;
+}
+
+function paletteBlock(element: KumweStudioElement, type: string): HTMLButtonElement {
+  const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+    `.palette button.palette-block[data-block-type="${type}"]`,
+  );
+  if (button === null || button === undefined) {
+    throw new Error(`Missing palette card ${type}`);
+  }
+  return button;
+}
+
+function addControl(element: KumweStudioElement, selector: string): HTMLButtonElement {
+  const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+    `.outline-controls button.${selector}`,
+  );
+  if (button === null || button === undefined) {
+    throw new Error(`Missing add control ${selector}`);
+  }
+  return button;
+}
+
+/** A `+` control's visible name: its text without the decorative, hidden glyph. */
+function addLabel(button: HTMLButtonElement): string {
+  const glyph = button.querySelector('.add-glyph');
+  expect(glyph?.getAttribute('aria-hidden')).toBe('true');
+  const copy = button.cloneNode(true) as HTMLButtonElement;
+  copy.querySelector('.add-glyph')?.remove();
+  return (copy.textContent ?? '').trim();
+}
+
+function zoneButtons(element: KumweStudioElement): HTMLButtonElement[] {
+  return [
+    ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+      'main.canvas div.canvas-add-zones[role="group"] > button.canvas-add-into',
+    ) ?? []),
+  ];
+}
+
+function insertRequests(element: KumweStudioElement): StudioInsertRequestDetail[] {
+  const details: StudioInsertRequestDetail[] = [];
+  element.addEventListener('studio-insert-request', (event: Event) => {
+    details.push((event as CustomEvent<StudioInsertRequestDetail>).detail);
+  });
+  return details;
+}
+
+function slotIds(element: KumweStudioElement, parentId: string): string[] | undefined {
+  return element.document?.roots
+    .find((root) => root.id === parentId)
+    ?.slots.content?.map((child) => child.id);
+}
+
+function removeNodeCommand(element: KumweStudioElement, nodeId: string): RemoveNodeCommand {
+  return {
+    artifactId: element.document?.id ?? 'test.blueprint',
+    baseStateVersion: element.stateVersion,
+    contractVersion: STUDIO_CONTRACT_VERSION,
+    id: `command-remove-${nodeId}`,
+    kind: 'command',
+    payload: { nodeId },
+    sessionGeneration: 'session-r1',
+    type: 'studio.command/remove-node',
+  };
 }
 
 describe('command palette', () => {
@@ -568,6 +663,484 @@ describe('canvas pointer drag', () => {
 
     expect(element.document).toEqual(before);
     expect(liveRegionText(element)).not.toContain('Moved');
+    element.remove();
+  });
+});
+
+/** SR-036: every `+` carries an explicit parent, slot and position with non-drag parity. */
+describe('explicit insertion destinations', () => {
+  it('Add block after and before dispatch the request with the explicit position and insert there', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const requests = insertRequests(element);
+    await selectNode(element, 'text-1');
+    expect(libraryState(element)).toBe('closed');
+    expect(addLabel(addControl(element, 'outline-add-after'))).toBe('Add block after');
+    expect(addLabel(addControl(element, 'outline-add-before'))).toBe('Add block before');
+
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryState(element)).toBe('open');
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 3',
+    );
+    expect(activeElement(element)).toBe(librarySearch(element));
+    expect(librarySearch(element).getAttribute('aria-describedby')).toBe('library-destination');
+    // The content slot accepts only Text: the Section card is disabled, never redirected.
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(true);
+    expect(paletteBlock(element, 'studio.core/text').disabled).toBe(false);
+    expect(requests).toEqual([]);
+
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      definition: expect.objectContaining({ type: 'studio.core/text' }) as unknown,
+      parentId: 'section-1',
+      position: 1,
+      slot: 'content',
+    });
+    expect(requests[0]).not.toHaveProperty('operations');
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'text-3', 'text-2']);
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    expect(libraryDestination(element)).toBeNull();
+    expect(librarySearch(element).hasAttribute('aria-describedby')).toBe(false);
+    expect(activeElement(element)).toBe(outlineEntry(element, 'text-3'));
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(false);
+
+    // The first position of a non-empty slot is reachable without dragging.
+    await selectNode(element, 'text-1');
+    addControl(element, 'outline-add-before').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 1 of 4',
+    );
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({ parentId: 'section-1', position: 0, slot: 'content' });
+    expect(slotIds(element, 'section-1')).toEqual(['text-4', 'text-1', 'text-3', 'text-2']);
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('Add to page and Add block into carry their destinations and the command palette follows the pending one', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const requests = insertRequests(element);
+
+    const addToPage = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'aside.outline div.outline-level-add > button.outline-add-page',
+    );
+    if (addToPage === null || addToPage === undefined) throw new Error('Missing Add to page');
+    expect(addLabel(addToPage)).toBe('Add to page');
+    addToPage.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe('Adding to document roots, position 2 of 2');
+    expect(activeElement(element)).toBe(librarySearch(element));
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(false);
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(element.document?.roots.map((root) => root.id)).toEqual(['section-1', 'text-3']);
+    expect(requests.at(-1)).toMatchObject({ parentId: null, position: 1 });
+    expect(requests.at(-1)).not.toHaveProperty('slot');
+
+    await selectNode(element, 'section-1');
+    const into = addControl(element, 'outline-add-into[data-slot="content"]');
+    expect(addLabel(into)).toBe('Add block into Content');
+    into.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 3 of 3',
+    );
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(true);
+
+    // The command palette inserts where the add layer says (SR-021 parity).
+    const invoker = outlineEntry(element, 'section-1');
+    invoker.focus();
+    invoker.dispatchEvent(keydown({ ctrlKey: true, key: 'k' }));
+    await element.updateComplete;
+    expect(paletteSection(element)).not.toBeNull();
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 3 of 3',
+    );
+    expect(commandEntry(element, 'insert-studio.core/section@1.0.0').disabled).toBe(true);
+    expect(commandEntry(element, 'insert-studio.core/text@1.0.0').disabled).toBe(false);
+    commandEntry(element, 'insert-studio.core/text@1.0.0').click();
+    await settle(element);
+
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'text-2', 'text-4']);
+    expect(element.document?.roots).toHaveLength(2);
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    expect(libraryDestination(element)).toBeNull();
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(false);
+    element.remove();
+  });
+
+  it('a host that takes ownership receives the position and the shell inserts nothing more', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const requests = insertRequests(element);
+    element.addEventListener('studio-insert-request', (event) => {
+      event.preventDefault();
+    });
+    const before = documentSnapshot(element);
+    // A card without a pending destination opens with the library closed on
+    // a non-empty page; the request still names its default position.
+    element.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle')?.click();
+    await settle(element);
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(requests.at(-1)).toMatchObject({ parentId: null, position: 1 });
+    expect(element.document).toEqual(before);
+
+    await selectNode(element, 'text-2');
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 3 of 3',
+    );
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({
+      definition: expect.objectContaining({ type: 'studio.core/text' }) as unknown,
+      parentId: 'section-1',
+      position: 2,
+      slot: 'content',
+    });
+    expect(element.document).toEqual(before);
+    // The request is the destination's outcome, whoever performs it.
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('Escape in the add layer and a changed selection clear the pending destination; a stale one is pruned', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    await selectNode(element, 'text-1');
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryDestination(element)).not.toBeNull();
+
+    // While the search field has text, Escape stays the field's own key.
+    const search = librarySearch(element);
+    search.value = 'Te';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await element.updateComplete;
+    const typed = keydown({ key: 'Escape' });
+    search.dispatchEvent(typed);
+    await element.updateComplete;
+    expect(typed.defaultPrevented).toBe(false);
+    expect(libraryDestination(element)).not.toBeNull();
+
+    search.value = '';
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+    await element.updateComplete;
+    const escape = keydown({ key: 'Escape' });
+    search.dispatchEvent(escape);
+    await settle(element);
+    expect(escape.defaultPrevented).toBe(true);
+    expect(libraryDestination(element)).toBeNull();
+    expect(libraryState(element)).toBe('open');
+    expect(activeElement(element)).toBe(search);
+    expect(search.hasAttribute('aria-describedby')).toBe(false);
+
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryDestination(element)).not.toBeNull();
+    await selectNode(element, 'text-2');
+    expect(libraryDestination(element)).toBeNull();
+
+    await selectNode(element, 'section-1');
+    addControl(element, 'outline-add-into[data-slot="content"]').click();
+    await settle(element);
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(true);
+    element.execute(removeNodeCommand(element, 'section-1'));
+    await settle(element);
+    expect(element.document?.roots).toEqual([]);
+    expect(libraryDestination(element)).toBeNull();
+    expect(paletteBlock(element, 'studio.core/section').disabled).toBe(false);
+    expect(paletteBlock(element, 'studio.core/text').disabled).toBe(false);
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(element.document?.roots.map((root) => root.id)).toEqual(['text-1']);
+    element.remove();
+
+    // A destination past the end of a shrunken collection is pruned even
+    // though the selection never changed.
+    const page = await mountShell({ roots: dragRoots() });
+    page.shadowRoot
+      ?.querySelector<HTMLButtonElement>('div.outline-level-add > button.outline-add-page')
+      ?.click();
+    await settle(page);
+    expect(libraryDestination(page)).toBe('Adding to document roots, position 4 of 4');
+    page.execute(removeNodeCommand(page, 'gamma'));
+    await settle(page);
+    expect(libraryDestination(page)).toBeNull();
+    page.remove();
+  });
+
+  it('a pending destination ends when its own collection changes and survives changes elsewhere', async () => {
+    // A move: the selection never changes, but the position would now name a
+    // place after alpha rather than after beta.
+    const page = await mountShell({ roots: dragRoots() });
+    await selectNode(page, 'beta');
+    addControl(page, 'outline-add-after').click();
+    await settle(page);
+    expect(libraryDestination(page)).toBe('Adding to document roots, position 3 of 4');
+    addControl(page, 'outline-move-up').click();
+    await settle(page);
+    expect(page.document?.roots.map((root) => root.id)).toEqual(['beta', 'alpha', 'gamma']);
+    expect(page.selection).toEqual(['beta']);
+    expect(libraryDestination(page)).toBeNull();
+    // The card follows the selection-derived default (the end of the roots,
+    // since Text declares no slot), never the stale position.
+    paletteBlock(page, 'studio.core/text').click();
+    await settle(page);
+    expect(page.document?.roots.map((root) => root.id)).toEqual([
+      'beta',
+      'alpha',
+      'gamma',
+      'text-1',
+    ]);
+    page.remove();
+
+    const element = await mountShell({
+      roots: [...paletteRoots(), blueprintNode('section-2', 'studio.core/section')],
+    });
+    element.execute(removeNodeCommand(element, 'text-2'));
+    await settle(element);
+    await selectNode(element, 'section-1');
+    addControl(element, 'outline-add-into[data-slot="content"]').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 2',
+    );
+    // A change to another collection keeps the destination's meaning.
+    element.execute(removeNodeCommand(element, 'section-2'));
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 2',
+    );
+    // Undo restores text-2 into the destination's own collection.
+    element.undo();
+    await settle(element);
+    expect(element.document?.roots.map((root) => root.id)).toEqual(['section-1', 'section-2']);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 2',
+    );
+    element.undo();
+    await settle(element);
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'text-2']);
+    expect(element.selection).toEqual(['section-1']);
+    expect(libraryDestination(element)).toBeNull();
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'text-2', 'text-3']);
+    element.remove();
+  });
+
+  it('the host selectNode seam clears the pending destination like a selection the author makes', async () => {
+    const element = await mountShell({
+      roots: [...paletteRoots(), blueprintNode('section-2', 'studio.core/section')],
+    });
+    await selectNode(element, 'section-1');
+    addControl(element, 'outline-add-into[data-slot="content"]').click();
+    await settle(element);
+    const named = 'Adding to Section (section-1): Content slot, position 3 of 3';
+    expect(libraryDestination(element)).toBe(named);
+    element.selectNode('section-1');
+    await settle(element);
+    expect(libraryDestination(element)).toBe(named);
+
+    element.selectNode('section-2');
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'text-2']);
+    expect(slotIds(element, 'section-2')).toEqual(['text-3']);
+
+    await selectNode(element, 'section-1');
+    addControl(element, 'outline-add-into[data-slot="content"]').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(named);
+    element.selectNode(undefined);
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('completes a synchronous host insertion: selected, focused and announced once', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const requests = insertRequests(element);
+    element.addEventListener('studio-insert-request', (event: Event) => {
+      const detail = (event as CustomEvent<StudioInsertRequestDetail>).detail;
+      element.execute({
+        artifactId: element.document?.id ?? 'test.blueprint',
+        baseStateVersion: element.stateVersion,
+        contractVersion: STUDIO_CONTRACT_VERSION,
+        id: 'command-host-insert',
+        kind: 'command',
+        payload: {
+          // This host serves the one destination the test chooses.
+          destination: {
+            parentNodeId: 'section-1',
+            position: detail.position ?? 0,
+            slot: 'content',
+          },
+          node: blueprintNode('host-text', 'studio.core/text'),
+        },
+        sessionGeneration: 'session-r1',
+        type: 'studio.command/insert-node',
+      });
+    });
+    await selectNode(element, 'text-1');
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ parentId: 'section-1', position: 1, slot: 'content' });
+    // The host inserted; the shell added nothing of its own.
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'host-text', 'text-2']);
+    expect(element.selection).toEqual(['host-text']);
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    expect(activeElement(element)).toBe(outlineEntry(element, 'host-text'));
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('patterns follow a pending destination exactly or are disabled there', async () => {
+    const element = await mountShell({ roots: paletteRoots() });
+    const pattern = (id: string, root: BlueprintNode): PatternDocument => ({
+      blockDependencies: [],
+      contractVersion: STUDIO_CONTRACT_VERSION,
+      id: `studio.test/${id}`,
+      kind: 'pattern',
+      label: { defaultMessage: id, key: `studio.test/${id}` },
+      owner: { id: 'studio.test/suite', version: '1.0.0' },
+      revision: `${id}-r1`,
+      roots: [root],
+      version: '1.0.0',
+    });
+    element.patterns = [
+      pattern('refused', blueprintNode('band', 'studio.core/section')),
+      pattern('accepted', blueprintNode('note', 'studio.core/text')),
+    ];
+    const commands: { destination?: unknown; type: string }[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const command = (
+        event as CustomEvent<{
+          command: { payload: { destination?: unknown }; type: string } | null;
+        }>
+      ).detail.command;
+      if (command !== null) {
+        commands.push({ destination: command.payload.destination, type: command.type });
+      }
+    });
+    const apply = (id: string): HTMLButtonElement => {
+      const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+        `.pattern-apply[data-pattern-id="studio.test/${id}"]`,
+      );
+      if (button === null || button === undefined) throw new Error(`Missing pattern ${id}`);
+      return button;
+    };
+    await selectNode(element, 'text-1');
+    addControl(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 3',
+    );
+    // The Content slot refuses a Section root: that pattern is disabled
+    // rather than redirected to the selection-derived default.
+    expect(apply('refused').disabled).toBe(true);
+    expect(apply('accepted').disabled).toBe(false);
+
+    apply('accepted').click();
+    await settle(element);
+    expect(slotIds(element, 'section-1')).toEqual(['text-1', 'note-pattern-1', 'text-2']);
+    expect(commands).toEqual([
+      {
+        destination: { parentNodeId: 'section-1', position: 1, slot: 'content' },
+        type: 'studio.command/apply-pattern',
+      },
+    ]);
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('read-only sessions disable every add control', async () => {
+    const element = await mountShell({
+      roots: [...paletteRoots(), blueprintNode('section-2', 'studio.core/section')],
+      sessionState: 'read-only',
+    });
+    expect(
+      element.shadowRoot?.querySelector<HTMLButtonElement>('button.outline-add-page')?.disabled,
+    ).toBe(true);
+    await selectNode(element, 'text-1');
+    expect(addControl(element, 'outline-add-before').disabled).toBe(true);
+    expect(addControl(element, 'outline-add-after').disabled).toBe(true);
+    await selectNode(element, 'section-1');
+    expect(addControl(element, 'outline-add-into[data-slot="content"]').disabled).toBe(true);
+    // No empty container is insertable, so the page offers none.
+    expect(element.shadowRoot?.querySelector('div.canvas-add-zones')).toBeNull();
+    addControl(element, 'outline-add-into[data-slot="content"]').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('the on-page zone list names every empty container and opens the add layer for it', async () => {
+    const element = await mountShell({
+      roots: [
+        blueprintNode('section-1', 'studio.core/section', [
+          blueprintNode('text-1', 'studio.core/text'),
+        ]),
+        blueprintNode('section-2', 'studio.core/section'),
+      ],
+    });
+    const group = element.shadowRoot?.querySelector('main.canvas div.canvas-add-zones');
+    expect(group?.getAttribute('role')).toBe('group');
+    expect(group?.getAttribute('aria-label')).toBe('Empty containers');
+    const zones = zoneButtons(element);
+    expect(zones).toHaveLength(1);
+    const [zone] = zones;
+    if (zone === undefined) throw new Error('Missing the empty-container control');
+    expect(addLabel(zone)).toBe('Add block into Content of Section (section-2)');
+    expect(zone.dataset.parentId).toBe('section-2');
+    expect(zone.dataset.slot).toBe('content');
+    expect(zone.disabled).toBe(false);
+
+    zone.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-2): Content slot, position 1 of 1',
+    );
+    expect(activeElement(element)).toBe(librarySearch(element));
+    paletteBlock(element, 'studio.core/text').click();
+    await settle(element);
+
+    expect(slotIds(element, 'section-2')).toEqual(['text-2']);
+    expect(slotIds(element, 'section-1')).toEqual(['text-1']);
+    expect(zoneButtons(element)).toHaveLength(0);
+    expect(element.shadowRoot?.querySelector('div.canvas-add-zones')).toBeNull();
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    element.remove();
+  });
+
+  it('two equal empty containers never share an accessible name', async () => {
+    const element = await mountShell({
+      roots: [
+        blueprintNode('section-1', 'studio.core/section'),
+        blueprintNode('section-2', 'studio.core/section'),
+      ],
+    });
+    const names = zoneButtons(element).map(addLabel);
+    expect(names).toEqual([
+      'Add block into Content of Section (section-1)',
+      'Add block into Content of Section (section-2)',
+    ]);
+    expect(new Set(names).size).toBe(names.length);
     element.remove();
   });
 });

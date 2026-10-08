@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   AuthoringSaveIntent,
   AuthoringSessionSnapshot,
+  BlockType,
+  BlueprintBatchOperation,
   FieldDefinition,
 } from '@kumwe/studio-protocol';
 import {
@@ -12,6 +14,7 @@ import {
   serializeStudioStandaloneProject,
   type KumweStudioElement,
   type KumweStudioStandaloneElement,
+  type StudioInsertRequestDetail,
   type StudioStandaloneDownload,
 } from '../src/index.js';
 
@@ -85,7 +88,17 @@ describe('standalone local Studio runtime', () => {
     expect(mounted.element.project.state.coordinates).not.toHaveProperty('type');
     expect(mounted.element.project.capabilities.saveOutcomes).toEqual(['save-as-new-type']);
     expect(mounted.element.project.target.saveOutcomes).toEqual(['save-as-new-type']);
-    expect(paletteButtons(blueprint)).toHaveLength(45);
+    // One card per built-in block definition plus the `2 columns`, `3 columns`
+    // and `4 columns` cards, which insert a columns block with its stacks.
+    expect(paletteButtons(blueprint)).toHaveLength(48);
+    expect(
+      paletteButtons(blueprint).filter((button) => button.classList.contains('palette-block')),
+    ).toHaveLength(45);
+    expect(
+      paletteButtons(blueprint)
+        .filter((button) => button.classList.contains('palette-columns'))
+        .map((button) => button.dataset.columns),
+    ).toEqual(['2', '3', '4']);
     expect(
       blueprint.shadowRoot?.querySelectorAll<HTMLButtonElement>('button.pattern-apply'),
     ).toHaveLength(10);
@@ -120,6 +133,131 @@ describe('standalone local Studio runtime', () => {
     await right.contextualElement?.updateComplete;
     expect(right.project.state.blueprint.roots[0]?.id).toBe('studio-local-node-1');
     expect(left.exportProjectJson()).toBe(right.exportProjectJson());
+  });
+
+  it('honours the explicit position and runs a column card as one undoable batch', async () => {
+    const element = createStudioStandaloneRuntime();
+    document.body.append(element);
+    const blueprint = await ready(element);
+    const button = (selector: string): HTMLButtonElement => {
+      const found = blueprint.shadowRoot?.querySelector<HTMLButtonElement>(selector);
+      if (found === null || found === undefined) throw new Error(`Missing ${selector}`);
+      return found;
+    };
+    const flush = async (): Promise<void> => {
+      await blueprint.updateComplete;
+      await blueprint.updateComplete;
+      await element.contextualElement?.updateComplete;
+    };
+    const liveRegion = (): string =>
+      blueprint.shadowRoot?.querySelector('[aria-live="polite"]')?.textContent?.trim() ?? '';
+
+    button('button.palette-columns[data-columns="2"]').click();
+    await flush();
+    const roots = blueprint.document?.roots ?? [];
+    expect(roots).toHaveLength(1);
+    expect(roots[0]).toMatchObject({
+      authoring: { mode: 'structural' },
+      id: 'columns-1',
+      properties: { collapse: 'stack', columns: 2 },
+      type: 'studio.core/columns',
+    });
+    expect(roots[0]?.slots.items?.map((child) => [child.id, child.type])).toEqual([
+      ['stack-1', 'studio.core/stack'],
+      ['stack-2', 'studio.core/stack'],
+    ]);
+    expect(element.project.state.blueprint.roots).toEqual(roots);
+    // The local host selects the composite's root through `selectNode()`, as
+    // the shell does after an insertion it runs itself; the shell completes
+    // the synchronous host's insertion: one announcement, focus on the entry.
+    expect(blueprint.selection).toEqual(['columns-1']);
+    expect(
+      blueprint.shadowRoot
+        ?.querySelector('button.outline-entry[data-node-id="columns-1"]')
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(liveRegion()).toBe('Inserted 2 columns');
+    expect(blueprint.shadowRoot?.activeElement).toBe(
+      button('button.outline-entry[data-node-id="columns-1"]'),
+    );
+    // The host executed the planned batch: one command, one undo step.
+    blueprint.undo();
+    await flush();
+    expect(blueprint.document?.roots).toEqual([]);
+    blueprint.redo();
+    await flush();
+    expect(blueprint.document?.roots).toEqual(roots);
+
+    // A `+` before the first root reaches position 0, which the host honours.
+    button('button.outline-entry[data-node-id="columns-1"]').click();
+    await flush();
+    button('.outline-controls button.outline-add-before').click();
+    await flush();
+    expect(blueprint.shadowRoot?.querySelector('p.library-destination')?.textContent?.trim()).toBe(
+      'Adding to document roots, position 1 of 2',
+    );
+    button('.palette-block[data-block-type="studio.core/heading"]').click();
+    await flush();
+    expect(blueprint.document?.roots.map((root) => root.type)).toEqual([
+      'studio.core/heading',
+      'studio.core/columns',
+    ]);
+    // A single local insertion selects, focuses and announces the node the
+    // host allocated.
+    const heading = blueprint.document?.roots[0]?.id ?? '';
+    expect(blueprint.selection).toEqual([heading]);
+    expect(liveRegion()).toBe('Inserted Heading');
+    expect(blueprint.shadowRoot?.activeElement).toBe(
+      button(`button.outline-entry[data-node-id="${heading}"]`),
+    );
+    expect(blueprint.shadowRoot?.querySelector('p.library-destination')).toBeNull();
+  });
+
+  it('refuses a composite insertion that carries anything but built-in insert-node operations', async () => {
+    const element = createStudioStandaloneRuntime();
+    document.body.append(element);
+    const blueprint = await ready(element);
+    const columns = blueprint.configuration?.blockDefinitions?.find(
+      (definition) => definition.type === 'studio.core/columns',
+    );
+    if (columns === undefined) throw new Error('Missing the built-in columns definition.');
+    const before = structuredClone(blueprint.document);
+    const stateVersion = blueprint.stateVersion;
+    const request = (operations: BlueprintBatchOperation[]): void => {
+      blueprint.dispatchEvent(
+        new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+          detail: { definition: columns, operations, parentId: null, position: 0 },
+        }),
+      );
+    };
+    const insert = (id: string, type: string): BlueprintBatchOperation => ({
+      payload: {
+        destination: { position: 0 },
+        node: {
+          authoring: { mode: 'content' },
+          bindings: {},
+          id,
+          properties: {},
+          slots: {},
+          type: type as BlockType,
+          version: '1.0.0',
+        },
+      },
+      type: 'studio.command/insert-node',
+    });
+    // The local boundary refuses before it executes anything: an earlier
+    // listener may have rewritten the shared detail's operations.
+    expect(() => request([insert('price-1', 'org.example.catalog/price')])).toThrow(
+      new TypeError('Local Studio can insert only its built-in block catalog.'),
+    );
+    expect(() =>
+      request([{ payload: { nodeId: 'missing' }, type: 'studio.command/remove-node' }]),
+    ).toThrow(new TypeError('Local Studio can insert only its built-in block catalog.'));
+    expect(blueprint.document).toEqual(before);
+    expect(blueprint.stateVersion).toBe(stateVersion);
   });
 
   it('round-trips lossless project JSON independently from outcome-specific save intent JSON', async () => {

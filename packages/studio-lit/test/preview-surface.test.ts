@@ -893,6 +893,39 @@ describe('shell preview surface', () => {
     element.remove();
   });
 
+  it('opens the details view when a press lands on a block that has nowhere to move', async () => {
+    const client = new FakePreviewClient();
+    const { element } = await mount({ client, roots: [node('node-1')] });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, { [marker(digest, 0)]: 'node-1' });
+    await settle(element);
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.canvas-edit-toggle')?.click();
+    await settle(element);
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+    expect(workspace?.getAttribute('data-panel-view')).toBe('structure');
+    const activeBefore = document.activeElement;
+    const commandTypes: string[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+      if (detail.command !== null) commandTypes.push(detail.command.type);
+    });
+
+    // A lone root has no move destination, so no drag is armed; the press is
+    // still a page click: it selects, and opens the details view without
+    // moving focus, as a released press on a movable block does.
+    measuredRegion(element, 'node-1').dispatchEvent(pointerEvent('pointerdown', 90, 20, 20));
+    measuredRegion(element, 'node-1').dispatchEvent(pointerEvent('pointerup', 90, 20, 20));
+    await settle(element);
+    expect(element.selection).toEqual(['node-1']);
+    expect(workspace?.getAttribute('data-panel-view')).toBe('details');
+    expect(document.activeElement).toBe(activeBefore);
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).toBeNull();
+    expect(commandTypes).toEqual([]);
+    element.remove();
+  });
+
   it('prefers the deeper semantic destination when parent and only-child boundaries coincide', async () => {
     const { commandTypes, element, overlay, region } = await mountBoundaryRankingScenario(100);
 
@@ -1362,6 +1395,310 @@ describe('palette-to-canvas insertion', () => {
     button?.dispatchEvent(pointerEvent('pointerup', 54, 150, 250));
     await settle(element);
     expect(element.document).toEqual(before);
+    element.remove();
+  });
+});
+
+describe('empty-container add zone on a host preview', () => {
+  async function mountEmptySectionScenario(): Promise<{
+    client: FakePreviewClient;
+    commandTypes: string[];
+    element: KumweStudioElement;
+  }> {
+    const client = new FakePreviewClient();
+    client.rectsByNode['section-1'] = [{ height: 120, width: 300, x: 10, y: 10 }];
+    const { element } = await mount({
+      blockDefinitions: [
+        defineTestBlock({
+          label: 'Section',
+          slots: [
+            {
+              accepts: { types: ['studio.core/text'] },
+              id: 'content',
+              label: { defaultMessage: 'Content', key: 'studio.test/content' },
+              maximum: 20,
+              minimum: 0,
+              ordered: true,
+            },
+          ],
+          type: 'studio.core/section',
+        }),
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      client,
+      roots: [section('section-1', [])],
+    });
+    const commandTypes: string[] = [];
+    element.addEventListener('studio-document-change', (event) => {
+      const detail = (event as CustomEvent<{ command: { type: string } | null }>).detail;
+      if (detail.command !== null) {
+        commandTypes.push(detail.command.type);
+      }
+    });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, { [marker(digest, 0)]: 'section-1' });
+    await settle(element);
+    return { client, commandTypes, element };
+  }
+
+  function zoneGroups(element: KumweStudioElement): SVGGElement[] {
+    return [
+      ...(element.shadowRoot?.querySelectorAll<SVGGElement>(
+        '.preview-canvas-overlay g.preview-canvas-add-zone',
+      ) ?? []),
+    ];
+  }
+
+  function libraryDestination(element: KumweStudioElement): string | null {
+    const line = element.shadowRoot?.querySelector('p.library-destination#library-destination');
+    return line === null || line === undefined ? null : (line.textContent ?? '').trim();
+  }
+
+  it('draws the band only in edit mode, mirrors it under the stage, and inserts where it names', async () => {
+    const { client, commandTypes, element } = await mountEmptySectionScenario();
+    const toggle = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '.canvas-toolbar .canvas-edit-toggle',
+    );
+    expect(toggle?.getAttribute('aria-pressed')).toBe('false');
+    expect(measuredRegion(element, 'section-1')).toBeDefined();
+    expect(zoneGroups(element)).toHaveLength(0);
+    // The parity path exists whatever the edit control says.
+    const mirrored = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      'main.canvas div.canvas-add-zones > button.canvas-add-into[data-parent-id="section-1"]',
+    );
+    expect(mirrored?.dataset.slot).toBe('content');
+    expect(mirrored?.disabled).toBe(false);
+
+    toggle?.click();
+    await settle(element);
+    const announcedMode = liveRegionText(element);
+    expect(announcedMode).not.toBe('');
+    const groups = zoneGroups(element);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.dataset.parentId).toBe('section-1');
+    expect(groups[0]?.dataset.slot).toBe('content');
+    const band = groups[0]?.querySelector<SVGRectElement>(':scope > rect');
+    if (band === null || band === undefined) throw new Error('Missing the add-zone band.');
+    // emptySlotBand({ x: 10, y: 10, width: 300, height: 120 }, 0, 1)
+    expect(['x', 'y', 'width', 'height'].map((attribute) => band.getAttribute(attribute))).toEqual([
+      '14',
+      '14',
+      '292',
+      '112',
+    ]);
+    expect(groups[0]?.querySelector('text')?.textContent).toBe('+');
+    // The band sits above the region rects and inside the presentation-only overlay.
+    const overlay = element.shadowRoot?.querySelector('.preview-canvas-overlay');
+    expect(overlay?.getAttribute('aria-hidden')).toBe('true');
+    const painted = [...(overlay?.querySelectorAll('rect') ?? [])];
+    expect(painted.indexOf(band)).toBeGreaterThan(
+      painted.indexOf(measuredRegion(element, 'section-1')),
+    );
+
+    // Only the centred disc takes a pointer; the band itself is pointer-transparent,
+    // so a press anywhere else in the empty container still reaches its region.
+    const disc = groups[0]?.querySelector<SVGCircleElement>(':scope > circle');
+    if (disc === null || disc === undefined) throw new Error('Missing the add-zone disc.');
+    expect(['cx', 'cy', 'r'].map((attribute) => disc.getAttribute(attribute))).toEqual([
+      '160',
+      '70',
+      '16',
+    ]);
+    band.dispatchEvent(pointerEvent('pointerup', 70, 20, 20));
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    measuredRegion(element, 'section-1').dispatchEvent(pointerEvent('pointerdown', 74, 20, 20));
+    overlay?.dispatchEvent(pointerEvent('pointerup', 74, 20, 20));
+    await settle(element);
+    expect(element.selection).toEqual(['section-1']);
+    expect(libraryDestination(element)).toBeNull();
+    // The lone section has nowhere to move, so the press is a page click: it
+    // opens the details view, announced once as a layer change.
+    const workspace = element.shadowRoot?.querySelector('.workspace');
+    expect(workspace?.getAttribute('data-panel-view')).toBe('details');
+    expect(liveRegionText(element)).toBe('Showing Inspector for Section');
+
+    // Hovering the disc keeps the parent hovered.
+    disc.dispatchEvent(crossingEvent('pointerenter', 71));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'section-1').dataset.hovered).toBe('true');
+    disc.dispatchEvent(crossingEvent('pointerleave', 71));
+    await element.updateComplete;
+    expect(outlineEntry(element, 'section-1').dataset.hovered).toBe('false');
+
+    // Only a primary-button release opens the add layer.
+    disc.dispatchEvent(
+      new PointerEvent('pointerup', { bubbles: true, button: 2, composed: true, pointerId: 72 }),
+    );
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    disc.dispatchEvent(pointerEvent('pointerup', 73, 150, 60));
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 1 of 1',
+    );
+    expect(element.shadowRoot?.activeElement).toBe(
+      element.shadowRoot?.querySelector('aside.library input[type="search"]'),
+    );
+    // The `+` returns from the details view to the structure view (the one
+    // announcement); opening the add layer itself announces nothing more.
+    expect(workspace?.getAttribute('data-panel-view')).toBe('structure');
+    expect(liveRegionText(element)).toBe('Showing Outline for Page');
+    expect(commandTypes).toEqual([]);
+
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>('.palette-block[data-block-type="studio.core/text"]')
+      ?.click();
+    await settle(element);
+    expect(commandTypes).toEqual(['studio.command/insert-node']);
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    expect(libraryDestination(element)).toBeNull();
+
+    // The next geometry has no empty container: no band and no mirror.
+    await client.waitForRenders(2);
+    const digest = client.renders[1]?.payload.draftDigest ?? '';
+    client.resolveRender(1, {
+      [marker(digest, 0)]: 'section-1',
+      [marker(digest, 1)]: 'text-1',
+    });
+    await settle(element);
+    expect(zoneGroups(element)).toHaveLength(0);
+    expect(element.shadowRoot?.querySelector('div.canvas-add-zones')).toBeNull();
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    element.remove();
+  });
+
+  it('draws a band only in its own slot share of a pure container, never over a content block', async () => {
+    const client = new FakePreviewClient();
+    client.rectsByNode['section-1'] = [{ height: 120, width: 300, x: 10, y: 10 }];
+    client.rectsByNode['text-1'] = [{ height: 40, width: 280, x: 20, y: 20 }];
+    client.rectsByNode['card-1'] = [{ height: 100, width: 300, x: 10, y: 140 }];
+    const slot = (id: string): BlockDefinition['slots'][number] => ({
+      accepts: { types: ['studio.core/text'] },
+      id,
+      label: { defaultMessage: id === 'content' ? 'Content' : 'Aside', key: `studio.test/${id}` },
+      maximum: 20,
+      minimum: 0,
+      ordered: true,
+    });
+    const card: BlockDefinition = {
+      ...defineTestBlock({
+        label: 'Card',
+        slots: [{ ...slot('actions'), label: { defaultMessage: 'Actions', key: 'studio.test/a' } }],
+        type: 'studio.core/card',
+      }),
+      ports: [
+        {
+          id: 'title',
+          label: { defaultMessage: 'Title', key: 'studio.test/title' },
+          multiple: false,
+          required: false,
+          valueType: 'text',
+        },
+      ],
+    };
+    const { element } = await mount({
+      blockDefinitions: [
+        defineTestBlock({
+          label: 'Section',
+          slots: [slot('content'), slot('aside')],
+          type: 'studio.core/section',
+        }),
+        card,
+        defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+      ],
+      client,
+      roots: [
+        {
+          ...section('section-1', [node('text-1')]),
+          slots: { aside: [], content: [node('text-1')] },
+        },
+        { ...section('card-1', []), slots: { actions: [] }, type: 'studio.core/card' },
+      ],
+    });
+    client.announceReady();
+    await client.waitForRenders(1);
+    const digest = client.renders[0]?.payload.draftDigest ?? '';
+    client.resolveRender(0, {
+      [marker(digest, 0)]: 'section-1',
+      [marker(digest, 1)]: 'text-1',
+      [marker(digest, 2)]: 'card-1',
+    });
+    await settle(element);
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.canvas-edit-toggle')?.click();
+    await settle(element);
+
+    // Both empty slots stay reachable through the mirrored list.
+    expect(
+      [
+        ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+          'div.canvas-add-zones > button.canvas-add-into',
+        ) ?? []),
+      ].map((button) => `${button.dataset.parentId ?? ''}/${button.dataset.slot ?? ''}`),
+    ).toEqual(['section-1/aside', 'card-1/actions']);
+    // Only the section draws a band, in the lower half that its second
+    // declared slot owns (emptySlotBand(parent, 1, 2)); the card's content
+    // stays unobstructed.
+    const groups = zoneGroups(element);
+    expect(
+      groups.map((group) => `${group.dataset.parentId ?? ''}/${group.dataset.slot ?? ''}`),
+    ).toEqual(['section-1/aside']);
+    const band = groups[0]?.querySelector(':scope > rect');
+    expect(['x', 'y', 'width', 'height'].map((attribute) => band?.getAttribute(attribute))).toEqual(
+      ['14', '74', '292', '52'],
+    );
+    element.remove();
+  });
+
+  it('keeps the mirrored control as the parity path and arms no band from a palette carry', async () => {
+    const { commandTypes, element } = await mountEmptySectionScenario();
+    element.shadowRoot?.querySelector<HTMLButtonElement>('.canvas-edit-toggle')?.click();
+    await settle(element);
+    const band = element.shadowRoot?.querySelector<SVGCircleElement>(
+      'g.preview-canvas-add-zone[data-parent-id="section-1"] > circle',
+    );
+    const card = element.shadowRoot?.querySelector<HTMLButtonElement>(
+      '.palette-block[data-block-type="studio.core/text"]',
+    );
+    if (band === null || band === undefined || card === null || card === undefined) {
+      throw new Error('Missing the band or the Text card.');
+    }
+
+    // A palette carry that ends over the band keeps the drop's own outcome.
+    card.dispatchEvent(pointerEvent('pointerdown', 81, 5, 5));
+    card.dispatchEvent(pointerEvent('pointermove', 81, 150, 60));
+    await element.updateComplete;
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+    band.dispatchEvent(pointerEvent('pointerup', 81, 150, 60));
+    await element.updateComplete;
+    // The band ignores a release that ends a carry: no destination, carry intact.
+    expect(libraryDestination(element)).toBeNull();
+    expect(element.shadowRoot?.querySelector('.preview-canvas-drop-indicator')).not.toBeNull();
+    card.dispatchEvent(pointerEvent('pointerup', 81, 150, 60));
+    card.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBeNull();
+    expect(commandTypes).toEqual(['studio.command/insert-node']);
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
+    element.undo();
+    await settle(element);
+
+    // Without the pointer, the mirrored button reaches the same destination.
+    element.shadowRoot
+      ?.querySelector<HTMLButtonElement>(
+        'div.canvas-add-zones > button.canvas-add-into[data-parent-id="section-1"]',
+      )
+      ?.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 1 of 1',
+    );
+    card.click();
+    await settle(element);
+    expect(element.document?.roots[0]?.slots.content?.map((child) => child.id)).toEqual(['text-1']);
     element.remove();
   });
 });

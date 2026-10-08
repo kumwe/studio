@@ -133,7 +133,14 @@ describe('Studio shell authoring-control lifecycle', () => {
     const palette = [
       ...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>('.palette button') ?? []),
     ];
-    expect(palette.length).toBe(createCoreProductionBlockDefinitions().length + 10);
+    // One card per definition, the three column cards and the ten production patterns.
+    expect(palette.length).toBe(createCoreProductionBlockDefinitions().length + 3 + 10);
+    expect(palette.filter((button) => button.classList.contains('palette-block'))).toHaveLength(
+      createCoreProductionBlockDefinitions().length,
+    );
+    expect(palette.filter((button) => button.classList.contains('palette-columns'))).toHaveLength(
+      3,
+    );
     expect(palette.some((button) => button.textContent?.includes('Rich Text'))).toBe(true);
 
     const extension = defineTestBlock({ label: 'Host entity', type: 'host.entity/card' });

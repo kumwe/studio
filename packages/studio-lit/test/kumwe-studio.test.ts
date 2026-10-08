@@ -153,6 +153,64 @@ async function settle(element: KumweStudioElement): Promise<void> {
   await element.updateComplete;
 }
 
+/** A Section that declares a Content and an Aside slot, both accepting Text. */
+function slottedDefinitions(): BlockDefinition[] {
+  const slot = (id: string, label: string): BlockDefinition['slots'][number] => ({
+    accepts: { types: ['studio.core/text'] },
+    id,
+    label: { defaultMessage: label, key: `studio.test/${id}` },
+    maximum: 100,
+    minimum: 0,
+    ordered: true,
+  });
+  return [
+    defineTestBlock({
+      label: 'Section',
+      slots: [slot('content', 'Content'), slot('aside', 'Aside')],
+      type: 'studio.core/section',
+    }),
+    defineTestBlock({ label: 'Text', type: 'studio.core/text' }),
+  ];
+}
+
+/** The add layer's destination line, trimmed, or null when no destination is pending. */
+function libraryDestination(element: KumweStudioElement): string | null {
+  const line = element.shadowRoot?.querySelector('p.library-destination#library-destination');
+  return line === null || line === undefined ? null : (line.textContent ?? '').trim();
+}
+
+function librarySearch(element: KumweStudioElement): HTMLInputElement {
+  const input = element.shadowRoot?.querySelector<HTMLInputElement>(
+    'aside.library input[type="search"]',
+  );
+  if (input === null || input === undefined) throw new Error('Missing library search');
+  return input;
+}
+
+function textCard(element: KumweStudioElement): HTMLButtonElement {
+  const card = element.shadowRoot?.querySelector<HTMLButtonElement>(
+    '.palette button.palette-block[data-block-type="studio.core/text"]',
+  );
+  if (card === null || card === undefined) throw new Error('Missing Text card');
+  return card;
+}
+
+function addToPageControl(element: KumweStudioElement): HTMLButtonElement {
+  const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+    'aside.outline div.outline-level-add > button.outline-add-page',
+  );
+  if (button === null || button === undefined) throw new Error('Missing Add to page');
+  return button;
+}
+
+/** A `+` control's visible name: its text without the decorative, hidden glyph. */
+function addLabel(button: HTMLButtonElement): string {
+  expect(button.querySelector('.add-glyph')?.getAttribute('aria-hidden')).toBe('true');
+  const copy = button.cloneNode(true) as HTMLButtonElement;
+  copy.querySelector('.add-glyph')?.remove();
+  return (copy.textContent ?? '').trim();
+}
+
 function removeNodeCommand(element: KumweStudioElement, nodeId: string): RemoveNodeCommand {
   return {
     artifactId: element.document?.id ?? 'test.blueprint',
@@ -569,13 +627,16 @@ describe('kumwe-studio element', () => {
     expect(element.shadowRoot?.querySelector('button.add-blocks-toggle')?.textContent?.trim()).toBe(
       'Add blocks',
     );
+    expect(addLabel(addToPageControl(element))).toBe('Add to page');
     element.messages = {
       'studio.shell/add-blocks-toggle': { defaultMessage: 'Bausteine hinzufügen' },
+      'studio.shell/add-to-page': { defaultMessage: 'Zur Seite hinzufügen' },
       'studio.shell/outline-heading': { defaultMessage: 'Struktur' },
       'studio.shell/palette-heading': { defaultMessage: 'Bausteine' },
       'studio.shell/panel-back': { defaultMessage: 'Zurück' },
     };
     await element.updateComplete;
+    expect(addLabel(addToPageControl(element))).toBe('Zur Seite hinzufügen');
 
     expect(element.shadowRoot?.textContent).toContain('Bausteine');
     expect(element.shadowRoot?.textContent).toContain('Struktur');
@@ -1478,5 +1539,229 @@ describe('layered structure navigation', () => {
     );
     expect(liveRegionText(element)).toBe('Showing Outline for Page');
     element.remove();
+  });
+});
+
+describe('explicit insertion', () => {
+  it('the empty page is a dashed zone with a real Add to page control', async () => {
+    const element = await mountShell();
+    const canvas = element.shadowRoot?.querySelector('main.canvas');
+    expect(canvas?.getAttribute('data-empty')).toBe('true');
+    const zone = element.shadowRoot?.querySelector('main.canvas div.canvas-add-zone');
+    expect(zone?.querySelector('p')?.textContent?.trim()).toBe(
+      'Choose a block to begin composing.',
+    );
+    const add = zone?.querySelector<HTMLButtonElement>(':scope > button.canvas-add-page');
+    if (add === null || add === undefined) throw new Error('Missing the empty-page control');
+    expect(addLabel(add)).toBe('Add to page');
+    expect(add.disabled).toBe(false);
+    expect(element.shadowRoot?.querySelector('main.canvas p.empty')).toBeNull();
+    // The blank outline ends with the same page-level control.
+    expect(addLabel(addToPageControl(element))).toBe('Add to page');
+    expect(workspace(element).getAttribute('data-library')).toBe('open');
+    const before = liveRegionText(element);
+
+    add.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe('Adding to document roots, position 1 of 1');
+    expect(element.shadowRoot?.activeElement).toBe(librarySearch(element));
+    expect(workspace(element).getAttribute('data-library')).toBe('open');
+    // Choosing a destination is not announced; the insertion is, once.
+    expect(liveRegionText(element)).toBe(before);
+
+    textCard(element).click();
+    await settle(element);
+    expect(element.document?.roots.map((root) => root.id)).toEqual(['text-1']);
+    expect(canvas?.getAttribute('data-empty')).toBe('false');
+    expect(element.shadowRoot?.querySelector('.canvas-add-zone')).toBeNull();
+    expect(liveRegionText(element)).toBe('Inserted Text');
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+  });
+
+  it('an opened level ends every slot with its own + and lists the inserted row', async () => {
+    const element = await mountShell({
+      definitions: slottedDefinitions(),
+      roots: structuredRoots(),
+    });
+    await selectNode(element, 'section-1');
+    controlButton(element, 'outline-open').click();
+    await settle(element);
+    expect(panelScope(element)).toBe('section-1');
+    // The page-level control belongs to the page level only.
+    expect(element.shadowRoot?.querySelector('button.outline-add-page')).toBeNull();
+
+    const levelAdd = (slot: string): HTMLButtonElement | null =>
+      element.shadowRoot?.querySelector<HTMLButtonElement>(
+        `aside.outline section.node-children div.outline-level-add button.outline-add-into[data-slot="${slot}"]`,
+      ) ?? null;
+    const content = levelAdd('content');
+    const aside = levelAdd('aside');
+    if (content === null || aside === null) throw new Error('Missing a level add control');
+    expect(addLabel(content)).toBe('Add block into Content');
+    expect(addLabel(aside)).toBe('Add block into Aside');
+    // The empty declared slot is listed with its label and its + but no tree.
+    const asideSection = aside.closest('section.node-children');
+    expect(asideSection?.getAttribute('aria-label')).toContain('Aside');
+    expect(asideSection?.querySelector('ul.tree')).toBeNull();
+
+    content.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 3 of 3',
+    );
+    expect(panelScope(element)).toBe('section-1');
+    expect(element.shadowRoot?.activeElement).toBe(librarySearch(element));
+
+    textCard(element).click();
+    await settle(element);
+    expect(element.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual([
+      'text-1',
+      'text-2',
+      'text-3',
+    ]);
+    expect(panelScope(element)).toBe('section-1');
+    expect(outlineEntries(element).map((entry) => entry.dataset.nodeId)).toEqual([
+      'text-1',
+      'text-2',
+      'text-3',
+    ]);
+    expect(activeOutlineNodeId(element)).toBe('text-3');
+    expect(liveRegionText(element)).toBe('Inserted Text');
+
+    levelAdd('aside')?.click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Aside slot, position 1 of 1',
+    );
+    textCard(element).click();
+    await settle(element);
+    expect(element.document?.roots[1]?.slots.aside?.map((child) => child.id)).toEqual(['text-4']);
+    expect(panelScope(element)).toBe('section-1');
+    expect(activeOutlineNodeId(element)).toBe('text-4');
+    element.remove();
+  });
+
+  it('opening the details view clears the destination and a zone button reopens the add layer in the structure view', async () => {
+    const element = await mountShell({
+      definitions: slottedDefinitions(),
+      roots: structuredRoots(),
+    });
+    await selectNode(element, 'text-1');
+    controlButton(element, 'outline-add-after').click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe(
+      'Adding to Section (section-1): Content slot, position 2 of 3',
+    );
+    controlButton(element, 'outline-edit').click();
+    await settle(element);
+    expect(panelView(element)).toBe('details');
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+
+    const zoned = await mountShell({
+      definitions: slottedDefinitions(),
+      roots: [
+        blueprintNode('section-1', 'studio.core/section', [
+          blueprintNode('text-1', 'studio.core/text'),
+        ]),
+        blueprintNode('section-2', 'studio.core/section'),
+      ],
+    });
+    await selectNode(zoned, 'text-1');
+    zoned.revealInspector();
+    await settle(zoned);
+    expect(panelView(zoned)).toBe('details');
+    const zones = [
+      ...(zoned.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+        'main.canvas div.canvas-add-zones > button.canvas-add-into',
+      ) ?? []),
+    ];
+    // Section-1 has an empty Aside; section-2 has an empty Content and Aside.
+    expect(
+      zones.map((zone) => `${zone.dataset.parentId ?? ''}/${zone.dataset.slot ?? ''}`),
+    ).toEqual(['section-1/aside', 'section-2/content', 'section-2/aside']);
+    expect(zones.map(addLabel)).toEqual([
+      'Add block into Aside of Section (section-1)',
+      'Add block into Content of Section (section-2)',
+      'Add block into Aside of Section (section-2)',
+    ]);
+
+    zones[1]?.click();
+    await settle(zoned);
+    expect(panelView(zoned)).toBe('structure');
+    expect(libraryDestination(zoned)).toBe(
+      'Adding to Section (section-2): Content slot, position 1 of 1',
+    );
+    expect(zoned.shadowRoot?.activeElement).toBe(librarySearch(zoned));
+    expect(liveRegionText(zoned)).toBe('Showing Outline for Page');
+    textCard(zoned).click();
+    await settle(zoned);
+    expect(zoned.document?.roots[1]?.slots.content?.map((child) => child.id)).toEqual(['text-2']);
+    expect(liveRegionText(zoned)).toBe('Inserted Text');
+    zoned.remove();
+  });
+
+  it('closing the add layer clears the destination, and the contextual modes offer no + at all', async () => {
+    const element = await mountShell({
+      definitions: slottedDefinitions(),
+      roots: structuredRoots(),
+    });
+    addToPageControl(element).click();
+    await settle(element);
+    expect(libraryDestination(element)).toBe('Adding to document roots, position 3 of 3');
+    element.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle')?.click();
+    await settle(element);
+    expect(workspace(element).getAttribute('data-library')).toBe('closed');
+    expect(libraryDestination(element)).toBeNull();
+    element.shadowRoot?.querySelector<HTMLButtonElement>('button.add-blocks-toggle')?.click();
+    await settle(element);
+    expect(workspace(element).getAttribute('data-library')).toBe('open');
+    expect(libraryDestination(element)).toBeNull();
+    element.remove();
+
+    for (const mode of ['content', 'model'] as const) {
+      const contextual = await mountShell({
+        definitions: slottedDefinitions(),
+        mode,
+        roots: [blueprintNode('section-2', 'studio.core/section')],
+      });
+      expect(contextual.shadowRoot?.querySelector('div.canvas-add-zones')).toBeNull();
+      // The session mode permits no insert-node, so no + is ever enabled.
+      expect(
+        contextual.shadowRoot?.querySelector<HTMLButtonElement>('button.outline-add-page')
+          ?.disabled,
+      ).toBe(true);
+      const enabled = [
+        ...(contextual.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+          'button.outline-add-page, button.outline-add-before, button.outline-add-after, button.outline-add-into, button.canvas-add-page, button.canvas-add-into, button.palette-columns',
+        ) ?? []),
+      ].filter((button) => !button.disabled);
+      expect(enabled).toEqual([]);
+      contextual.remove();
+    }
+
+    // A Blueprint session docked in the contextual Content or Model view
+    // permits insert-node, but those views never show the add layer, so
+    // they offer no + either (a + there would do nothing visible).
+    for (const inspectorMode of ['content', 'model'] as const) {
+      const docked = await mountShell({
+        definitions: slottedDefinitions(),
+        roots: [blueprintNode('section-2', 'studio.core/section')],
+      });
+      docked.inspectorMode = inspectorMode;
+      await settle(docked);
+      expect(docked.shadowRoot?.querySelector('div.canvas-add-zones')).toBeNull();
+      const enabled = [
+        ...(docked.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+          'button.outline-add-page, button.outline-add-before, button.outline-add-after, button.outline-add-into, button.canvas-add-page, button.canvas-add-into',
+        ) ?? []),
+      ].filter((button) => !button.disabled);
+      expect(enabled).toEqual([]);
+      docked.inspectorMode = 'blueprint';
+      await settle(docked);
+      expect(docked.shadowRoot?.querySelector('div.canvas-add-zones')).not.toBeNull();
+      docked.remove();
+    }
   });
 });
