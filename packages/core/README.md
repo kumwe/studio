@@ -55,6 +55,10 @@ The implemented surface covers:
   CSS; the revision is derived from the family bytes the host options produce
   (`layout-<name>-h<hex>`), hosted targets pass the options as `coreLayout`, and only the production
   catalog carries `layout-<name>-r1` (ADR 0038);
+- `planColumnsInsertion` — plans a `studio.core/columns` block with N `studio.core/stack` children as one
+  `studio.command/batch` of `insert-node` operations (one undo step) at a given destination, with
+  identifiers from the caller's allocator; the optional `stackVersion` names the stack definition's own
+  version (`ColumnsInsertionOptions`, `ColumnsInsertionPlan`);
 - `createCoreProductionBlockDefinitions` / `createCoreProductionPatterns` — the standalone 45-block
   production catalog and ten portable starter compositions, including media, rich content,
   progressive composites including dialogs, popovers, and notices, data display, and
