@@ -1,5 +1,12 @@
 # @kumwe/studio-rich-text
 
+## 0.1.0-beta.11
+
+### Patch Changes
+
+- Updated dependencies [[`ebd7f89`](https://github.com/kumwe/studio/commit/ebd7f89a22b0dff56052e79948c654b7399c34af), [`98cdf61`](https://github.com/kumwe/studio/commit/98cdf61f72dafe79579884bd7a39b12dbd8c00de)]:
+  - @kumwe/studio-protocol@0.1.0-beta.11
+
 ## 0.1.0-beta.10
 
 ### Patch Changes
