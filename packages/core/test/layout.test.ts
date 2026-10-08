@@ -1,23 +1,33 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   STUDIO_CONTRACT_VERSION,
+  type BlockDefinition,
+  type BlockType,
   type BlueprintDocument,
   type BlueprintNode,
   type ThemeDesignControl,
   type ThemeDocument,
   type ThemeViewport,
 } from '@kumwe/studio-protocol';
+import type { CoreLayoutBlockDefinitionOptions } from '../src/index.js';
 import {
   BlockRegistry,
+  canonicalUtf8Bytes,
   CORE_LAYOUT_BLOCK_TYPES,
   CORE_LAYOUT_THEME_CONTROLS,
   compileStudioPropertySchema,
   coreLayoutInitialProperties,
   createCoreLayoutBlockDefinitions,
+  createCoreProductionBlockDefinitions,
   resolveCoreLayoutIntent,
   validateBlueprint,
 } from '../src/index.js';
 import type { CoreLayoutError } from '../src/index.js';
+import { fnv1a64Hex } from '../src/fnv.js';
+
+const bytesOf = (definitions: readonly BlockDefinition[]): Uint8Array =>
+  canonicalUtf8Bytes(definitions as unknown as Parameters<typeof canonicalUtf8Bytes>[0]);
 
 const viewports: ThemeViewport[] = [
   {
@@ -238,5 +248,232 @@ describe('core layout block family', () => {
     expect(() => resolveCoreLayoutIntent(grid, viewport('compact'), activeTheme)).toThrow(
       expect.objectContaining({ code: 'theme-control-missing' }) as CoreLayoutError,
     );
+  });
+
+  it('derives one revision per option set, independent of child-type order and layout repetition', () => {
+    const first = createCoreLayoutBlockDefinitions({
+      acceptedChildTypes: ['org.example/b', 'org.example/a'],
+    });
+    const second = createCoreLayoutBlockDefinitions({
+      acceptedChildTypes: ['org.example/a', 'org.example/b'],
+    });
+    const third = createCoreLayoutBlockDefinitions({
+      acceptedChildTypes: ['org.example/a', CORE_LAYOUT_BLOCK_TYPES.stack, 'org.example/b'],
+    });
+
+    expect(bytesOf(second)).toEqual(bytesOf(first));
+    expect(bytesOf(third)).toEqual(bytesOf(first));
+    const revisions = first.map((definition) => definition.revision);
+    for (const revision of revisions) {
+      expect(revision).toMatch(/^layout-(?:section|stack|grid|columns)-h[0-9a-f]{16}$/u);
+    }
+    expect(new Set(revisions.map((revision) => revision.slice(-16)))).toHaveLength(1);
+  });
+
+  it('changes the revision when the host types or renderer requirements change', () => {
+    const web = { capability: 'org.example/layout', surface: 'web', versions: '^1.0.0' } as const;
+    const preview = { ...web, surface: 'preview' } as const;
+    const hexOf = (definitions: BlockDefinition[]): string =>
+      definitions[0]?.revision.slice(-16) ?? '';
+    const base = hexOf(
+      createCoreLayoutBlockDefinitions({
+        acceptedChildTypes: ['org.example/a'],
+        rendererRequirements: [preview, web],
+      }),
+    );
+    const variants = [
+      hexOf(
+        createCoreLayoutBlockDefinitions({
+          acceptedChildTypes: ['org.example/a', 'org.example/b'],
+          rendererRequirements: [preview, web],
+        }),
+      ),
+      hexOf(
+        createCoreLayoutBlockDefinitions({
+          acceptedChildTypes: ['org.example/a'],
+          rendererRequirements: [preview, { ...web, versions: '^2.0.0' }],
+        }),
+      ),
+      hexOf(
+        createCoreLayoutBlockDefinitions({
+          acceptedChildTypes: ['org.example/a'],
+          rendererRequirements: [web, preview],
+        }),
+      ),
+    ];
+    expect(new Set([base, ...variants])).toHaveLength(4);
+  });
+
+  it('pins the bare factory bytes and revision as a golden vector', () => {
+    // The revision follows the built bytes (ADR 0038 decision 5), so a change to the family's
+    // base bytes changes these values; the golden makes that visible in review.
+    const definitions = createCoreLayoutBlockDefinitions();
+    expect(definitions.map((definition) => definition.revision)).toEqual([
+      'layout-section-hdcc4a88dfebb2281',
+      'layout-stack-hdcc4a88dfebb2281',
+      'layout-grid-hdcc4a88dfebb2281',
+      'layout-columns-hdcc4a88dfebb2281',
+    ]);
+    expect(`sha256-${createHash('sha256').update(bytesOf(definitions)).digest('base64')}`).toBe(
+      'sha256-ZfQUdr7StjshOssBLFeha3BreOyaJQRe7N5tZ12AJFo=',
+    );
+    expect(
+      createCoreLayoutBlockDefinitions({ acceptedChildTypes: ['org.example.catalog/price'] })[0]
+        ?.revision,
+    ).toBe('layout-section-h128d49a2ce8a70cd');
+  });
+
+  it('derives the revision from the built family bytes with the revision left out', () => {
+    const definitions = createCoreLayoutBlockDefinitions({
+      acceptedChildTypes: ['org.example.catalog/price'],
+      rendererRequirements: [
+        { capability: 'org.example/layout', surface: 'web', versions: '^1.0.0' },
+      ],
+    });
+    const unrevised = definitions.map((definition) => {
+      const bytes: Partial<BlockDefinition> = { ...definition };
+      delete bytes.revision;
+      return bytes;
+    });
+    const digest = fnv1a64Hex(
+      canonicalUtf8Bytes(unrevised as unknown as Parameters<typeof canonicalUtf8Bytes>[0]),
+    );
+    expect(definitions.map((definition) => definition.revision)).toEqual(
+      ['section', 'stack', 'grid', 'columns'].map((name) => `layout-${name}-h${digest}`),
+    );
+  });
+
+  it('never yields the production layout-<name>-r1 revisions from the factory', () => {
+    const production = new Set(
+      createCoreProductionBlockDefinitions()
+        .slice(0, 4)
+        .map((definition) => definition.revision),
+    );
+    const semanticWeb = [
+      { capability: 'studio.renderer/semantic-web', surface: 'preview', versions: '^1.0.0' },
+      { capability: 'studio.renderer/semantic-web', surface: 'web', versions: '^1.0.0' },
+    ] as const;
+    const optionSets: CoreLayoutBlockDefinitionOptions[] = [
+      {},
+      { acceptedChildTypes: ['org.example/content'] },
+      { rendererRequirements: semanticWeb },
+      {
+        acceptedChildTypes: Object.values(CORE_LAYOUT_BLOCK_TYPES),
+        rendererRequirements: semanticWeb,
+      },
+    ];
+    for (const options of optionSets) {
+      for (const definition of createCoreLayoutBlockDefinitions(options)) {
+        expect(definition.revision).not.toMatch(/-r1$/u);
+        expect(production.has(definition.revision)).toBe(false);
+      }
+    }
+  });
+
+  it.each<{ label: string; message: string; types: BlockType[] }>([
+    {
+      label: 'more than 64 host child types',
+      types: Array.from({ length: 65 }, (_, index): BlockType => `org.example/block-${index}`),
+      message: 'A core layout family lists at most 64 child types, layout types included.',
+    },
+    {
+      label: '64 host child types plus a layout type',
+      types: [
+        CORE_LAYOUT_BLOCK_TYPES.section,
+        ...Array.from({ length: 64 }, (_, index): BlockType => `org.example/block-${index}`),
+      ],
+      message: 'A core layout family lists at most 64 child types, layout types included.',
+    },
+    {
+      label: 'a repeated host child type',
+      types: ['org.example/a', 'org.example/a'],
+      message: 'Core layout child type org.example/a is listed more than once.',
+    },
+    {
+      label: 'a repeated layout type',
+      types: [CORE_LAYOUT_BLOCK_TYPES.grid, CORE_LAYOUT_BLOCK_TYPES.grid],
+      message: 'Core layout child type studio.core/grid is listed more than once.',
+    },
+    {
+      label: 'a reserved first-party content type',
+      types: ['studio.core/heading'],
+      message: 'Core layout slots cannot admit the reserved Studio type studio.core/heading.',
+    },
+    {
+      label: 'any other reserved Studio namespace',
+      types: ['studio.example/anything'],
+      message: 'Core layout slots cannot admit the reserved Studio type studio.example/anything.',
+    },
+  ])('rejects $label', ({ types, message }) => {
+    expect(() => createCoreLayoutBlockDefinitions({ acceptedChildTypes: types })).toThrow(
+      new RangeError(message),
+    );
+  });
+
+  it('admits exactly 64 host child types', () => {
+    const types = Array.from({ length: 64 }, (_, index): BlockType => `org.example/block-${index}`);
+    const [section] = createCoreLayoutBlockDefinitions({ acceptedChildTypes: types });
+    expect(section?.slots[0]?.accepts.types).toHaveLength(68);
+  });
+
+  it('keeps the empty renderer requirement refusal', () => {
+    expect(() => createCoreLayoutBlockDefinitions({ rendererRequirements: [] })).toThrow(
+      new RangeError('Core layout blocks require at least one trusted renderer capability.'),
+    );
+  });
+
+  it('admits a host block inside a section and validates with zero slot diagnostics', () => {
+    const layouts = createCoreLayoutBlockDefinitions({
+      acceptedChildTypes: ['org.example/content'],
+    });
+    const [template] = layouts;
+    if (template === undefined) {
+      throw new Error('The factory returns the section first.');
+    }
+    const content: BlockDefinition = {
+      ...structuredClone(template),
+      label: { defaultMessage: 'Content', key: 'org.example/content' },
+      owner: { id: 'org.example/blocks', version: '1.0.0' },
+      propertyControls: [],
+      propertySchema: { additionalProperties: false, properties: {}, type: 'object' },
+      revision: 'content-r1',
+      slots: [],
+      themeControls: [],
+      type: 'org.example/content',
+    };
+    const page = (definitions: BlockDefinition[]): BlueprintDocument => {
+      const document = responsivePage();
+      document.dependencyLock.blocks = definitions.map((definition) => ({
+        revision: definition.revision,
+        type: definition.type,
+        version: definition.version,
+      }));
+      document.roots = [
+        layoutNode('section-1', CORE_LAYOUT_BLOCK_TYPES.section, [
+          {
+            authoring: { mode: 'structural' },
+            bindings: {},
+            id: 'content-1',
+            properties: {},
+            slots: {},
+            type: 'org.example/content',
+            version: '1.0.0',
+          },
+        ]),
+      ];
+      return document;
+    };
+    const extended = [...layouts, content];
+    expect(validateBlueprint(page(extended), new BlockRegistry(extended))).toEqual({
+      diagnostics: [],
+      valid: true,
+    });
+
+    const bare = [...createCoreLayoutBlockDefinitions(), content];
+    expect(
+      validateBlueprint(page(bare), new BlockRegistry(bare)).diagnostics.map(
+        (diagnostic) => diagnostic.code,
+      ),
+    ).toEqual(['studio.validation/slot-rejects-type']);
   });
 });

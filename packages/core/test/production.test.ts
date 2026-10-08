@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { Ajv2020 } from 'ajv/dist/2020.js';
 import {
@@ -7,6 +8,7 @@ import {
 } from '@kumwe/studio-protocol';
 import {
   BlockRegistry,
+  canonicalUtf8Bytes,
   CORE_PRODUCTION_BLOCK_TYPES,
   CORE_PRODUCTION_CONTROL_IDS,
   CORE_PRODUCTION_PATTERN_IDS,
@@ -33,6 +35,31 @@ describe('production block catalog', () => {
         `${definition.type}: ${ajv.errorsText(validate?.errors)}`,
       ).toBe(true);
     }
+  });
+
+  it('keeps the production catalog and patterns byte-identical to 0.1.0-beta.9', () => {
+    // Pinned from the published @kumwe/studio-core 0.1.0-beta.9 (commit 883f00c). ADR 0038 keeps the
+    // production layout family on its published layout-<name>-r1 revisions, so these bytes never move.
+    const digest = (value: unknown): string =>
+      `sha256-${createHash('sha256')
+        .update(canonicalUtf8Bytes(value as Parameters<typeof canonicalUtf8Bytes>[0]))
+        .digest('base64')}`;
+    expect(digest(definitions)).toBe('sha256-97y9JBNEDu+BSSz1mRSmA84bg9FyeGV0Rh3qlrZC2SI=');
+    expect(digest(definitions.slice(0, 4))).toBe(
+      'sha256-MUXYZWe+ObrTsJDnpncM2tmXG6Nfc0rSDF+/4R4Nivw=',
+    );
+    expect(digest(createCoreProductionPatterns())).toBe(
+      'sha256-1X/YJd0CWXL6wsuY2JN5eyMz+vNtL5ksVO/wINvs+YE=',
+    );
+  });
+
+  it('pins the published layout-<name>-r1 revisions on the production layout family', () => {
+    expect(definitions.slice(0, 4).map((definition) => definition.revision)).toEqual([
+      'layout-section-r1',
+      'layout-stack-r1',
+      'layout-grid-r1',
+      'layout-columns-r1',
+    ]);
   });
 
   it('ships exactly 45 unique, schema-profile-valid first-party definitions', () => {

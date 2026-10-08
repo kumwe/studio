@@ -18,9 +18,9 @@ import {
 } from '@kumwe/studio-protocol';
 import { cloneContractValue } from './clone.js';
 import {
+  buildCoreLayoutFamily,
   CORE_LAYOUT_BLOCK_TYPES,
   coreLayoutInitialProperties,
-  createCoreLayoutBlockDefinitions,
   isCoreLayoutBlockType,
 } from './layout.js';
 
@@ -688,10 +688,13 @@ const SPECS: Readonly<Record<DefinitionName, ProductionDefinitionSpec>> = Object
 
 /** Build the entire canonical catalog with explicit allowlists and no host imports. */
 export function createCoreProductionBlockDefinitions(): BlockDefinition[] {
-  const layouts = createCoreLayoutBlockDefinitions({
-    acceptedChildTypes: CONTENT_TYPES,
-    rendererRequirements: WEB_RENDERERS,
-  }).map(addPresentationCapability);
+  // The production layout bytes keep the revisions published in 0.1.0-beta.9 (ADR 0038); the
+  // host factory derives its own revisions and never yields these.
+  const layouts = buildCoreLayoutFamily(
+    CONTENT_TYPES,
+    WEB_RENDERERS,
+    (name) => `layout-${name}-r1`,
+  ).map(addPresentationCapability);
   const content = (Object.keys(SPECS) as DefinitionName[]).map((name) =>
     createDefinition(name, SPECS[name]),
   );
