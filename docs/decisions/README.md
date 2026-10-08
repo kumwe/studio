@@ -29,11 +29,11 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
 | [0019](0019-version-two-web-profile-scope.md)        | Version 2 qualifies the web profile set                            | Proposed |
 | [0020](0020-blueprint-host-session-composition.md)   | One headless handle composes resolved Blueprint host sessions¹     | Proposed |
 | [0021](0021-kind-scoped-composition-registries.md)   | Kind-scoped registries for all composition payloads                | Proposed |
-| [0022](0022-core-layout-block-family.md)             | Core layout blocks store bounded responsive intent                 | Proposed |
+| [0022](0022-core-layout-block-family.md)             | Core layout blocks store bounded responsive intent³                | Proposed |
 | [0023](0023-shell-preview-surface-binding.md)        | Shell preview binds a host-staged canonical channel                | Proposed |
 | [0024](0024-read-only-model-binding-projection.md)   | Host models project into read-only field-binding affordances¹      | Proposed |
 | [0025](0025-measured-preview-visual-canvas.md)       | Direct manipulation uses measured preview geometry²                | Proposed |
-| [0026](0026-production-block-catalog.md)             | Studio owns a portable production block catalog                    | Proposed |
+| [0026](0026-production-block-catalog.md)             | Studio owns a portable production block catalog³                   | Proposed |
 | [0027](0027-studio-owned-rich-text-authoring.md)     | Studio owns Editor.js behind canonical rich-text profiles          | Proposed |
 | [0028](0028-portable-semantic-web-renderer.md)       | One portable semantic web renderer with optional adapters          | Proposed |
 | [0029](0029-governed-controls.md)                    | Govern advanced controls behind Studio-owned seams                 | Proposed |
@@ -41,11 +41,15 @@ Editor.js adapter, governed safe-markup/scoped-style controls, and semantic rend
 | [0035](0035-contextual-unified-content-authoring.md) | Contextual authoring coordinates separate artifacts in one journey | Proposed |
 | [0036](0036-public-local-canvas.md)                  | Public standalone mounting owns the canonical local canvas         | Proposed |
 | [0037](0037-page-builder-workspace-composition.md)   | The authoring workspace is a structure panel beside a live page    | Proposed |
+| [0038](0038-host-extended-core-layout-revision.md)   | A host-extended core layout family has its own derived revision    | Proposed |
 
 ¹ The bounded behavior remains valid, but its interpretation as the complete product target is partially
 superseded by [ADR 0035](0035-contextual-unified-content-authoring.md).
 
 ² Hover and single-click selection are narrowed by [ADR 0037](0037-page-builder-workspace-composition.md);
 the edit/operate boundary for dragging stands.
+
+³ Amended by [ADR 0038](0038-host-extended-core-layout-revision.md): the layout revision is derived from the
+factory options and hosted targets supply them as `coreLayout`.
 
 An ADR becomes accepted only with reviewer approval, corresponding contract updates, and a conformance strategy. A superseding record links both directions and preserves historical context.

@@ -44,6 +44,11 @@ NOT fabricate this bootstrap behavior.
 
 A node pins a block type and compatible block version. A published Blueprint MUST include a dependency lock recording the exact definition revision and, when applicable, the package integrity reference used for validation. The host MAY resolve a compatible newer renderer only according to the compatibility contract.
 
+Studio never assigns one revision to two byte sets it produces. Derived revisions such as a host-extended core
+layout family's `layout-<name>-h<hex>` are equality keys within the host's trusted catalog, not integrity
+values; a host obtains them from the pinned package and never computes or reuses them. Where byte identity must
+hold across a trust boundary, the lock carries `integrity`.
+
 An unresolved node remains preserved in draft or recovery state. It MUST NOT be interpreted by a different block sharing a label, alias, or unowned identifier.
 
 Core and authorized extension block definitions and patterns participate through the same owner-aware

@@ -34,7 +34,10 @@ target is discovery metadata rather than a separately versioned artifact.
 Target resolution matches its surface, resource type, create/edit intent, requested presentation, optional
 mode and required capabilities. Its contribution dependencies then admit only the matching active versions of
 the six composition families. Discovery never grants authority; the host independently authenticates,
-authorizes and mints the resource context through the authoring port.
+authorizes and mints the resource context through the authoring port. A target's optional `coreLayout` member
+follows the same rule whether a host-core or an extension-owned target carries it: it takes effect only when the
+host-authored session locks the derived layout revisions, so an extension's `coreLayout` grants nothing on its
+own ([Studio deployment](studio-deployment.md#hosted-launch)).
 
 ## Declarative composition payloads
 
@@ -78,7 +81,7 @@ published extensions.
 
 ## Namespacing and ownership
 
-Every contribution ID begins with a namespace owned by the plugin. The `studio.*` namespace is reserved. A plugin cannot replace another owner's contribution. Overrides require an explicit host composition mapping and do not change ownership.
+Every contribution ID begins with a namespace owned by the plugin. The `studio.*` namespace is reserved. A plugin cannot replace another owner's contribution. Overrides require an explicit host composition mapping and do not change ownership. For the core layout family, an authoring target's `coreLayout` member asks for Studio-owned definitions under a derived revision, and the host-authored session lock on those revisions is the composition mapping: a host-core or an extension-owned target may carry the member, but it grants nothing until the host's session locks the derived revisions ([ADR 0038](../decisions/0038-host-extended-core-layout-revision.md)).
 
 Duplicate kind/ID/version tuples, undeclared registrations, registrations exceeding limits,
 incompatible contract versions, circular required dependencies, or privilege requirements absent

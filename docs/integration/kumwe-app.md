@@ -65,6 +65,12 @@ coordinate record, not a catalog reproduction: no definition, control or rendere
 same coordinates from the release record or the browser-asset manifest would let App drop the materialized
 file; until then the App record is the sanctioned shape.
 
+An App section that admits its own field blocks is a host-extended core layout family (ADR 0038). App obtains
+those four definitions, including their derived revisions, by calling the pinned
+`createCoreLayoutBlockDefinitions({acceptedChildTypes, rendererRequirements})` in the same materialization
+step. It declares the same options as the target's `coreLayout`, and migrates stored `layout-<name>-r1` locks
+forward. It never hand-builds or hand-writes them.
+
 Studio remains on the governed beta lane while qualification is completed. The required landing order for
 each further coordinate is:
 
