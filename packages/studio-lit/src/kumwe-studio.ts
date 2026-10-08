@@ -10,12 +10,14 @@ import {
 } from 'lit';
 import {
   BlockRegistry,
+  CORE_LAYOUT_BLOCK_TYPES,
   RECIPE_MARKER_PROPERTY,
   coreProductionInitialProperties,
   createCoreProductionBlockDefinitions,
   createCoreProductionPatterns,
   isCoreProductionBlockType,
   permittedCommandTypes,
+  planColumnsInsertion,
   projectBlueprintFieldBindings,
   recipeSelectionOperations,
   resolveSessionMode,
@@ -31,6 +33,8 @@ import {
 import type {
   BlockDefinition,
   ApplyPatternCommand,
+  BatchCommand,
+  BlueprintBatchOperation,
   BlueprintCommand,
   BlueprintDocument,
   BlueprintNode,
@@ -94,6 +98,19 @@ import {
   findOutlineLocation,
 } from './outline.js';
 import {
+  afterDestination,
+  beforeDestination,
+  columnPosition,
+  destinationEntries,
+  emptySlotBand,
+  emptySlots,
+  insertedRootIds,
+  isDestinationCurrent,
+  levelSlots,
+  pageEndDestination,
+  slotEndDestination,
+} from './insertion-destinations.js';
+import {
   hasListedChildren,
   isNodeListed,
   listedAncestorOf,
@@ -132,7 +149,25 @@ export interface StudioDocumentChangeDetail {
 export interface StudioInsertRequestDetail {
   definition: BlockDefinition;
   parentId: string | null;
+  /**
+   * Present for a composite insertion (the column cards): the shell's default
+   * action is one `studio.command/batch` of exactly these operations. A host
+   * that inserts only `definition` produces a single block.
+   */
+  operations?: BlueprintBatchOperation[];
+  /**
+   * The explicit index inside the parent slot (or the document roots). The
+   * shell always sets it; a host that ignores it keeps end-of-slot placement.
+   */
+  position?: number;
   slot?: string;
+}
+
+/** One empty container slot the page offers an add control for. */
+interface AddZone {
+  destination: CommandDestination;
+  node: BlueprintNode;
+  slot: string;
 }
 
 export interface StudioDirtyChangedDetail {
@@ -296,6 +331,7 @@ export class KumweStudioElement extends LitElement {
     paletteOpen: { attribute: false, state: true },
     panelScopeId: { attribute: false, state: true },
     panelView: { attribute: false, state: true },
+    pendingInsertDestination: { attribute: false, state: true },
     previewBinding: { attribute: false },
     previewState: { attribute: false, state: true },
     resourceSearchService: { attribute: false },
@@ -548,7 +584,9 @@ export class KumweStudioElement extends LitElement {
       margin-top: 0.375rem;
     }
 
-    .outline-controls button {
+    .outline-controls button,
+    .outline-level-add button,
+    .canvas-add-zones button {
       font-size: 0.8125rem;
       padding: 0.375rem 0.5rem;
     }
@@ -1046,10 +1084,18 @@ export class KumweStudioElement extends LitElement {
   declare protected panelScopeId: NodeId | undefined;
   /** Which layer the structure column shows: the tree or the selected block's details. */
   declare protected panelView: 'structure' | 'details';
+  /**
+   * The explicit destination chosen through a `+` control, which the add
+   * layer names and every card, command-palette insert and pattern honours
+   * until a block is inserted or the author's intent ends.
+   */
+  declare protected pendingInsertDestination: CommandDestination | undefined;
   declare protected previewState: StudioPreviewState | 'unavailable' | undefined;
   declare protected selectedNodeId: string | undefined;
 
   #activeViewportId: string | undefined;
+  /** The empty-container zones of the render in progress, shared by the list and the bands. */
+  #addZoneCache: AddZone[] | undefined;
   readonly #authoringControls = new Map<string, MountedAuthoringControl>();
   #authoringControlsReady: Promise<void> = Promise.resolve();
   readonly #authoringDiagnostics = new Map<string, StudioDiagnostic>();
@@ -1070,6 +1116,8 @@ export class KumweStudioElement extends LitElement {
   #hoveredRowId: NodeId | undefined;
   #paletteInvoker: HTMLElement | undefined;
   #pendingFocusNodeId: NodeId | undefined;
+  /** The entries of the pending destination's collection when the `+` chose it. */
+  #pendingInsertEntries: readonly NodeId[] | undefined;
   #pendingPaletteFocus = false;
   readonly #onDocumentKeydown = (event: KeyboardEvent): void => {
     if (
@@ -1104,6 +1152,7 @@ export class KumweStudioElement extends LitElement {
     this.libraryOpen = true;
     this.panelView = 'structure';
     this.panelScopeId = undefined;
+    this.pendingInsertDestination = undefined;
   }
 
   public get activeViewport(): ThemeViewport | undefined {
@@ -1192,7 +1241,8 @@ export class KumweStudioElement extends LitElement {
    * as commands Studio can construct locally. Invalid identifiers are refused by the core session.
    */
   public revealInspector(): void {
-    // Host-driven and silent: the host announces its own insertion. Focus that
+    // Host-driven and silent: a host that completes an insertion after
+    // `preventDefault` announces it itself. Focus that
     // sits in a region the details view hides moves to the Back control.
     const leaving = this.#focusInsideStructureRegions();
     this.activePane = 'inspector';
@@ -1213,11 +1263,14 @@ export class KumweStudioElement extends LitElement {
     }
     if (nodeId === undefined) {
       session.clearSelection();
-      this.selectedNodeId = undefined;
-      this.#previewSurface?.selectNode(undefined);
-      return;
+    } else {
+      session.select([nodeId]);
     }
-    session.select([nodeId]);
+    if (nodeId !== this.selectedNodeId) {
+      // As for a selection the author makes: a `+` destination never
+      // outlives the selection it was chosen under.
+      this.#clearInsertDestination();
+    }
     this.selectedNodeId = nodeId;
     this.#previewSurface?.selectNode(nodeId);
   }
@@ -1372,6 +1425,20 @@ export class KumweStudioElement extends LitElement {
     if (changed.has('document') || changed.has('configuration') || changed.has('contentModel')) {
       this.#revalidate();
     }
+    // A destination chosen through a `+` is shown by the add layer, which the
+    // structure view holds; it ends when that view leaves, and it ends when
+    // its collection changes in any way (a move, an undo or redo, a removal,
+    // a host update), so a stored position never reaches an insertion
+    // anywhere other than the place the `+` named.
+    const destination = this.pendingInsertDestination;
+    if (
+      destination !== undefined &&
+      (this.panelView !== 'structure' ||
+        !isDestinationCurrent(this.document?.roots ?? [], destination) ||
+        (changed.has('document') && !this.#pendingInsertEntriesUnchanged(destination)))
+    ) {
+      this.pendingInsertDestination = undefined;
+    }
   }
 
   protected override updated(changed: PropertyValues<this>): void {
@@ -1462,6 +1529,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   protected override render(): TemplateResult {
+    this.#addZoneCache = undefined;
     const session = this.#session;
     const readOnly = this.#isReadOnly();
     const roots = this.document?.roots ?? [];
@@ -1472,6 +1540,12 @@ export class KumweStudioElement extends LitElement {
     const diagnostics = [...this.#diagnostics, ...this.#authoringDiagnostics.values()].sort(
       (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
     );
+    const listed = this.#activeDefinitions().filter((entry) =>
+      this.#matchesLibrary(referenceText(entry.label)),
+    );
+    // The column cards follow the Columns card, or end the list when a
+    // search hides it.
+    const columnsCards = this.#renderColumnsCards();
 
     return html`
       <div
@@ -1516,10 +1590,12 @@ export class KumweStudioElement extends LitElement {
           aria-label=${this.#text('studio.shell/palette-label')}
         >
           <h2>${this.#text('studio.shell/palette-heading')}</h2>
+          ${this.#renderLibraryDestination()}
           <label class="library-search">
             ${this.#text('studio.shell/library-search')}
             <input
               type="search"
+              aria-describedby=${this.pendingInsertDestination === undefined ? nothing : 'library-destination'}
               .value=${this.libraryQuery}
               @input=${(event: Event): void => {
                 if (event.currentTarget instanceof HTMLInputElement)
@@ -1528,38 +1604,38 @@ export class KumweStudioElement extends LitElement {
             />
           </label>
           <ul class="palette">
-            ${this.#activeDefinitions()
-              .filter((entry) => this.#matchesLibrary(referenceText(entry.label)))
-              .map(
-                (definition) => html`
-                  <li>
-                    <button
-                      type="button"
-                      class="palette-block"
-                      data-block-type=${definition.type}
-                      ?disabled=${!this.#canInsertDefinition(definition)}
-                      @click=${(): void => this.#requestInsert(definition)}
-                      @pointerdown=${(event: PointerEvent): void => {
-                        this.#onPaletteBlockPointerDown(event, definition);
-                      }}
-                      @pointermove=${(event: PointerEvent): void => {
-                        this.#onPaletteBlockPointerMove(event);
-                      }}
-                      @pointerup=${(event: PointerEvent): void => {
-                        this.#onPaletteBlockPointerUp(event);
-                      }}
-                      @pointercancel=${(event: PointerEvent): void => {
-                        this.#onPaletteBlockPointerCancel(event);
-                      }}
+            ${listed.map(
+              (definition) => html`
+                <li>
+                  <button
+                    type="button"
+                    class="palette-block"
+                    data-block-type=${definition.type}
+                    ?disabled=${!this.#canInsertDefinition(definition)}
+                    @click=${(): void => this.#requestInsert(definition)}
+                    @pointerdown=${(event: PointerEvent): void => {
+                      this.#onPaletteBlockPointerDown(event, definition);
+                    }}
+                    @pointermove=${(event: PointerEvent): void => {
+                      this.#onPaletteBlockPointerMove(event);
+                    }}
+                    @pointerup=${(event: PointerEvent): void => {
+                      this.#onPaletteBlockPointerUp(event);
+                    }}
+                    @pointercancel=${(event: PointerEvent): void => {
+                      this.#onPaletteBlockPointerCancel(event);
+                    }}
+                  >
+                    <span class="block-symbol" aria-hidden="true"
+                      >${definition.slots.length > 0 ? '⊞' : referenceText(definition.label).slice(0, 1)}</span
                     >
-                      <span class="block-symbol" aria-hidden="true"
-                        >${definition.slots.length > 0 ? '⊞' : referenceText(definition.label).slice(0, 1)}</span
-                      >
-                      ${referenceText(definition.label)}
-                    </button>
-                  </li>
-                `,
-              )}
+                    ${referenceText(definition.label)}
+                  </button>
+                </li>
+                ${definition.type === CORE_LAYOUT_BLOCK_TYPES.columns ? columnsCards : nothing}
+              `,
+            )}
+            ${listed.some((entry) => entry.type === CORE_LAYOUT_BLOCK_TYPES.columns) ? nothing : columnsCards}
           </ul>
           ${
             this.#activePatterns().length === 0
@@ -1613,6 +1689,7 @@ export class KumweStudioElement extends LitElement {
         <main
           class="canvas"
           aria-label=${this.#text('studio.shell/canvas-label')}
+          data-empty=${roots.length === 0 ? 'true' : 'false'}
           data-viewport=${this.activeViewport?.id ?? nothing}
           @pointermove=${(event: PointerEvent): void => {
             this.#onCanvasPointerMove(event);
@@ -1662,10 +1739,11 @@ export class KumweStudioElement extends LitElement {
             </div>
             ${this.#renderCanvasEditToggle()}
           </div>
-          ${this.#renderPreview()} ${this.#renderDropIndicator()}
+          ${roots.length === 0 ? this.#renderEmptyPageZone() : nothing} ${this.#renderPreview()}
+          ${this.#renderAddZoneList()} ${this.#renderDropIndicator()}
           ${
             roots.length === 0
-              ? html`<p class="empty">${this.#text('studio.shell/canvas-empty')}</p>`
+              ? nothing
               : this.#usesLocalCanvas() ||
                   (this.#previewCapabilityAvailable() && this.previewBinding !== undefined)
                 ? nothing
@@ -2089,26 +2167,21 @@ export class KumweStudioElement extends LitElement {
   }
 
   /**
-   * Inserts a fresh node for a palette block definition: into the selected
-   * node's first declared slot when its definition declares slots, otherwise
-   * at the end of the document roots — the same placement an outline insert
+   * Inserts a fresh node for a palette block definition: at the destination a
+   * `+` control chose when one is pending, otherwise into the selected node's
+   * first declared slot when its definition declares slots, otherwise at the
+   * end of the document roots — the same placement an outline insert
    * resolves to.
    */
   #insertDefinition(definition: BlockDefinition, explicit?: CommandDestination): void {
     const session = this.#session;
     const document = this.document;
-    const destination = explicit ?? this.#insertionDestination(definition);
+    const destination = explicit ?? this.#resolveInsertDestination(definition);
     if (session === undefined || document === undefined || destination === undefined) {
       return;
     }
-    const taken = collectDocumentIds(document.roots);
     const base = definition.type.slice(definition.type.indexOf('/') + 1);
-    let counter = 1;
-    let nodeId = `${base}-${counter}`;
-    while (taken.has(nodeId)) {
-      counter += 1;
-      nodeId = `${base}-${counter}`;
-    }
+    const nodeId = this.#allocateNodeId(base, collectDocumentIds(document.roots));
     const node: BlueprintNode = {
       authoring: {
         mode:
@@ -2131,13 +2204,17 @@ export class KumweStudioElement extends LitElement {
       type: 'studio.command/insert-node',
     };
     if (this.#runShellCommand(command)) {
-      this.#selectNode(nodeId);
-      this.activePane = 'canvas';
-      this.#pendingFocusNodeId = nodeId;
-      this.#announce('studio.shell/announce-inserted', {
-        label: referenceText(definition.label),
-      });
+      this.#completeInsert(nodeId, referenceText(definition.label));
     }
+  }
+
+  /** After a shell-run insertion: select and focus the new block, announce it once and end the destination. */
+  #completeInsert(nodeId: NodeId, label: string): void {
+    this.#selectNode(nodeId);
+    this.activePane = 'canvas';
+    this.#pendingFocusNodeId = nodeId;
+    this.#announce('studio.shell/announce-inserted', { label });
+    this.#clearInsertDestination();
   }
 
   #isReadOnly(): boolean {
@@ -2148,7 +2225,7 @@ export class KumweStudioElement extends LitElement {
   }
 
   #canInsertDefinition(definition: BlockDefinition): boolean {
-    return this.#insertionDestination(definition) !== undefined;
+    return this.#resolveInsertDestination(definition) !== undefined;
   }
 
   #canMutateNode(
@@ -2223,6 +2300,188 @@ export class KumweStudioElement extends LitElement {
       };
     }
     return this.#session?.mode === 'hybrid' ? undefined : { position: document.roots.length };
+  }
+
+  /**
+   * Whether a fresh node of this definition may be inserted at exactly this
+   * destination. It applies the one rule `#insertCollections` lists the valid
+   * collections by (permit, hybrid roots exclusion, accepted types,
+   * composability, allowed blocks, slot maximum), so geometry, the `+`
+   * controls, the cards and the command palette can never disagree.
+   */
+  #canInsertAt(definition: BlockDefinition, destination: CommandDestination): boolean {
+    const roots = this.document?.roots;
+    const target = this.#slotTarget(destination);
+    return (
+      roots !== undefined &&
+      this.#permits('studio.command/insert-node') &&
+      isDestinationCurrent(roots, destination) &&
+      (destination.parentNodeId === undefined
+        ? this.#session?.mode !== 'hybrid'
+        : target !== undefined && this.#slotAdmits(target.parent, target.slot, definition))
+    );
+  }
+
+  /** The parent node and its declared slot that a slot destination names, when both exist. */
+  #slotTarget(
+    destination: CommandDestination,
+  ): { parent: BlueprintNode; slot: BlockDefinition['slots'][number] } | undefined {
+    const { parentNodeId } = destination;
+    const parent =
+      parentNodeId === undefined
+        ? undefined
+        : findOutlineLocation(this.document?.roots ?? [], parentNodeId)?.node;
+    const slot =
+      parent === undefined
+        ? undefined
+        : this.#findDefinition(parent)?.slots.find(
+            (candidate) => candidate.id === destination.slot,
+          );
+    return parent === undefined || slot === undefined ? undefined : { parent, slot };
+  }
+
+  /** The per-slot half of the insertion rule shared by `#insertCollections` and `#canInsertAt`. */
+  #slotAdmits(
+    parent: BlueprintNode,
+    slot: BlockDefinition['slots'][number],
+    definition: BlockDefinition,
+  ): boolean {
+    if (!slot.accepts.types.includes(definition.type)) {
+      return false;
+    }
+    if (this.#session?.mode === 'hybrid') {
+      if (!this.#isComposableSlot(parent, slot.id)) {
+        return false;
+      }
+      const allowed =
+        parent.authoring.slots?.[slot.id]?.allowedBlocks ?? parent.authoring.allowedBlocks;
+      if (allowed?.includes(definition.type) === false) {
+        return false;
+      }
+    }
+    const entries = parent.slots[slot.id] ?? [];
+    return typeof slot.maximum !== 'number' || entries.length < slot.maximum;
+  }
+
+  /**
+   * The destination a card, a command-palette insert or the insertion
+   * request uses for this definition: the pending `+` destination when it
+   * admits the definition, nothing when it refuses it (the card is disabled,
+   * never silently redirected while the add layer names the destination),
+   * otherwise the selection-derived default.
+   */
+  #resolveInsertDestination(definition: BlockDefinition): CommandDestination | undefined {
+    const pending = this.pendingInsertDestination;
+    if (pending === undefined) {
+      return this.#insertionDestination(definition);
+    }
+    return this.#canInsertAt(definition, pending) ? pending : undefined;
+  }
+
+  /**
+   * The destination if at least one active definition may be inserted there.
+   * The contextual Content and Model views offer no `+`: the add layer
+   * belongs to the structure view, which they never show.
+   */
+  #offeredDestination(destination: CommandDestination | undefined): CommandDestination | undefined {
+    return destination !== undefined &&
+      this.inspectorMode !== 'content' &&
+      this.inspectorMode !== 'model' &&
+      this.#activeDefinitions().some((definition) => this.#canInsertAt(definition, destination))
+      ? destination
+      : undefined;
+  }
+
+  /** `Add to page`: the end of the document roots, when anything may go there. */
+  #pageDestination(): CommandDestination | undefined {
+    const roots = this.document?.roots;
+    return roots === undefined ? undefined : this.#offeredDestination(pageEndDestination(roots));
+  }
+
+  /** `Add block into {slot}`: the end of a node's slot, when anything may go there. */
+  #slotDestination(node: BlueprintNode, slot: string): CommandDestination | undefined {
+    return this.#offeredDestination(slotEndDestination(node, slot));
+  }
+
+  /**
+   * Every empty container slot on the page that may receive at least one
+   * active definition, in depth-first document order; computed once per
+   * render for the button list and the bands.
+   */
+  #addZones(): AddZone[] {
+    this.#addZoneCache ??= emptySlots(this.document?.roots ?? [], (node) =>
+      this.#findDefinition(node),
+    ).flatMap(({ node, slot }) => {
+      const destination = this.#slotDestination(node, slot);
+      return destination === undefined ? [] : [{ destination, node, slot }];
+    });
+    return this.#addZoneCache;
+  }
+
+  /** Allocates `${base}-${n}` outside `taken` and records it there. */
+  #allocateNodeId(base: string, taken: Set<NodeId>): NodeId {
+    let counter = 1;
+    let nodeId = `${base}-${counter}`;
+    while (taken.has(nodeId)) {
+      counter += 1;
+      nodeId = `${base}-${counter}`;
+    }
+    taken.add(nodeId);
+    return nodeId;
+  }
+
+  #clearInsertDestination(): void {
+    this.pendingInsertDestination = undefined;
+  }
+
+  /** Whether the pending destination's collection still lists exactly the entries it did when chosen. */
+  #pendingInsertEntriesUnchanged(destination: CommandDestination): boolean {
+    const recorded = this.#pendingInsertEntries;
+    const current = destinationEntries(this.document?.roots ?? [], destination);
+    return (
+      recorded !== undefined &&
+      current?.length === recorded.length &&
+      current.every((id, index) => id === recorded[index])
+    );
+  }
+
+  /**
+   * The text the add layer names a destination by: the collection's move
+   * label ("Section (section-1): Content slot" or "document roots") and the
+   * one-based position among the collection's entries plus the new one.
+   */
+  #destinationText(destination: CommandDestination): string | undefined {
+    const roots = this.document?.roots;
+    if (roots === undefined) {
+      return undefined;
+    }
+    let collection: string;
+    let length: number;
+    if (destination.parentNodeId === undefined || destination.slot === undefined) {
+      collection = this.#text('studio.shell/document-roots');
+      length = roots.length;
+    } else {
+      const parent = findOutlineLocation(roots, destination.parentNodeId)?.node;
+      if (parent === undefined) {
+        return undefined;
+      }
+      collection = this.#text('studio.shell/move-slot-collection', {
+        parent: `${this.#nodeLabel(parent)} (${parent.id})`,
+        slot: this.#slotName(parent, destination.slot),
+      });
+      length = parent.slots[destination.slot]?.length ?? 0;
+    }
+    return this.#text('studio.shell/move-destination-option', {
+      collection,
+      count: String(length + 1),
+      position: String(destination.position + 1),
+    });
+  }
+
+  /** The declared slot label ("Content"), or the raw slot name when undeclared. */
+  #slotName(node: BlueprintNode, slot: string): string {
+    const declared = this.#findDefinition(node)?.slots.find((candidate) => candidate.id === slot);
+    return declared === undefined ? slot : referenceText(declared.label);
   }
 
   #isComposableSlot(parent: BlueprintNode, slot: string): boolean {
@@ -2502,9 +2761,23 @@ export class KumweStudioElement extends LitElement {
     entries[index + direction]?.focus();
   }
 
+  /**
+   * The one label of a block in rows, crumbs, headings, destinations and
+   * announcements. A stack that is a column of a columns block reads
+   * "Stack, column n of N"; the derived text is presentation only and is
+   * never written to the document.
+   */
   #nodeLabel(node: BlueprintNode): string {
     const definition = this.#findDefinition(node);
-    return definition === undefined ? node.type : referenceText(definition.label);
+    const base = definition === undefined ? node.type : referenceText(definition.label);
+    const column = columnPosition(this.document?.roots ?? [], node.id);
+    return column === undefined
+      ? base
+      : this.#text('studio.shell/outline-column-of', {
+          count: String(column.count),
+          label: base,
+          position: String(column.position),
+        });
   }
 
   #onCanvasPointerCancel(event: PointerEvent): void {
@@ -2820,8 +3093,14 @@ export class KumweStudioElement extends LitElement {
         event.preventDefault();
         this.#closePalette(true);
       }
-      // Precedence: drag cancel, then the command palette, then the panel
-      // unwind, which only a key from the panel's own chrome may trigger.
+      // Precedence: drag cancel, then the command palette, then the add
+      // destination, then the panel unwind, which only a key from the
+      // panel's own chrome may trigger.
+      if (!event.defaultPrevented && this.#libraryEscapeClearsDestination(event)) {
+        event.preventDefault();
+        this.#clearInsertDestination();
+        return;
+      }
       if (
         event.defaultPrevented ||
         this.inspectorMode === 'content' ||
@@ -2838,6 +3117,25 @@ export class KumweStudioElement extends LitElement {
         this.#closeScope();
       }
     }
+  }
+
+  /**
+   * Escape inside the add layer clears a pending destination without closing
+   * the layer or moving focus. The search field keeps the platform's Escape
+   * (clearing its text) while it has text.
+   */
+  #libraryEscapeClearsDestination(event: KeyboardEvent): boolean {
+    if (this.pendingInsertDestination === undefined) {
+      return false;
+    }
+    const origin = event.composedPath()[0];
+    if (
+      !(origin instanceof Element) ||
+      this.shadowRoot?.querySelector('aside.library')?.contains(origin) !== true
+    ) {
+      return false;
+    }
+    return !(origin instanceof HTMLInputElement && origin.value !== '');
   }
 
   #orderedViewports(): ThemeViewport[] {
@@ -2915,6 +3213,7 @@ export class KumweStudioElement extends LitElement {
       type: 'studio.command/apply-pattern',
     };
     if (this.#runShellCommand(command)) {
+      this.#clearInsertDestination();
       const first = command.payload.idMap[pattern.roots[0]?.id ?? ''];
       if (first !== undefined) {
         this.#selectNode(first);
@@ -2979,6 +3278,12 @@ export class KumweStudioElement extends LitElement {
     if (document === undefined) {
       return undefined;
     }
+    const chosen = this.pendingInsertDestination;
+    if (chosen !== undefined) {
+      // A destination chosen through a `+` is honoured exactly, or the
+      // pattern is unavailable there; it is never silently redirected.
+      return this.#patternFitsAt(pattern, chosen) ? chosen : undefined;
+    }
     const selected =
       this.selectedNodeId === undefined
         ? undefined
@@ -3004,6 +3309,24 @@ export class KumweStudioElement extends LitElement {
       }
     }
     return this.#session?.mode === 'hybrid' ? undefined : { position: document.roots.length };
+  }
+
+  /** Whether every root of the pattern may be inserted together at this destination. */
+  #patternFitsAt(pattern: PatternDocument, destination: CommandDestination): boolean {
+    const definitions = this.#activeDefinitions();
+    const target = this.#slotTarget(destination);
+    return (
+      pattern.roots.every((root) => {
+        const definition = definitions.find(
+          (candidate) => candidate.type === root.type && candidate.version === root.version,
+        );
+        return definition !== undefined && this.#canInsertAt(definition, destination);
+      }) &&
+      (destination.parentNodeId === undefined ||
+        (target !== undefined &&
+          (target.parent.slots[target.slot.id]?.length ?? 0) + pattern.roots.length <=
+            target.slot.maximum))
+    );
   }
 
   /**
@@ -3124,6 +3447,21 @@ export class KumweStudioElement extends LitElement {
         },
       });
     }
+    // The column cards' counterparts, under the same disabled rule.
+    const columns = this.#columnsCatalog()?.columns;
+    const columnsDisabled = columns === undefined || !this.#canInsertDefinition(columns);
+    for (const count of columns === undefined ? [] : COLUMN_COUNTS) {
+      entries.push({
+        disabled: columnsDisabled,
+        id: `insert-columns-${count}`,
+        label: this.#text('studio.shell/command-insert', {
+          label: this.#text('studio.shell/add-columns', { count: String(count) }),
+        }),
+        run: (): void => {
+          this.#requestColumnsInsert(count);
+        },
+      });
+    }
     for (const pattern of this.#activePatterns()) {
       entries.push({
         disabled: this.#patternDestination(pattern) === undefined,
@@ -3196,6 +3534,7 @@ export class KumweStudioElement extends LitElement {
   #rebuildSession(): void {
     this.hoveredNodeId = undefined;
     this.focusedEntryNodeId = undefined;
+    this.pendingInsertDestination = undefined;
     // A replaced document or session starts at the page level. The layer is
     // re-derived from the contextual mode rather than reset: the docked
     // Content and Model panels live in the details layer and must survive the
@@ -5115,8 +5454,8 @@ export class KumweStudioElement extends LitElement {
   }
 
   #renderOutlineControls(node: BlueprintNode): TemplateResult {
-    const location =
-      this.document === undefined ? undefined : findOutlineLocation(this.document.roots, node.id);
+    const roots = this.document?.roots ?? [];
+    const location = findOutlineLocation(roots, node.id);
     const reorderDisabled = !this.#canMutateNode(node, 'studio.command/reorder-children');
     const first = location === undefined || location.index === 0;
     const last = location === undefined || location.index === location.collection.length - 1;
@@ -5189,6 +5528,24 @@ export class KumweStudioElement extends LitElement {
               </button>`
             : nothing
         }
+        ${this.#renderAddButton(
+          'outline-add-before',
+          this.#text('studio.shell/add-block-before'),
+          this.#offeredDestination(beforeDestination(roots, node.id)),
+        )}
+        ${this.#renderAddButton(
+          'outline-add-after',
+          this.#text('studio.shell/add-block-after'),
+          this.#offeredDestination(afterDestination(roots, node.id)),
+        )}
+        ${(this.#findDefinition(node)?.slots ?? []).map((slot) =>
+          this.#renderAddButton(
+            'outline-add-into',
+            this.#text('studio.shell/add-block-into', { slot: referenceText(slot.label) }),
+            this.#slotDestination(node, slot.id),
+            slot.id,
+          ),
+        )}
         <label class="outline-move-destination-label">
           <span>${this.#text('studio.shell/move-destination-label')}</span>
           <select
@@ -5235,20 +5592,56 @@ export class KumweStudioElement extends LitElement {
         : listedAncestorOf(roots, scopeId, hovered);
     const empty = html`<p class="empty">${this.#text('studio.shell/outline-empty')}</p>`;
     if (scopeId === undefined) {
+      // The page level ends with its own `+`, also on a blank document.
+      const addToPage = html`<div class="outline-level-add">
+        ${this.#renderAddButton(
+          'outline-add-page',
+          this.#text('studio.shell/add-to-page'),
+          this.#pageDestination(),
+        )}
+      </div>`;
       return roots.length === 0
-        ? empty
+        ? html`${empty}${addToPage}`
         : html`<ul class="tree">
-            ${roots.map((node) => this.#renderOutlineNode(node, { nested: true }))}
-          </ul>`;
+              ${roots.map((node) => this.#renderOutlineNode(node, { nested: true }))}
+            </ul>
+            ${addToPage}`;
     }
     const scope = findOutlineLocation(roots, scopeId)?.node;
-    const slots = scopeChildren(roots, scopeId);
-    if (scope === undefined || slots.length === 0) {
+    if (scope === undefined || scopeChildren(roots, scopeId).length === 0) {
       return empty;
     }
-    return html`${slots.map(({ slot, children }) =>
-      this.#renderSlotSection(scope, slot, children, false),
+    // An opened level lists every declared slot, an empty one included, so
+    // each slot ends with its own `+`.
+    return html`${levelSlots(scope, this.#findDefinition(scope)).map(({ slot, children }) =>
+      this.#renderSlotSection(scope, slot, children, false, { add: true }),
     )}`;
+  }
+
+  /**
+   * One explicit add control: a native button whose visible text names what
+   * it adds, with a decorative `+`. Activating it opens the add layer for
+   * that exact destination; without one it is disabled.
+   */
+  #renderAddButton(
+    className: string,
+    label: string,
+    destination: CommandDestination | undefined,
+    slot?: string,
+    parentId?: NodeId,
+  ): TemplateResult {
+    return html`<button
+      type="button"
+      class=${className}
+      data-parent-id=${parentId ?? nothing}
+      data-slot=${slot ?? nothing}
+      ?disabled=${destination === undefined}
+      @click=${(): void => {
+        if (destination !== undefined) this.#beginInsert(destination);
+      }}
+    >
+      <span class="add-glyph" aria-hidden="true">+</span>${label}
+    </button>`;
   }
 
   /** The hover indicator marks the listed row that stands for the hovered node. */
@@ -5345,6 +5738,7 @@ export class KumweStudioElement extends LitElement {
     slot: string,
     children: readonly BlueprintNode[],
     nested: boolean,
+    options: { add?: boolean } = {},
   ): TemplateResult {
     // The slot name is visible text, not only a region label, so the
     // composition structure stays perceivable in the outline.
@@ -5352,9 +5746,25 @@ export class KumweStudioElement extends LitElement {
     return html`
       <section class="node-children" aria-label=${slotText}>
         <span class="outline-slot-label">${slotText}</span>
-        <ul class="tree">
-          ${children.map((child) => this.#renderOutlineNode(child, { nested }))}
-        </ul>
+        ${
+          children.length === 0
+            ? nothing
+            : html`<ul class="tree">
+                ${children.map((child) => this.#renderOutlineNode(child, { nested }))}
+              </ul>`
+        }
+        ${
+          options.add === true
+            ? html`<div class="outline-level-add">
+                ${this.#renderAddButton(
+                  'outline-add-into',
+                  this.#text('studio.shell/add-block-into', { slot: this.#slotName(node, slot) }),
+                  this.#slotDestination(node, slot),
+                  slot,
+                )}
+              </div>`
+            : nothing
+        }
       </section>
     `;
   }
@@ -5394,7 +5804,7 @@ export class KumweStudioElement extends LitElement {
             definition === undefined
               ? html`${node.type}
                   <span class="unresolved">${this.#text('studio.shell/unresolved-block')}</span>`
-              : referenceText(definition.label)
+              : this.#nodeLabel(node)
           }
         </button>
         ${selected ? this.#renderOutlineControls(node) : nothing}
@@ -5569,6 +5979,7 @@ export class KumweStudioElement extends LitElement {
             `,
           ),
         )}
+        ${this.#renderAddZoneBands(geometry)}
         ${
           indicator === undefined
             ? nothing
@@ -5584,6 +5995,138 @@ export class KumweStudioElement extends LitElement {
         }
       </svg>
     `;
+  }
+
+  /**
+   * The dashed band of every empty slot of a pure container (a block with
+   * slots and no content ports) with a measured parent, in that slot's share
+   * of the parent (the drop-indicator formula), painted above the region
+   * rects. The band is pointer-transparent, so the container under it keeps
+   * selection, drag and double-click; only its centred `+` disc takes a
+   * pointer. Presentation only (the overlay is `aria-hidden`): the native
+   * button list under the stage offers the same destinations, also for the
+   * empty slots of content blocks, which draw no band over their content.
+   * Drawn always on the local canvas, and on a host preview only in edit
+   * mode, where the overlay takes pointer input.
+   */
+  #renderAddZoneBands(geometry: StudioPreviewGeometry): TemplateResult[] | typeof nothing {
+    if (!this.#usesLocalCanvas() && this.canvasDirectManipulation !== true) {
+      return nothing;
+    }
+    return this.#addZones().flatMap(({ destination, node, slot }) => {
+      const parentRect = boundingPreviewRect(geometry.measurements[node.id] ?? []);
+      const definition = this.#findDefinition(node);
+      const slots = definition?.ports.length === 0 ? definition.slots : [];
+      const index = slots.findIndex((candidate) => candidate.id === slot);
+      if (parentRect === undefined || index < 0) {
+        return [];
+      }
+      const { height, width, x, y } = emptySlotBand(parentRect, index, slots.length);
+      const enter = (): void => {
+        this.hoveredNodeId = node.id;
+      };
+      const leave = (): void => {
+        if (this.hoveredNodeId === node.id) this.hoveredNodeId = undefined;
+      };
+      // pointerup, not pointerdown: a drag that ends over the disc keeps its own outcome.
+      const add = (event: PointerEvent): void => {
+        if (
+          event.button === 0 &&
+          this.#previewDrag?.active !== true &&
+          this.#paletteDrag?.active !== true
+        ) {
+          this.#beginInsert(destination);
+        }
+      };
+      const cx = String(x + width / 2);
+      const cy = String(y + height / 2);
+      return [
+        svg`<g class="preview-canvas-add-zone" data-parent-id=${node.id} data-slot=${slot}><rect x=${String(x)} y=${String(y)} width=${String(width)} height=${String(height)}></rect><circle cx=${cx} cy=${cy} r="16" @pointerenter=${enter} @pointerleave=${leave} @pointerup=${add}></circle><text x=${cx} y=${cy}>+</text></g>`,
+      ];
+    });
+  }
+
+  /**
+   * The parity path of the on-page bands: one native button per empty
+   * container, rendered once under the stage whatever the preview state, so
+   * adding into an empty container never needs geometry or a pointer. Each
+   * name carries the parent's id, so two equal containers never share one.
+   */
+  #renderAddZoneList(): TemplateResult | typeof nothing {
+    const zones = this.#addZones();
+    const name = this.#text('studio.shell/canvas-add-zones');
+    return zones.length === 0
+      ? nothing
+      : html`<div class="canvas-add-zones" role="group" aria-label=${name}>
+          <span>${name}</span>${zones.map(({ destination, node, slot }) =>
+            this.#renderAddButton(
+              'canvas-add-into',
+              this.#text('studio.shell/canvas-add-into', {
+                parent: `${this.#nodeLabel(node)} (${node.id})`,
+                slot: this.#slotName(node, slot),
+              }),
+              destination,
+              slot,
+              node.id,
+            ),
+          )}
+        </div>`;
+  }
+
+  /** The empty page: a dashed zone with the canvas-empty text and a real `Add to page` button. */
+  #renderEmptyPageZone(): TemplateResult {
+    return html`<div class="canvas-add-zone">
+      <p>${this.#text('studio.shell/canvas-empty')}</p>
+      ${this.#renderAddButton(
+        'canvas-add-page',
+        this.#text('studio.shell/add-to-page'),
+        this.#pageDestination(),
+      )}
+    </div>`;
+  }
+
+  /** The add layer's header line naming a destination chosen through a `+`. */
+  #renderLibraryDestination(): TemplateResult | typeof nothing {
+    const destination = this.pendingInsertDestination;
+    const text = destination === undefined ? undefined : this.#destinationText(destination);
+    return text === undefined
+      ? nothing
+      : html`<p class="library-destination" id="library-destination">
+          ${this.#text('studio.shell/add-destination', { destination: text })}
+        </p>`;
+  }
+
+  /**
+   * The `2 columns`, `3 columns` and `4 columns` cards: a columns block with
+   * that many stack children as one batch. Hidden unless the active catalog
+   * has both core layout definitions and the columns slot accepts stacks.
+   */
+  #renderColumnsCards(): TemplateResult[] | typeof nothing {
+    const catalog = this.#columnsCatalog();
+    if (catalog === undefined) {
+      return nothing;
+    }
+    const disabled = !this.#canInsertDefinition(catalog.columns);
+    return COLUMN_COUNTS.flatMap((count) => {
+      const label = this.#text('studio.shell/add-columns', { count: String(count) });
+      return this.#matchesLibrary(label)
+        ? [
+            html`<li>
+              <button
+                type="button"
+                class="palette-columns"
+                data-columns=${String(count)}
+                ?disabled=${disabled}
+                @click=${(): void => {
+                  this.#requestColumnsInsert(count);
+                }}
+              >
+                <span class="block-symbol" aria-hidden="true">${String(count)}</span>${label}
+              </button>
+            </li>`,
+          ]
+        : [];
+    });
   }
 
   #renderPreviewCanvasStatus(): TemplateResult | typeof nothing {
@@ -5626,11 +6169,15 @@ export class KumweStudioElement extends LitElement {
     if (node === undefined) {
       return;
     }
-    this.#selectNode(nodeId, { revealOnCanvas: false });
     const destinations = this.#moveDestinations(node);
     if (destinations.length === 0) {
+      // Nothing to drag (a lone root, for example): the press is a page click,
+      // which selects, reveals the entry and opens the details view, exactly
+      // as a press released without a drag does for a movable block.
+      this.#selectFromPage(nodeId);
       return;
     }
+    this.#selectNode(nodeId, { revealOnCanvas: false });
     const drag: PreviewCanvasDragState = {
       active: false,
       label: this.#nodeLabel(node),
@@ -5811,25 +6358,11 @@ export class KumweStudioElement extends LitElement {
         stack.push(...children.map((node) => ({ node, specificity: specificity + 1 })));
       }
       for (const slot of parentDefinition?.slots ?? []) {
-        if (!slot.accepts.types.includes(definition.type)) {
-          continue;
-        }
-        if (hybrid) {
-          if (!this.#isComposableSlot(parent, slot.id)) {
-            continue;
-          }
-          const allowed =
-            parent.authoring.slots?.[slot.id]?.allowedBlocks ?? parent.authoring.allowedBlocks;
-          if (allowed?.includes(definition.type) === false) {
-            continue;
-          }
-        }
-        const entries = parent.slots[slot.id] ?? [];
-        if (typeof slot.maximum === 'number' && entries.length >= slot.maximum) {
+        if (!this.#slotAdmits(parent, slot, definition)) {
           continue;
         }
         collections.push({
-          collection: entries,
+          collection: parent.slots[slot.id] ?? [],
           label: this.#text('studio.shell/move-slot-collection', {
             parent: `${this.#nodeLabel(parent)} (${parent.id})`,
             slot: referenceText(slot.label),
@@ -5956,13 +6489,7 @@ export class KumweStudioElement extends LitElement {
         0,
         slots.findIndex((slot) => slot.id === collection.slot),
       );
-      const bandHeight = parentRect.height / Math.max(1, slots.length);
-      const indicator: PreviewMarkerRect = {
-        height: Math.max(4, bandHeight - 8),
-        width: Math.max(4, parentRect.width - 8),
-        x: parentRect.x + 4,
-        y: parentRect.y + slotIndex * bandHeight + 4,
-      };
+      const indicator = emptySlotBand(parentRect, slotIndex, slots.length);
       targets.push({
         ...option,
         distanceX: indicator.x + indicator.width / 2,
@@ -6177,19 +6704,50 @@ export class KumweStudioElement extends LitElement {
       this.#suppressPaletteClick = false;
       return;
     }
-    const destination = this.#insertionDestination(definition);
+    const destination = this.#resolveInsertDestination(definition);
     if (destination === undefined) {
       return;
     }
+    const insertItself = this.#dispatchInsertRequest(
+      this.#insertRequestDetail(definition, destination),
+      referenceText(definition.label),
+    );
+    if (insertItself) {
+      // The request and the default insertion never diverge: both use the
+      // resolved destination.
+      this.#insertDefinition(definition, destination);
+    }
+    // The request is the destination's outcome, whoever performed it.
+    this.#clearInsertDestination();
+  }
+
+  #insertRequestDetail(
+    definition: BlockDefinition,
+    destination: CommandDestination,
+  ): StudioInsertRequestDetail {
     const detail: StudioInsertRequestDetail = {
       definition,
       parentId: destination.parentNodeId ?? null,
+      position: destination.position,
     };
     if (destination.slot !== undefined) {
       detail.slot = destination.slot;
     }
+    return detail;
+  }
+
+  /**
+   * Dispatches the cancelable insertion request and answers whether the
+   * shell must now insert itself: not when a host took ownership with
+   * `preventDefault`, and not when a synchronous host already changed the
+   * session. A synchronous host's insertion is completed like the shell's
+   * own: the one block it added is selected, focused and announced once by
+   * `label`.
+   */
+  #dispatchInsertRequest(detail: StudioInsertRequestDetail, label: string): boolean {
     const session = this.#session;
     const stateVersion = session?.stateVersion;
+    const before = collectDocumentIds(this.document?.roots ?? []);
     const request = new CustomEvent<StudioInsertRequestDetail>('studio-insert-request', {
       bubbles: true,
       cancelable: true,
@@ -6199,17 +6757,86 @@ export class KumweStudioElement extends LitElement {
     this.dispatchEvent(request);
     if (this.#session === session && session?.stateVersion !== stateVersion) {
       this.activePane = 'canvas';
+      const inserted = request.defaultPrevented
+        ? []
+        : insertedRootIds(before, this.document?.roots ?? []);
+      const [nodeId] = inserted;
+      if (inserted.length === 1 && nodeId !== undefined) {
+        this.#completeInsert(nodeId, label);
+      }
     }
     // Existing synchronous host adapters may already have inserted. Async
     // adapters take ownership with preventDefault; otherwise Studio supplies
     // its own canonical command, including on an ordinary hosted mount.
-    if (
+    return (
       !request.defaultPrevented &&
       this.#session === session &&
       session?.stateVersion === stateVersion
+    );
+  }
+
+  /** The active columns and stack definitions, when the columns slot accepts stacks. */
+  #columnsCatalog(): { columns: BlockDefinition; stack: BlockDefinition } | undefined {
+    const definitions = this.#activeDefinitions();
+    const columns = definitions.find(
+      (definition) => definition.type === CORE_LAYOUT_BLOCK_TYPES.columns,
+    );
+    const stack = definitions.find(
+      (definition) => definition.type === CORE_LAYOUT_BLOCK_TYPES.stack,
+    );
+    if (
+      columns === undefined ||
+      stack === undefined ||
+      columns.slots.find((slot) => slot.id === 'items')?.accepts.types.includes(stack.type) !== true
     ) {
-      this.#insertDefinition(definition);
+      return undefined;
     }
+    return { columns, stack };
+  }
+
+  /**
+   * A column card: one `studio.core/columns` block with `count` stack
+   * children, planned by `planColumnsInsertion` as one batch (one undo step)
+   * and offered to the host through the same cancelable request, which then
+   * carries the complete operation list.
+   */
+  #requestColumnsInsert(count: number): void {
+    const catalog = this.#columnsCatalog();
+    const session = this.#session;
+    const document = this.document;
+    const destination =
+      catalog === undefined ? undefined : this.#resolveInsertDestination(catalog.columns);
+    if (
+      catalog === undefined ||
+      destination === undefined ||
+      session === undefined ||
+      document === undefined
+    ) {
+      return;
+    }
+    const taken = collectDocumentIds(document.roots);
+    const plan = planColumnsInsertion({
+      allocateId: (base) => this.#allocateNodeId(base, taken),
+      count,
+      destination,
+      stackVersion: catalog.stack.version,
+      version: catalog.columns.version,
+    });
+    const detail: StudioInsertRequestDetail = {
+      ...this.#insertRequestDetail(catalog.columns, destination),
+      operations: structuredClone(plan.command.payload.operations),
+    };
+    const label = this.#text('studio.shell/add-columns', { count: String(count) });
+    if (this.#dispatchInsertRequest(detail, label)) {
+      const command: BatchCommand = {
+        ...this.#commandEnvelope(document, session),
+        ...plan.command,
+      };
+      if (this.#runShellCommand(command)) {
+        this.#completeInsert(plan.columnsNodeId, label);
+      }
+    }
+    this.#clearInsertDestination();
   }
 
   /**
@@ -6327,6 +6954,11 @@ export class KumweStudioElement extends LitElement {
       session.select([nodeId]);
     } catch {
       return;
+    }
+    if (nodeId !== this.selectedNodeId) {
+      // A `+` destination overrides the selection-derived default and must
+      // not outlive the context it was chosen in.
+      this.#clearInsertDestination();
     }
     this.selectedNodeId = nodeId;
     if (notifyPreview) {
@@ -6751,9 +7383,38 @@ export class KumweStudioElement extends LitElement {
     this.libraryOpen = !this.libraryOpen;
     if (this.libraryOpen) {
       this.activePane = 'library';
-    } else if (this.activePane === 'library') {
-      this.activePane = 'outline';
+    } else {
+      // The header naming a pending destination closes with the layer.
+      this.#clearInsertDestination();
+      if (this.activePane === 'library') {
+        this.activePane = 'outline';
+      }
     }
+  }
+
+  /**
+   * Every `+` control: records the explicit destination, makes sure the add
+   * layer is showing (it belongs to the structure view, which is hidden with
+   * it at wide widths) and moves focus to its search field, which the
+   * destination line describes. One opened level is kept.
+   */
+  #beginInsert(destination: CommandDestination): void {
+    this.pendingInsertDestination = destination;
+    this.#pendingInsertEntries = destinationEntries(this.document?.roots ?? [], destination);
+    // The contextual Content and Model views offer no `+` (`#offeredDestination`).
+    if (this.panelView !== 'structure') {
+      this.panelView = 'structure';
+      if (this.activePane === 'inspector') this.activePane = 'outline';
+      this.#announceLayer('structure', this.panelScopeId);
+    }
+    if (!this.libraryOpen || (this.#sheetsActive() && this.activePane !== 'library')) {
+      this.#toggleLibrary();
+    }
+    void this.updateComplete.then(() => {
+      if (this.pendingInsertDestination === destination) {
+        this.shadowRoot?.querySelector<HTMLElement>('aside.library input')?.focus();
+      }
+    });
   }
 
   /** Whether the workspace currently shows one sheet at a time (its pane switcher is laid out). */
@@ -7549,6 +8210,9 @@ function isSizeRoleIdentifier(text: string): boolean {
 function referenceText(reference: MessageReference): string {
   return reference.defaultMessage ?? reference.key;
 }
+
+/** The column counts the add layer and the command palette offer as one batch each. */
+const COLUMN_COUNTS = [2, 3, 4] as const;
 
 const PANE_LABELS = {
   canvas: 'studio.shell/canvas-pane',

@@ -196,6 +196,63 @@ export const canvasWorkspaceStyles: CSSResult = css`
     padding: 0;
   }
 
+  .canvas-add-zone {
+    border: 2px dashed var(--studio-primary);
+    border-radius: 0.5rem;
+    margin: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .add-glyph {
+    margin-inline-end: 0.25rem;
+  }
+
+  .outline-level-add {
+    margin-block-start: 0.5rem;
+  }
+
+  .library-destination {
+    border: 1px dashed var(--studio-primary);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+    padding: 0.375rem 0.5rem;
+  }
+
+  .canvas-add-zones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .preview-canvas-add-zone :is(rect, text) {
+    pointer-events: none;
+  }
+
+  .preview-canvas-add-zone :is(rect, circle) {
+    stroke: var(--studio-primary);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .preview-canvas-add-zone rect {
+    fill: color-mix(in srgb, var(--studio-primary), transparent 94%);
+    stroke-dasharray: 6 4;
+  }
+
+  .preview-canvas-add-zone circle {
+    cursor: pointer;
+    fill: white;
+  }
+
+  .preview-canvas-add-zone text {
+    dominant-baseline: central;
+    fill: var(--studio-primary);
+    font-size: 1.25rem;
+    text-anchor: middle;
+  }
+
   .preview-status {
     font-size: 0.75rem;
   }

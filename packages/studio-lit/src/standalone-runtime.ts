@@ -21,8 +21,12 @@ import {
   type AuthoringSaveIntent,
   type AuthoringSaveOutcome,
   type AuthoringSessionSnapshot,
+  type BatchCommand,
   type BlockDefinition,
+  type BlueprintBatchOperation,
+  type BlueprintDocument,
   type BlueprintNode,
+  type InsertNodeCommand,
   type ExperimentalShellConfiguration,
   type JsonValue,
   type PatternDocument,
@@ -567,7 +571,30 @@ export class KumweStudioStandaloneElement extends LitElement {
         candidate.revision === detail.definition.revision,
     );
     if (definition === undefined || !isCoreProductionBlockType(definition.type)) {
-      throw new TypeError('Local Studio can insert only its built-in block catalog.');
+      throw new TypeError(BUILT_IN_CATALOG_ONLY);
+    }
+    const operations = detail.operations;
+    if (operations !== undefined) {
+      // A composite insertion (the column cards): the shell planned the
+      // complete batch with identifiers unique in this document, so the
+      // local boundary executes it verbatim as one undoable command.
+      for (const operation of operations) {
+        if (
+          operation.type !== 'studio.command/insert-node' ||
+          !isCoreProductionBlockType(operation.payload.node.type)
+        ) {
+          throw new TypeError(BUILT_IN_CATALOG_ONLY);
+        }
+      }
+      this.#executeInsert(
+        document,
+        {
+          payload: { operations: structuredClone(operations) },
+          type: 'studio.command/batch',
+        },
+        compositeRootId(operations),
+      );
+      return;
     }
     const id = this.#nextNodeId(document.roots);
     const node: BlueprintNode = {
@@ -586,14 +613,39 @@ export class KumweStudioStandaloneElement extends LitElement {
       node.responsive = { columns: { expanded: 4, medium: 2 } };
     }
     const parent = detail.parentId === null ? undefined : findNode(document.roots, detail.parentId);
+    // The shell names the explicit position; an absent one keeps end-of-slot
+    // placement, and any value is clamped into the collection.
     const destination =
       parent === undefined || detail.slot === undefined
-        ? { position: document.roots.length }
+        ? { position: clampPosition(detail.position, document.roots.length) }
         : {
             parentNodeId: parent.id,
-            position: parent.slots[detail.slot]?.length ?? 0,
+            position: clampPosition(detail.position, parent.slots[detail.slot]?.length ?? 0),
             slot: detail.slot,
           };
+    this.#executeInsert(
+      document,
+      {
+        payload: { destination, node },
+        type: 'studio.command/insert-node',
+      },
+      id,
+    );
+  }
+
+  /**
+   * Runs one local insertion command (a single insert or a planned batch) as
+   * one undoable step, then selects the inserted node through the shell's
+   * public `selectNode()` seam, as the host insertion contract asks, so the
+   * outline, inspector and canvas agree with an insertion the shell ran itself.
+   */
+  #executeInsert(
+    document: BlueprintDocument,
+    command: Pick<InsertNodeCommand, 'payload' | 'type'> | Pick<BatchCommand, 'payload' | 'type'>,
+    insertedNodeId: string | undefined,
+  ): void {
+    const studio = this.contextualElement?.blueprintElement;
+    if (studio === undefined) return;
     this.#sequence += 1;
     studio.execute({
       artifactId: document.id,
@@ -601,10 +653,10 @@ export class KumweStudioStandaloneElement extends LitElement {
       contractVersion: document.contractVersion,
       id: `studio-local-insert-${this.#sequence}`,
       kind: 'command',
-      payload: { destination, node },
       sessionGeneration: this.#configuration.session.sessionGeneration,
-      type: 'studio.command/insert-node',
+      ...command,
     });
+    if (insertedNodeId !== undefined) studio.selectNode(insertedNodeId);
   }
 
   #nextNodeId(roots: readonly BlueprintNode[]): string {
@@ -950,6 +1002,34 @@ function collectNodeIds(roots: readonly BlueprintNode[]): Set<string> {
     for (const children of Object.values(node.slots)) stack.push(...children);
   }
   return identifiers;
+}
+
+/** The refusal for any insertion outside the built-in production catalog. */
+const BUILT_IN_CATALOG_ONLY = 'Local Studio can insert only its built-in block catalog.';
+
+/**
+ * The node a composite insertion is about: the first inserted node whose
+ * destination lies outside the batch (the columns block of a column card).
+ */
+function compositeRootId(operations: readonly BlueprintBatchOperation[]): string | undefined {
+  const inserted = new Set<string>();
+  for (const operation of operations) {
+    if (operation.type === 'studio.command/insert-node') inserted.add(operation.payload.node.id);
+  }
+  for (const operation of operations) {
+    if (operation.type !== 'studio.command/insert-node') continue;
+    const parent = operation.payload.destination.parentNodeId;
+    if (parent === undefined || !inserted.has(parent)) return operation.payload.node.id;
+  }
+  return undefined;
+}
+
+/** An explicit insertion position clamped into `0..length`; absent means the end. */
+function clampPosition(position: number | undefined, length: number): number {
+  if (position === undefined || !Number.isFinite(position)) {
+    return length;
+  }
+  return Math.min(Math.max(Math.trunc(position), 0), length);
 }
 
 function findNode(roots: readonly BlueprintNode[], id: string): BlueprintNode | undefined {
