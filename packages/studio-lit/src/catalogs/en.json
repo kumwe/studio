@@ -2,7 +2,7 @@
   "$schema": "https://schemas.kumwe.org/studio/v1/authoring-message-catalog.schema.json",
   "kind": "authoring-message-catalog",
   "contractVersion": "0.1-draft",
-  "catalogVersion": "1.10.0",
+  "catalogVersion": "1.11.0",
   "locale": "en",
   "messages": {
     "studio.contextual/add-field": {
@@ -401,8 +401,32 @@
       "defaultMessage": "Workspace size",
       "parameters": []
     },
+    "studio.shell/add-block-after": {
+      "defaultMessage": "Add block after",
+      "parameters": []
+    },
+    "studio.shell/add-block-before": {
+      "defaultMessage": "Add block before",
+      "parameters": []
+    },
+    "studio.shell/add-block-into": {
+      "defaultMessage": "Add block into {slot}",
+      "parameters": ["slot"]
+    },
     "studio.shell/add-blocks-toggle": {
       "defaultMessage": "Add blocks",
+      "parameters": []
+    },
+    "studio.shell/add-columns": {
+      "defaultMessage": "{count} columns",
+      "parameters": ["count"]
+    },
+    "studio.shell/add-destination": {
+      "defaultMessage": "Adding to {destination}",
+      "parameters": ["destination"]
+    },
+    "studio.shell/add-to-page": {
+      "defaultMessage": "Add to page",
       "parameters": []
     },
     "studio.shell/announce-binding-removed": {
@@ -559,6 +583,14 @@
     },
     "studio.shell/breadcrumb-label": {
       "defaultMessage": "Selection path",
+      "parameters": []
+    },
+    "studio.shell/canvas-add-into": {
+      "defaultMessage": "Add block into {slot} of {parent}",
+      "parameters": ["parent", "slot"]
+    },
+    "studio.shell/canvas-add-zones": {
+      "defaultMessage": "Empty containers",
       "parameters": []
     },
     "studio.shell/canvas-edit-toggle": {
@@ -960,6 +992,10 @@
     "studio.shell/move-up": {
       "defaultMessage": "Move up",
       "parameters": []
+    },
+    "studio.shell/outline-column-of": {
+      "defaultMessage": "{label}, column {position} of {count}",
+      "parameters": ["count", "label", "position"]
     },
     "studio.shell/outline-edit": {
       "defaultMessage": "Edit",
