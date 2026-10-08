@@ -1,5 +1,101 @@
 # @kumwe/studio
 
+## 0.1.0-beta.11
+
+### Minor Changes
+
+- [#75](https://github.com/kumwe/studio/pull/75) [`ebd7f89`](https://github.com/kumwe/studio/commit/ebd7f89a22b0dff56052e79948c654b7399c34af) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Give a host-extended core layout family its own derived revision and let an authoring target supply the
+  family's options. `createCoreLayoutBlockDefinitions` now stamps `layout-<name>-h<16 hex>` derived from the
+  canonical bytes of the built family without its revision, and rejects more than 64 listed types (layout types
+  included), duplicates, and reserved `studio.*` types other than the layout family; the production catalog keeps
+  its published `layout-<name>-r1` bytes. The authoring-target schema gains the optional `coreLayout` member,
+  whose entries are layout types or names outside the reserved `studio.*` namespace (protocol models regenerated;
+  the testkit fixture and negative-fixture copies move with it). Hosted Studio replaces the four production layout
+  definitions with the target's family, requires every listed host type to be a resolved required block-definition
+  dependency of the target, and leaves exact lock matching unchanged. See ADR 0038.
+
+### Patch Changes
+
+- [#75](https://github.com/kumwe/studio/pull/75) [`c5d4cc7`](https://github.com/kumwe/studio/commit/c5d4cc7c226b6b6da6508bcde6e0456f7125080b) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Compose the Blueprint workspace as one narrow structure-and-details column beside a full-height page. The
+  Outline leads the left column and opens the block palette through an `Add blocks` disclosure (open by default
+  on an empty document); the Inspector and the docked Model and Content panels sit beneath it; the page fills
+  the right column under a sticky toolbar with the local-canvas caption kept visible as a slim strip at the
+  top of the page column. Hovering a rendered block highlights its Outline entry and hovering or focusing an
+  entry marks the block on the page with distinct indicators; a single click on the page selects the block and
+  reveals its entry without moving focus to a control, while double-click, Enter and F2 still focus its first
+  control. Host previews stay pointer-inert in operate mode: hover derives from accepted measurements through
+  the shell's own stage, selection stays the renderer's activation report, and dragging still requires the
+  edit control, which now sits in the page toolbar. The reference host anchors its measured surface at the stage's start edge so overlay rectangles
+  align. A hosted local canvas opens at its desktop width on wide screens when the host sets no initial
+  viewport, as the standalone host already does; the base viewport, and therefore where responsive edits are
+  written, is unchanged. No protocol, schema or host-adapter shape changes; the English authoring catalog gains
+  `studio.shell/add-blocks-toggle` (catalog 1.9.0; the testkit fixture copy moves with it).
+
+- [#75](https://github.com/kumwe/studio/pull/75) [`98cdf61`](https://github.com/kumwe/studio/commit/98cdf61f72dafe79579884bd7a39b12dbd8c00de) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - Every add control of the Blueprint workspace now names its destination. `Add to page` ends the page level
+  (also on a blank document), `Add block into {slot}` ends each declared slot of an opened level and is offered
+  for each declared slot under a selected container, `Add block before` and `Add block after` sit under the
+  selected row, the empty page is a dashed zone with its own `Add to page`, and every empty container that may
+  receive a block is offered by a visible `Empty containers` list of `Add block into {slot} of {parent} ({id})`
+  buttons under the page; an empty slot of a pure container also shows a dashed band on the page (always on the
+  local canvas, in edit mode on a host preview) whose centred `+` disc alone takes the pointer, so the container
+  stays selectable and draggable there. Each control is disabled where no active block may go; otherwise it
+  opens the `Add blocks` layer with `Adding to {collection}, position n of m` in its header and focuses the
+  search field, which that line describes. Blocks, command-palette inserts and patterns the destination refuses
+  are disabled rather than redirected. `Escape` in the layer (outside a search field that has text), a changed
+  selection (the author's, or a host's through `selectNode()`), closing the layer, leaving the structure view or
+  any change to the destination's own collection (a move, an undo or redo, a removal) clears the destination,
+  so a stored position never inserts anywhere the `+` did not name. The cancelable
+  `studio-insert-request` detail gains an optional `position`, which the shell always sets, and, for composite
+  insertions, `operations`; the standalone and reference hosts clamp `position` into the collection and execute
+  `operations` as one batch, and a host that ignores them keeps end-of-slot placement. `2 columns`, `3 columns`
+  and `4 columns` cards (and command palette entries) insert a `studio.core/columns` block with that many
+  `studio.core/stack` children as one batch and one undo step through the new `planColumnsInsertion` helper of
+  `@kumwe/studio-core` (whose optional `stackVersion` names the stack definition's own version), and the
+  structure rows of those stacks read `Stack, column n of N`. No wire, schema or renderer change; the English
+  authoring catalog gains `studio.shell/add-block-after`, `studio.shell/add-block-before`,
+  `studio.shell/add-block-into`, `studio.shell/add-columns`, `studio.shell/add-destination`,
+  `studio.shell/add-to-page`, `studio.shell/canvas-add-into`, `studio.shell/canvas-add-zones` and
+  `studio.shell/outline-column-of` (catalog 1.11.0; the testkit fixture copy moves with it). The standalone
+  and reference hosts now select the block they inserted (the columns block for a column card) through
+  `selectNode()`. When a host inserts synchronously, the shell completes that insertion as it does its own: the
+  one block the host added is selected, its row takes focus, the insertion is announced once by name and a
+  narrow layout returns to the canvas sheet. A press on a page block that has nowhere to move opens the details
+  view like any other page click.
+
+  `@kumwe/studio-protocol` ships its copy of the release record (`studio-release.json`), whose corpus manifest
+  digest moves because the authoring catalog fixture in the corpus changed.
+
+  The authoring browser module's release budget rises from 1,048,576 to 1,114,112 bytes by the maintainer's
+  release-policy decision, so a consumer that bounds Studio package-file reads at 1,048,576 bytes must raise
+  that bound when it re-pins.
+
+- [#75](https://github.com/kumwe/studio/pull/75) [`3fd4187`](https://github.com/kumwe/studio/commit/3fd4187d43a03b6dfc628c9ee68438dadf1fb301) Thanks [@Llewellynvdm](https://github.com/Llewellynvdm)! - The Blueprint workspace's left column now navigates in layers. The structure view opens with the whole page
+  tree and can open one container at a time into its own level under a header that names the parent (`Back to
+Page`, `Back to {parent}`, `Show whole tree`); the details view shows the selected block's inspector sections
+  and the docked Model and Content panels under a `Back` control and the selection path, which moves from the
+  page column into that header (in the contextual Content and Model modes the docked panel is the details view
+  and the `Blueprint` tab returns, so no `Back` is rendered there). A single click on a rendered block opens
+  the details view without moving focus; `Edit` and `Open` under the selected entry, `Arrow Right`, `Enter`,
+  `F2` and double-click are the other ways in, and `Back`, `Arrow Left` and `Escape` return with focus placed
+  on a visible control. Each layer change, and a new block shown in the details view, is announced once; hover
+  is not. Layers change visibility only, so
+  imperatively mounted authoring controls keep their holder elements. Narrow sheets are unchanged (`Outline`
+  and `Inspector` are the two layers). No protocol, schema or host-adapter shape changes; the English authoring
+  catalog gains `studio.shell/announce-panel-layer`, `studio.shell/outline-edit`, `studio.shell/outline-open`,
+  `studio.shell/outline-whole-tree`, `studio.shell/panel-back`, `studio.shell/panel-back-to` and
+  `studio.shell/panel-page`, and extends `studio.shell/outline-hint` (catalog 1.10.0; the testkit fixture copy
+  moves with it). The release-asset builders (`scripts/studio-browser-artifacts.mjs`,
+  `scripts/studio-enhancement-artifacts.mjs`, `scripts/build-standalone-static-host.mjs`) pin the bundler to
+  production bytes for the duration of each build regardless of the invoking process's `NODE_ENV`, so the
+  static-delivery budget test measures the bytes a release ships.
+- Updated dependencies [[`ebd7f89`](https://github.com/kumwe/studio/commit/ebd7f89a22b0dff56052e79948c654b7399c34af), [`98cdf61`](https://github.com/kumwe/studio/commit/98cdf61f72dafe79579884bd7a39b12dbd8c00de)]:
+  - @kumwe/studio-protocol@0.1.0-beta.11
+  - @kumwe/studio-core@0.1.0-beta.11
+  - @kumwe/studio-media@0.1.0-beta.11
+  - @kumwe/studio-preview@0.1.0-beta.11
+  - @kumwe/studio-renderer-web@0.1.0-beta.11
+  - @kumwe/studio-rich-text@0.1.0-beta.11
+
 ## 0.1.0-beta.10
 
 ### Patch Changes
