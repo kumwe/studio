@@ -1,7 +1,10 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createCoreProductionBlockDefinitions } from '@kumwe/studio-core';
+import {
+  createCoreLayoutBlockDefinitions,
+  createCoreProductionBlockDefinitions,
+} from '@kumwe/studio-core';
 import {
   STUDIO_CONTRACT_VERSION,
   type AuthoringSaveIntent,
@@ -12,6 +15,8 @@ import {
   type AuthoringStartRequest,
   type AuthoringTypeSummary,
   type BlockDefinition,
+  type BlueprintBlockLock,
+  type BlueprintNode,
   type DesignVocabulary,
   type FieldAdapterContribution,
   type HostRequestContext,
@@ -874,6 +879,183 @@ describe('hosted browser runtime', () => {
     expect(retry.admittedContributions.blockDefinitions).toHaveLength(2);
     retry.dispose();
   });
+
+  it('admits host blocks into core layout slots declared by the target without slot rejections', async () => {
+    const scenario = coreLayoutScenario();
+    const runtime = await mountCoreLayoutScenario(scenario, hostedTarget());
+    await runtime.element.updateComplete;
+    const blueprint = runtime.element.blueprintElement;
+    if (blueprint === undefined)
+      throw new Error('Hosted Studio did not mount its Blueprint shell.');
+    await blueprint.updateComplete;
+
+    const section = runtime.admittedContributions.blockDefinitions.find(
+      (entry) => entry.type === 'studio.core/section',
+    );
+    expect(section?.revision).toBe(scenario.family[0]?.revision);
+    expect(section?.revision).toMatch(/^layout-section-h[0-9a-f]{16}$/u);
+    expect(section?.slots[0]?.accepts.types).toContain(scenario.block.type);
+    expect(section?.rendererRequirements).toEqual(scenario.family[0]?.rendererRequirements);
+    expect(
+      blueprint.diagnostics.filter((diagnostic) => diagnostic.code.endsWith('slot-rejects-type')),
+    ).toEqual([]);
+    runtime.dispose();
+  });
+
+  it('inserts and moves a host block into a target-extended section through the shell', async () => {
+    const scenario = coreLayoutScenario();
+    const runtime = await mountCoreLayoutScenario(scenario, hostedTarget());
+    await runtime.element.updateComplete;
+    const blueprint = runtime.element.blueprintElement;
+    if (blueprint === undefined)
+      throw new Error('Hosted Studio did not mount its Blueprint shell.');
+    await blueprint.updateComplete;
+    const commandTypes: string[] = [];
+    blueprint.addEventListener('studio-document-change', (event) => {
+      const detail = (event as CustomEvent<{ command?: { type: string } }>).detail;
+      if (detail.command !== undefined) commandTypes.push(detail.command.type);
+    });
+    const contentIds = (): string[] =>
+      runtime.element.snapshot?.state.blueprint.roots
+        .find((root) => root.id === 'section-1')
+        ?.slots.content?.map((child) => child.id) ?? [];
+
+    blueprint.selectNode('section-1');
+    await blueprint.updateComplete;
+    blueprint.shadowRoot?.querySelector<HTMLButtonElement>('.command-palette-toggle')?.click();
+    await blueprint.updateComplete;
+    const insert = [
+      ...(blueprint.shadowRoot?.querySelectorAll<HTMLButtonElement>('button.command-entry') ?? []),
+    ].find((entry) => entry.dataset.commandId === `insert-${scenario.block.type}@1.0.0`);
+    expect(insert?.disabled).toBe(false);
+    insert?.click();
+    await blueprint.updateComplete;
+    expect(contentIds()).toHaveLength(2);
+    expect(contentIds()[0]).toBe('price-1');
+    expect(commandTypes.at(-1)).toBe('studio.command/insert-node');
+
+    blueprint.selectNode('price-root');
+    await blueprint.updateComplete;
+    const destination = blueprint.shadowRoot?.querySelector<HTMLSelectElement>(
+      '.outline-move-destination',
+    );
+    const option = [...(destination?.options ?? [])].find((candidate) =>
+      candidate.textContent.includes('section-1'),
+    );
+    expect(option).toBeDefined();
+    if (destination !== null && destination !== undefined && option !== undefined) {
+      destination.value = option.value;
+      destination.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    await blueprint.updateComplete;
+    expect(contentIds()).toContain('price-root');
+    expect(runtime.element.snapshot?.state.blueprint.roots.map((root) => root.id)).toEqual([
+      'section-1',
+    ]);
+    expect(commandTypes.at(-1)).toBe('studio.command/move-node');
+    expect(
+      blueprint.diagnostics.filter((diagnostic) => diagnostic.code.endsWith('slot-rejects-type')),
+    ).toEqual([]);
+    runtime.dispose();
+  });
+
+  it('fails the mount when the target extends core layout slots with a block it does not admit', async () => {
+    const scenario = coreLayoutScenario({
+      acceptedChildTypes: ['org.example.catalog/price', 'org.example.catalog/unlisted'],
+    });
+    const target = hostedTarget();
+
+    await expect(mountCoreLayoutScenario(scenario, target)).rejects.toThrow(
+      'extends core layout slots with org.example.catalog/unlisted, which is not a resolved required block-definition dependency of the target',
+    );
+    expect(target.querySelector('kumwe-studio-contextual')).toBeNull();
+    expect(target.querySelector<HTMLElement>('[data-studio-host-error="true"]')).toMatchObject({
+      hidden: false,
+      role: 'alert',
+    });
+  });
+
+  it.each([
+    { label: 'present', payloads: true },
+    { label: 'missing', payloads: false },
+  ])(
+    'fails the mount when a core layout type is only an optional dependency ($label)',
+    async ({ payloads }) => {
+      const scenario = coreLayoutScenario({ dependencyRequired: false });
+      if (!payloads && scenario.configured.contributions !== undefined) {
+        scenario.configured.contributions.payloads = [];
+      }
+      const target = hostedTarget();
+
+      await expect(mountCoreLayoutScenario(scenario, target)).rejects.toThrow(
+        'extends core layout slots with org.example.catalog/price, which is not a resolved required block-definition dependency of the target',
+      );
+      expect(target.querySelector('kumwe-studio-contextual')).toBeNull();
+    },
+  );
+
+  it('fails the mount at the port boundary when the target asks core layout slots to admit a reserved Studio type', async () => {
+    // The canonical schema refuses the entry before the factory's own refusal is reached, so a
+    // server-side host validating against the same schema catches it before serving the target.
+    const scenario = coreLayoutScenario({
+      acceptedChildTypes: ['org.example.catalog/price', 'studio.core/heading'],
+    });
+    const target = hostedTarget();
+
+    await expect(mountCoreLayoutScenario(scenario, target)).rejects.toThrow(
+      'The authoring port returned a malformed target resolution.',
+    );
+    expect(target.querySelector('kumwe-studio-contextual')).toBeNull();
+  });
+
+  it('fails closed when the session still locks the production r1 layout revision against a coreLayout target', async () => {
+    const scenario = coreLayoutScenario({ sectionRevision: 'layout-section-r1' });
+    const target = hostedTarget();
+
+    await expect(mountCoreLayoutScenario(scenario, target)).rejects.toThrow(
+      'not locked revision layout-section-r1',
+    );
+    expect(target.querySelector('kumwe-studio-contextual')).toBeNull();
+  });
+
+  it('keeps the production layout family when the target declares no coreLayout', async () => {
+    const session = structuredClone(fixture);
+    const production = createCoreProductionBlockDefinitions()[0];
+    if (production?.type !== 'studio.core/section') {
+      throw new Error('The production catalog lists the section first.');
+    }
+    const lock: BlueprintBlockLock = {
+      revision: production.revision,
+      type: production.type,
+      version: production.version,
+    };
+    session.state.blueprint.roots = [
+      {
+        authoring: { mode: 'structural' },
+        bindings: {},
+        id: 'section-1',
+        properties: {},
+        slots: { content: [] },
+        type: production.type,
+        version: production.version,
+      },
+    ];
+    session.state.blueprint.dependencyLock.blocks = [lock];
+    const scenario = {
+      configured: deployment(session, 'blueprint'),
+      session,
+    } as CoreLayoutScenario;
+    const runtime = await mountCoreLayoutScenario(scenario, hostedTarget());
+
+    const section = runtime.admittedContributions.blockDefinitions.find(
+      (entry) => entry.type === 'studio.core/section',
+    );
+    expect(section).toEqual(
+      createCoreProductionBlockDefinitions().find((entry) => entry.type === 'studio.core/section'),
+    );
+    expect(section?.rendererRequirements[0]?.capability).toBe('studio.renderer/semantic-web');
+    runtime.dispose();
+  });
 });
 
 interface BrowserAuthoringServer {
@@ -986,8 +1168,11 @@ function createBrowserAuthoringServer(
   return { fetch: browserFetch, plannedIntents, saveRequests, startRequests };
 }
 
-function deployment(session: AuthoringSessionSnapshot): StudioHostedDeploymentConfiguration {
-  const configuration: StudioConfiguration = createStudioConfigurationFixture({ mode: 'content' });
+function deployment(
+  session: AuthoringSessionSnapshot,
+  mode: StudioConfiguration['mode'] = 'content',
+): StudioHostedDeploymentConfiguration {
+  const configuration: StudioConfiguration = createStudioConfigurationFixture({ mode });
   configuration.artifacts = {
     blueprint: structuredClone(session.state.coordinates.blueprint),
     entry: structuredClone(session.state.coordinates.entry),
@@ -1103,6 +1288,97 @@ function deploymentWithContributions(
     payloads: [block, designVocabulary, fieldAdapter, inspector, migration, pattern],
   };
   return configured;
+}
+
+interface CoreLayoutScenario {
+  readonly block: BlockDefinition;
+  readonly configured: StudioHostedDeploymentConfiguration;
+  readonly family: BlockDefinition[];
+  readonly session: AuthoringSessionSnapshot;
+}
+
+/**
+ * A Blueprint-mode session whose target extends the core layout slots with the
+ * target-admitted price block (ADR 0038). The derived revisions come from the
+ * factory, exactly as a host obtains them from the pinned package.
+ */
+function coreLayoutScenario(
+  options: {
+    acceptedChildTypes?: readonly QualifiedName[];
+    dependencyRequired?: boolean;
+    sectionRevision?: string;
+  } = {},
+): CoreLayoutScenario {
+  const session = structuredClone(fixture);
+  const owner = structuredClone(session.target.owner);
+  const block: BlockDefinition = { ...structuredClone(contributionFixtures.block), owner };
+  session.target.contributionDependencies = [
+    {
+      id: block.type,
+      kind: 'block-definition',
+      required: options.dependencyRequired ?? true,
+      versions: block.version,
+    },
+  ];
+  session.target.coreLayout = { acceptedChildTypes: options.acceptedChildTypes ?? [block.type] };
+  const family = createCoreLayoutBlockDefinitions({ acceptedChildTypes: [block.type] });
+  const section = family[0];
+  if (section === undefined) throw new Error('The layout factory returns the section first.');
+  const priceNode = (id: string): BlueprintNode => ({
+    authoring: { mode: 'designer' },
+    bindings: {},
+    id,
+    properties: {},
+    slots: {},
+    type: block.type,
+    version: block.version,
+  });
+  session.state.blueprint.roots = [
+    {
+      authoring: { mode: 'structural' },
+      bindings: {},
+      id: 'section-1',
+      properties: {},
+      slots: { content: [priceNode('price-1')] },
+      type: section.type,
+      version: section.version,
+    },
+    priceNode('price-root'),
+  ];
+  session.state.blueprint.dependencyLock.blocks = [
+    {
+      revision: options.sectionRevision ?? section.revision,
+      type: section.type,
+      version: section.version,
+    },
+    { revision: block.revision, type: block.type, version: block.version },
+  ];
+  const configured = deployment(session, 'blueprint');
+  configured.contributions = {
+    generation: session.contributionGeneration,
+    payloads: [block],
+  };
+  return { block, configured, family, session };
+}
+
+async function mountCoreLayoutScenario(
+  scenario: Pick<CoreLayoutScenario, 'configured' | 'session'>,
+  target: HTMLElement,
+): ReturnType<typeof mountStudioHosted> {
+  return mountStudioHosted(target, scenario.configured, {
+    adapter: {
+      currentTimeMilliseconds: () => 0,
+      fetchImplementation: createBrowserAuthoringServer(scenario.session).fetch,
+    },
+    identifiers: deterministicIdentifiers(),
+  });
+}
+
+function hostedTarget(): HTMLElement {
+  const target = document.createElement('div');
+  target.id = 'hosted-studio';
+  document.body.append(target);
+  return target;
 }
 
 function deterministicIdentifiers() {

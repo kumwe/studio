@@ -1,7 +1,11 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { createCoreProductionBlockDefinitions } from '@kumwe/studio-core';
+import {
+  createCoreLayoutBlockDefinitions,
+  createCoreProductionBlockDefinitions,
+  createCoreProductionPatterns,
+} from '@kumwe/studio-core';
 import type {
   AuthoringSessionSnapshot,
   BlockDefinition,
@@ -84,6 +88,61 @@ describe('hosted catalog policy', () => {
         snapshot: state.snapshot,
       }),
     ).toThrow('does not lock that block');
+  });
+
+  it('compares session locks against a host-extended layout family by its derived revision', () => {
+    const state = fixtureState();
+    const family = createCoreLayoutBlockDefinitions({ acceptedChildTypes: [extensionBlock.type] });
+    const section = first(family);
+    state.builtIns = [...family, ...state.builtIns.slice(4)];
+    state.session.blocks = [lockOf(section)];
+    state.snapshot.state.blueprint.dependencyLock.blocks = [lockOf(section)];
+    first(state.snapshot.state.blueprint.roots).type = section.type;
+
+    expect(resolve(state).blockDefinitions).toEqual([section]);
+
+    const productionLock = { ...lockOf(section), revision: 'layout-section-r1' };
+    state.session.blocks = [productionLock];
+    state.snapshot.state.blueprint.dependencyLock.blocks = [structuredClone(productionLock)];
+    expect(() => resolve(state)).toThrow(
+      `resolves studio.core/section@1.0.0 to revision ${section.revision}, not locked revision layout-section-r1`,
+    );
+  });
+
+  it('admits a layout-free production pattern beside a host-extended layout family and refuses a layout-dependent one', () => {
+    const state = fixtureState();
+    const family = createCoreLayoutBlockDefinitions({ acceptedChildTypes: [extensionBlock.type] });
+    state.builtIns = [...family, ...state.builtIns.slice(4)];
+    const patterns = createCoreProductionPatterns();
+    const faq = patterns.find((pattern) => pattern.id === 'studio.pattern/faq');
+    const hero = patterns.find((pattern) => pattern.id === 'studio.pattern/hero');
+    if (faq === undefined || hero === undefined) {
+      throw new Error('The production starter patterns include faq and hero.');
+    }
+    const lockedTypes = new Set(
+      [...faq.blockDependencies, ...hero.blockDependencies].map((dependency) => dependency.type),
+    );
+    state.session.blocks = state.builtIns
+      .filter((definition) => lockedTypes.has(definition.type))
+      .map(lockOf);
+
+    const admitted = resolveStudioHostedPolicyCatalog({
+      builtInBlockDefinitions: state.builtIns,
+      resolvedContributions: [faq],
+      session: state.session,
+      snapshot: state.snapshot,
+    });
+    expect(admitted.patterns).toEqual([faq]);
+    expect(() =>
+      resolveStudioHostedPolicyCatalog({
+        builtInBlockDefinitions: state.builtIns,
+        resolvedContributions: [hero],
+        session: state.session,
+        snapshot: state.snapshot,
+      }),
+    ).toThrow(
+      'Target-admitted pattern studio.pattern/hero@1.0.0 requires an unavailable block lock.',
+    );
   });
 
   it('rejects a started session that does not admit the host-resolved mode', () => {
