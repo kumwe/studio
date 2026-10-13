@@ -131,7 +131,7 @@ jobs:
           git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
 
       - name: Set up pinned PHP for generated-candidate qualification
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.1'
           coverage: none
@@ -242,7 +242,7 @@ jobs:
           [[ "$remote_main" == "$EXPECTED_MAIN_SHA" ]]
 
       - name: Set up pinned PHP for RC candidate qualification
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.1'
           coverage: none
@@ -335,7 +335,7 @@ jobs:
           git fetch --no-tags origin "refs/heads/main:refs/remotes/origin/main"
 
       - name: Set up pinned PHP for publication-source qualification
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.1'
           coverage: none
