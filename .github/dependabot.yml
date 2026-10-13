@@ -7,6 +7,9 @@ updates:
     groups:
       development-tooling:
         dependency-type: development
+        # Compiler upgrades need a separate compatibility review with typescript-eslint.
+        exclude-patterns:
+          - typescript
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions
